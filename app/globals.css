@@ -80,9 +80,8 @@
 .bol-persian-text,
 .ledger-table[dir="rtl"] {
   direction: rtl;
-  unicode-bidi: bidi-override;
+  unicode-bidi: isolate;
   font-family: var(--font-vazirmatn) !important;
-  text-align: right;
 }
 
 /* Ensure mono font uses jetbrains mono */
@@ -4822,7 +4821,7 @@
     height: auto !important;
   }
 
-  [data-print-root="true"] img,
+  [data-print-root="true"] img:not(.logo),
   img.print-logo,
   .print-logo {
     max-width: 130px !important;
@@ -4835,11 +4834,14 @@
 
   [data-print-root="true"] .logo,
   [data-pdf-export="true"] .logo {
-    max-width: 45mm !important;
-    max-height: 45mm !important;
+    max-width: 35mm !important;
+    max-height: 26mm !important;
     height: auto !important;
+    width: auto !important;
     margin-bottom: 0 !important;
     object-fit: contain !important;
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: high-quality !important;
   }
 
   [data-print-root="true"] .english-text,
@@ -5271,17 +5273,21 @@
 
   [data-bol-header="true"] > div {
     display: grid !important;
-    grid-template-columns: 36mm minmax(0, 1fr) 58mm !important;
-    column-gap: 3.5mm !important;
+    grid-template-columns: 36mm minmax(0, 1fr) 50mm !important;
+    column-gap: 3mm !important;
     align-items: center !important;
   }
 
   [data-bol-header="true"] img {
     display: block !important;
     visibility: visible !important;
-    max-width: 38mm !important;
-    max-height: 24mm !important;
+    max-width: 35mm !important;
+    max-height: 26mm !important;
+    height: auto !important;
+    width: auto !important;
     object-fit: contain !important;
+    image-rendering: -webkit-optimize-contrast !important;
+    image-rendering: high-quality !important;
   }
 
   [data-print-root="true"] .bol-title-card,
@@ -5295,10 +5301,10 @@
   [data-print-root="true"] .bol-company-name,
   [data-pdf-export="true"] .bol-company-name {
     display: block !important;
-    font-size: 15.4pt !important;
-    line-height: 1 !important;
+    font-size: 15pt !important;
+    line-height: 1.1 !important;
     font-weight: 900 !important;
-    letter-spacing: 0 !important;
+    letter-spacing: -0.01em !important;
     max-width: 100% !important;
     min-width: 0 !important;
     overflow: hidden !important;
@@ -5496,7 +5502,6 @@
 
   [data-print-root="true"] .bol-persian-text,
   [data-pdf-export="true"] .bol-persian-text {
-    font-size: 12.45em !important;
     line-height: 1.25 !important;
     letter-spacing: 0 !important;
     text-rendering: optimizeLegibility !important;
@@ -5512,7 +5517,7 @@
   [data-print-root="true"]
     [data-print-section="cargo"]
     [class*="text-\\[9pt\\]"] {
-    font-size: 10.6pt !important;
+    font-size: 8.8pt !important;
     line-height: 1.25 !important;
   }
 
@@ -5579,16 +5584,16 @@
 
   [data-print-root="true"] .route-english,
   [data-pdf-export="true"] .route-english {
-    font-size: 12.4pt !important;
-    line-height: 1.3 !important;
+    font-size: 7.5pt !important;
+    line-height: 1.2 !important;
     white-space: nowrap !important;
     overflow: visible !important;
   }
 
   [data-print-root="true"] .route-local,
   [data-pdf-export="true"] .route-local {
-    font-size: 12.25pt !important;
-    line-height: 1.25 !important;
+    font-size: 6.8pt !important;
+    line-height: 1.2 !important;
     white-space: nowrap !important;
     overflow: visible !important;
   }
@@ -5603,7 +5608,7 @@
 
   [data-print-root="true"] .route-arrow-symbol,
   [data-pdf-export="true"] .route-arrow-symbol {
-    font-size: 11pt !important;
+    font-size: 8pt !important;
   }
 
   /* Print Options Dialog Handlers: Fit to Page, Color Strip & Quality Modes */

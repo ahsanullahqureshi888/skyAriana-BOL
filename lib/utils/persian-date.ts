@@ -126,7 +126,7 @@ export function formatPersianDateNumeric(persianDate: PersianDate): string {
   const y = toPersianNumeral(persianDate.year)
   const m = toPersianNumeral(persianDate.month, 2)
   const d = toPersianNumeral(persianDate.day, 2)
-  return `${y}/${m}/${d}`
+  return `\u200E${y}/\u200E${m}/\u200E${d}\u200E`
 }
 
 /**

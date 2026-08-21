@@ -99,9 +99,9 @@ const darkHeaderStyle = {
 
 const headerGridStyle = {
   display: "grid",
-  gridTemplateColumns: "36mm 1fr 58mm",
+  gridTemplateColumns: "36mm 1fr 50mm",
   alignItems: "center",
-  columnGap: "3.5mm",
+  columnGap: "3mm",
 } satisfies CSSProperties
 
 const logoFrameStyle = {
@@ -112,17 +112,18 @@ const logoFrameStyle = {
   maxHeight: "26mm",
   maxWidth: "36mm",
   minHeight: "26mm",
-  overflow: "hidden",
+  overflow: "visible",
   width: "36mm",
 } satisfies CSSProperties
 
 const logoImageStyle = {
   display: "block",
   height: "auto",
-  maxHeight: "24mm",
-  maxWidth: "34mm",
+  maxHeight: "26mm",
+  maxWidth: "35mm",
   objectFit: "contain",
   width: "auto",
+  filter: "drop-shadow(0 1px 2px rgba(30, 58, 138, 0.12))",
 } satisfies CSSProperties
 
 const labels = {
@@ -200,7 +201,7 @@ function containsArabic(value: string) {
   return /[\u0600-\u06FF]/.test(value)
 }
 
-function DocumentQRCode({ value, size = 52 }: { value: string; size?: number }) {
+function DocumentQRCode({ value, size = 28 }: { value: string; size?: number }) {
   const grid = 21
   const modules: boolean[][] = Array.from({ length: grid }, () => Array(grid).fill(false))
 
@@ -275,47 +276,136 @@ function hasRTLText(value?: string | null) {
   return /[\u0600-\u06FF]/.test(text) && !/[A-Za-z]/.test(text)
 }
 
+function parseNamePhonePair(segment: string): { label: string; number: string } | null {
+  const clean = segment.trim()
+  if (!clean.includes(":")) return null
+  const colonIdx = clean.indexOf(":")
+  const label = clean.slice(0, colonIdx).trim()
+  const number = clean.slice(colonIdx + 1).trim()
+  if (label && number && /[\d+]/.test(number) && !/[\u0600-\u06FF]/.test(number.replace(/[\d\s\+\(\)\-\,\.\/]/g, ""))) {
+    return { label, number }
+  }
+  return null
+}
+
 function renderLineContent(line: string, forceLTR = false) {
-  const clean = line.trim()
+  let clean = line.trim()
   if (!clean) return null
 
-  // Ensure slashes have space around them so they don't stick to words or scramble BiDi text
-  const spacedLine = clean.replace(/([^\s])\/([^\s])/g, "$1 / $2")
+  // If line is a pure phone number with an accidental trailing colon (e.g. "0794983011:")
+  if (/^[\d\s\+\(\)\-\,\.\/]+:$/.test(clean)) {
+    clean = clean.slice(0, -1).trim()
+  }
 
-  // Check if line contains a colon separating name/label and numbers (e.g. "حاجی معلم صاحب : 1737009970")
-  if (spacedLine.includes(":")) {
-    const parts = spacedLine.split(":")
-    if (parts.length === 2 && /\d+/.test(parts[1])) {
-      const labelPart = parts[0].trim()
-      const numberPart = parts[1].trim()
-      const isLabelPersian = /[\u0600-\u06FF]/.test(labelPart)
+  // Check if line is purely phone numbers or dialing codes (e.g. "0796140001 0703130001" or "(+93) 0 700 203 307")
+  const isPureNumericPhone = /^[\d\s\+\(\)\-\,\.\/]+$/.test(clean) && /\d{4,}/.test(clean)
+  if (isPureNumericPhone) {
+    return (
+      <span
+        className="block font-mono font-black text-blue-950 tracking-wider text-[9.2pt] leading-tight text-left"
+        dir="ltr"
+        style={{ direction: "ltr", unicodeBidi: "isolate" }}
+      >
+        {clean}
+      </span>
+    )
+  }
 
+  // Check if line contains multiple items separated by comma, pipe, or semicolon (e.g. "عصمت الله: 0729807676 , حکمت الله: 0799007371")
+  const delimiter = clean.includes(" , ") ? " , " : clean.includes(",") ? "," : clean.includes("|") ? "|" : clean.includes("؛") ? "؛" : null
+  if (delimiter) {
+    const rawSegments = clean.split(delimiter).map((s) => s.trim()).filter(Boolean)
+    const hasPairs = rawSegments.some((s) => parseNamePhonePair(s) !== null)
+
+    if (hasPairs) {
       return (
-        <span className={`inline-flex items-center gap-1.5 flex-wrap font-bold leading-normal ${forceLTR ? "text-left" : ""}`} dir="ltr">
-          <span
-            className={isLabelPersian ? "persian-text bol-persian-text font-[vazirmatn] text-slate-900 font-extrabold" : "text-slate-900 font-bold"}
-            dir={forceLTR ? "ltr" : isLabelPersian ? "rtl" : "ltr"}
-            style={{ unicodeBidi: "isolate" }}
-          >
-            {labelPart}:
-          </span>
-          <span className="font-mono font-black text-blue-950 tracking-wider text-[9.5pt]" dir="ltr" style={{ unicodeBidi: "isolate" }}>
-            {numberPart}
-          </span>
+        <span className="inline-flex items-center flex-wrap gap-x-2 gap-y-1 font-bold leading-normal text-left" dir="ltr">
+          {rawSegments.map((segment, idx) => {
+            const pair = parseNamePhonePair(segment)
+            if (pair) {
+              const isLabelPersian = /[\u0600-\u06FF]/.test(pair.label)
+              return (
+                <span key={idx} className="whitespace-nowrap inline-flex items-center gap-1">
+                  {idx > 0 && <span className="text-blue-400 font-bold mx-0.5">•</span>}
+                  <span
+                    className={isLabelPersian ? "persian-text bol-persian-text font-[vazirmatn] text-slate-800 font-extrabold text-[8.2pt]" : "text-slate-800 font-bold text-[8.2pt]"}
+                    dir="ltr"
+                    style={{ unicodeBidi: "isolate" }}
+                  >
+                    {pair.label}
+                  </span>
+                  <span className="text-slate-400 font-black text-[8.2pt]">:</span>
+                  <span className="font-mono font-black text-blue-950 tracking-tight text-[8.6pt]" dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
+                    {pair.number}
+                  </span>
+                </span>
+              )
+            }
+
+            const isSegPersian = /[\u0600-\u06FF]/.test(segment)
+            return (
+              <span key={idx} className="whitespace-nowrap inline-flex items-center gap-1">
+                {idx > 0 && <span className="text-blue-400 font-bold mx-0.5">•</span>}
+                <span
+                  className={isSegPersian ? "persian-text bol-persian-text font-[vazirmatn] text-slate-800 font-extrabold text-[8.2pt]" : "text-slate-800 font-bold text-[8.2pt]"}
+                  dir="ltr"
+                  style={{ unicodeBidi: "isolate" }}
+                >
+                  {segment}
+                </span>
+              </span>
+            )
+          })}
         </span>
       )
     }
   }
 
-  const lineDir = textDirection(spacedLine)
-  const isPersian = lineDir === "rtl" || /[\u0600-\u06FF]/.test(spacedLine)
+  // Check if line is a single label:number pair (e.g. "نماینده دوغارون / شماره تماس: 09152091993")
+  const singlePair = parseNamePhonePair(clean)
+  if (singlePair) {
+    const isLabelPersian = /[\u0600-\u06FF]/.test(singlePair.label)
+    return (
+      <span className="whitespace-nowrap inline-flex items-center gap-1 font-bold leading-normal text-left" dir="ltr">
+        <span
+          className={isLabelPersian ? "persian-text bol-persian-text font-[vazirmatn] text-slate-800 font-extrabold text-[8.6pt]" : "text-slate-800 font-bold text-[8.6pt]"}
+          dir="ltr"
+          style={{ unicodeBidi: "isolate" }}
+        >
+          {singlePair.label}
+        </span>
+        <span className="text-slate-400 font-black text-[8.6pt]">:</span>
+        <span className="font-mono font-black text-blue-950 tracking-wider text-[9.2pt]" dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
+          {singlePair.number}
+        </span>
+      </span>
+    )
+  }
+
+  // Check if line is a section label ending with colon (e.g. "حاجی معلم صاحب:")
+  if (clean.endsWith(":") && /[\u0600-\u06FF]/.test(clean)) {
+    const labelOnly = clean.slice(0, -1).trim()
+    return (
+      <span
+        className="block persian-text bol-persian-text font-[vazirmatn] text-[8.8pt] font-black text-blue-900 leading-tight text-left mt-0.5"
+        dir="rtl"
+        style={{ unicodeBidi: "isolate", textAlign: "left" }}
+      >
+        {labelOnly}:
+      </span>
+    )
+  }
+
+  // Ensure slashes in text have clean space around them so they don't stick to words
+  const spacedLine = clean.replace(/([^\s])\/([^\s])/g, "$1 / $2")
+  const isPersian = /[\u0600-\u06FF]/.test(spacedLine)
   const isPersianDigitsOnly = /^[\u06F0-\u06F9\/\-\s:]+$/.test(spacedLine)
 
   return (
     <span
-      className={`block ${isPersian ? "persian-text bol-persian-text font-[vazirmatn]" : "font-sans"} ${isPersianDigitsOnly ? "persian-digits" : ""} leading-snug ${forceLTR ? "text-left" : ""}`}
-      dir={forceLTR ? "ltr" : isPersianDigitsOnly ? "ltr" : lineDir}
-      style={{ textAlign: forceLTR ? "left" : "inherit", unicodeBidi: "plaintext" }}
+      className={`block ${isPersian ? "persian-text bol-persian-text font-[vazirmatn] text-[8.8pt] font-extrabold text-slate-900" : "font-sans font-bold text-slate-900"} ${isPersianDigitsOnly ? "persian-digits" : ""} leading-snug text-left`}
+      dir={isPersianDigitsOnly ? "ltr" : isPersian ? "rtl" : "ltr"}
+      style={{ unicodeBidi: "isolate", textAlign: "left" }}
     >
       {spacedLine}
     </span>
@@ -381,21 +471,21 @@ function Section({
       {...(pdfMode ? { 'data-no-break': true } : {})}
       className={`overflow-hidden rounded-xl border ${pdfMode ? 'border-blue-200/90 bg-white' : 'shadow-md shadow-blue-100/70 border-blue-200/80 bg-white/92 backdrop-blur-xs'}`}
     >
-      <div className="flex items-center justify-between px-2.5 py-1.5 text-white" style={blueBarStyle}>
-          <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-2.5 py-1 text-white" style={blueBarStyle}>
+        <div className="flex items-center gap-1.5">
           {icon}
           {/* Force English title to render left-to-right so mixed-language headers don't flip */}
-          <h3 dir="ltr" className={`${titleClassName || 'text-[10.5pt]'} font-black uppercase leading-none tracking-wide`}>
+          <h3 dir="ltr" className={`${titleClassName || 'text-[9.2pt]'} font-black uppercase leading-none tracking-wide`}>
             {title}
           </h3>
         </div>
         {subtitle && (
-          <p className="persian-text bol-persian-text font-[vazirmatn] text-[10.5pt] font-bold leading-none" dir="rtl">
+          <p className="persian-text bol-persian-text font-[vazirmatn] text-[9.2pt] font-bold leading-none" dir="rtl">
             {subtitle}
           </p>
         )}
       </div>
-      <div className="p-2">{children}</div>
+      <div className="p-1.5">{children}</div>
     </section>
   )
 }
@@ -409,12 +499,12 @@ function renderFormattedLabel(label: string, forceLTR = false) {
     const persianPart = parts.slice(1).join("/").trim()
 
     return (
-      <div className={`flex flex-col space-y-[1px] ${forceLTR ? "text-left" : ""}`} dir="ltr">
+      <div className="flex items-center justify-between gap-2 text-left" dir="ltr">
         <span className="block text-[6.5pt] font-black uppercase tracking-wider text-blue-700 leading-tight text-left">
           {englishPart}
         </span>
         {persianPart && (
-          <span className={`block persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600 leading-tight ${forceLTR ? "text-left" : ""}`} dir={forceLTR ? "ltr" : "rtl"}>
+          <span className="block persian-text bol-persian-text font-[vazirmatn] text-[6.8pt] font-extrabold text-blue-600 leading-tight text-right" dir="rtl" style={{ unicodeBidi: "isolate" }}>
             {persianPart}
           </span>
         )}
@@ -425,7 +515,7 @@ function renderFormattedLabel(label: string, forceLTR = false) {
   if (label.includes("\n")) {
     const lines = label.split("\n")
     return (
-      <div className={`flex flex-col space-y-[1px] ${forceLTR ? "text-left" : ""}`} dir="ltr">
+      <div className="flex flex-col space-y-[1px] text-left" dir="ltr">
         {lines.map((line, idx) => {
           const isPersian = /[\u0600-\u06FF]/.test(line)
           return (
@@ -433,10 +523,11 @@ function renderFormattedLabel(label: string, forceLTR = false) {
               key={idx}
               className={`block ${
                 isPersian
-                  ? "persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600"
+                  ? "persian-text bol-persian-text font-[vazirmatn] text-[6.8pt] font-extrabold text-blue-600"
                   : "text-[6.5pt] font-black uppercase tracking-wider text-blue-700"
-              } leading-tight ${forceLTR ? "text-left" : ""}`}
-              dir={forceLTR ? "ltr" : isPersian ? "rtl" : "ltr"}
+              } leading-tight text-left`}
+              dir="ltr"
+              style={{ unicodeBidi: "isolate", textAlign: "left" }}
             >
               {line.trim()}
             </span>
@@ -451,10 +542,11 @@ function renderFormattedLabel(label: string, forceLTR = false) {
     <div
       className={`block ${
         isPersianOnly
-          ? "persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600"
+          ? "persian-text bol-persian-text font-[vazirmatn] text-[7pt] font-black text-blue-700"
           : "text-[6.5pt] font-black uppercase tracking-wider text-blue-700"
-      } leading-tight ${forceLTR ? "text-left" : ""}`}
-      dir={forceLTR ? "ltr" : isPersianOnly ? "rtl" : "ltr"}
+      } leading-tight text-left`}
+      dir="ltr"
+      style={{ unicodeBidi: "isolate", textAlign: "left" }}
     >
       {label}
     </div>
@@ -489,7 +581,7 @@ function DetailCard({
     <div
       dir={forceLTR ? "ltr" : rightAligned ? "rtl" : "ltr"}
       {...(pdfMode ? { 'data-no-break': true } : {})}
-        className={`min-h-[8mm] rounded-lg border px-2 py-1.5 ${pdfMode ? '' : 'shadow-sm shadow-blue-100/60'} ${
+        className={`min-h-[7.5mm] rounded-lg border px-2 py-1 ${pdfMode ? '' : 'shadow-xs shadow-blue-100/60'} ${
         glass
           ? isRedHighlight
             ? "border-red-200/60 bg-red-50/30 backdrop-blur-2xl"
@@ -508,13 +600,13 @@ function DetailCard({
       } ${center ? "text-center" : forceLTR ? "text-left" : rightAligned ? "text-right" : "text-left"} break-word ${className || ""}`}
       style={{ unicodeBidi: 'plaintext', textAlign: forceLTR ? 'left' : rightAligned ? 'right' : 'left' }}
     >
-      <div className={`${center ? "text-center" : "text-left"} mb-1`}>
+      <div className={`${center ? "text-center" : "text-left"} mb-0.5`}>
         {renderFormattedLabel(label, forceLTR)}
       </div>
       <TextLines
         value={cleanText(value)}
         forceLTR={forceLTR}
-        className={`${center ? "text-center " : forceLTR ? "text-left " : ""}${important ? (compact ? "text-[10.5pt]" : isShipmentInfoCard ? "text-[9.5pt]" : "text-[10.0pt]") : (compact ? "text-[10.5pt]" : "text-[9.5pt]")} font-extrabold leading-tight ${isRedHighlight ? "text-red-600" : isBlueHighlight ? "text-blue-800" : isGreenHighlight ? "text-green-700" : (highlight ? "text-red-600" : (important ? "text-blue-950" : "text-slate-600"))}`}
+        className={`${center ? "text-center " : forceLTR ? "text-left " : ""}${important ? (compact ? "text-[9.5pt]" : isShipmentInfoCard ? "text-[8.5pt]" : "text-[9pt]") : (compact ? "text-[9.5pt]" : "text-[8.5pt]")} font-extrabold leading-tight ${isRedHighlight ? "text-red-600" : isBlueHighlight ? "text-blue-800" : isGreenHighlight ? "text-green-700" : (highlight ? "text-red-600" : (important ? "text-blue-950" : "text-slate-600"))}`}
       />
     </div>
   )
@@ -846,22 +938,41 @@ function formatCityName(location?: string | null): string {
 function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData["routes"]; glass?: boolean }) {
   if (!routes?.length) return null
 
+  const modeThemeMap: Record<string, { icon: string; label: string; persian: string; bg: string }> = {
+    truck: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-900 border-emerald-200" },
+    road: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-900 border-emerald-200" },
+    lorry: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-900 border-emerald-200" },
+    vessel: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-900 border-blue-200" },
+    ship: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-900 border-blue-200" },
+    boat: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-900 border-blue-200" },
+    sea: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-900 border-blue-200" },
+    ocean: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-900 border-blue-200" },
+    train: { icon: "🚆", label: "TRAIN", persian: "ریلی", bg: "bg-amber-50 text-amber-900 border-amber-200" },
+    rail: { icon: "🚆", label: "TRAIN", persian: "ریلی", bg: "bg-amber-50 text-amber-900 border-amber-200" },
+    airplane: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-900 border-sky-200" },
+    air: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-900 border-sky-200" },
+    plane: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-900 border-sky-200" },
+    car: { icon: "🚗", label: "CAR", persian: "خودرو", bg: "bg-blue-50 text-blue-900 border-blue-200" },
+    van: { icon: "🚐", label: "VAN", persian: "ون", bg: "bg-blue-50 text-blue-900 border-blue-200" },
+  }
+  const defaultModeTheme = { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-blue-50 text-blue-900 border-blue-200" }
+
   return (
     <div
       className={`route-timeline-container ${glass ? "glass-card" : ""}`}
       style={{
         background: "linear-gradient(145deg, #ffffff 0%, #f8faff 50%, #eff6ff 100%)",
         border: "1px solid #bfdbfe",
-        borderRadius: "14px",
-        padding: "8px 10px",
-        boxShadow: "0 4px 16px rgba(37, 99, 235, 0.04)",
+        borderRadius: "10px",
+        padding: "5px 6px",
+        boxShadow: "0 2px 10px rgba(37, 99, 235, 0.04)",
       }}
       aria-label="Route and transportation path timeline"
     >
       {/* Route Cards Container */}
-      <div className="route-timeline-cards flex items-stretch justify-between gap-1.5" role="list">
+      <div className="route-timeline-cards flex items-stretch justify-between gap-1" role="list">
         {routes.map((route, index) => {
-          const mode = route.transportMode || "truck"
+          const mode = (route.transportMode || "truck").toLowerCase().trim()
           const fallback = routeFallbackLabels(route.location)
           const persianLabel = cleanText(route.locationPersian) || fallback.persian
           const pashtoLabel = fallback.pashto || persianLabel
@@ -870,40 +981,34 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
           const isLastRoute = index === routes.length - 1
           const isOrigin = index === 0
           const computedStopLabel = isOrigin ? "ORIGIN" : isLastRoute ? "DESTINATION" : `STOP ${index}`
-
-          const modeTheme = {
-            truck: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-900 border-emerald-200" },
-            vessel: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-900 border-blue-200" },
-            train: { icon: "🚆", label: "TRAIN", persian: "ریلی", bg: "bg-amber-50 text-amber-900 border-amber-200" },
-            airplane: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-900 border-sky-200" },
-          }[mode] || { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-blue-50 text-blue-900 border-blue-200" }
+          const modeTheme = modeThemeMap[mode] || defaultModeTheme
 
           return (
             <div key={route.id || `${route.location}-${index}`} className="route-timeline-item flex items-center flex-1 min-w-0" role="listitem">
               <div
                 className={`route-timeline-card transition-all duration-200 w-full text-center relative overflow-hidden flex flex-col justify-between ${
                   isOrigin
-                    ? "border-1.5 border-emerald-500/90 bg-linear-to-b from-emerald-50/50 via-white to-emerald-50/20 shadow-xs shadow-emerald-100/50"
+                    ? "border-1.5 border-emerald-500/90 bg-linear-to-b from-emerald-50/50 via-white to-emerald-50/20 shadow-2xs shadow-emerald-100/50"
                     : isLastRoute
-                    ? "border-1.5 border-indigo-500/90 bg-linear-to-b from-indigo-50/50 via-white to-indigo-50/20 shadow-xs shadow-indigo-100/50"
-                    : "border-1.5 border-blue-300/90 bg-linear-to-b from-blue-50/40 via-white to-blue-50/15 shadow-xs shadow-blue-100/50"
+                    ? "border-1.5 border-indigo-500/90 bg-linear-to-b from-indigo-50/50 via-white to-indigo-50/20 shadow-2xs shadow-indigo-100/50"
+                    : "border-1.5 border-blue-300/90 bg-linear-to-b from-blue-50/40 via-white to-blue-50/15 shadow-2xs shadow-blue-100/50"
                 }`}
                 style={{
-                  borderRadius: "10px",
-                  padding: "5px 4px 6px",
-                  minHeight: "88px",
+                  borderRadius: "8px",
+                  padding: "4px 3px 4px",
+                  minHeight: "64px",
                 }}
               >
                 {/* Top Accent Strip */}
-                <div className={`h-1 w-full absolute top-0 left-0 right-0 ${
+                <div className={`h-0.8 w-full absolute top-0 left-0 right-0 ${
                   isOrigin ? 'bg-linear-to-r from-emerald-500 to-teal-500' : isLastRoute ? 'bg-linear-to-r from-indigo-600 to-purple-600' : 'bg-linear-to-r from-blue-500 to-cyan-500'
                 }`} />
 
                 {/* Header 2-Tone Capsule Badge: Never Overflows! */}
-                <div className="flex items-center justify-center mt-1 mb-1 px-0.5">
-                  <div className="inline-flex items-center rounded-full border shadow-2xs overflow-hidden max-w-full text-[6pt] font-black tracking-tight uppercase">
+                <div className="flex items-center justify-center mt-0.5 mb-0.5 px-0.5">
+                  <div className="inline-flex items-center rounded-full border shadow-2xs overflow-hidden max-w-full text-[5.2pt] font-black tracking-tight uppercase">
                     {/* Stop Type */}
-                    <span className={`px-1.5 py-0.5 text-white shrink-0 ${
+                    <span className={`px-1.2 py-0.2 text-white shrink-0 ${
                       isOrigin
                         ? "bg-emerald-600 border-emerald-700"
                         : isLastRoute
@@ -914,8 +1019,8 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
                     </span>
                     {/* Country Code & Flag */}
                     {countryMeta.code && (
-                      <span className="px-1.5 py-0.5 bg-slate-100/90 text-slate-800 flex items-center gap-0.5 border-l border-slate-200 truncate font-extrabold text-[5.8pt]">
-                        <span className="text-[6.5pt] leading-none shrink-0">{countryMeta.emoji}</span>
+                      <span className="px-1 py-0.2 bg-slate-100/90 text-slate-800 flex items-center gap-0.5 border-l border-slate-200 truncate font-extrabold text-[5.2pt]">
+                        <span className="text-[6pt] leading-none shrink-0">{countryMeta.emoji}</span>
                         <span className="truncate">{countryMeta.label || countryMeta.code}</span>
                       </span>
                     )}
@@ -923,52 +1028,52 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
                 </div>
 
                 {/* City Name English & Persian */}
-                <div className="space-y-0.5 text-center px-1 my-auto">
-                  <div className="text-[8.5pt] font-black text-slate-950 leading-tight truncate tracking-tight">
+                <div className="space-y-0.2 text-center px-0.5 my-auto">
+                  <div className="text-[7.5pt] font-black text-slate-950 leading-tight truncate tracking-tight">
                     {formatCityName(route.location)}
                   </div>
                   {hasValue(persianLabel) && (
-                    <div className="text-[7pt] font-extrabold text-blue-900 font-[vazirmatn] leading-tight truncate" dir="rtl">
+                    <div className="text-[6.5pt] font-extrabold text-blue-900 font-[vazirmatn] leading-tight truncate" dir="rtl">
                       {persianLabel}
                     </div>
                   )}
                   {showPashtoLabel && (
-                    <div className="text-[6.2pt] font-semibold text-slate-500 font-[vazirmatn] leading-tight truncate" dir="rtl">
+                    <div className="text-[5.8pt] font-semibold text-slate-500 font-[vazirmatn] leading-tight truncate" dir="rtl">
                       {pashtoLabel}
                     </div>
                   )}
                 </div>
 
                 {/* Bottom Row: Mode Pill */}
-                <div className="mt-1">
-                  <span className={`inline-flex items-center justify-center gap-1 px-1.5 py-0.5 rounded-full text-[5.8pt] font-black uppercase tracking-wide border shadow-2xs whitespace-nowrap ${modeTheme.bg}`}>
-                    <span className="text-[7pt] leading-none">{modeTheme.icon}</span>
+                <div className="mt-0.5">
+                  <span className={`inline-flex items-center justify-center gap-0.5 px-1 py-0.2 rounded-full text-[5.2pt] font-black uppercase tracking-wide border shadow-2xs whitespace-nowrap ${modeTheme.bg}`}>
+                    <span className="text-[6.5pt] leading-none">{modeTheme.icon}</span>
                     <span>{modeTheme.label}</span>
-                    <span className="font-[vazirmatn] text-[5.5pt] opacity-80">({modeTheme.persian})</span>
+                    <span className="font-[vazirmatn] text-[5pt] opacity-80">({modeTheme.persian})</span>
                   </span>
                 </div>
 
                 {/* Truck Specifications & Customs Seal Badges */}
                 {(route.plateNumber || route.chassisNumber || route.trailerMan || route.customsSealRequired) && (
-                  <div className="mt-1 pt-1 border-t border-slate-200/80 space-y-0.5 text-left w-full">
+                  <div className="mt-0.5 pt-0.5 border-t border-slate-200/80 space-y-0.2 text-left w-full">
                     {route.plateNumber && (
-                      <div className="inline-flex items-center gap-1 bg-blue-100/90 text-blue-950 font-mono font-black text-[6.5pt] px-1 py-0.2 rounded border border-blue-200">
+                      <div className="inline-flex items-center gap-0.5 bg-blue-100/90 text-blue-950 font-mono font-black text-[5.8pt] px-1 py-0.2 rounded border border-blue-200">
                         <span>پلیټ:</span>
                         <span>{route.plateNumber}</span>
                       </div>
                     )}
                     {route.chassisNumber && (
-                      <div className="text-[6.5pt] font-extrabold text-slate-800">
+                      <div className="text-[5.8pt] font-extrabold text-slate-800 truncate">
                         <span className="text-slate-500">شاسی:</span> {route.chassisNumber}
                       </div>
                     )}
                     {route.trailerMan && (
-                      <div className="text-[6.5pt] font-extrabold text-slate-800" dir="rtl font-[vazirmatn]">
+                      <div className="text-[5.8pt] font-extrabold text-slate-800 truncate" dir="rtl font-[vazirmatn]">
                         <span className="text-slate-500">ټیلر مان:</span> {route.trailerMan}
                       </div>
                     )}
                     {route.customsSealRequired && (
-                      <div className="mt-0.5 bg-amber-100 text-amber-950 font-black text-[6.5pt] px-1 py-0.2 rounded border border-amber-300 flex items-center gap-1" dir="rtl font-[vazirmatn]">
+                      <div className="mt-0.2 bg-amber-100 text-amber-950 font-black text-[5.8pt] px-1 py-0.2 rounded border border-amber-300 flex items-center gap-0.5 truncate" dir="rtl font-[vazirmatn]">
                         <span>📍 ګمرک سیل</span>
                         {route.customsSealNote ? <span className="font-semibold text-amber-800">({route.customsSealNote})</span> : null}
                       </div>
@@ -980,10 +1085,10 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
               {/* Connecting Arrow Circle */}
               {!isLastRoute && (
                 <div
-                  className="route-timeline-arrow mx-0.5 shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-white border border-blue-300 shadow-xs text-blue-600"
+                  className="route-timeline-arrow mx-0.5 shrink-0 flex items-center justify-center w-4 h-4 rounded-full bg-white border border-blue-300 shadow-2xs text-blue-600"
                   aria-hidden="true"
                 >
-                  <ArrowRight className="w-3 h-3 text-blue-600" />
+                  <ArrowRight className="w-2.5 h-2.5 text-blue-600" />
                 </div>
               )}
             </div>
@@ -1051,7 +1156,7 @@ function ShipmentOverview({
 
   return (
     <div
-      className={`grid gap-1.5 ${
+      className={`grid gap-1 ${
         activeCardsCount >= 6 ? "grid-cols-3 sm:grid-cols-6" :
         activeCardsCount === 5 ? "grid-cols-5" :
         activeCardsCount === 4 ? "grid-cols-4" :
@@ -1063,26 +1168,30 @@ function ShipmentOverview({
       {/* 1. ISSUE DATE */}
       {hasIssueDate && (
         <div
-          className={`rounded-lg border px-2 py-1.5 text-center flex flex-col justify-between ${
-            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-xs shadow-blue-100/50"
+          className={`rounded-lg border px-1.5 py-1 text-center flex flex-col justify-between ${
+            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-2xs shadow-blue-100/50"
           }`}
         >
           <div>
-            <div className="text-[6.5pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
+            <div className="text-[6pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
               ISSUE DATE
             </div>
-            <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600 leading-tight mt-0.5" dir="rtl">
+            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
               تاریخ صدور
             </div>
           </div>
-          <div className="mt-1 space-y-0.5">
+          <div className="mt-0.5 space-y-0.2">
             {hasValue(issueDate) && (
-              <div className="font-mono font-black text-slate-950 text-[8.5pt] leading-tight">
+              <div className="font-mono font-black text-slate-950 text-[8.2pt] leading-tight">
                 {issueDate}
               </div>
             )}
             {hasValue(persianDateNumeric) && (
-              <div className="persian-text bol-persian-text font-[vazirmatn] font-black text-blue-900 text-[7.5pt] leading-tight" dir="rtl">
+              <div
+                className="persian-text bol-persian-text font-[vazirmatn] font-black text-blue-900 text-[7.2pt] leading-tight"
+                dir="ltr"
+                style={{ direction: "ltr", unicodeBidi: "isolate" }}
+              >
                 {persianDateNumeric}
               </div>
             )}
@@ -1093,20 +1202,20 @@ function ShipmentOverview({
       {/* 2. TRUCK NUMBER */}
       {hasTruck && (
         <div
-          className={`rounded-lg border px-2 py-1.5 text-center flex flex-col justify-between ${
-            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-xs shadow-blue-100/50"
+          className={`rounded-lg border px-1.5 py-1 text-center flex flex-col justify-between ${
+            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-2xs shadow-blue-100/50"
           }`}
         >
           <div>
-            <div className="text-[6.5pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
+            <div className="text-[6pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
               TRUCK NUMBER
             </div>
-            <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600 leading-tight mt-0.5" dir="rtl">
+            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
               شماره کامیون / موټر
             </div>
           </div>
-          <div className="mt-1 flex items-center justify-center">
-            <div className="inline-flex items-center gap-1 font-mono font-black text-[9pt] text-slate-950 bg-slate-100/90 px-2 py-0.5 rounded border border-slate-300 shadow-2xs">
+          <div className="mt-0.5 flex items-center justify-center">
+            <div className="inline-flex items-center gap-0.5 font-mono font-black text-[8.5pt] text-slate-950 bg-slate-100/90 px-1.5 py-0.2 rounded border border-slate-300 shadow-2xs">
               <span>🚛</span>
               <span className="tracking-wide">{formData.truck_number}</span>
             </div>
@@ -1117,19 +1226,19 @@ function ShipmentOverview({
       {/* 3. DRIVER NAME */}
       {hasDriver && (
         <div
-          className={`rounded-lg border px-2 py-1.5 text-center flex flex-col justify-between ${
-            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-xs shadow-blue-100/50"
+          className={`rounded-lg border px-1.5 py-1 text-center flex flex-col justify-between ${
+            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-2xs shadow-blue-100/50"
           }`}
         >
           <div>
-            <div className="text-[6.5pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
+            <div className="text-[6pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
               DRIVER NAME
             </div>
-            <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600 leading-tight mt-0.5" dir="rtl">
+            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
               نام راننده
             </div>
           </div>
-          <div className="mt-1 font-[vazirmatn] font-black text-slate-950 text-[8.5pt] leading-tight break-words" dir="rtl">
+          <div className="mt-0.5 font-[vazirmatn] font-black text-slate-950 text-[8.2pt] leading-tight break-words" dir="rtl">
             {driverFullInfo}
           </div>
         </div>
@@ -1138,21 +1247,21 @@ function ShipmentOverview({
       {/* 4. DRIVER CONTACT */}
       {hasContact && (
         <div
-          className={`rounded-lg border px-2 py-1.5 text-center flex flex-col justify-between ${
-            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-xs shadow-blue-100/50"
+          className={`rounded-lg border px-1.5 py-1 text-center flex flex-col justify-between ${
+            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-2xs shadow-blue-100/50"
           }`}
         >
           <div>
-            <div className="text-[6.5pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
+            <div className="text-[6pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
               DRIVER CONTACT
             </div>
-            <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600 leading-tight mt-0.5" dir="rtl">
+            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
               تماس راننده
             </div>
           </div>
-          <div className="mt-1 space-y-0.5 flex flex-col items-center justify-center">
+          <div className="mt-0.5 space-y-0.2 flex flex-col items-center justify-center">
             {phones.map((phone, idx) => (
-              <div key={idx} className="font-mono font-bold text-blue-950 text-[8pt] leading-tight tracking-wider bg-blue-50/80 px-1.5 py-0.2 rounded border border-blue-200/80 w-full text-center truncate">
+              <div key={idx} className="font-mono font-bold text-blue-950 text-[7.8pt] leading-tight tracking-wider bg-blue-50/80 px-1 py-0.2 rounded border border-blue-200/80 w-full text-center truncate">
                 {phone}
               </div>
             ))}
@@ -1163,24 +1272,24 @@ function ShipmentOverview({
       {/* 5. DRIVER RENT */}
       {hasRent && (
         <div
-          className={`rounded-lg border px-2 py-1.5 text-center flex flex-col justify-between ${
-            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-xs shadow-blue-100/50"
+          className={`rounded-lg border px-1.5 py-1 text-center flex flex-col justify-between ${
+            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-2xs shadow-blue-100/50"
           }`}
         >
           <div>
-            <div className="text-[6.5pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
+            <div className="text-[6pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
               DRIVER RENT
             </div>
-            <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600 leading-tight mt-0.5" dir="rtl">
+            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
               کرایه راننده
             </div>
           </div>
-          <div className="mt-1 space-y-0.5">
-            <div className="font-mono font-black text-emerald-950 text-[8.8pt] leading-tight break-words">
+          <div className="mt-0.5 space-y-0.2">
+            <div className="font-mono font-black text-emerald-950 text-[8.2pt] leading-tight break-words">
               {rentInfo.amount || formData.driver_rent}
             </div>
             {rentInfo.note && (
-              <div className="persian-text bol-persian-text font-[vazirmatn] font-extrabold text-[7pt] text-emerald-800 leading-tight truncate" dir="rtl">
+              <div className="persian-text bol-persian-text font-[vazirmatn] font-extrabold text-[6.5pt] text-emerald-800 leading-tight truncate" dir="rtl">
                 {rentInfo.note}
               </div>
             )}
@@ -1191,19 +1300,19 @@ function ShipmentOverview({
       {/* 6. BOL NUMBER */}
       {hasBol && (
         <div
-          className={`rounded-lg border px-2 py-1.5 text-center flex flex-col justify-between ${
-            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-xs shadow-blue-100/50"
+          className={`rounded-lg border px-1.5 py-1 text-center flex flex-col justify-between ${
+            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-2xs shadow-blue-100/50"
           }`}
         >
           <div>
-            <div className="text-[6.5pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
+            <div className="text-[6pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
               BOL NUMBER
             </div>
-            <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600 leading-tight mt-0.5" dir="rtl">
+            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
               شماره بارنامه
             </div>
           </div>
-          <div className="mt-1 font-mono font-black text-blue-950 text-[8.5pt] leading-tight break-words">
+          <div className="mt-0.5 font-mono font-black text-blue-950 text-[8.2pt] leading-tight break-words">
             {formData.bol_number}
           </div>
         </div>
@@ -1231,7 +1340,7 @@ function formatMultiCargoValue(val?: string | null, customClass = "text-[9.5pt]"
 
   if (parts.length > 1) {
     return (
-      <div className="flex flex-col space-y-0.5 w-full">
+      <div className="flex flex-col space-y-0.2 w-full">
         {parts.map((p, idx) => (
           <span key={idx} className={`block leading-tight font-mono font-black ${customClass} break-words`}>
             {p.trim()}
@@ -1269,24 +1378,24 @@ function CargoOverview({
   if (!hasCards && !hasContainer && !hasSeal && !hasMeasurement) return null
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       {/* Top Metadata Badges (Container, Seal, Measurement) */}
       {(hasContainer || hasSeal || hasMeasurement) && (
-        <div className="flex flex-wrap items-center gap-1.5 px-0.5">
+        <div className="flex flex-wrap items-center gap-1 px-0.5">
           {hasContainer && (
-            <div className="inline-flex items-center gap-1 bg-blue-50/90 text-blue-950 font-mono font-black text-[7.8pt] px-2 py-0.5 rounded-md border border-blue-200 shadow-2xs">
+            <div className="inline-flex items-center gap-1 bg-blue-50/90 text-blue-950 font-mono font-black text-[7.2pt] px-1.5 py-0.5 rounded-md border border-blue-200 shadow-2xs">
               <span className="text-blue-700 font-black">CONT:</span>
               <span>{formData.container_numbers}</span>
             </div>
           )}
           {hasSeal && (
-            <div className="inline-flex items-center gap-1 bg-amber-50/90 text-amber-950 font-mono font-black text-[7.8pt] px-2 py-0.5 rounded-md border border-amber-200 shadow-2xs">
+            <div className="inline-flex items-center gap-1 bg-amber-50/90 text-amber-950 font-mono font-black text-[7.2pt] px-1.5 py-0.5 rounded-md border border-amber-200 shadow-2xs">
               <span className="text-amber-700 font-black">SEAL:</span>
               <span>{formData.seal_numbers}</span>
             </div>
           )}
           {hasMeasurement && (
-            <div className="inline-flex items-center gap-1 bg-slate-50 text-slate-800 font-mono font-black text-[7.8pt] px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+            <div className="inline-flex items-center gap-1 bg-slate-50 text-slate-800 font-mono font-black text-[7.2pt] px-1.5 py-0.5 rounded-md border border-slate-200 shadow-2xs">
               <span className="text-slate-600 font-black">MEASUREMENT:</span>
               <span>{formData.measurement}</span>
             </div>
@@ -1296,54 +1405,54 @@ function CargoOverview({
 
       {/* 4 Executive KPI Cards */}
       {hasCards && (
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-4 gap-1">
           {/* 1. NO. OF PACKAGES */}
           <div
-            className={`rounded-xl border px-2.5 py-2 text-center flex flex-col justify-between ${
-              pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white/95 shadow-xs shadow-blue-100/50"
+            className={`rounded-xl border px-2 py-1 text-center flex flex-col justify-between ${
+              pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white/95 shadow-2xs shadow-blue-100/50"
             }`}
           >
-            <div className="border-b border-blue-100/80 pb-1 mb-1">
-              <div className="text-[7.8pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
+            <div className="border-b border-blue-100/80 pb-0.5 mb-0.5">
+              <div className="text-[7.2pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
                 NO. OF PACKAGES
               </div>
-              <div className="persian-text bol-persian-text font-[vazirmatn] text-[7.2pt] font-bold text-blue-600 leading-tight mt-0.5" dir="rtl">
+              <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
                 {labels.packagesFa || "تعداد بسته"}
               </div>
             </div>
-            <div className="flex-1 flex flex-col items-center justify-center min-h-[38px] py-1">
-              {formatMultiCargoValue(formData.number_of_packages, "text-[10pt] text-slate-950")}
+            <div className="flex-1 flex flex-col items-center justify-center min-h-[24px] py-0.5">
+              {formatMultiCargoValue(formData.number_of_packages, "text-[9pt] text-slate-950")}
             </div>
           </div>
 
           {/* 2. WEIGHT PER CARTON */}
           <div
-            className={`rounded-xl border px-2.5 py-2 text-center flex flex-col justify-between ${
-              pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white/95 shadow-xs shadow-blue-100/50"
+            className={`rounded-xl border px-2 py-1 text-center flex flex-col justify-between ${
+              pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white/95 shadow-2xs shadow-blue-100/50"
             }`}
           >
-            <div className="border-b border-blue-100/80 pb-1 mb-1">
-              <div className="text-[7.8pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
+            <div className="border-b border-blue-100/80 pb-0.5 mb-0.5">
+              <div className="text-[7.2pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
                 WT / CARTON
               </div>
-              <div className="persian-text bol-persian-text font-[vazirmatn] text-[7.2pt] font-bold text-blue-600 leading-tight mt-0.5" dir="rtl">
+              <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
                 وزن خالص و ناخالص فی کارتن
               </div>
             </div>
-            <div className="flex-1 flex flex-col justify-center space-y-1 text-left py-0.5">
+            <div className="flex-1 flex flex-col justify-center space-y-0.5 text-left py-0.5">
               {hasNetCtn && (
                 <div className="flex flex-col gap-0 text-blue-950">
-                  <span className="text-[6.8pt] font-black text-blue-700 uppercase tracking-wide">NET / CTN:</span>
+                  <span className="text-[6.2pt] font-black text-blue-700 uppercase tracking-wide">NET / CTN:</span>
                   <div className="break-words">
-                    {formatMultiCargoValue(formData.kgs_per_carton, "text-[9.2pt] text-blue-950")}
+                    {formatMultiCargoValue(formData.kgs_per_carton, "text-[8.5pt] text-blue-950")}
                   </div>
                 </div>
               )}
               {hasGrossCtn && (
-                <div className="flex flex-col gap-0 text-slate-900 border-t border-slate-100 pt-1">
-                  <span className="text-[6.8pt] font-black text-slate-600 uppercase tracking-wide">GROSS / CTN:</span>
+                <div className="flex flex-col gap-0 text-slate-900 border-t border-slate-100 pt-0.5">
+                  <span className="text-[6.2pt] font-black text-slate-600 uppercase tracking-wide">GROSS / CTN:</span>
                   <div className="break-words">
-                    {formatMultiCargoValue(formData.gross_weight_per_carton, "text-[9.2pt] text-slate-900")}
+                    {formatMultiCargoValue(formData.gross_weight_per_carton, "text-[8.5pt] text-slate-900")}
                   </div>
                 </div>
               )}
@@ -1353,32 +1462,32 @@ function CargoOverview({
 
           {/* 3. TOTAL WEIGHTS */}
           <div
-            className={`rounded-xl border px-2.5 py-2 text-center flex flex-col justify-between ${
-              pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white/95 shadow-xs shadow-blue-100/50"
+            className={`rounded-xl border px-2 py-1 text-center flex flex-col justify-between ${
+              pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white/95 shadow-2xs shadow-blue-100/50"
             }`}
           >
-            <div className="border-b border-blue-100/80 pb-1 mb-1">
-              <div className="text-[7.8pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
+            <div className="border-b border-blue-100/80 pb-0.5 mb-0.5">
+              <div className="text-[7.2pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
                 TOTAL WEIGHTS
               </div>
-              <div className="persian-text bol-persian-text font-[vazirmatn] text-[7.2pt] font-bold text-blue-600 leading-tight mt-0.5" dir="rtl">
+              <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
                 وزن کل خالص و ناخالص
               </div>
             </div>
-            <div className="flex-1 flex flex-col justify-center space-y-1 text-left py-0.5">
+            <div className="flex-1 flex flex-col justify-center space-y-0.5 text-left py-0.5">
               {hasNetWeight && (
                 <div className="flex flex-col gap-0 text-blue-950">
-                  <span className="text-[6.8pt] font-black text-blue-700 uppercase tracking-wide">NET WT:</span>
+                  <span className="text-[6.2pt] font-black text-blue-700 uppercase tracking-wide">NET WT:</span>
                   <div className="break-words">
-                    {formatMultiCargoValue(formData.net_weight, "text-[9.2pt] text-blue-950")}
+                    {formatMultiCargoValue(formData.net_weight, "text-[8.5pt] text-blue-950")}
                   </div>
                 </div>
               )}
               {hasGrossWeight && (
-                <div className="flex flex-col gap-0 text-slate-900 border-t border-slate-100 pt-1">
-                  <span className="text-[6.8pt] font-black text-slate-600 uppercase tracking-wide">GROSS WT:</span>
+                <div className="flex flex-col gap-0 text-slate-900 border-t border-slate-100 pt-0.5">
+                  <span className="text-[6.2pt] font-black text-slate-600 uppercase tracking-wide">GROSS WT:</span>
                   <div className="break-words">
-                    {formatMultiCargoValue(formData.gross_weight, "text-[9.2pt] text-slate-900")}
+                    {formatMultiCargoValue(formData.gross_weight, "text-[8.5pt] text-slate-900")}
                   </div>
                 </div>
               )}
@@ -1388,32 +1497,32 @@ function CargoOverview({
 
           {/* 4. RATE & GOODS VALUE */}
           <div
-            className={`rounded-xl border px-2.5 py-2 text-center flex flex-col justify-between ${
-              pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white/95 shadow-xs shadow-blue-100/50"
+            className={`rounded-xl border px-2 py-1 text-center flex flex-col justify-between ${
+              pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white/95 shadow-2xs shadow-blue-100/50"
             }`}
           >
-            <div className="border-b border-blue-100/80 pb-1 mb-1">
-              <div className="text-[7.8pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
+            <div className="border-b border-blue-100/80 pb-0.5 mb-0.5">
+              <div className="text-[7.2pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
                 RATE &amp; GOODS VALUE
               </div>
-              <div className="persian-text bol-persian-text font-[vazirmatn] text-[7.2pt] font-bold text-blue-600 leading-tight mt-0.5" dir="rtl">
+              <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
                 نرخ و ارزش کالا
               </div>
             </div>
-            <div className="flex-1 flex flex-col justify-center space-y-1 text-left py-0.5">
+            <div className="flex-1 flex flex-col justify-center space-y-0.5 text-left py-0.5">
               {hasRate && (
                 <div className="flex flex-col gap-0 text-slate-800">
-                  <span className="text-[6.8pt] font-black text-slate-600 uppercase tracking-wide">RATE / KG:</span>
+                  <span className="text-[6.2pt] font-black text-slate-600 uppercase tracking-wide">RATE / KG:</span>
                   <div className="break-words">
-                    {formatMultiCargoValue(formData.rate_per_kgs, "text-[9.2pt] text-slate-900")}
+                    {formatMultiCargoValue(formData.rate_per_kgs, "text-[8.5pt] text-slate-900")}
                   </div>
                 </div>
               )}
               {hasGoodsValue && (
-                <div className="flex flex-col gap-0 text-emerald-950 border-t border-slate-100 pt-1">
-                  <span className="text-[6.8pt] font-black text-emerald-700 uppercase tracking-wide">GOODS VALUE:</span>
+                <div className="flex flex-col gap-0 text-emerald-950 border-t border-slate-100 pt-0.5">
+                  <span className="text-[6.2pt] font-black text-emerald-700 uppercase tracking-wide">GOODS VALUE:</span>
                   <div className="break-words">
-                    {formatMultiCargoValue(formData.goods_value, "text-[9.2pt] text-emerald-900")}
+                    {formatMultiCargoValue(formData.goods_value, "text-[8.5pt] text-emerald-900")}
                   </div>
                 </div>
               )}
@@ -1443,7 +1552,7 @@ export function A4Preview({
   pdfExport = false,
   includeColorStrip = true,
   backgroundImageUrl = "/images/mountain_logistics_bg.jpg",
-  backgroundOpacity = 0.08,
+  backgroundOpacity = 0.11,
 }: A4PreviewProps) {
   const pdfMode = exportTarget || pdfExport
   const companyTitle = cleanText(companyName) || "SKY ARIANA & BALAM BAR BARAN"
@@ -1510,10 +1619,10 @@ export function A4Preview({
       data-bol-a4="true"
       data-pdf-export={pdfMode ? "true" : undefined}
       data-color-strip={includeColorStrip ? "true" : "false"}
-      className="mx-auto flex min-h-[297mm] w-[210mm] max-w-[210mm] flex-col overflow-hidden text-slate-950 shadow-2xl shadow-blue-200/50 ring-1 ring-blue-100 print:m-0 print:p-0 print:h-[297mm] print:min-h-[297mm] print:w-[210mm] print:max-w-none print:shadow-none print:ring-0 relative"
-      style={pdfMode ? { ...a4ShellStyle, width: "210mm", minHeight: "297mm", height: "297mm", overflow: "hidden" } : a4ShellStyle}
+      className="mx-auto flex min-h-[297mm] w-[210mm] max-w-[210mm] flex-col overflow-hidden text-slate-950 shadow-2xl shadow-blue-200/50 ring-1 ring-blue-100 print:m-0 print:p-0 print:h-[297mm] print:min-h-[297mm] print:w-[210mm] print:max-w-none print:shadow-none print:ring-0 relative box-border"
+      style={pdfMode ? { ...a4ShellStyle, width: "210mm", minHeight: "297mm", height: "297mm", maxHeight: "297mm", overflow: "hidden", boxSizing: "border-box" } : a4ShellStyle}
     >
-      <div data-bol-page="true" className="relative flex h-full flex-col p-[3mm] print:p-[3mm] gap-[2mm] print:gap-[1.5mm] print:overflow-visible">
+      <div data-bol-page="true" className="relative flex h-full flex-col p-[2.5mm] print:p-[2.5mm] gap-[1.5mm] print:gap-[1.2mm] print:overflow-visible box-border">
         {/* Technical Blueprint & Mountain Scenery Background Overlay */}
         {backgroundImageUrl && (
           <div
@@ -1534,16 +1643,16 @@ export function A4Preview({
         )}
         <header
           data-bol-header="true"
-          className={`overflow-hidden rounded-2xl border shrink-0 ${
-            pdfMode ? "border-blue-200 bg-white" : "border-white/80 bg-white/60 backdrop-blur-xl shadow-lg shadow-blue-100/70"
+          className={`overflow-hidden rounded-xl border shrink-0 ${
+            pdfMode ? "border-blue-200 bg-white" : "border-white/80 bg-white/60 backdrop-blur-xl shadow-md shadow-blue-100/70"
           }`}
           style={pdfMode ? { boxShadow: "none" } : undefined}
         >
-          <div className="p-2" style={headerGridStyle}>
+          <div className="p-1.5" style={headerGridStyle}>
             {/* 1. Left: Logo Frame */}
             <div
-              className={`rounded-xl border p-1 flex items-center justify-center ${
-                pdfMode ? "border-blue-100 bg-white" : "border-blue-100/80 bg-white shadow-xs shadow-blue-100/50"
+              className={`flex items-center justify-center p-0.5 ${
+                pdfMode ? "bg-transparent" : "bg-transparent"
               }`}
               style={logoFrameStyle}
             >
@@ -1561,10 +1670,10 @@ export function A4Preview({
               <h1 className="bol-company-name english-text text-[15pt] font-black uppercase tracking-tight text-blue-950 leading-tight">
                 {companyTitle}
               </h1>
-              <p className="english-text text-[7pt] mt-0.5 font-extrabold uppercase tracking-widest text-slate-500">
+              <p className="english-text text-[6.8pt] mt-0.5 font-extrabold uppercase tracking-[0.2em] text-slate-500 leading-tight">
                 {companyTagline}
               </p>
-              <p className="persian-text bol-persian-text text-[9.5pt] mt-1 font-[vazirmatn] font-black leading-tight text-blue-800" dir="rtl">
+              <p className="persian-text bol-persian-text text-[9.8pt] mt-0.5 font-[vazirmatn] font-black leading-tight text-blue-800" dir="rtl">
                 {companyPersian}
               </p>
             </div>
@@ -1572,36 +1681,36 @@ export function A4Preview({
             {/* 3. Right: Official Document & BOL Number Card */}
             <div
               data-bol-title-card="true"
-              className={`bol-title-card overflow-hidden rounded-xl border ${
-                pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white shadow-md shadow-blue-100/60"
+              className={`bol-title-card overflow-hidden rounded-lg border ${
+                pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white shadow-sm shadow-blue-100/60"
               }`}
             >
-              <div className="bol-title-box px-2 py-1 text-center text-white flex flex-col items-center justify-center" style={darkHeaderStyle}>
-                <p className="bol-title-en english-text text-[10.5pt] font-black uppercase tracking-wider leading-tight">
+              <div className="bol-title-box px-2 py-0.8 text-center text-white flex flex-col items-center justify-center" style={darkHeaderStyle}>
+                <p className="bol-title-en english-text text-[9.5pt] font-black uppercase tracking-wider leading-tight">
                   Bill of Lading
                 </p>
-                <p className="bol-title-fa persian-text bol-persian-text font-[vazirmatn] text-[10pt] font-bold leading-tight mt-0.5" dir="rtl">
+                <p className="bol-title-fa persian-text bol-persian-text font-[vazirmatn] text-[8.5pt] font-bold leading-tight mt-0.2" dir="rtl">
                   {labels.billOfLadingFa}
                 </p>
               </div>
               <div
                 data-pdf-bol-badge="true"
-                className="bol-number-box w-full bg-white px-2 py-1.5 border-t border-blue-100 flex items-center justify-between gap-1.5"
+                className="bol-number-box w-full bg-white px-1.5 py-1 border-t border-blue-100 flex items-center justify-between gap-1"
               >
                 <div className="flex-1 text-center min-w-0">
-                  <span className="block text-[5.8pt] font-black uppercase tracking-widest text-slate-400 leading-none mb-0.5">
+                  <span className="block text-[5.2pt] font-black uppercase tracking-widest text-slate-400 leading-none mb-0.2">
                     DOCUMENT NO.
                   </span>
                   <span
                     data-pdf-bol-number="true"
-                    className="bol-number-text block font-mono text-[9.2pt] font-black leading-tight text-blue-950 tracking-tight truncate"
+                    className="bol-number-text block font-mono text-[8.5pt] font-black leading-tight text-blue-950 tracking-tight truncate"
                     style={{ color: "#1e3a8a" }}
                   >
                     {bolNumber}
                   </span>
                 </div>
-                <div className="shrink-0 flex items-center justify-center p-0.5 bg-white border border-slate-200 rounded-md shadow-2xs">
-                  <DocumentQRCode value={bolNumber || "SKY-BOL"} size={30} />
+                <div className="shrink-0 flex items-center justify-center p-0.5 bg-white border border-slate-200 rounded shadow-2xs">
+                  <DocumentQRCode value={bolNumber || "SKY-BOL"} size={26} />
                 </div>
               </div>
             </div>
@@ -1610,10 +1719,10 @@ export function A4Preview({
 
         <main
           data-bol-content="true"
-          className={`mt-0 flex min-h-0 flex-1 flex-col gap-[3mm] print:gap-[2mm] ${pdfMode ? "overflow-visible" : "overflow-y-auto"}`}
+          className={`mt-0 flex min-h-0 flex-1 flex-col gap-[1.5mm] print:gap-[1.2mm] ${pdfMode ? "overflow-visible" : "overflow-y-auto"}`}
         >
           {hasShipmentData && (
-            <Section title="Shipment Information" subtitle={labels.shipmentInfoFa} icon={<CalendarDays className="h-6 w-6" />} glass={!pdfMode} printKey="shipment" pdfMode={pdfMode} titleClassName="text-[10.2pt]">
+            <Section title="Shipment Information" subtitle={labels.shipmentInfoFa} icon={<CalendarDays className="h-4 w-4" />} glass={!pdfMode} printKey="shipment" pdfMode={pdfMode} titleClassName="text-[9.2pt]">
               <ShipmentOverview
                 issueDate={issueDate}
                 persianDateNumeric={persianDateNumeric}
@@ -1624,15 +1733,15 @@ export function A4Preview({
             </Section>
           )}
 
-          <Section title="Exporter Contacts" subtitle={labels.exporterContactsFa} icon={<Phone className="h-6 w-6" />} glass={!pdfMode} printKey="contacts" pdfMode={pdfMode}>
+          <Section title="Exporter Contacts" subtitle={labels.exporterContactsFa} icon={<Phone className="h-4 w-4" />} glass={!pdfMode} printKey="contacts" pdfMode={pdfMode}>
             {contactItems.length > 0 && (
-              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2" dir="ltr">
+              <div className="grid grid-cols-1 gap-1 sm:grid-cols-2" dir="ltr">
                 {contactItems.map((item) => (
                   <DetailCard key={item.label} {...item} rtl={false} glass={!pdfMode} pdfMode={pdfMode} compact className="exporter-contact-detail-card text-left" />
                 ))}
               </div>
             )}
-            <div className="mt-0 grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-2 print:grid-cols-2 print:gap-1.5 print:mt-0" dir="ltr">
+            <div className="mt-0 grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-2 print:grid-cols-2 print:gap-1 print:mt-0" dir="ltr">
               {/* COMBINED EXPORTER & NOTIFY PARTY CARD (HIDE BLANK ONES CLEANLY) */}
               {(hasExporter || hasNotify) && (
                 <div
@@ -1645,7 +1754,7 @@ export function A4Preview({
                     {hasExporter && (
                       <div dir="ltr" className="text-left">
                         <div className={`party-card-header ${!pdfMode ? 'party-card-header-glass' : 'party-card-header-solid'}`} dir="ltr">
-                          <span className="party-card-icon"><Building2 className="h-5 w-5" /></span>
+                          <span className="party-card-icon"><Building2 className="h-3.5 w-3.5" /></span>
                           <div className="party-card-header-text text-left" dir="ltr">
                             <h4 className="party-card-title text-left" dir="ltr">Exporter Info</h4>
                             <p className="party-card-subtitle text-left" dir="ltr">{labels.exporterInfoFa}</p>
@@ -1681,7 +1790,7 @@ export function A4Preview({
                     {hasNotify && (
                       <div>
                         <div className={`party-card-header ${!pdfMode ? 'party-card-header-glass' : 'party-card-header-solid'}`}>
-                          <span className="party-card-icon"><Mail className="h-5 w-5" /></span>
+                          <span className="party-card-icon"><Mail className="h-3.5 w-3.5" /></span>
                           <div className="party-card-header-text">
                             <h4 className="party-card-title">Notify Party</h4>
                             <p className="party-card-subtitle" dir="rtl">{labels.notifyPartyFa}</p>
@@ -1708,7 +1817,7 @@ export function A4Preview({
               <PartyCard
                 title="Consignee Information"
                 subtitle={labels.consigneeInfoFa}
-                icon={<UserRound className="h-6 w-6" />}
+                icon={<UserRound className="h-3.5 w-3.5" />}
                 name={formData.consignee_name}
                 address={formData.consignee_address}
                 contact={formData.consignee_contact}
@@ -1719,30 +1828,30 @@ export function A4Preview({
             </div>
           </Section>
 
-          <Section title="Route / Transportation Path" subtitle={labels.routeFa} icon={<Route className="h-6 w-6" />} glass={!pdfMode} printKey="route" pdfMode={pdfMode}>
+          <Section title="Route / Transportation Path" subtitle={labels.routeFa} icon={<Route className="h-4 w-4" />} glass={!pdfMode} printKey="route" pdfMode={pdfMode}>
             <RouteTimeline routes={formData.routes} glass={!pdfMode} />
           </Section>
 
           {(hasCargoData || hasValue(cleanedCargoDesc)) && (
-            <Section title="Cargo Description" subtitle={labels.cargoDescFa} icon={<Package className="h-6 w-6" />} glass={!pdfMode} printKey="cargo" pdfMode={pdfMode} titleClassName="text-[10.2pt]">
+            <Section title="Cargo Description" subtitle={labels.cargoDescFa} icon={<Package className="h-4 w-4" />} glass={!pdfMode} printKey="cargo" pdfMode={pdfMode} titleClassName="text-[9.2pt]">
               {hasCargoData && (
                 <CargoOverview formData={formData} labels={labels} pdfMode={pdfMode} />
               )}
               {hasValue(cleanedCargoDesc) && (
                 <div
-                  className={`mt-2 rounded-xl border p-2.5 shadow-inner ${
+                  className={`mt-1.5 rounded-xl border p-2 shadow-inner ${
                     pdfMode ? "border-blue-100 bg-white" : "border-white/80 bg-white/65 backdrop-blur-md"
                   }`}
                 >
                   <div className="mb-1 flex items-center gap-1.5 text-blue-800">
-                    <FileText className="h-4.5 w-4.5" />
-                    <p className="text-[9.5pt] font-black leading-tight">
+                    <FileText className="h-3.5 w-3.5" />
+                    <p className="text-[8.5pt] font-black leading-tight">
                       Description of Goods / <span className="persian-text bol-persian-text font-[vazirmatn]" dir="rtl">{labels.goodsDescriptionFa}</span>
                     </p>
                   </div>
                   <TextLines
                     value={cleanedCargoDesc}
-                    className="text-[9.8pt] font-bold leading-relaxed text-slate-950"
+                    className="text-[8.2pt] font-extrabold leading-snug text-slate-950"
                   />
                 </div>
               )}
@@ -1751,15 +1860,15 @@ export function A4Preview({
 
           <div data-no-break className="mt-auto flex justify-center pt-0.5 flex-shrink-0">
             <div
-              className={`w-full max-w-[55mm] rounded-lg border border-dashed p-1 text-center shadow-xs print:shadow-none ${
+              className={`w-full max-w-[50mm] rounded-lg border border-dashed p-1 text-center shadow-2xs print:shadow-none ${
                 pdfMode ? "border-blue-300 bg-white" : "border-white/80 bg-white/65 backdrop-blur-md"
               }`}
             >
-              <div className="flex h-5 items-center justify-center rounded bg-blue-50/90 text-[5.8pt] font-medium italic text-blue-600">
+              <div className="flex h-4 items-center justify-center rounded bg-blue-50/90 text-[5.2pt] font-medium italic text-blue-600">
                 Stamp / <span className="persian-text bol-persian-text" dir="rtl">{labels.stampFa}</span>
               </div>
-              <p className="mt-0.5 text-[8.5pt] font-black text-blue-950 leading-tight">Company Stamp & Sign</p>
-              <p className="persian-text bol-persian-text font-[vazirmatn] text-[8pt] font-bold text-slate-500 leading-tight" dir="rtl">
+              <p className="mt-0.5 text-[7.8pt] font-black text-blue-950 leading-tight">Company Stamp & Sign</p>
+              <p className="persian-text bol-persian-text font-[vazirmatn] text-[7.2pt] font-bold text-slate-500 leading-tight" dir="rtl">
                 {labels.companyStampSignFa}
               </p>
             </div>
@@ -1768,23 +1877,23 @@ export function A4Preview({
 
         <footer
           data-bol-footer="true"
-          className={`mt-1.5 overflow-hidden rounded-xl border text-center shadow-md shadow-blue-100/70 ${
+          className={`mt-1 overflow-hidden rounded-xl border text-center shadow-sm shadow-blue-100/70 ${
             pdfMode ? "border-blue-200 bg-white" : "border-white/80 bg-white/70 backdrop-blur-lg"
           }`}
           data-no-break
         >
-          <div className="px-2.5 py-1.5 text-white" style={blueBarStyle}>
-            <p className="text-[5.8pt] font-black uppercase leading-tight">
+          <div className="px-2 py-0.8 text-white" style={blueBarStyle}>
+            <p className="text-[5.2pt] font-black uppercase leading-tight">
               {companyTitle} - {companyTagline}
               {companyFooter && ` | ${companyFooter}`}
             </p>
-            <p className="mt-0.5 text-[5.4pt] font-semibold leading-tight">{companyAddressLine}</p>
+            <p className="mt-0.2 text-[4.6pt] font-semibold leading-tight">{companyAddressLine}</p>
           </div>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-2.5 py-1 text-[5.4pt] font-bold text-slate-500">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-2 py-0.5 text-[4.8pt] font-bold text-slate-500">
             <span className="text-left">{iranOffice || "Website: www.skyariana.com"}</span>
-            <BadgeCheck className="h-3.5 w-3.5 text-blue-600" />
+            <BadgeCheck className="h-3 w-3 text-blue-600" />
             <span className="text-right">
-              <ShieldCheck className="mr-1 inline h-3 w-3 text-blue-600" />
+              <ShieldCheck className="mr-1 inline h-2.8 w-2.8 text-blue-600" />
               A4 PDF Export Ready
             </span>
           </div>

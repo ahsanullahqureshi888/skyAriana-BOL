@@ -9,13 +9,14 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { A4Preview } from "./a4-preview"
 import PrintSafeBOL from "./print-safe-bol"
 import { BillOfLadingFormData, initialFormData, RouteStop, AFGHANISTAN_DOCUMENT_OPTIONS, DOCUMENT_CATEGORIES, AfghanistanDocumentDetail, type DocumentCategory, NOTE_THEMES, type NoteTheme } from "@/lib/types/bill-of-lading"
 import consigneeSeedData from "@/lib/data/consignees-from-pdf.json"
 import shipperSeedData from "@/lib/data/shippers-from-pdf.json"
 import notifyPartySeedData from "@/lib/data/notify-parties-from-pdf.json"
-import { Printer, Save, FileText, Eye, Plus, Loader2, Calendar, Truck, MapPin, Trash2, ArrowRight, Package, Edit3, ImageIcon, Upload, RotateCcw, ScrollText, Check, Download, Building2, Phone, Mail, Ship, Plane, Train, AlertCircle, User, Bell, Globe, Shield, Leaf, Heart, Scale, Bookmark, IdCard, Car, Landmark, ShieldCheck, Receipt, List, ChevronDown, ChevronUp, Info, CheckCircle2, Circle, Sparkles, Copy, Box, ArrowLeftRight, Zap, Calculator, SlidersHorizontal, Layers } from "lucide-react"
+import { Printer, Save, FileText, Eye, Plus, Loader2, Calendar, Truck, MapPin, Trash2, ArrowRight, Package, Edit3, ImageIcon, Upload, RotateCcw, ScrollText, Check, Download, Building2, Phone, Mail, Ship, Plane, Train, AlertCircle, User, Bell, Globe, Shield, Leaf, Heart, Scale, Bookmark, BookmarkPlus, X, IdCard, Car, Landmark, ShieldCheck, Receipt, List, ChevronDown, ChevronUp, Info, CheckCircle2, Circle, Sparkles, Copy, Box, ArrowLeftRight, Zap, Calculator, SlidersHorizontal, Layers } from "lucide-react"
 import { formatPersianDate, getDualDates } from "@/lib/utils/persian-date"
 import {
   generateBOLPDFBlob,
@@ -83,9 +84,20 @@ const SAVED_NOTES_1_STORAGE_KEY = "sky-bol-saved-notes-1"
 const SAVED_NOTES_2_STORAGE_KEY = "sky-bol-saved-notes-2"
 const ACCOUNT_CUSTOM_COMPANIES_STORAGE_KEY = "sky-bol-account-custom-companies"
 const ACCOUNT_LEDGER_STORAGE_KEY = "sky-bol-company-ledgers"
+const PDF_COMPANY_SETTINGS_STORAGE_KEY = "sky-bol-company-pdf-settings"
+const SAVED_ROUTE_PRESETS_STORAGE_KEY = "sky-bol-custom-route-presets"
 const SHIPPER_SEED_LIST = shipperSeedData as SavedParty[]
 const CONSIGNEE_SEED_LIST = consigneeSeedData as SavedParty[]
 const NOTIFY_PARTY_SEED_LIST = notifyPartySeedData as SavedParty[]
+
+export interface SavedRoutePreset {
+  id: string
+  title: string
+  titlePersian?: string
+  icon?: string
+  routes: RouteStop[]
+  savedAt: string
+}
 
 interface SavedNoteOption {
   id: string
@@ -310,6 +322,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [activeTab, setActiveTab] = useState<string>("form")
   const [logoUrl, setLogoUrl] = useState<string>("/images/logo.png")
   const logoInputRef = useRef<HTMLInputElement>(null)
+  const isCompanySettingsLoadedRef = useRef(false)
   const [companyName, setCompanyName] = useState("SKY ARIANA & BALAM BAR BARAN")
   const [companyNamePersian, setCompanyNamePersian] = useState("شرکت حمل و نقل بین المللی")
   const [companySubtitle, setCompanySubtitle] = useState("Import & Export - International Transportation")
@@ -318,7 +331,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [companyAddress, setCompanyAddress] = useState("2nd Floor, 16 No. Office, Shahidano, Chowk, Etimad Rahmi Market, Kandahar, Afghanistan")
   const [companyLicence, setCompanyLicence] = useState("2401-2198")
   const [bgImageUrl, setBgImageUrl] = useState<string>("/images/afghan_mountain_blueprint_bg.jpg")
-  const [bgOpacity, setBgOpacity] = useState<number>(0.22)
+  const [bgOpacity, setBgOpacity] = useState<number>(0.11)
   const [isEditMode, setIsEditMode] = useState(false)
   const [editDocumentId, setEditDocumentId] = useState<string | null>(null)
   const [activeRouteIndex, setActiveRouteIndex] = useState<number | null>(null)
@@ -340,12 +353,134 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [savedNotes2, setSavedNotes2] = useState<SavedNoteOption[]>([])
   const [selectedNote2Id, setSelectedNote2Id] = useState<string>("")
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
+  const [savedRoutePresets, setSavedRoutePresets] = useState<SavedRoutePreset[]>([])
+  const [isSaveRouteModalOpen, setIsSaveRouteModalOpen] = useState(false)
+  const [newPresetTitle, setNewPresetTitle] = useState("")
+  const [newPresetIcon, setNewPresetIcon] = useState("🚛")
   const [activePrintOptions, setActivePrintOptions] = useState<PrintOptions>({
     copies: 1,
     quality: "standard",
     includeColorStrip: true,
     fitToPage: true,
   })
+
+  // Load saved route presets from localStorage on mount
+  useEffect(() => {
+    try {
+      const storedPresets = window.localStorage.getItem(SAVED_ROUTE_PRESETS_STORAGE_KEY)
+      if (storedPresets) {
+        setSavedRoutePresets(JSON.parse(storedPresets))
+      }
+    } catch (e) {
+      console.error("Error loading saved route presets:", e)
+    }
+  }, [])
+
+  // Load saved PDF / Company settings from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(PDF_COMPANY_SETTINGS_STORAGE_KEY) || window.localStorage.getItem("skybol:company-settings")
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed.companyName) setCompanyName(parsed.companyName)
+        if (parsed.companyNamePersian) setCompanyNamePersian(parsed.companyNamePersian)
+        if (parsed.companySubtitle) setCompanySubtitle(parsed.companySubtitle)
+        if (parsed.companyPhone) setCompanyPhone(parsed.companyPhone)
+        if (parsed.companyEmail) setCompanyEmail(parsed.companyEmail)
+        if (parsed.companyAddress) setCompanyAddress(parsed.companyAddress)
+        if (parsed.companyLicence) setCompanyLicence(parsed.companyLicence)
+        if (parsed.logoUrl) setLogoUrl(parsed.logoUrl)
+        if (parsed.bgImageUrl) setBgImageUrl(parsed.bgImageUrl)
+        if (typeof parsed.bgOpacity === "number") setBgOpacity(parsed.bgOpacity)
+        if (parsed.iranOffice) {
+          setFormData((prev) => ({
+            ...prev,
+            iran_office_building: parsed.iranOffice.iran_office_building ?? prev.iran_office_building,
+            iran_office_location: parsed.iranOffice.iran_office_location ?? prev.iran_office_location,
+            iran_office_pobox: parsed.iranOffice.iran_office_pobox ?? prev.iran_office_pobox,
+            iran_office_telefax: parsed.iranOffice.iran_office_telefax ?? prev.iran_office_telefax,
+            iran_office_cellphone: parsed.iranOffice.iran_office_cellphone ?? prev.iran_office_cellphone,
+            iran_office_email: parsed.iranOffice.iran_office_email ?? prev.iran_office_email,
+          }))
+        }
+      }
+    } catch (e) {
+      console.error("Error reading stored PDF / company settings:", e)
+    } finally {
+      isCompanySettingsLoadedRef.current = true
+    }
+  }, [])
+
+  const persistCompanySettings = (overrides?: {
+    companyName?: string
+    companyNamePersian?: string
+    companySubtitle?: string
+    companyPhone?: string
+    companyEmail?: string
+    companyAddress?: string
+    companyLicence?: string
+    logoUrl?: string
+    bgImageUrl?: string
+    bgOpacity?: number
+    iranOffice?: {
+      iran_office_building?: string
+      iran_office_location?: string
+      iran_office_pobox?: string
+      iran_office_telefax?: string
+      iran_office_cellphone?: string
+      iran_office_email?: string
+    }
+  }) => {
+    try {
+      const dataToSave = {
+        companyName: overrides?.companyName ?? companyName,
+        companyNamePersian: overrides?.companyNamePersian ?? companyNamePersian,
+        companySubtitle: overrides?.companySubtitle ?? companySubtitle,
+        companyPhone: overrides?.companyPhone ?? companyPhone,
+        companyEmail: overrides?.companyEmail ?? companyEmail,
+        companyAddress: overrides?.companyAddress ?? companyAddress,
+        companyLicence: overrides?.companyLicence ?? companyLicence,
+        logoUrl: overrides?.logoUrl ?? logoUrl,
+        bgImageUrl: overrides?.bgImageUrl ?? bgImageUrl,
+        bgOpacity: overrides?.bgOpacity ?? bgOpacity,
+        iranOffice: {
+          iran_office_building: overrides?.iranOffice?.iran_office_building ?? formData.iran_office_building,
+          iran_office_location: overrides?.iranOffice?.iran_office_location ?? formData.iran_office_location,
+          iran_office_pobox: overrides?.iranOffice?.iran_office_pobox ?? formData.iran_office_pobox,
+          iran_office_telefax: overrides?.iranOffice?.iran_office_telefax ?? formData.iran_office_telefax,
+          iran_office_cellphone: overrides?.iranOffice?.iran_office_cellphone ?? formData.iran_office_cellphone,
+          iran_office_email: overrides?.iranOffice?.iran_office_email ?? formData.iran_office_email,
+        },
+      }
+      window.localStorage.setItem(PDF_COMPANY_SETTINGS_STORAGE_KEY, JSON.stringify(dataToSave))
+      window.localStorage.setItem("skybol:company-settings", JSON.stringify(dataToSave))
+    } catch (e) {
+      console.error("Error persisting company / PDF settings:", e)
+    }
+  }
+
+  // Auto-persist company settings when they change after initial load
+  useEffect(() => {
+    if (!isCompanySettingsLoadedRef.current) return
+    persistCompanySettings()
+  }, [
+    companyName,
+    companyNamePersian,
+    companySubtitle,
+    companyPhone,
+    companyEmail,
+    companyAddress,
+    companyLicence,
+    logoUrl,
+    bgImageUrl,
+    bgOpacity,
+    formData.iran_office_building,
+    formData.iran_office_location,
+    formData.iran_office_pobox,
+    formData.iran_office_telefax,
+    formData.iran_office_cellphone,
+    formData.iran_office_email,
+  ])
 
   // Fetch next BOL number on mount and set dates
   useEffect(() => {
@@ -1352,20 +1487,66 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setLogoUrl(event.target?.result as string)
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const rawDataUrl = event.target?.result as string
+      if (!rawDataUrl) return
+
+      // Create an image to optimize dimensions for high-DPI A4 print while keeping storage compact
+      const img = new Image()
+      img.onload = () => {
+        const maxDim = 800
+        let width = img.width
+        let height = img.height
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width)
+            width = maxDim
+          } else {
+            width = Math.round((width * maxDim) / height)
+            height = maxDim
+          }
+        }
+
+        const canvas = document.createElement("canvas")
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext("2d")
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true
+          ctx.imageSmoothingQuality = "high"
+          ctx.drawImage(img, 0, 0, width, height)
+          const optimizedDataUrl = canvas.toDataURL("image/png", 0.95)
+          setLogoUrl(optimizedDataUrl)
+          persistCompanySettings({ logoUrl: optimizedDataUrl })
+          toast.success("Company logo uploaded and saved to settings!")
+        } else {
+          setLogoUrl(rawDataUrl)
+          persistCompanySettings({ logoUrl: rawDataUrl })
+          toast.success("Company logo uploaded and saved to settings!")
+        }
       }
-      reader.readAsDataURL(file)
+      img.onerror = () => {
+        setLogoUrl(rawDataUrl)
+        persistCompanySettings({ logoUrl: rawDataUrl })
+        toast.success("Company logo uploaded and saved to settings!")
+      }
+      img.src = rawDataUrl
     }
+    reader.readAsDataURL(file)
   }
 
   const resetLogo = () => {
-    setLogoUrl("/images/logo.png")
+    const defaultLogo = "/images/logo.png"
+    setLogoUrl(defaultLogo)
     if (logoInputRef.current) {
       logoInputRef.current.value = ""
     }
+    persistCompanySettings({ logoUrl: defaultLogo })
+    toast.success("Company logo reset to default.")
   }
 
   const toggleAfghanistanDocument = (docId: string) => {
@@ -1519,6 +1700,76 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     setActiveRouteIndex(0)
     toast.success("Applied Air Cargo Route", {
       description: "کابل → دبی مسیر هوایی اضافه شد",
+    })
+  }
+
+  const openSaveRouteModal = () => {
+    if (!formData.routes || formData.routes.length === 0) {
+      toast.error("No Route Stops", { description: "لطفاً ابتدا حداقل یک توقفگاه در مسیر اضافه کنید" })
+      return
+    }
+    const firstStop = formData.routes[0]?.location || formData.routes[0]?.locationPersian || "Origin"
+    const lastStop = formData.routes[formData.routes.length - 1]?.location || formData.routes[formData.routes.length - 1]?.locationPersian || "Destination"
+    const suggestedTitle = formData.routes.length === 1 ? firstStop : `${firstStop} ➡️ ${lastStop}`
+    setNewPresetTitle(suggestedTitle)
+    setIsSaveRouteModalOpen(true)
+  }
+
+  const handleSaveRoutePreset = () => {
+    if (!newPresetTitle.trim()) {
+      toast.error("Preset Name Required", { description: "لطفاً نامی برای پیش‌فرض مسیر وارد کنید" })
+      return
+    }
+
+    const newPreset: SavedRoutePreset = {
+      id: crypto.randomUUID(),
+      title: newPresetTitle.trim(),
+      icon: newPresetIcon || "🗺️",
+      routes: JSON.parse(JSON.stringify(formData.routes)),
+      savedAt: new Date().toISOString(),
+    }
+
+    const updated = [newPreset, ...savedRoutePresets]
+    setSavedRoutePresets(updated)
+    try {
+      window.localStorage.setItem(SAVED_ROUTE_PRESETS_STORAGE_KEY, JSON.stringify(updated))
+    } catch (e) {
+      console.error("Error saving route preset to localStorage:", e)
+    }
+
+    setIsSaveRouteModalOpen(false)
+    toast.success("Route Saved to Quick Presets! ⭐", {
+      description: `مسیر «${newPreset.title}» با موفقیت در پیش‌فرض‌های سریع ذخیره شد`,
+    })
+  }
+
+  const handleDeleteRoutePreset = (presetId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const updated = savedRoutePresets.filter((p) => p.id !== presetId)
+    setSavedRoutePresets(updated)
+    try {
+      window.localStorage.setItem(SAVED_ROUTE_PRESETS_STORAGE_KEY, JSON.stringify(updated))
+    } catch (e) {
+      console.error("Error deleting route preset from localStorage:", e)
+    }
+    toast.success("Route Preset Deleted", {
+      description: "پیش‌فرض مسیر با موفقیت حذف شد",
+    })
+  }
+
+  const applyCustomRoutePreset = (preset: SavedRoutePreset) => {
+    const clonedRoutes: RouteStop[] = preset.routes.map((r, i) => ({
+      ...r,
+      id: crypto.randomUUID(),
+      stopOrder: i + 1,
+    }))
+    setFormData((prev) => ({
+      ...prev,
+      routes: clonedRoutes,
+    }))
+    setActiveRouteIndex(0)
+    toast.success(`Applied Route: ${preset.title}`, {
+      description: `مسیر «${preset.title}» (${clonedRoutes.length} توقفگاه) با موفقیت اعمال شد`,
     })
   }
 
@@ -4322,6 +4573,17 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     <div className="flex flex-wrap items-center gap-2">
                       <Button
                         type="button"
+                        size="sm"
+                        onClick={openSaveRouteModal}
+                        className="h-9 rounded-xl border border-emerald-300 bg-emerald-600 hover:bg-emerald-700 text-white px-3 text-xs font-black shadow-md shadow-emerald-600/20 cursor-pointer transition-all gap-1.5"
+                        title="Save current route path into Quick Presets list for one-click reuse"
+                      >
+                        <BookmarkPlus className="h-4 w-4 text-white" />
+                        Save to Presets / ذخیره مسیر
+                      </Button>
+
+                      <Button
+                        type="button"
                         variant="outline"
                         size="sm"
                         onClick={syncRoutesWithBOLPorts}
@@ -4362,6 +4624,34 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       <Sparkles className="h-3.5 w-3.5 text-amber-500" />
                       Quick Presets:
                     </span>
+
+                    {/* Custom User Saved Presets */}
+                    {savedRoutePresets.map((preset) => (
+                      <div key={preset.id} className="relative group inline-flex items-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => applyCustomRoutePreset(preset)}
+                          className="h-7.5 rounded-lg border border-amber-300 bg-linear-to-r from-amber-50 to-orange-50/80 pr-6 pl-2.5 text-[11px] font-black text-amber-950 shadow-2xs hover:border-amber-400 hover:from-amber-100 hover:to-orange-100 cursor-pointer transition-all gap-1.5"
+                          title={`Click to apply ${preset.title} (${preset.routes.length} stops)`}
+                        >
+                          <span>{preset.icon || "⭐"}</span>
+                          <span className="max-w-[150px] truncate">{preset.title}</span>
+                          <span className="rounded-full bg-amber-200/90 px-1.5 py-0.2 text-[9px] font-black text-amber-900">
+                            {preset.routes.length}
+                          </span>
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteRoutePreset(preset.id, e)}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-0.5 rounded-full hover:bg-red-200 text-red-600 transition-all cursor-pointer"
+                          title="Delete this saved preset"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
                     
                     <Button
                       type="button"
@@ -5707,12 +5997,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 </span>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {[
-                    { label: "🏔️ Mountain", url: "/images/afghan_mountain_blueprint_bg.jpg", opacity: 0.22 },
-                    { label: "🚚 Truck Fleet", url: "/images/afghan_cargo_fleet_pass.jpg", opacity: 0.22 },
-                    { label: "🚢 Ocean Ship", url: "/images/maritime_port_cargo_ship.jpg", opacity: 0.20 },
-                    { label: "✈️ Air Plane", url: "/images/sky_freight_cargo_plane.jpg", opacity: 0.22 },
-                    { label: "📐 Truck Blueprint", url: "/images/overland_transit_blueprint.svg", opacity: 0.18 },
-                    { label: "🌊 Ship Blueprint", url: "/images/maritime_shipping_blueprint.svg", opacity: 0.18 },
+                    { label: "🏔️ Mountain", url: "/images/afghan_mountain_blueprint_bg.jpg", opacity: 0.11 },
+                    { label: "🚚 Truck Fleet", url: "/images/afghan_cargo_fleet_pass.jpg", opacity: 0.11 },
+                    { label: "🚢 Ocean Ship", url: "/images/maritime_port_cargo_ship.jpg", opacity: 0.11 },
+                    { label: "✈️ Air Plane", url: "/images/sky_freight_cargo_plane.jpg", opacity: 0.11 },
+                    { label: "📐 Truck Blueprint", url: "/images/overland_transit_blueprint.svg", opacity: 0.11 },
+                    { label: "🌊 Ship Blueprint", url: "/images/maritime_shipping_blueprint.svg", opacity: 0.11 },
                     { label: "📄 Clean", url: "", opacity: 0 },
                   ].map((preset) => (
                     <button
@@ -5739,9 +6029,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 <span className="text-xs font-bold text-slate-600">Opacity:</span>
                 <input
                   type="range"
-                  min="0.05"
-                  max="0.80"
-                  step="0.02"
+                  min="0.01"
+                  max="0.60"
+                  step="0.01"
                   value={bgOpacity}
                   onChange={(e) => setBgOpacity(parseFloat(e.target.value))}
                   className="w-28 sm:w-36 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
@@ -5889,7 +6179,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       type="button"
                       onClick={() => {
                         setBgImageUrl("/images/afghan_mountain_blueprint_bg.jpg")
-                        setBgOpacity(0.22)
+                        setBgOpacity(0.11)
                       }}
                       className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
                         bgImageUrl === "/images/afghan_mountain_blueprint_bg.jpg"
@@ -5910,7 +6200,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       type="button"
                       onClick={() => {
                         setBgImageUrl("/images/afghan_cargo_fleet_pass.jpg")
-                        setBgOpacity(0.22)
+                        setBgOpacity(0.11)
                       }}
                       className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
                         bgImageUrl === "/images/afghan_cargo_fleet_pass.jpg"
@@ -5931,7 +6221,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       type="button"
                       onClick={() => {
                         setBgImageUrl("/images/maritime_port_cargo_ship.jpg")
-                        setBgOpacity(0.20)
+                        setBgOpacity(0.11)
                       }}
                       className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
                         bgImageUrl === "/images/maritime_port_cargo_ship.jpg"
@@ -5952,7 +6242,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       type="button"
                       onClick={() => {
                         setBgImageUrl("/images/sky_freight_cargo_plane.jpg")
-                        setBgOpacity(0.22)
+                        setBgOpacity(0.11)
                       }}
                       className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
                         bgImageUrl === "/images/sky_freight_cargo_plane.jpg"
@@ -5973,7 +6263,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       type="button"
                       onClick={() => {
                         setBgImageUrl("/images/overland_transit_blueprint.svg")
-                        setBgOpacity(0.18)
+                        setBgOpacity(0.11)
                       }}
                       className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
                         bgImageUrl === "/images/overland_transit_blueprint.svg"
@@ -5994,7 +6284,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       type="button"
                       onClick={() => {
                         setBgImageUrl("/images/maritime_shipping_blueprint.svg")
-                        setBgOpacity(0.18)
+                        setBgOpacity(0.11)
                       }}
                       className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
                         bgImageUrl === "/images/maritime_shipping_blueprint.svg"
@@ -6015,7 +6305,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       type="button"
                       onClick={() => {
                         setBgImageUrl("/images/air_cargo_blueprint.svg")
-                        setBgOpacity(0.18)
+                        setBgOpacity(0.11)
                       }}
                       className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
                         bgImageUrl === "/images/air_cargo_blueprint.svg"
@@ -6058,8 +6348,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       <label className="text-xs font-bold text-slate-700 shrink-0">Watermark Opacity:</label>
                       <input
                         type="range"
-                        min="0.05"
-                        max="0.55"
+                        min="0.01"
+                        max="0.60"
                         step="0.01"
                         value={bgOpacity}
                         onChange={(e) => setBgOpacity(parseFloat(e.target.value))}
@@ -6148,9 +6438,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     <div className="p-2 rounded-xl bg-linear-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25">
                       <ImageIcon className="h-4 w-4 text-white shrink-0" />
                     </div>
-                    <span className="font-semibold text-gray-800">Company Logo</span>
+                    <div>
+                      <span className="font-semibold text-gray-800">Company Logo</span>
+                      <span className="block text-xs font-normal text-blue-600/80 font-[vazirmatn]">لوگوی شرکت</span>
+                    </div>
                   </div>
-                  <span className="text-xs md:text-sm font-normal text-blue-600/80 font-[vazirmatn]">لوگوی شرکت</span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Auto-saved
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-5 pb-6">
@@ -6206,14 +6501,32 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             {/* Company Information */}
             <Card className="bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden">
               <CardHeader className="pb-4 border-b border-white/50 bg-white/40">
-                <CardTitle className="text-base flex items-center justify-between">
+                <CardTitle className="text-base flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div className="flex items-center gap-2.5">
                     <div className="p-2 rounded-xl bg-linear-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25">
                       <Building2 className="h-4 w-4 text-white" />
                     </div>
-                    <span className="font-semibold text-gray-800">Company Information</span>
+                    <div>
+                      <span className="font-semibold text-gray-800">Company Information</span>
+                      <span className="block text-xs font-normal text-blue-600/80 font-[vazirmatn]">اطلاعات شرکت</span>
+                    </div>
                   </div>
-                  <span className="text-sm font-normal text-blue-600/80 font-[vazirmatn]">اطلاعات شرکت</span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Auto-saved
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        persistCompanySettings()
+                        toast.success("Company & PDF settings saved successfully! They will persist across page refreshes.")
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md h-8 text-xs font-bold gap-1.5 cursor-pointer"
+                    >
+                      <Save className="h-3.5 w-3.5" />
+                      Save Settings
+                    </Button>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-5 pb-6">
@@ -6297,14 +6610,32 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             {/* Iran Office Information */}
             <Card className="bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden">
               <CardHeader className="pb-4 border-b border-white/50 bg-white/40">
-                <CardTitle className="text-base flex items-center justify-between">
+                <CardTitle className="text-base flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div className="flex items-center gap-2.5">
                     <div className="p-2 rounded-xl bg-linear-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25">
                       <Building2 className="h-4 w-4 text-white" />
                     </div>
-                    <span className="font-semibold text-gray-800">Iran Office Information</span>
+                    <div>
+                      <span className="font-semibold text-gray-800">Iran Office Information</span>
+                      <span className="block text-xs font-normal text-blue-600/80 font-[vazirmatn]">اطلاعات دفتر ایران</span>
+                    </div>
                   </div>
-                  <span className="text-sm font-normal text-blue-600/80 font-[vazirmatn]">اطلاعات دفتر ایران</span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Auto-saved
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        persistCompanySettings()
+                        toast.success("Iran office & company settings saved successfully!")
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md h-8 text-xs font-bold gap-1.5 cursor-pointer"
+                    >
+                      <Save className="h-3.5 w-3.5" />
+                      Save Settings
+                    </Button>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid md:grid-cols-2 gap-4 pt-5 pb-6">
@@ -6431,6 +6762,96 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         onPrint={handlePrint}
         isPrinting={isSaving}
       />
+
+      {/* Save Route Preset Dialog */}
+      <Dialog open={isSaveRouteModalOpen} onOpenChange={setIsSaveRouteModalOpen}>
+        <DialogContent className="sm:max-w-[480px] p-6 rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-black text-slate-900">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-600">
+                <BookmarkPlus className="h-4 w-4" />
+              </span>
+              Save Route to Quick Presets
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500 font-medium font-[vazirmatn]" dir="rtl">
+              ذخیره توقفگاه‌های فعلی مسیر ({formData.routes.length} توقفگاه) در نوار پیش‌فرض‌های سریع برای استفاده آسان
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs font-black text-slate-700 block mb-1.5">
+                Preset Name / نام پیش‌فرض مسیر
+              </label>
+              <Input
+                value={newPresetTitle}
+                onChange={(e) => setNewPresetTitle(e.target.value)}
+                placeholder="e.g. Kandahar ➡️ Islam Qala ➡️ Mashhad"
+                className="h-10 rounded-xl border-slate-200 font-bold text-sm focus:border-amber-500 focus:ring-amber-500"
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-black text-slate-700 block mb-1.5">
+                Icon / آیکون مسیر
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {["🚛", "🚢", "✈️", "🚆", "⭐", "🗺️", "📍", "📦", "🇦🇫", "🇮🇷", "🇵🇰", "🇦🇪", "🇮🇳", "🇺🇿"].map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => setNewPresetIcon(emoji)}
+                    className={`h-8 w-8 rounded-lg text-sm flex items-center justify-center cursor-pointer transition-all ${
+                      newPresetIcon === emoji
+                        ? "bg-amber-500 text-white shadow-md scale-110 ring-2 ring-amber-400"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-800"
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Stops Preview */}
+            <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3">
+              <span className="text-[11px] font-black uppercase tracking-wider text-blue-900 block mb-1.5">
+                Stops to be saved ({formData.routes.length}):
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-bold text-blue-950">
+                {formData.routes.map((r, i) => (
+                  <span key={r.id || i} className="inline-flex items-center gap-1">
+                    {i > 0 && <span className="text-blue-400">➡️</span>}
+                    <span className="rounded-md bg-white px-2 py-0.5 border border-blue-200/80 shadow-2xs">
+                      {r.location || r.locationPersian || `Stop #${i + 1}`}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsSaveRouteModalOpen(false)}
+              className="rounded-xl font-bold text-xs"
+            >
+              Cancel / لغو
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveRoutePreset}
+              className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-md shadow-amber-500/20"
+            >
+              <Save className="h-3.5 w-3.5 mr-1" />
+              Save Preset / ذخیره پیش‌فرض
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
