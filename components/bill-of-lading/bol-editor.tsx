@@ -16,7 +16,7 @@ import { BillOfLadingFormData, initialFormData, RouteStop, AFGHANISTAN_DOCUMENT_
 import consigneeSeedData from "@/lib/data/consignees-from-pdf.json"
 import shipperSeedData from "@/lib/data/shippers-from-pdf.json"
 import notifyPartySeedData from "@/lib/data/notify-parties-from-pdf.json"
-import { Printer, Save, FileText, Eye, Plus, Loader2, Calendar, Truck, MapPin, Trash2, ArrowRight, Package, Edit3, ImageIcon, Upload, RotateCcw, ScrollText, Check, Download, Building2, Phone, Mail, Ship, Plane, Train, AlertCircle, User, Bell, Globe, Shield, Leaf, Heart, Scale, Bookmark, BookmarkPlus, X, IdCard, Car, Landmark, ShieldCheck, Receipt, List, ChevronDown, ChevronUp, Info, CheckCircle2, Circle, Sparkles, Copy, Box, ArrowLeftRight, Zap, Calculator, SlidersHorizontal, Layers } from "lucide-react"
+import { Printer, Save, FileText, Eye, Plus, Loader2, Calendar, Truck, MapPin, Trash2, ArrowRight, Package, Edit3, ImageIcon, Upload, RotateCcw, ScrollText, Check, Download, Building2, Phone, Mail, Ship, Plane, Train, AlertCircle, User, Bell, Globe, Shield, Leaf, Heart, Scale, Bookmark, BookmarkPlus, X, IdCard, Car, Landmark, ShieldCheck, Receipt, List, ChevronDown, ChevronUp, Info, CheckCircle2, Circle, Sparkles, Copy, Box, ArrowLeftRight, Zap, Calculator, SlidersHorizontal, Layers, Keyboard, Cloud, DownloadCloud, UploadCloud, RefreshCw, FileSpreadsheet, Coins } from "lucide-react"
 import { formatPersianDate, getDualDates } from "@/lib/utils/persian-date"
 import {
   generateBOLPDFBlob,
@@ -357,12 +357,151 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [isSaveRouteModalOpen, setIsSaveRouteModalOpen] = useState(false)
   const [newPresetTitle, setNewPresetTitle] = useState("")
   const [newPresetIcon, setNewPresetIcon] = useState("🚛")
+  const [lastAutoSavedTime, setLastAutoSavedTime] = useState<string | null>(null)
+  const [hasRecoverableDraft, setHasRecoverableDraft] = useState(false)
+  const [recoverableDraftTime, setRecoverableDraftTime] = useState<string | null>(null)
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false)
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false)
   const [activePrintOptions, setActivePrintOptions] = useState<PrintOptions>({
     copies: 1,
     quality: "standard",
     includeColorStrip: true,
     fitToPage: true,
   })
+
+  // Check for existing unsaved draft on initial load
+  useEffect(() => {
+    try {
+      const rawDraft = window.localStorage.getItem("sky-bol-live-draft")
+      if (rawDraft) {
+        const parsed = JSON.parse(rawDraft)
+        if (parsed?.formData?.bol_number && parsed.savedAt) {
+          setHasRecoverableDraft(true)
+          setRecoverableDraftTime(new Date(parsed.savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+        }
+      }
+    } catch (e) {
+      console.error("Error reading draft:", e)
+    }
+  }, [])
+
+  // Continuous auto-save draft (debounced)
+  useEffect(() => {
+    if (!formData.bol_number && !formData.shipper_name) return
+    const timer = setTimeout(() => {
+      try {
+        const now = new Date()
+        window.localStorage.setItem(
+          "sky-bol-live-draft",
+          JSON.stringify({
+            formData,
+            bolNumber,
+            issueDate,
+            persianDate,
+            persianDateNumeric,
+            savedAt: now.toISOString(),
+          })
+        )
+        setLastAutoSavedTime(now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }))
+      } catch (e) {
+        console.error("Auto-save error:", e)
+      }
+    }, 1500)
+
+    return () => clearTimeout(timer)
+  }, [formData, bolNumber, issueDate, persianDate, persianDateNumeric])
+
+  const handleRestoreDraft = () => {
+    try {
+      const rawDraft = window.localStorage.getItem("sky-bol-live-draft")
+      if (rawDraft) {
+        const parsed = JSON.parse(rawDraft)
+        if (parsed.formData) setFormData(parsed.formData)
+        if (parsed.bolNumber) setBolNumber(parsed.bolNumber)
+        if (parsed.issueDate) setIssueDate(parsed.issueDate)
+        if (parsed.persianDate) setPersianDate(parsed.persianDate)
+        if (parsed.persianDateNumeric) setPersianDateNumeric(parsed.persianDateNumeric)
+        setHasRecoverableDraft(false)
+        toast.success("Draft Restored Successfully! 🚀", {
+          description: `پیش‌نویس ذخیره‌شده با موفقیت بازیابی شد`,
+        })
+      }
+    } catch (e) {
+      toast.error("Failed to restore draft")
+    }
+  }
+
+  const handleDiscardDraft = () => {
+    window.localStorage.removeItem("sky-bol-live-draft")
+    setHasRecoverableDraft(false)
+  }
+
+  const handleExportFullBackup = () => {
+    try {
+      const backupPayload = {
+        app: "Sky Ariana BOL Logistics Suite",
+        version: "3.2",
+        exportedAt: new Date().toISOString(),
+        companySettings: window.localStorage.getItem(PDF_COMPANY_SETTINGS_STORAGE_KEY),
+        routePresets: window.localStorage.getItem(SAVED_ROUTE_PRESETS_STORAGE_KEY),
+        savedShippers: window.localStorage.getItem(SAVED_SHIPPERS_STORAGE_KEY),
+        savedConsignees: window.localStorage.getItem(SAVED_CONSIGNEES_STORAGE_KEY),
+        savedNotifyParties: window.localStorage.getItem(SAVED_NOTIFY_PARTIES_STORAGE_KEY),
+        savedNotes1: window.localStorage.getItem(SAVED_NOTES_1_STORAGE_KEY),
+        savedNotes2: window.localStorage.getItem(SAVED_NOTES_2_STORAGE_KEY),
+        currentForm: formData,
+      }
+
+      const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      const dateStr = new Date().toISOString().split("T")[0]
+      a.href = url
+      a.download = `sky-ariana-bol-backup-${dateStr}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      toast.success("Full Backup Downloaded! 💾", {
+        description: "تمامی اطلاعات، پیش‌فرض‌ها و تنظیمات با موفقیت در فایل JSON ذخیره شدند",
+      })
+    } catch (e) {
+      toast.error("Failed to generate backup")
+    }
+  }
+
+  const handleImportBackupFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string
+        const parsed = JSON.parse(content)
+        if (parsed.companySettings) window.localStorage.setItem(PDF_COMPANY_SETTINGS_STORAGE_KEY, parsed.companySettings)
+        if (parsed.routePresets) {
+          window.localStorage.setItem(SAVED_ROUTE_PRESETS_STORAGE_KEY, parsed.routePresets)
+          setSavedRoutePresets(JSON.parse(parsed.routePresets))
+        }
+        if (parsed.savedShippers) window.localStorage.setItem(SAVED_SHIPPERS_STORAGE_KEY, parsed.savedShippers)
+        if (parsed.savedConsignees) window.localStorage.setItem(SAVED_CONSIGNEES_STORAGE_KEY, parsed.savedConsignees)
+        if (parsed.savedNotifyParties) window.localStorage.setItem(SAVED_NOTIFY_PARTIES_STORAGE_KEY, parsed.savedNotifyParties)
+        if (parsed.savedNotes1) window.localStorage.setItem(SAVED_NOTES_1_STORAGE_KEY, parsed.savedNotes1)
+        if (parsed.savedNotes2) window.localStorage.setItem(SAVED_NOTES_2_STORAGE_KEY, parsed.savedNotes2)
+        if (parsed.currentForm) setFormData(parsed.currentForm)
+
+        toast.success("Backup Restored Successfully! 🎉", {
+          description: "تمامی اطلاعات با موفقیت بازیابی و اعمال شدند",
+        })
+        setIsBackupModalOpen(false)
+      } catch (err) {
+        toast.error("Invalid Backup File", { description: "فایل انتخاب‌شده نامعتبر است" })
+      }
+    }
+    reader.readAsText(file)
+  }
 
   // Load saved route presets from localStorage on mount
   useEffect(() => {
@@ -2689,16 +2828,32 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && !e.shiftKey) {
         e.preventDefault()
         if (bolNumber && !isSaving) {
           handleSave()
         }
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p" && !e.shiftKey) {
+        e.preventDefault()
+        setIsPrintDialogOpen(true)
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "n") {
+        e.preventDefault()
+        handleNewDocument()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "d") {
+        e.preventDefault()
+        handleDuplicateCurrent()
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+        e.preventDefault()
+        setIsShortcutsModalOpen(true)
+      }
     }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [bolNumber, handleSave, isSaving])
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [bolNumber, handleSave, isSaving, handleNewDocument, handleDuplicateCurrent])
 
   return (
     <div className="min-h-screen bg-transparent print:min-h-0 print:bg-white print:overflow-visible">
@@ -2731,6 +2886,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 </span>
               </div>
             )}
+            {lastAutoSavedTime && (
+              <div className="hidden xl:flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/90 px-2.5 py-0.5 text-xs text-emerald-800 font-bold shadow-2xs">
+                <Cloud className="h-3 w-3 text-emerald-600" />
+                <span>Auto-saved: {lastAutoSavedTime}</span>
+              </div>
+            )}
           </div>
           
           {/* Actions - Responsive button layout */}
@@ -2749,6 +2910,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               size="sm" 
               onClick={handleNewDocument}
               className="h-8 rounded-2xl border-white/50 bg-white/75 px-2 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm"
+              title="New Document (Ctrl + Shift + N)"
             >
               <Plus className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1" />
               <span className="hidden sm:inline">New</span>
@@ -2759,26 +2921,17 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               onClick={() => setIsPrintDialogOpen(true)}
               disabled={isSaving}
               className="h-8 rounded-2xl border-white/50 bg-white/75 px-2 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Print & PDF (Ctrl + P)"
             >
               <Printer className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1" />
               <span className="hidden sm:inline">Print</span>
             </Button>
-            {isEditMode && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleNewDocument}
-                className="h-8 rounded-2xl border-white/50 bg-white/75 px-2 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm"
-              >
-                <Plus className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1" />
-                <span className="hidden md:inline">New Doc</span>
-              </Button>
-            )}
             <Button 
               size="sm" 
               onClick={handleSave} 
               disabled={isSaving}
               className="h-8 rounded-2xl bg-linear-to-r from-blue-600 to-cyan-500 px-2 text-xs text-white shadow-lg shadow-blue-300/40 hover:shadow-blue-300/60 md:h-9 md:px-3 md:text-sm"
+              title="Save Document (Ctrl + S)"
             >
               {isSaving ? (
                 <Loader2 className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 animate-spin" />
@@ -2793,10 +2946,29 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               onClick={handleDuplicateCurrent} 
               disabled={isSaving}
               className="h-8 rounded-2xl border-purple-200 bg-purple-50/75 px-2 text-xs text-purple-700 hover:border-purple-300 hover:bg-purple-100 md:h-9 md:px-3 md:text-sm font-bold"
-              title="Clone current document into a new BOL draft"
+              title="Clone current document into a new BOL draft (Ctrl + Shift + D)"
             >
               <Copy className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 text-purple-600" />
               <span className="hidden sm:inline">Duplicate</span>
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => setIsBackupModalOpen(true)}
+              className="h-8 rounded-2xl border-slate-200 bg-white px-2 text-xs text-slate-700 hover:bg-slate-50 md:h-9 md:px-2.5"
+              title="Backup & Restore Data Hub"
+            >
+              <DownloadCloud className="h-3.5 md:h-4 w-3.5 md:w-4 text-slate-600" />
+              <span className="hidden lg:inline ml-1">Backup</span>
+            </Button>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={() => setIsShortcutsModalOpen(true)}
+              className="h-8 w-8 p-0 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-100 md:h-9 md:w-9"
+              title="Keyboard Shortcuts (Ctrl + /)"
+            >
+              <Keyboard className="h-4 w-4" />
             </Button>
             <Button 
               size="sm" 
@@ -2831,6 +3003,25 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           </div>
         </div>
       </div>
+
+      {hasRecoverableDraft && (
+        <div className="bg-linear-to-r from-amber-500/10 via-amber-50/80 to-amber-500/10 border-b border-amber-300/60 px-4 py-2 text-xs text-amber-950 flex items-center justify-between gap-3 shadow-xs print:hidden backdrop-blur-md">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Unsaved Draft Detected</strong> ({recoverableDraftTime}) — Would you like to restore your previously edited Bill of Lading?
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" onClick={handleRestoreDraft} className="h-7 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs cursor-pointer">
+              ⚡ Restore Draft
+            </Button>
+            <Button size="sm" variant="ghost" onClick={handleDiscardDraft} className="h-7 px-2 text-xs text-slate-500 hover:text-slate-800">
+              ✕ Discard
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="w-full max-w-7xl mx-auto px-0 py-4 md:py-5 print:max-w-none print:p-0 print:m-0">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="print:hidden w-full">
@@ -6848,6 +7039,117 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             >
               <Save className="h-3.5 w-3.5 mr-1" />
               Save Preset / ذخیره پیش‌فرض
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Keyboard Shortcuts Dialog */}
+      <Dialog open={isShortcutsModalOpen} onOpenChange={setIsShortcutsModalOpen}>
+        <DialogContent className="sm:max-w-[480px] rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900 text-lg font-black">
+              <Keyboard className="h-5 w-5 text-blue-600" />
+              Keyboard Shortcuts / کلیدهای میانبر
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Boost your logistics productivity with instant keyboard shortcuts
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2.5 py-3">
+            {[
+              { keys: ["Ctrl", "S"], desc: "Save / Update Bill of Lading", fa: "ذخیره یا ویرایش بارنامه" },
+              { keys: ["Ctrl", "P"], desc: "Print Document / Open PDF Print Dialog", fa: "چاپ سند یا پیش‌نمایش" },
+              { keys: ["Ctrl", "Shift", "N"], desc: "Create New Blank Document", fa: "ایجاد سند جدید و خالی" },
+              { keys: ["Ctrl", "Shift", "D"], desc: "Duplicate Current Document", fa: "تکثیر و کپی بارنامه فعلی" },
+              { keys: ["Ctrl", "/"], desc: "Open this Shortcuts Guide", fa: "نمایش این راهنما" },
+            ].map((sc, i) => (
+              <div key={i} className="flex items-center justify-between p-2.5 rounded-2xl border border-slate-100 bg-slate-50/80">
+                <div className="flex flex-col">
+                  <span className="text-xs font-black text-slate-900">{sc.desc}</span>
+                  <span className="text-[10.5px] text-slate-500 font-bold font-[vazirmatn]">{sc.fa}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {sc.keys.map((k) => (
+                    <kbd key={k} className="px-2 py-1 rounded-lg bg-white border border-slate-200 shadow-2xs text-[11px] font-black font-mono text-blue-900">
+                      {k}
+                    </kbd>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => setIsShortcutsModalOpen(false)}
+              className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer"
+            >
+              Got it / فهمیدم
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Backup & Restore Data Hub Dialog */}
+      <Dialog open={isBackupModalOpen} onOpenChange={setIsBackupModalOpen}>
+        <DialogContent className="sm:max-w-[520px] rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900 text-lg font-black">
+              <DownloadCloud className="h-5 w-5 text-emerald-600" />
+              Backup & Restore Data Hub / پشتیبان‌گیری
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Export all your saved B/Ls, company profiles, and presets or restore from a JSON backup.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            {/* Export Card */}
+            <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 flex items-center justify-between gap-3">
+              <div>
+                <h4 className="text-xs font-black text-emerald-950">Export Full JSON Backup</h4>
+                <p className="text-[11px] text-emerald-800 font-medium">Download complete backup file of all documents & settings</p>
+              </div>
+              <Button
+                type="button"
+                onClick={handleExportFullBackup}
+                className="h-9 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shrink-0 shadow-xs cursor-pointer"
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Download
+              </Button>
+            </div>
+
+            {/* Import Card */}
+            <div className="p-4 rounded-2xl border border-blue-200 bg-blue-50/60 flex items-center justify-between gap-3">
+              <div>
+                <h4 className="text-xs font-black text-blue-950">Restore from Backup File</h4>
+                <p className="text-[11px] text-blue-800 font-medium">Select a previously saved .json backup file to restore</p>
+              </div>
+              <label className="h-9 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shrink-0 shadow-xs cursor-pointer inline-flex items-center justify-center">
+                <Upload className="h-3.5 w-3.5 mr-1" />
+                Upload File
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportBackupFile}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsBackupModalOpen(false)}
+              className="rounded-xl font-bold text-xs"
+            >
+              Close / بستن
             </Button>
           </DialogFooter>
         </DialogContent>

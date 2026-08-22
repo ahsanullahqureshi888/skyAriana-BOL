@@ -36,6 +36,7 @@ import {
   MapPin,
   User,
   Receipt,
+  FileSpreadsheet,
 } from "lucide-react"
 import { generateBOLPDFBlob, savePDFToDevice } from "@/lib/utils/pdf-upload"
 
@@ -1123,6 +1124,61 @@ function parseBolSeq(bolNum: string): number {
     event.target.value = ""
   }, [handlePDFUpload])
 
+  const handleExportToCSV = useCallback(() => {
+    if (filteredDocuments.length === 0) {
+      toast.error("No documents to export")
+      return
+    }
+
+    const headers = [
+      "BOL Number",
+      "Issue Date",
+      "Shipper",
+      "Consignee",
+      "Port of Loading",
+      "Port of Discharge",
+      "Packages",
+      "Net Weight",
+      "Gross Weight",
+      "Goods Value",
+      "Driver",
+      "Truck Plate",
+      "Container No",
+      "Invoice No",
+    ]
+
+    const rows = filteredDocuments.map((doc) => [
+      `"${(doc.bol_number || "").replace(/"/g, '""')}"`,
+      `"${(doc.issue_date || "").replace(/"/g, '""')}"`,
+      `"${(doc.shipper_name || "").replace(/"/g, '""')}"`,
+      `"${(doc.consignee_name || "").replace(/"/g, '""')}"`,
+      `"${(doc.port_of_loading || "").replace(/"/g, '""')}"`,
+      `"${(doc.port_of_discharge || "").replace(/"/g, '""')}"`,
+      `"${(doc.number_of_packages || "").replace(/"/g, '""')}"`,
+      `"${(doc.net_weight || "").replace(/"/g, '""')}"`,
+      `"${(doc.gross_weight || "").replace(/"/g, '""')}"`,
+      `"${(doc.goods_value || "").replace(/"/g, '""')}"`,
+      `"${(doc.driver_name || "").replace(/"/g, '""')}"`,
+      `"${(doc.truck_number || "").replace(/"/g, '""')}"`,
+      `"${(doc.container_numbers || "").replace(/"/g, '""')}"`,
+      `"${(doc.invoice_no || doc.invoice_number || "").replace(/"/g, '""')}"`,
+    ])
+
+    const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    const dateStr = new Date().toISOString().split("T")[0]
+    link.setAttribute("download", `sky-bol-export-${dateStr}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    toast.success("CSV Spreadsheet Exported! 📊", {
+      description: `${filteredDocuments.length} اسناد بارنامه در قالب فایل اکسل با موفقیت دانلود شدند`,
+    })
+  }, [filteredDocuments])
+
   return (
     <Card className={`flex h-full flex-col overflow-hidden rounded-[32px] border border-white/80 bg-white/70 shadow-[0_20px_60px_-15px_rgba(37,99,235,0.1)] backdrop-blur-2xl text-slate-900 ${variant === "sidebar" ? "w-full" : "md:w-96"}`}>
       
@@ -1176,16 +1232,26 @@ function parseBolSeq(bolNum: string): number {
             )}
           </div>
 
-          {/* View Mode, Sort Selector & Recover Button */}
+          {/* View Mode, Sort Selector, CSV Export & Recover Button */}
           <div className="flex items-center gap-2 flex-wrap">
             <Button
               type="button"
               variant="outline"
+              onClick={handleExportToCSV}
+              className="h-8.5 rounded-xl border-emerald-300 bg-emerald-50/90 px-2.5 text-xs font-black text-emerald-800 hover:bg-emerald-100 shadow-2xs cursor-pointer"
+              title="Export currently filtered list to CSV / Excel spreadsheet"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5 mr-1 text-emerald-600 shrink-0" />
+              <span>Export CSV</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
               onClick={handleRecoverAllBOLs}
-              className="h-8.5 rounded-xl border-emerald-300 bg-emerald-50/80 px-2.5 text-xs font-black text-emerald-800 hover:bg-emerald-100 shadow-2xs cursor-pointer"
+              className="h-8.5 rounded-xl border-blue-300 bg-blue-50/80 px-2.5 text-xs font-black text-blue-800 hover:bg-blue-100 shadow-2xs cursor-pointer"
               title="Sync & recover all saved BOL documents from server & disk"
             >
-              <RotateCcw className="h-3.5 w-3.5 mr-1 text-emerald-600 shrink-0" />
+              <RotateCcw className="h-3.5 w-3.5 mr-1 text-blue-600 shrink-0" />
               <span>Recover Saved BOLs</span>
             </Button>
             {/* Sort Selector */}
