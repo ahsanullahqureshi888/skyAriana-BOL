@@ -89,6 +89,27 @@
   font-family: var(--font-mono) !important;
 }
 
+/* Mobile UI Utilities & Touch Enhancements */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  .mac-desktop-shell {
+    border-radius: 20px;
+    margin: 0.25rem;
+  }
+}
+
 .ledger-table[dir="rtl"] thead th {
   text-align: right;
   direction: rtl;

@@ -2863,49 +2863,66 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   return (
     <div className="min-h-screen bg-transparent print:min-h-0 print:bg-white print:overflow-visible">
       {/* Action Bar - Mobile & Desktop sticky beneath header */}
-      <div className="sticky top-[61px] z-30 border-b border-white/50/70 bg-white/90 px-3 py-2 shadow-md shadow-blue-900/5 backdrop-blur-xl md:px-4 md:py-2.5 print:hidden">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
-          {/* Header Info - Stacked on mobile */}
-          <div className="flex items-start md:items-center gap-2 md:gap-4 flex-wrap">
-            <div className="flex items-center gap-2.5">
-              <div className="rounded-2xl border border-blue-200 bg-white/80 p-2 shadow-lg shadow-blue-200/50">
-                <FileText className="h-4 w-4 text-blue-700 shrink-0" />
+      <div className="sticky top-[61px] z-30 border-b border-white/50/70 bg-white/95 px-2.5 py-2 shadow-md shadow-blue-900/5 backdrop-blur-xl md:px-4 md:py-2.5 print:hidden">
+        <div className="max-w-7xl mx-auto flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          {/* Header Info */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 flex-wrap">
+              <div className="rounded-2xl border border-blue-200 bg-white/80 p-1.5 sm:p-2 shadow-sm">
+                <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-700 shrink-0" />
               </div>
-              <span className="font-semibold text-slate-950 text-sm md:text-base">Bill of Lading</span>
-            </div>
-            <div className="rounded-2xl border border-blue-200 bg-blue-50/80 px-2 py-1 md:px-3">
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin text-blue-700" />
-              ) : (
-                <span className="font-mono font-bold text-blue-700 text-xs md:text-sm">{bolNumber}</span>
+              <span className="font-bold text-slate-950 text-xs sm:text-sm md:text-base">Bill of Lading</span>
+              <div className="rounded-xl border border-blue-200 bg-blue-50/90 px-2 py-0.5 sm:px-2.5">
+                {isLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-700" />
+                ) : (
+                  <span className="font-mono font-bold text-blue-700 text-xs md:text-sm">{bolNumber}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 text-[11px] sm:text-xs md:text-sm text-slate-600">
+                <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500 shrink-0" />
+                <span>{issueDate}</span>
+              </div>
+              {persianDateNumeric && (
+                <div className="hidden sm:flex items-center gap-1 rounded-xl border border-white/50 bg-white/70 px-2 py-0.5 text-xs">
+                  <span className="text-slate-600 font-bold font-[vazirmatn]" dir="ltr" style={{ unicodeBidi: "isolate" }}>
+                    {persianDateNumeric}
+                  </span>
+                </div>
+              )}
+              {lastAutoSavedTime && (
+                <div className="hidden xl:flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/90 px-2.5 py-0.5 text-xs text-emerald-800 font-bold shadow-2xs">
+                  <Cloud className="h-3 w-3 text-emerald-600" />
+                  <span>Auto-saved: {lastAutoSavedTime}</span>
+                </div>
               )}
             </div>
-            <div className="flex items-center gap-1.5 text-xs md:text-sm">
-              <Calendar className="h-3.5 md:h-4 w-3.5 md:w-4 text-blue-500 shrink-0" />
-              <span className="text-slate-600">{issueDate}</span>
+
+            {/* Mobile Primary Save Button */}
+            <div className="flex items-center gap-1 md:hidden">
+              <Button 
+                size="sm" 
+                onClick={handleSave} 
+                disabled={isSaving}
+                className="h-8 rounded-xl bg-linear-to-r from-blue-600 to-cyan-500 px-3 text-xs font-bold text-white shadow-md shadow-blue-400/30 cursor-pointer"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <Save className="h-3.5 w-3.5 mr-1" />
+                )}
+                {isEditMode ? "Update" : "Save"}
+              </Button>
             </div>
-            {persianDateNumeric && (
-              <div className="hidden sm:flex items-center gap-1.5 rounded-xl border border-white/50 bg-white/70 px-2 py-0.5 text-xs md:text-sm">
-                <span className="text-slate-600 font-bold font-[vazirmatn]" dir="ltr" style={{ unicodeBidi: "isolate" }}>
-                  {persianDateNumeric}
-                </span>
-              </div>
-            )}
-            {lastAutoSavedTime && (
-              <div className="hidden xl:flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/90 px-2.5 py-0.5 text-xs text-emerald-800 font-bold shadow-2xs">
-                <Cloud className="h-3 w-3 text-emerald-600" />
-                <span>Auto-saved: {lastAutoSavedTime}</span>
-              </div>
-            )}
           </div>
           
-          {/* Actions - Responsive button layout */}
-          <div className="flex items-center gap-1.5 md:gap-2 flex-wrap md:flex-nowrap justify-end">
+          {/* Actions - Horizontal Scrollable Pill Strip on Mobile, Flex on Desktop */}
+          <div className="flex items-center gap-1.5 md:gap-2 overflow-x-auto pb-0.5 no-scrollbar scroll-smooth">
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => setActiveTab("saved-documents")}
-              className="h-8 rounded-2xl border-emerald-200 bg-emerald-50/80 px-2 text-xs font-bold text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 md:h-9 md:px-3 md:text-sm shadow-2xs"
+              onClick={() => handleTabChange("saved-documents")}
+              className="h-8 rounded-2xl border-emerald-200 bg-emerald-50/80 px-2.5 text-xs font-bold text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 md:h-9 md:px-3 md:text-sm shadow-2xs shrink-0 cursor-pointer"
             >
               <FileText className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 text-emerald-600" />
               <span>Saved BOLs</span>
@@ -2914,28 +2931,28 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               variant="outline" 
               size="sm" 
               onClick={handleNewDocument}
-              className="h-8 rounded-2xl border-white/50 bg-white/75 px-2 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm"
+              className="h-8 rounded-2xl border-white/60 bg-white/80 px-2.5 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm shrink-0 cursor-pointer"
               title="New Document (Ctrl + Shift + N)"
             >
               <Plus className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1" />
-              <span className="hidden sm:inline">New</span>
+              <span>New</span>
             </Button>
             <Button 
               variant="outline" 
               size="sm" 
               onClick={() => setIsPrintDialogOpen(true)}
               disabled={isSaving}
-              className="h-8 rounded-2xl border-white/50 bg-white/75 px-2 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-8 rounded-2xl border-white/60 bg-white/80 px-2.5 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm disabled:opacity-50 shrink-0 cursor-pointer"
               title="Print & PDF (Ctrl + P)"
             >
               <Printer className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1" />
-              <span className="hidden sm:inline">Print</span>
+              <span>Print</span>
             </Button>
             <Button 
               size="sm" 
               onClick={handleSave} 
               disabled={isSaving}
-              className="h-8 rounded-2xl bg-linear-to-r from-blue-600 to-cyan-500 px-2 text-xs text-white shadow-lg shadow-blue-300/40 hover:shadow-blue-300/60 md:h-9 md:px-3 md:text-sm"
+              className="hidden md:inline-flex h-8 rounded-2xl bg-linear-to-r from-blue-600 to-cyan-500 px-3 text-xs text-white shadow-lg shadow-blue-300/40 hover:shadow-blue-300/60 md:h-9 md:px-3 md:text-sm shrink-0 cursor-pointer"
               title="Save Document (Ctrl + S)"
             >
               {isSaving ? (
@@ -2950,27 +2967,27 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               variant="outline" 
               onClick={handleDuplicateCurrent} 
               disabled={isSaving}
-              className="h-8 rounded-2xl border-purple-200 bg-purple-50/75 px-2 text-xs text-purple-700 hover:border-purple-300 hover:bg-purple-100 md:h-9 md:px-3 md:text-sm font-bold"
+              className="h-8 rounded-2xl border-purple-200 bg-purple-50/75 px-2.5 text-xs text-purple-700 hover:border-purple-300 hover:bg-purple-100 md:h-9 md:px-3 md:text-sm font-bold shrink-0 cursor-pointer"
               title="Clone current document into a new BOL draft (Ctrl + Shift + D)"
             >
               <Copy className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 text-purple-600" />
-              <span className="hidden sm:inline">Duplicate</span>
+              <span>Duplicate</span>
             </Button>
             <Button 
               size="sm" 
               variant="outline" 
               onClick={() => setIsBackupModalOpen(true)}
-              className="h-8 rounded-2xl border-slate-200 bg-white px-2 text-xs text-slate-700 hover:bg-slate-50 md:h-9 md:px-2.5"
+              className="h-8 rounded-2xl border-slate-200 bg-white px-2.5 text-xs text-slate-700 hover:bg-slate-50 md:h-9 md:px-2.5 shrink-0 cursor-pointer"
               title="Backup & Restore Data Hub"
             >
-              <DownloadCloud className="h-3.5 md:h-4 w-3.5 md:w-4 text-slate-600" />
-              <span className="hidden lg:inline ml-1">Backup</span>
+              <DownloadCloud className="h-3.5 md:h-4 w-3.5 md:w-4 text-slate-600 mr-1" />
+              <span>Backup</span>
             </Button>
             <Button 
               size="sm" 
               variant="ghost" 
               onClick={() => setIsShortcutsModalOpen(true)}
-              className="h-8 w-8 p-0 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-100 md:h-9 md:w-9"
+              className="h-8 w-8 p-0 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-100 md:h-9 md:w-9 shrink-0 cursor-pointer"
               title="Keyboard Shortcuts (Ctrl + /)"
             >
               <Keyboard className="h-4 w-4" />
@@ -2980,7 +2997,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               variant="outline" 
               onClick={handleDownloadPDF} 
               disabled={isSaving}
-              className="h-8 rounded-2xl border-white/50 bg-white/75 px-2 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm"
+              className="h-8 rounded-2xl border-white/60 bg-white/80 px-2.5 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm shrink-0 cursor-pointer"
               title="Download PDF directly"
             >
               {isSaving ? (
@@ -2988,14 +3005,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               ) : (
                 <Download className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 text-blue-700" />
               )}
-              <span className="hidden sm:inline">Download</span>
+              <span>PDF</span>
             </Button>
             <Button 
               size="sm" 
               variant="outline" 
               onClick={handleExportPDF} 
               disabled={isSaving}
-              className="h-8 rounded-2xl border-white/50 bg-white/75 px-2 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm"
+              className="h-8 rounded-2xl border-white/60 bg-white/80 px-2.5 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm shrink-0 cursor-pointer"
               title="Save PDF to cloud storage"
             >
               {isSaving ? (
@@ -3003,7 +3020,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               ) : (
                 <Upload className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1" />
               )}
-              <span className="hidden sm:inline">Save PDF</span>
+              <span>Cloud</span>
             </Button>
           </div>
         </div>
@@ -3030,31 +3047,31 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
       <div className="w-full max-w-7xl mx-auto px-0 py-4 md:py-5 print:max-w-none print:p-0 print:m-0">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="print:hidden w-full">
-          <TabsList className="mb-4 grid w-full grid-cols-5 rounded-[22px] border border-white/70 bg-white/60 p-1 shadow-xl shadow-blue-200/40 backdrop-blur-2xl">
-            <TabsTrigger value="form" className="gap-1 rounded-[18px] text-xs md:gap-2 md:text-sm">
-              <FileText className="h-3.5 md:h-4 w-3.5 md:w-4" />
+          <TabsList className="mb-4 grid w-full grid-cols-5 rounded-[22px] border border-white/70 bg-white/65 p-1 shadow-lg shadow-blue-200/40 backdrop-blur-2xl h-11 sm:h-12">
+            <TabsTrigger value="form" className="gap-1 rounded-[16px] text-[11px] sm:text-xs md:text-sm font-bold flex-1 justify-center px-1">
+              <FileText className="h-3.5 md:h-4 w-3.5 md:w-4 shrink-0" />
               <span className="hidden sm:inline">Edit Form</span>
-              <span className="sm:hidden">Edit</span>
+              <span className="sm:hidden">Form</span>
             </TabsTrigger>
-            <TabsTrigger value="preview" className="gap-1 rounded-[18px] text-xs md:gap-2 md:text-sm">
-              <Eye className="h-3.5 md:h-4 w-3.5 md:w-4" />
+            <TabsTrigger value="preview" className="gap-1 rounded-[16px] text-[11px] sm:text-xs md:text-sm font-bold flex-1 justify-center px-1">
+              <Eye className="h-3.5 md:h-4 w-3.5 md:w-4 shrink-0" />
               <span className="hidden sm:inline">A4 Preview</span>
               <span className="sm:hidden">Preview</span>
             </TabsTrigger>
-            <TabsTrigger value="saved-documents" className="gap-1 rounded-[18px] text-xs md:gap-2 md:text-sm">
-              <FileText className="h-3.5 md:h-4 w-3.5 md:w-4" />
-              <span className="hidden sm:inline">Saved PDF Documents</span>
+            <TabsTrigger value="saved-documents" className="gap-1 rounded-[16px] text-[11px] sm:text-xs md:text-sm font-bold flex-1 justify-center px-1">
+              <Layers className="h-3.5 md:h-4 w-3.5 md:w-4 shrink-0" />
+              <span className="hidden sm:inline">Saved BOLs</span>
               <span className="sm:hidden">Saved</span>
             </TabsTrigger>
-            <TabsTrigger value="account" className="gap-1 rounded-[18px] text-xs md:gap-2 md:text-sm">
-              <Landmark className="h-3.5 md:h-4 w-3.5 md:w-4" />
+            <TabsTrigger value="account" className="gap-1 rounded-[16px] text-[11px] sm:text-xs md:text-sm font-bold flex-1 justify-center px-1">
+              <Landmark className="h-3.5 md:h-4 w-3.5 md:w-4 shrink-0" />
               <span className="hidden sm:inline">Account</span>
-              <span className="sm:hidden">Acct</span>
+              <span className="sm:hidden">Ledger</span>
             </TabsTrigger>
-            <TabsTrigger value="pdf-settings" className="gap-1 rounded-[18px] text-xs md:gap-2 md:text-sm">
-              <Download className="h-3.5 md:h-4 w-3.5 md:w-4" />
+            <TabsTrigger value="pdf-settings" className="gap-1 rounded-[16px] text-[11px] sm:text-xs md:text-sm font-bold flex-1 justify-center px-1">
+              <Download className="h-3.5 md:h-4 w-3.5 md:w-4 shrink-0" />
               <span className="hidden sm:inline">PDF Settings</span>
-              <span className="sm:hidden">PDF</span>
+              <span className="sm:hidden">Settings</span>
             </TabsTrigger>
           </TabsList>
 
