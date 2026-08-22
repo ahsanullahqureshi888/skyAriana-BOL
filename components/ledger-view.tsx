@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect, type ReactNode } from 'react'
+import { useState, useRef, useCallback, useEffect, memo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -108,7 +108,7 @@ function LedgerPrintPortal({ children }: { children: ReactNode }) {
   return createPortal(children, container)
 }
 
-export function LedgerView() {
+export const LedgerView = memo(function LedgerView() {
   const { accounts, currentAccount, currentCompany, selectAccount, selectCompany, addLedgerEntry, updateLedgerEntry, deleteLedgerEntry, importLedgerEntries, setView, toggleSurrenderedBL, updateLedgerSettings, getLedgerSettings } = useApp()
   const [isOpen, setIsOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
@@ -2052,4 +2052,4 @@ export function LedgerView() {
       </Dialog>
     </div>
   )
-}
+})

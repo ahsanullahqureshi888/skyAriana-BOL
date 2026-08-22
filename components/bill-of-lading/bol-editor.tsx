@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef, startTransition, type ReactNode } from "react"
+import { useState, useEffect, useRef, useCallback, memo, startTransition, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -320,6 +320,11 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<string>("form")
+  const handleTabChange = useCallback((newTab: string) => {
+    startTransition(() => {
+      setActiveTab(newTab)
+    })
+  }, [])
   const [logoUrl, setLogoUrl] = useState<string>("/images/logo.png")
   const logoInputRef = useRef<HTMLInputElement>(null)
   const isCompanySettingsLoadedRef = useRef(false)
@@ -3024,7 +3029,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       )}
 
       <div className="w-full max-w-7xl mx-auto px-0 py-4 md:py-5 print:max-w-none print:p-0 print:m-0">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="print:hidden w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="print:hidden w-full">
           <TabsList className="mb-4 grid w-full grid-cols-5 rounded-[22px] border border-white/70 bg-white/60 p-1 shadow-xl shadow-blue-200/40 backdrop-blur-2xl">
             <TabsTrigger value="form" className="gap-1 rounded-[18px] text-xs md:gap-2 md:text-sm">
               <FileText className="h-3.5 md:h-4 w-3.5 md:w-4" />
@@ -6266,30 +6271,36 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             </div>
           </TabsContent>
 
-          <TabsContent value="saved-documents">
-            <section className="min-h-0 rounded-[30px] border border-white/70 bg-white/45 p-3 shadow-2xl shadow-blue-200/40 backdrop-blur-2xl print:hidden">
-              {savedDocumentsPanel || (
-                <SavedDocuments
-                  onLoadDocument={(id, targetTab) => {
-                    startTransition(() => {
-                      void loadDocument(id)
-                      setActiveTab(targetTab || "form")
-                    })
-                  }}
-                />
-              )}
-            </section>
+          <TabsContent value="saved-documents" className="focus-visible:outline-none">
+            {activeTab === "saved-documents" && (
+              <section className="min-h-0 rounded-[30px] border border-white/70 bg-white/45 p-3 shadow-2xl shadow-blue-200/40 backdrop-blur-2xl print:hidden [content-visibility:auto]">
+                {savedDocumentsPanel || (
+                  <SavedDocuments
+                    onLoadDocument={(id, targetTab) => {
+                      startTransition(() => {
+                        void loadDocument(id)
+                        setActiveTab(targetTab || "form")
+                      })
+                    }}
+                  />
+                )}
+              </section>
+            )}
           </TabsContent>
 
-          <TabsContent value="account">
-            <section className="min-h-0 w-full overflow-hidden rounded-[30px] border border-white/70 bg-white/45 p-1 sm:p-2 shadow-2xl shadow-blue-200/40 backdrop-blur-2xl print:hidden">
-              {accountLedgerPanel || <LedgerView />}
-            </section>
+          <TabsContent value="account" className="focus-visible:outline-none">
+            {activeTab === "account" && (
+              <section className="min-h-0 w-full overflow-hidden rounded-[30px] border border-white/70 bg-white/45 p-1 sm:p-2 shadow-2xl shadow-blue-200/40 backdrop-blur-2xl print:hidden [content-visibility:auto]">
+                {accountLedgerPanel || <LedgerView />}
+              </section>
+            )}
           </TabsContent>
 
           {/* PDF Settings Tab */}
-          <TabsContent value="pdf-settings">
-            <Card className="bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden">
+          <TabsContent value="pdf-settings" className="focus-visible:outline-none">
+            {activeTab === "pdf-settings" && (
+              <div className="space-y-4 [content-visibility:auto]">
+              <Card className="bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden">
               <CardHeader className="pb-4 border-b border-white/50 bg-white/40">
                 <CardTitle className="text-base flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -6886,6 +6897,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 </div>
               </CardContent>
             </Card>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 
