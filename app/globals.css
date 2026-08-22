@@ -3863,39 +3863,45 @@
 
 .party-card-name {
   margin: 0;
-  font-size: 9.5pt;
-  font-weight: 900;
+  font-family: inherit;
+  font-size: 8.8pt !important;
+  font-weight: 900 !important;
   text-transform: uppercase;
   color: #0f172a;
   line-height: 1.25;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .party-card-info-list {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.25rem;
 }
 
 .party-card-info-row {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.35rem;
   align-items: flex-start;
 }
 
 .party-card-info-icon {
-  width: 0.85rem;
-  min-width: 0.85rem;
-  height: 0.85rem;
+  width: 0.8rem;
+  min-width: 0.8rem;
+  height: 0.8rem;
   color: #2563eb;
-  margin-top: 0.1rem;
+  margin-top: 0.12rem;
 }
 
 .party-card-info-text {
   margin: 0;
-  font-size: 8.2pt;
+  font-family: inherit;
+  font-size: 7.8pt !important;
   line-height: 1.35;
-  color: #334155;
-  font-weight: 500;
+  color: #1e293b;
+  font-weight: 600 !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .exporter-contact-detail-card {

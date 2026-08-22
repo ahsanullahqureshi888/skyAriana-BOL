@@ -282,7 +282,16 @@ function parseNamePhonePair(segment: string): { label: string; number: string } 
   const colonIdx = clean.indexOf(":")
   const label = clean.slice(0, colonIdx).trim()
   const number = clean.slice(colonIdx + 1).trim()
-  if (label && number && /[\d+]/.test(number) && !/[\u0600-\u06FF]/.test(number.replace(/[\d\s\+\(\)\-\,\.\/]/g, ""))) {
+  if (!label || !number) return null
+
+  // Reject general business fields from being formatted as phone pairs
+  const isBusinessField = /^(no|gst|pan|iec|fssai|cargo|item|items|invoice|bl|bol|container|seal|truck|driver|weight|gross|net|rate|qty|quantity|total|remarks|goods|description|address|date|place|origin|destination)$/i.test(label)
+  if (isBusinessField) return null
+
+  // Phone number MUST be purely digits, +, spaces, hyphens, parentheses, and NO English letters
+  const isPurePhone = /^\+?[\d\s\-\(\)\/\.]{5,22}$/.test(number) && /\d{4,}/.test(number) && !/[a-zA-Z]/.test(number)
+
+  if (isPurePhone && (hasRTLText(label) || /^(phone|cell|tel|mobile|contact|rep|representative|whatsApp|telegram)$/i.test(label))) {
     return { label, number }
   }
   return null
@@ -293,16 +302,16 @@ function renderLineContent(line: string, forceLTR = false) {
   if (!clean) return null
 
   // If line is a pure phone number with an accidental trailing colon (e.g. "0794983011:")
-  if (/^[\d\s\+\(\)\-\,\.\/]+:$/.test(clean)) {
+  if (/^\+?[\d\s\-\(\)\/\.]+:$/.test(clean) && !/[a-zA-Z]/.test(clean)) {
     clean = clean.slice(0, -1).trim()
   }
 
   // Check if line is purely phone numbers or dialing codes (e.g. "0796140001 0703130001" or "(+93) 0 700 203 307")
-  const isPureNumericPhone = /^[\d\s\+\(\)\-\,\.\/]+$/.test(clean) && /\d{4,}/.test(clean)
+  const isPureNumericPhone = /^\+?[\d\s\-\(\)\/\.]{7,30}$/.test(clean) && /\d{5,}/.test(clean) && !/[a-zA-Z]/.test(clean)
   if (isPureNumericPhone) {
     return (
       <span
-        className="block font-mono font-black text-blue-950 tracking-wider text-[9.2pt] leading-tight text-left"
+        className="block font-mono font-bold text-blue-950 tracking-wider text-[8.8pt] leading-tight text-left"
         dir="ltr"
         style={{ direction: "ltr", unicodeBidi: "isolate" }}
       >
@@ -311,7 +320,7 @@ function renderLineContent(line: string, forceLTR = false) {
     )
   }
 
-  // Check if line contains multiple items separated by comma, pipe, or semicolon (e.g. "عصمت الله: 0729807676 , حکمت الله: 0799007371")
+  // Check if line contains multiple contact items separated by comma, pipe, or semicolon (e.g. "عصمت الله: 0729807676 , حکمت الله: 0799007371")
   const delimiter = clean.includes(" , ") ? " , " : clean.includes(",") ? "," : clean.includes("|") ? "|" : clean.includes("؛") ? "؛" : null
   if (delimiter) {
     const rawSegments = clean.split(delimiter).map((s) => s.trim()).filter(Boolean)
@@ -319,11 +328,11 @@ function renderLineContent(line: string, forceLTR = false) {
 
     if (hasPairs) {
       return (
-        <span className="inline-flex items-center flex-wrap gap-x-2 gap-y-1 font-bold leading-normal text-left" dir="ltr">
+        <span className="inline-flex items-center flex-wrap gap-x-2 gap-y-1 font-bold leading-normal text-left max-w-full" dir="ltr">
           {rawSegments.map((segment, idx) => {
             const pair = parseNamePhonePair(segment)
             if (pair) {
-              const isLabelPersian = /[\u0600-\u06FF]/.test(pair.label)
+              const isLabelPersian = hasRTLText(pair.label)
               return (
                 <span key={idx} className="whitespace-nowrap inline-flex items-center gap-1">
                   {idx > 0 && <span className="text-blue-400 font-bold mx-0.5">•</span>}
@@ -335,14 +344,14 @@ function renderLineContent(line: string, forceLTR = false) {
                     {pair.label}
                   </span>
                   <span className="text-slate-400 font-black text-[8.2pt]">:</span>
-                  <span className="font-mono font-black text-blue-950 tracking-tight text-[8.6pt]" dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
+                  <span className="font-mono font-bold text-blue-950 tracking-tight text-[8.5pt]" dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
                     {pair.number}
                   </span>
                 </span>
               )
             }
 
-            const isSegPersian = /[\u0600-\u06FF]/.test(segment)
+            const isSegPersian = hasRTLText(segment)
             return (
               <span key={idx} className="whitespace-nowrap inline-flex items-center gap-1">
                 {idx > 0 && <span className="text-blue-400 font-bold mx-0.5">•</span>}
@@ -361,33 +370,33 @@ function renderLineContent(line: string, forceLTR = false) {
     }
   }
 
-  // Check if line is a single label:number pair (e.g. "نماینده دوغارون / شماره تماس: 09152091993")
+  // Check if line is a single contact label:number pair (e.g. "نماینده دوغارون / شماره تماس: 09152091993")
   const singlePair = parseNamePhonePair(clean)
   if (singlePair) {
-    const isLabelPersian = /[\u0600-\u06FF]/.test(singlePair.label)
+    const isLabelPersian = hasRTLText(singlePair.label)
     return (
       <span className="whitespace-nowrap inline-flex items-center gap-1 font-bold leading-normal text-left" dir="ltr">
         <span
-          className={isLabelPersian ? "persian-text bol-persian-text font-[vazirmatn] text-slate-800 font-extrabold text-[8.6pt]" : "text-slate-800 font-bold text-[8.6pt]"}
+          className={isLabelPersian ? "persian-text bol-persian-text font-[vazirmatn] text-slate-800 font-extrabold text-[8.4pt]" : "text-slate-800 font-bold text-[8.4pt]"}
           dir="ltr"
           style={{ unicodeBidi: "isolate" }}
         >
           {singlePair.label}
         </span>
-        <span className="text-slate-400 font-black text-[8.6pt]">:</span>
-        <span className="font-mono font-black text-blue-950 tracking-wider text-[9.2pt]" dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
+        <span className="text-slate-400 font-black text-[8.4pt]">:</span>
+        <span className="font-mono font-bold text-blue-950 tracking-wider text-[8.8pt]" dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
           {singlePair.number}
         </span>
       </span>
     )
   }
 
-  // Check if line is a section label ending with colon (e.g. "حاجی معلم صاحب:")
-  if (clean.endsWith(":") && /[\u0600-\u06FF]/.test(clean)) {
+  // Check if line is a Persian section label ending with colon (e.g. "حاجی معلم صاحب:")
+  if (clean.endsWith(":") && hasRTLText(clean.slice(0, -1))) {
     const labelOnly = clean.slice(0, -1).trim()
     return (
       <span
-        className="block persian-text bol-persian-text font-[vazirmatn] text-[8.8pt] font-black text-blue-900 leading-tight text-left mt-0.5"
+        className="block persian-text bol-persian-text font-[vazirmatn] text-[8.6pt] font-black text-blue-900 leading-tight text-left mt-0.5"
         dir="rtl"
         style={{ unicodeBidi: "isolate", textAlign: "left" }}
       >
@@ -398,14 +407,18 @@ function renderLineContent(line: string, forceLTR = false) {
 
   // Ensure slashes in text have clean space around them so they don't stick to words
   const spacedLine = clean.replace(/([^\s])\/([^\s])/g, "$1 / $2")
-  const isPersian = /[\u0600-\u06FF]/.test(spacedLine)
+  const isPersian = hasRTLText(spacedLine)
   const isPersianDigitsOnly = /^[\u06F0-\u06F9\/\-\s:]+$/.test(spacedLine)
 
   return (
     <span
-      className={`block ${isPersian ? "persian-text bol-persian-text font-[vazirmatn] text-[8.8pt] font-extrabold text-slate-900" : "font-sans font-bold text-slate-900"} ${isPersianDigitsOnly ? "persian-digits" : ""} leading-snug text-left`}
+      className={`block ${
+        isPersian
+          ? "persian-text bol-persian-text font-[vazirmatn] text-[8.4pt] font-extrabold text-slate-900"
+          : "font-sans font-semibold text-slate-900 text-[8pt]"
+      } ${isPersianDigitsOnly ? "persian-digits" : ""} leading-snug text-left break-words`}
       dir={isPersianDigitsOnly ? "ltr" : isPersian ? "rtl" : "ltr"}
-      style={{ unicodeBidi: "isolate", textAlign: "left" }}
+      style={{ unicodeBidi: "isolate", textAlign: "left", wordBreak: "break-word", overflowWrap: "break-word" }}
     >
       {spacedLine}
     </span>
