@@ -2433,10 +2433,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     })
   }
 
-  const quickLocationQuery = (
-    routeLocationSearch.trim() ||
-    (activeRouteIndex !== null ? formData.routes[activeRouteIndex]?.location.trim() : "")
-  ).toLowerCase()
+  const quickLocationQuery = routeLocationSearch.trim().toLowerCase()
 
   const quickLocationMatches = predefinedLocations.filter((loc) => {
     if (selectedCountryFilter === "PORTS") {
@@ -5339,61 +5336,127 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
                             {/* Inline Recommendation Popover */}
                             {showLocationDropdown === index && (
-                              <div className="absolute left-0 right-0 top-full z-40 mt-1.5 max-h-80 overflow-y-auto rounded-2xl border border-amber-300/80 bg-white p-3 shadow-2xl shadow-slate-900/20 backdrop-blur-xl">
-                                <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+                              <div className="absolute left-0 right-0 top-full z-40 mt-1.5 max-h-96 overflow-y-auto rounded-2xl border border-amber-300/90 bg-white p-3 shadow-2xl shadow-slate-900/25 backdrop-blur-xl">
+                                <div className="flex flex-wrap items-center justify-between border-b border-slate-100 pb-2 mb-2 gap-2">
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-xs font-black text-amber-900">Suggested Locations</span>
                                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">
                                       {quickLocationMatches.length}
                                     </span>
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowLocationDropdown(null)}
-                                    className="text-xs font-bold text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md transition"
-                                  >
-                                    ✕ Close
-                                  </button>
+
+                                  <div className="flex items-center gap-1.5 flex-1 max-w-[200px]">
+                                    <Input
+                                      value={routeLocationSearch}
+                                      onChange={(e) => setRouteLocationSearch(e.target.value)}
+                                      placeholder="Filter..."
+                                      className="h-7 text-xs rounded-lg bg-slate-50 border-slate-200"
+                                      autoFocus={false}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowLocationDropdown(null)}
+                                      className="text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-md transition cursor-pointer"
+                                    >
+                                      ✕ Close
+                                    </button>
+                                  </div>
                                 </div>
 
                                 {/* Quick Country Filter Chips */}
-                                <div className="flex flex-wrap gap-1 mb-2.5 pb-1 border-b border-slate-100">
-                                  {["ALL", "Afghanistan", "Iran", "Pakistan", "United Arab Emirates", "China", "India", "Turkey", "Uzbekistan"].map((ctry) => (
+                                <div className="flex flex-wrap gap-1 mb-2.5 pb-1.5 border-b border-slate-100">
+                                  {[
+                                    { label: "🌍 All", value: "ALL" },
+                                    { label: "⚓ Ports", value: "PORTS" },
+                                    { label: "🇦🇪 UAE / Dubai", value: "UAE" },
+                                    { label: "🇨🇮 Ivory Coast / Africa", value: "AFRICA" },
+                                    { label: "🇮🇷 Iran", value: "Iran" },
+                                    { label: "🇦🇫 Afghanistan", value: "Afghanistan" },
+                                    { label: "🇮🇳 India", value: "India" },
+                                    { label: "🇵🇰 Pakistan", value: "Pakistan" },
+                                    { label: "🇸🇦 Gulf", value: "GULF" },
+                                    { label: "🇹🇷 Turkey", value: "Turkey" },
+                                    { label: "🇨🇳 China", value: "China" },
+                                    { label: "🇪🇺 Europe / US", value: "EUROPE_AMERICAS" },
+                                    { label: "🇺🇿 Central Asia", value: "CENTRAL_ASIA" },
+                                  ].map((tab) => (
                                     <button
-                                      key={ctry}
+                                      key={tab.value}
                                       type="button"
-                                      onClick={() => setSelectedCountryFilter(ctry)}
-                                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
-                                        selectedCountryFilter === ctry
-                                          ? "bg-amber-600 text-white shadow-sm"
+                                      onClick={() => setSelectedCountryFilter(tab.value)}
+                                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition cursor-pointer ${
+                                        selectedCountryFilter === tab.value
+                                          ? "bg-amber-600 text-white shadow-xs ring-1 ring-amber-400"
                                           : "bg-slate-100 text-slate-700 hover:bg-amber-100 hover:text-amber-900"
                                       }`}
                                     >
-                                      {ctry === "ALL" ? "🌍 All" : ctry === "Afghanistan" ? "🇦🇫 AF" : ctry === "Iran" ? "🇮🇷 IR" : ctry === "Pakistan" ? "🇵🇰 PK" : ctry === "United Arab Emirates" ? "🇦🇪 UAE" : ctry === "China" ? "🇨🇳 CN" : ctry === "India" ? "🇮🇳 IN" : ctry === "Turkey" ? "🇹🇷 TR" : "🇺🇿 UZ"}
+                                      {tab.label}
                                     </button>
                                   ))}
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                                  {quickLocationMatches.slice(0, 18).map((loc) => (
-                                    <button
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+                                  {quickLocationMatches.map((loc) => (
+                                    <div
                                       key={loc.name}
-                                      type="button"
-                                      onClick={() => {
-                                        handleQuickLocationSelect(loc)
-                                        setShowLocationDropdown(null)
-                                      }}
-                                      className="flex items-center justify-between rounded-xl p-2 text-left transition bg-slate-50/60 hover:bg-amber-50 border border-slate-100 hover:border-amber-300 cursor-pointer group"
+                                      className="flex flex-col justify-between rounded-xl p-2 text-left transition bg-slate-50/70 hover:bg-amber-50/60 border border-slate-200/80 hover:border-amber-400 group"
                                     >
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <span className="text-base shrink-0">{countryFlags[loc.country] || "🌍"}</span>
-                                        <div className="min-w-0">
-                                          <p className="text-xs font-black text-slate-900 group-hover:text-amber-900 truncate">{loc.name}</p>
-                                          <p className="text-[10px] font-semibold text-slate-500 font-[vazirmatn] truncate" dir="rtl">{loc.persian}</p>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          handleQuickLocationSelect(loc)
+                                          setShowLocationDropdown(null)
+                                        }}
+                                        className="flex items-center justify-between w-full cursor-pointer text-left"
+                                      >
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                          <span className="text-base shrink-0">{countryFlags[loc.country] || "🌍"}</span>
+                                          <div className="min-w-0">
+                                            <p className="text-xs font-black text-slate-900 group-hover:text-amber-950 truncate">{loc.name}</p>
+                                            <p className="text-[10px] font-bold text-slate-500 font-[vazirmatn] truncate" dir="rtl">{loc.persian}</p>
+                                          </div>
                                         </div>
+                                        <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-900 shrink-0 ml-1">{loc.code}</span>
+                                      </button>
+
+                                      <div className="mt-1.5 pt-1 border-t border-slate-100 flex flex-wrap items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            handleQuickLocationSelect(loc)
+                                            setShowLocationDropdown(null)
+                                          }}
+                                          className="text-[9px] font-bold bg-amber-500 text-white rounded px-1.5 py-0.5 hover:bg-amber-600 transition cursor-pointer"
+                                        >
+                                          + Stop #{index + 1}
+                                        </button>
+                                        {loc.isPort && (
+                                          <>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleQuickSetDischarge(loc.portName || loc.name)}
+                                              className="text-[9px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded px-1.5 py-0.5 transition cursor-pointer"
+                                            >
+                                              🚢 POD
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleQuickSetLoading(loc.portName || loc.name)}
+                                              className="text-[9px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white rounded px-1.5 py-0.5 transition cursor-pointer"
+                                            >
+                                              ⚓ POL
+                                            </button>
+                                          </>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => handleQuickSetDelivery(loc.country === "Ivory Coast" ? "Ivory Coast, West Africa" : loc.name)}
+                                          className="text-[9px] font-bold bg-emerald-50 text-emerald-800 hover:bg-emerald-600 hover:text-white rounded px-1.5 py-0.5 transition cursor-pointer"
+                                        >
+                                          📍 Delivery
+                                        </button>
                                       </div>
-                                      <span className="rounded-md bg-amber-100/80 px-1.5 py-0.5 text-[10px] font-black text-amber-800 shrink-0 ml-1">{loc.code}</span>
-                                    </button>
+                                    </div>
                                   ))}
                                   {quickLocationMatches.length === 0 && (
                                     <div className="col-span-2 p-4 text-center text-xs font-bold text-slate-400 bg-slate-50 rounded-xl">
