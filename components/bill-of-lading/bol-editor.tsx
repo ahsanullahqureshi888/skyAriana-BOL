@@ -2295,12 +2295,29 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     { name: "Multan, PK", persian: "ملتان، پاکستان", country: "Pakistan", code: "MLT" },
     { name: "Faisalabad, PK", persian: "فیصل‌آباد، پاکستان", country: "Pakistan", code: "FSB" },
     
-    // UAE & Gulf States
-    { name: "Jebel Ali Port, AE", persian: "بندر جبل علی، دبی", country: "UAE", code: "JEA", isPort: true, portName: "Jebel Ali Port" },
-    { name: "Dubai, AE", persian: "دبی، امارات", country: "UAE", code: "DXB", isPort: true, portName: "Port Rashid / Dubai" },
-    { name: "Abu Dhabi (Khalifa Port), AE", persian: "بندر خلیفه، ابوظبی", country: "UAE", code: "AUH", isPort: true, portName: "Khalifa Port" },
-    { name: "Sharjah (Khorfakkan), AE", persian: "بندر خورفکان، شارجہ", country: "UAE", code: "SHJ", isPort: true, portName: "Khorfakkan / Port Khalid" },
-    { name: "Fujairah Port, AE", persian: "بندر فجیرة، امارات", country: "UAE", code: "FJR", isPort: true, portName: "Port of Fujairah" },
+    // 🇦🇪 Dubai All Ports & UAE Seaports (Complete Marine Terminals)
+    { name: "Jebel Ali Port (Mina Jebel Ali), Dubai, AE", persian: "بندر جبل علی، دبی", country: "UAE", code: "JEA", isPort: true, portName: "Jebel Ali Port (Mina Jebel Ali)" },
+    { name: "Port Rashid (Mina Rashid), Dubai, AE", persian: "بندر راشد، دبی", country: "UAE", code: "DXB-PRD", isPort: true, portName: "Port Rashid (Mina Rashid)" },
+    { name: "Al Hamriya Port (Mina Al Hamriya), Dubai, AE", persian: "بندر حمرية، دبی", country: "UAE", code: "HAM-DXB", isPort: true, portName: "Al Hamriya Port (Dubai)" },
+    { name: "Dubai Creek (Deira Wharfage / Mina Al Khor), AE", persian: "اسکله خور دبی / دیره", country: "UAE", code: "DXB-CRK", isPort: true, portName: "Dubai Creek (Deira Wharfage)" },
+    { name: "Dubai Maritime City (DMC), AE", persian: "شهرک دریایی دبی", country: "UAE", code: "DMC", isPort: true, portName: "Dubai Maritime City (DMC)" },
+    { name: "Dubai Drydocks World, AE", persian: "حوضچه خشک دبی", country: "UAE", code: "DDW", isPort: true, portName: "Dubai Drydocks World" },
+    { name: "Jebel Ali Free Zone (JAFZA), Dubai, AE", persian: "منطقه آزاد جبل علی، دبی", country: "UAE", code: "JAFZA", isPort: true, portName: "Jebel Ali Free Zone (JAFZA)" },
+    { name: "Dubai Logistics City (DLC / DWC), AE", persian: "شهرک لجستیک دبی (DWC)", country: "UAE", code: "DWC", isPort: true, portName: "Dubai Logistics City (DWC)" },
+    { name: "Dubai, AE", persian: "دبی، امارات متحده عربی", country: "UAE", code: "DXB", isPort: false },
+    { name: "Port of Fujairah, AE", persian: "بندر فجیرة، امارات", country: "UAE", code: "FJR", isPort: true, portName: "Port of Fujairah" },
+    { name: "Khalifa Port (Mina Khalifa), Abu Dhabi, AE", persian: "بندر خلیفه، ابوظبی", country: "UAE", code: "KHL", isPort: true, portName: "Khalifa Port (Abu Dhabi)" },
+    { name: "Mina Zayed (Port Zayed), Abu Dhabi, AE", persian: "بندر زاید، ابوظبی", country: "UAE", code: "MZY", isPort: true, portName: "Mina Zayed (Port Zayed)" },
+    { name: "Musaffah Port, Abu Dhabi, AE", persian: "بندر مصفح، ابوظبی", country: "UAE", code: "MSF", isPort: true, portName: "Musaffah Port (Abu Dhabi)" },
+    { name: "Khorfakkan Port, Sharjah, AE", persian: "بندر خورفکان، شارجه", country: "UAE", code: "KLF", isPort: true, portName: "Khorfakkan Port (Sharjah)" },
+    { name: "Port Khalid, Sharjah, AE", persian: "بندر خالد، شارجه", country: "UAE", code: "PKH", isPort: true, portName: "Port Khalid (Sharjah)" },
+    { name: "Hamriyah Free Zone Port, Sharjah, AE", persian: "بندر حمرية شارجه", country: "UAE", code: "HFZ", isPort: true, portName: "Hamriyah Port (Sharjah)" },
+    { name: "Ajman Port, AE", persian: "بندر عجمان، امارات", country: "UAE", code: "AJM", isPort: true, portName: "Port of Ajman" },
+    { name: "Saqr Port (Ras Al Khaimah), AE", persian: "بندر صقر، رأس الخیمه", country: "UAE", code: "SQR", isPort: true, portName: "Saqr Port (Ras Al Khaimah)" },
+    { name: "Ras Al Khaimah Port (RAK Port), AE", persian: "بندر رأس الخیمه، امارات", country: "UAE", code: "RAK", isPort: true, portName: "Port of Ras Al Khaimah" },
+    { name: "Umm Al Quwain Port, AE", persian: "بندر ام‌القیوین، امارات", country: "UAE", code: "UAQ", isPort: true, portName: "Port of Umm Al Quwain" },
+    { name: "Abu Dhabi, AE", persian: "ابوظبی، امارات", country: "UAE", code: "AUH" },
+    { name: "Sharjah, AE", persian: "شارجہ، امارات", country: "UAE", code: "SHJ" },
     { name: "Hamad Port (Doha), QA", persian: "بندر حمد، قطر", country: "Qatar", code: "DOH", isPort: true, portName: "Hamad Port" },
     { name: "Dammam (King Abdulaziz Port), SA", persian: "بندر دمام، عربستان", country: "Saudi Arabia", code: "DMM", isPort: true, portName: "King Abdulaziz Port (Dammam)" },
     { name: "Jeddah Islamic Port, SA", persian: "بندر اسلامی جده، عربستان", country: "Saudi Arabia", code: "JED", isPort: true, portName: "Jeddah Islamic Port" },
@@ -2427,6 +2444,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     } else if (selectedCountryFilter === "AFRICA") {
       const africaCountries = ["Ivory Coast", "Nigeria", "Ghana", "Benin", "Togo", "Senegal", "Kenya", "Tanzania", "South Africa", "Egypt", "Morocco", "Djibouti", "Sudan"]
       if (!africaCountries.includes(loc.country)) return false
+    } else if (selectedCountryFilter === "GULF") {
+      const gulfCountries = ["Saudi Arabia", "Qatar", "Bahrain", "Oman", "Kuwait", "Iraq", "Jordan", "Lebanon"]
+      if (!gulfCountries.includes(loc.country)) return false
     } else if (selectedCountryFilter === "EUROPE_AMERICAS") {
       const euroAmericas = ["Netherlands", "Belgium", "Germany", "Spain", "Italy", "Greece", "United Kingdom", "France", "Poland", "USA", "Canada", "Brazil", "Panama"]
       if (!euroAmericas.includes(loc.country)) return false
@@ -5718,12 +5738,13 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       {[
                         { label: "ALL", country: "ALL" },
                         { label: "⚓ ALL SEAPORTS", country: "PORTS" },
+                        { label: "🇦🇪 DUBAI & UAE PORTS", country: "UAE" },
                         { label: "🇨🇮 IVORY COAST & AFRICA", country: "AFRICA" },
-                        { label: "🇦🇫 AFGHANISTAN", country: "Afghanistan" },
                         { label: "🇮🇷 IRAN", country: "Iran" },
-                        { label: "🇦🇪 UAE & GULF", country: "UAE" },
+                        { label: "🇦🇫 AFGHANISTAN", country: "Afghanistan" },
                         { label: "🇮🇳 INDIA", country: "India" },
                         { label: "🇵🇰 PAKISTAN", country: "Pakistan" },
+                        { label: "🇸🇦 🇶🇦 GULF STATES", country: "GULF" },
                         { label: "🇹🇷 TURKEY", country: "Turkey" },
                         { label: "🇨🇳 CHINA & ASIA", country: "China" },
                         { label: "🇪🇺 EUROPE & AMERICAS", country: "EUROPE_AMERICAS" },
@@ -5925,6 +5946,72 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     >
                       <span>🇨🇮</span>
                       <span>Abidjan Port & Ivory Coast</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Jebel Ali Port (Mina Jebel Ali)" }))
+                        toast.success("Set POL: Jebel Ali Port (Dubai)")
+                      }}
+                      className="rounded-xl border border-cyan-200 bg-white px-2.5 py-1 text-xs font-black text-cyan-900 shadow-2xs hover:bg-cyan-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇦🇪</span>
+                      <span>Jebel Ali Port (Dubai)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Port Rashid (Mina Rashid)" }))
+                        toast.success("Set POL: Port Rashid (Dubai)")
+                      }}
+                      className="rounded-xl border border-cyan-200 bg-white px-2.5 py-1 text-xs font-black text-cyan-900 shadow-2xs hover:bg-cyan-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇦🇪</span>
+                      <span>Port Rashid (Dubai)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Al Hamriya Port (Dubai)" }))
+                        toast.success("Set POL: Al Hamriya Port (Dubai)")
+                      }}
+                      className="rounded-xl border border-cyan-200 bg-white px-2.5 py-1 text-xs font-black text-cyan-900 shadow-2xs hover:bg-cyan-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇦🇪</span>
+                      <span>Al Hamriya Port (Dubai)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Dubai Creek (Deira Wharfage)" }))
+                        toast.success("Set POL: Dubai Creek (Deira)")
+                      }}
+                      className="rounded-xl border border-cyan-200 bg-white px-2.5 py-1 text-xs font-black text-cyan-900 shadow-2xs hover:bg-cyan-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇦🇪</span>
+                      <span>Dubai Creek (Deira)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Port of Fujairah" }))
+                        toast.success("Set POL: Port of Fujairah")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇦🇪</span>
+                      <span>Fujairah Port</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Khalifa Port (Abu Dhabi)" }))
+                        toast.success("Set POL: Khalifa Port (Abu Dhabi)")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇦🇪</span>
+                      <span>Khalifa Port (Abu Dhabi)</span>
                     </button>
                     <button
                       type="button"
