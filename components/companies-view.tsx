@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { Plus, Trash2, Building, FileText, Receipt, Sparkles, BookOpen, ArrowLeft, ChevronRight, CheckCircle2, TrendingUp, DollarSign } from 'lucide-react'
+import { Plus, Trash2, Building, FileText, Receipt, Sparkles, BookOpen, ArrowLeft, ChevronRight, CheckCircle2, TrendingUp, DollarSign, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,6 +19,7 @@ export function CompaniesView() {
   const { currentAccount, addCompany, deleteCompany, selectCompany, setView } = useApp()
   const [newCompanyName, setNewCompanyName] = useState('')
   const [isOpen, setIsOpen] = useState(false)
+  const [companyToDelete, setCompanyToDelete] = useState<{ id: string; name: string } | null>(null)
 
   if (!currentAccount) return null
 
@@ -219,12 +220,12 @@ export function CompaniesView() {
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 rounded-xl"
+                      className="h-8 w-8 ml-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 rounded-xl cursor-pointer"
                       onClick={e => {
                         e.stopPropagation()
-                        deleteCompany(currentAccount.id, company.id)
+                        setCompanyToDelete({ id: company.id, name: company.name })
                       }}
-                      title="Delete Company"
+                      title="Delete Company / حذف شرکت"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -284,6 +285,63 @@ export function CompaniesView() {
           })}
         </div>
       )}
+
+      {/* Delete Company Confirmation Dialog */}
+      <Dialog open={!!companyToDelete} onOpenChange={(open) => !open && setCompanyToDelete(null)}>
+        <DialogContent className="glass-strong border-red-200 sm:max-w-md p-6 shadow-2xl rounded-3xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-red-100/90 text-red-600 shadow-sm">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <span>Delete Company</span>
+                  <span className="text-xs text-red-700 font-[vazirmatn] font-bold">حذف شرکت</span>
+                </DialogTitle>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                  Are you sure you want to delete this company ledger?
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {companyToDelete && (
+            <div className="my-3 p-4 bg-red-50/70 rounded-2xl border border-red-200/80 text-xs space-y-1.5">
+              <span className="text-slate-500 font-bold block">Company Name:</span>
+              <span className="text-sm font-black text-slate-900">{companyToDelete.name}</span>
+              <p className="text-[11px] text-red-700 font-medium pt-1">
+                ⚠️ All ledger entries under this company will also be removed.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-2 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCompanyToDelete(null)}
+              className="rounded-xl font-black text-xs h-10 px-4"
+            >
+              No, Cancel / رد
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (companyToDelete && currentAccount) {
+                  deleteCompany(currentAccount.id, companyToDelete.id)
+                  setCompanyToDelete(null)
+                }
+              }}
+              className="rounded-xl font-black text-xs h-10 px-5 bg-red-600 hover:bg-red-700 text-white gap-1.5 shadow-md shadow-red-600/20 cursor-pointer"
+            >
+              <Trash2 className="h-4 w-4" />
+              Yes, Delete / هو، حذف یې کړه
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

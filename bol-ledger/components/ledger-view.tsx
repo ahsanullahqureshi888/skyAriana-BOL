@@ -773,22 +773,46 @@ export function LedgerView() {
                 className="bg-white/50 border-white/30"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Debit / د پور حساب</label>
+            <div>
+              <label className="text-sm font-medium">Debit</label>
               <Input
                 type="number"
-                value={newEntry.debit || ''}
-                onChange={e => setNewEntry({ ...newEntry, debit: parseFloat(e.target.value) || 0 })}
-                className="bg-white/50 border-white/30"
+                value={newEntry.debit !== undefined ? newEntry.debit : ''}
+                onChange={e => setNewEntry({ ...newEntry, debit: e.target.value === '' ? '' as any : (parseFloat(e.target.value) || 0) })}
+                onFocus={(e) => {
+                  if (newEntry.debit === 0 || newEntry.debit === '0' || Number(newEntry.debit) === 0) {
+                    setNewEntry(prev => ({ ...prev, debit: '' as any }))
+                  } else {
+                    e.target.select()
+                  }
+                }}
+                onBlur={() => {
+                  if (newEntry.debit === '' || newEntry.debit === undefined) {
+                    setNewEntry(prev => ({ ...prev, debit: 0 }))
+                  }
+                }}
+                className="mt-1"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Credit / ترلاسه شوی مبلغ</label>
+            <div>
+              <label className="text-sm font-medium">Credit</label>
               <Input
                 type="number"
-                value={newEntry.credit || ''}
-                onChange={e => setNewEntry({ ...newEntry, credit: parseFloat(e.target.value) || 0 })}
-                className="bg-white/50 border-white/30"
+                value={newEntry.credit !== undefined ? newEntry.credit : ''}
+                onChange={e => setNewEntry({ ...newEntry, credit: e.target.value === '' ? '' as any : (parseFloat(e.target.value) || 0) })}
+                onFocus={(e) => {
+                  if (newEntry.credit === 0 || newEntry.credit === '0' || Number(newEntry.credit) === 0) {
+                    setNewEntry(prev => ({ ...prev, credit: '' as any }))
+                  } else {
+                    e.target.select()
+                  }
+                }}
+                onBlur={() => {
+                  if (newEntry.credit === '' || newEntry.credit === undefined) {
+                    setNewEntry(prev => ({ ...prev, credit: 0 }))
+                  }
+                }}
+                className="mt-1"
               />
             </div>
           </div>

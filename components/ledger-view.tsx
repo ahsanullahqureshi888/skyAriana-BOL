@@ -1695,8 +1695,12 @@ export const LedgerView = memo(function LedgerView() {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-5 w-5 hover:bg-red-100 hover:text-red-600"
-                              onClick={() => deleteLedgerEntry(currentAccount.id, currentCompany.id, entry.id)}
+                              className="h-5 w-5 hover:bg-red-100 hover:text-red-600 cursor-pointer"
+                              title="Delete Ledger Row / حذف قطار"
+                              onClick={() => {
+                                setEntryToDelete(entry)
+                                setIsDeleteDialogOpen(true)
+                              }}
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
@@ -2147,6 +2151,300 @@ export const LedgerView = memo(function LedgerView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog (Yes / No Modal) */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="glass-strong border-red-200 sm:max-w-md p-6 shadow-2xl rounded-3xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-red-100/90 text-red-600 shadow-sm">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <span>Confirm Deletion</span>
+                  <span className="text-xs text-red-700 font-[vazirmatn] font-bold">د ثبت حذف کول</span>
+                </DialogTitle>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                  Are you sure you want to delete this ledger entry?
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {entryToDelete && (
+            <div className="my-3 p-4 bg-gradient-to-br from-red-50/80 via-white to-slate-50 rounded-2xl border border-red-200/80 text-xs space-y-2.5 shadow-sm">
+              <div className="flex justify-between items-center pb-2 border-b border-red-100">
+                <span className="font-extrabold text-slate-700">Row #{entryToDelete.sNo}</span>
+                <span className="font-mono font-black text-blue-900 bg-blue-50 px-2.5 py-1 rounded-xl border border-blue-200">
+                  {entryToDelete.barnamehNo || entryToDelete.billOfLanding || 'No BOL'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div>
+                  <span className="text-slate-500 font-bold block">Date:</span>
+                  <span className="font-extrabold text-slate-800">{entryToDelete.date || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-bold block">Invoice No:</span>
+                  <span className="font-extrabold text-slate-800">{entryToDelete.invoiceNo || '-'}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-slate-500 font-bold block">Description / Shipper:</span>
+                  <span className="font-bold text-slate-800 truncate block">{entryToDelete.shipperDescription || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-bold block">Debit:</span>
+                  <span className="font-mono font-black text-red-600">{entryToDelete.debit > 0 ? formatCurrency(entryToDelete.debit) : '$0'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-bold block">Credit:</span>
+                  <span className="font-mono font-black text-emerald-600">{entryToDelete.credit > 0 ? formatCurrency(entryToDelete.credit) : '$0'}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="text-[11px] text-slate-600 bg-amber-50/80 p-3 rounded-xl border border-amber-200/80 flex items-start gap-2">
+            <span className="text-amber-700 text-sm">💡</span>
+            <span>
+              <strong>Safe Deletion:</strong> You can bring back and restore this entry anytime using the <span className="font-black text-amber-900">"Restore / راوستل"</span> button in the toolbar.
+            </span>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsDeleteDialogOpen(false)
+                setEntryToDelete(null)
+              }}
+              className="rounded-xl font-black text-xs h-10 px-4 border-slate-300"
+            >
+              No, Cancel / رد
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (entryToDelete && currentAccount && currentCompany) {
+                  const toDelete = entryToDelete
+                  deleteLedgerEntry(currentAccount.id, currentCompany.id, toDelete.id)
+                  setUndoBanner({ visible: true, entry: toDelete })
+                  setTimeout(() => {
+                    setUndoBanner((prev) => (prev.entry?.id === toDelete.id ? { visible: false, entry: null } : prev))
+                  }, 12000)
+                }
+                setIsDeleteDialogOpen(false)
+                setEntryToDelete(null)
+              }}
+              className="rounded-xl font-black text-xs h-10 px-5 bg-red-600 hover:bg-red-700 text-white gap-1.5 shadow-md shadow-red-600/20 cursor-pointer"
+            >
+              <Trash2 className="h-4 w-4" />
+              Yes, Delete / هو، حذف یې کړه
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Restore Deleted Entries & Re-sync BOLs Dialog */}
+      <Dialog open={isRestoreOpen} onOpenChange={setIsRestoreOpen}>
+        <DialogContent className="glass-strong border-amber-200 sm:max-w-3xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl rounded-3xl">
+          <DialogHeader className="border-b border-slate-200 pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-amber-100 text-amber-800 shadow-sm">
+                  <RotateCcw className="h-6 w-6 text-amber-700" />
+                </div>
+                <div>
+                  <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
+                    <span>Restore Deleted Entries & Missing BOLs</span>
+                    <span className="text-xs text-amber-700 font-[vazirmatn] font-bold">بېرته راوستل</span>
+                  </DialogTitle>
+                  <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                    Recover any deleted row or re-sync missing BOLs created for {currentCompany.name}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="py-3 space-y-4">
+            {/* Quick Re-sync from BOL Database Button */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50/70 to-blue-50 border border-blue-200/90 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h4 className="text-xs font-black text-blue-950 uppercase tracking-wider flex items-center gap-1.5">
+                  <RefreshCw className="h-3.5 w-3.5 text-blue-700" />
+                  <span>Scan & Re-sync Missing BOLs</span>
+                </h4>
+                <p className="text-[11px] text-blue-800/80 font-semibold mt-0.5">
+                  If you deleted a BOL entry or want to re-import all BOLs for this company from storage, click here.
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={handleResyncBols}
+                disabled={isResyncing}
+                className="gap-2 rounded-xl bg-gradient-to-r from-blue-900 to-indigo-900 hover:from-blue-950 hover:to-indigo-950 text-white font-black text-xs h-9 px-4 shrink-0 shadow-md shadow-blue-950/20 cursor-pointer"
+              >
+                {isResyncing ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Scanning...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    <span>Re-sync All BOLs</span>
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {resyncStatusMessage && (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>{resyncStatusMessage}</span>
+              </div>
+            )}
+
+            {/* Deleted Entries List */}
+            <div>
+              <div className="flex items-center justify-between mb-2.5">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <History className="h-4 w-4 text-amber-600" />
+                  <span>Recycle Bin / Recently Deleted Rows ({deletedLedgerEntries ? deletedLedgerEntries.filter(d => d.companyId === currentCompany.id || d.accountId === currentAccount.id).length : 0})</span>
+                </h4>
+                {deletedLedgerEntries && deletedLedgerEntries.filter(d => d.companyId === currentCompany.id || d.accountId === currentAccount.id).length > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      restoreAllDeletedEntries(currentAccount.id, currentCompany.id)
+                    }}
+                    className="h-7 text-[11px] font-black text-emerald-700 hover:bg-emerald-50 border-emerald-300 rounded-lg"
+                  >
+                    Restore All
+                  </Button>
+                )}
+              </div>
+
+              {(!deletedLedgerEntries || deletedLedgerEntries.filter(d => d.companyId === currentCompany.id || d.accountId === currentAccount.id).length === 0) ? (
+                <div className="p-8 text-center bg-slate-50/70 rounded-2xl border border-slate-200/80">
+                  <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-2.5 border border-amber-200">
+                    <RotateCcw className="h-5 w-5" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-700">No deleted entries in the Recycle Bin.</p>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    If you are looking for a deleted BOL, click the <strong className="text-blue-900">"Re-sync All BOLs"</strong> button above to scan all documents.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5 max-h-[350px] overflow-y-auto pr-1">
+                  {deletedLedgerEntries
+                    .filter(d => d.companyId === currentCompany.id || d.accountId === currentAccount.id)
+                    .map((item) => (
+                      <div
+                        key={item.entry.id}
+                        className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-amber-400 flex items-center justify-between gap-3 transition-all"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-black text-blue-950 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-200">
+                              {item.entry.barnamehNo || item.entry.billOfLanding || 'No BOL'}
+                            </span>
+                            {item.entry.invoiceNo && (
+                              <span className="text-[11px] font-bold text-slate-600">
+                                {item.entry.invoiceNo}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {item.entry.date}
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-slate-800 truncate mt-1">
+                            {item.entry.shipperDescription || item.entry.consignee || 'Ledger Entry'}
+                          </p>
+                          <div className="flex items-center gap-3 text-[11px] mt-1">
+                            {item.entry.debit > 0 && (
+                              <span className="font-mono font-bold text-red-600">
+                                Debit: {formatCurrency(item.entry.debit)}
+                              </span>
+                            )}
+                            {item.entry.credit > 0 && (
+                              <span className="font-mono font-bold text-emerald-600">
+                                Credit: {formatCurrency(item.entry.credit)}
+                              </span>
+                            )}
+                            {item.entry.driverFreight && (
+                              <span className="text-amber-900 font-mono text-[10px]">
+                                Rent: {item.entry.driverFreight}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            restoreLedgerEntry(item.entry.id)
+                          }}
+                          className="h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs gap-1.5 shadow-sm shrink-0 cursor-pointer"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          <span>Restore / راوستل</span>
+                        </Button>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => setIsRestoreOpen(false)}
+              className="rounded-xl font-black text-xs h-10 px-5 bg-slate-900 text-white"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Undo Floating Notification Banner */}
+      {undoBanner.visible && undoBanner.entry && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 bg-slate-950 text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-slate-800 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center gap-2">
+            <Trash2 className="h-4 w-4 text-red-400" />
+            <span className="text-xs font-bold text-slate-200">
+              Row #{undoBanner.entry.sNo} ({undoBanner.entry.barnamehNo || undoBanner.entry.invoiceNo || 'Entry'}) deleted.
+            </span>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => {
+              if (undoBanner.entry) {
+                restoreLedgerEntry(undoBanner.entry.id)
+                setUndoBanner({ visible: false, entry: null })
+              }
+            }}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black px-3.5 py-1.5 h-8 rounded-xl gap-1.5 shadow-md shadow-emerald-950/20 cursor-pointer"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span>Undo / بېرته راوستل</span>
+          </Button>
+          <button
+            type="button"
+            onClick={() => setUndoBanner({ visible: false, entry: null })}
+            className="text-slate-400 hover:text-white p-1 ml-1 cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   )
 })

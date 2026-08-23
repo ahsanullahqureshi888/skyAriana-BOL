@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from 'react'
-import { Plus, Trash2, Building2, ChevronRight, Sparkles, FileText, Search, X, CheckCircle2, ArrowUpRight, BarChart3 } from 'lucide-react'
+import { Plus, Trash2, Building2, ChevronRight, Sparkles, FileText, Search, X, CheckCircle2, ArrowUpRight, BarChart3, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts'
 import { Input } from '@/components/ui/input'
@@ -22,6 +22,7 @@ export function AccountsView() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState<'all' | 'accounts' | 'shippers'>('all')
+  const [accountToDelete, setAccountToDelete] = useState<{ id: string; name: string } | null>(null)
 
   const handleAddAccount = useCallback(() => {
     if (newAccountName.trim()) {
@@ -348,12 +349,12 @@ export function AccountsView() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 rounded-xl"
+                        className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 rounded-xl cursor-pointer"
                         onClick={e => {
                           e.stopPropagation()
-                          deleteAccount(account.id)
+                          setAccountToDelete({ id: account.id, name: account.name })
                         }}
-                        title="Delete Account"
+                        title="Delete Account / حذف حساب"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -467,6 +468,63 @@ export function AccountsView() {
           )}
         </div>
       )}
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={!!accountToDelete} onOpenChange={(open) => !open && setAccountToDelete(null)}>
+        <DialogContent className="glass-strong border-red-200 sm:max-w-md p-6 shadow-2xl rounded-3xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-red-100/90 text-red-600 shadow-sm">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <span>Delete Account</span>
+                  <span className="text-xs text-red-700 font-[vazirmatn] font-bold">حذف حساب</span>
+                </DialogTitle>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                  Are you sure you want to delete this account?
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {accountToDelete && (
+            <div className="my-3 p-4 bg-red-50/70 rounded-2xl border border-red-200/80 text-xs space-y-1.5">
+              <span className="text-slate-500 font-bold block">Account Name:</span>
+              <span className="text-sm font-black text-slate-900">{accountToDelete.name}</span>
+              <p className="text-[11px] text-red-700 font-medium pt-1">
+                ⚠️ All associated companies and ledger entries will also be removed.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-2 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAccountToDelete(null)}
+              className="rounded-xl font-black text-xs h-10 px-4"
+            >
+              No, Cancel / رد
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (accountToDelete) {
+                  deleteAccount(accountToDelete.id)
+                  setAccountToDelete(null)
+                }
+              }}
+              className="rounded-xl font-black text-xs h-10 px-5 bg-red-600 hover:bg-red-700 text-white gap-1.5 shadow-md shadow-red-600/20 cursor-pointer"
+            >
+              <Trash2 className="h-4 w-4" />
+              Yes, Delete / هو، حذف یې کړه
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
