@@ -185,7 +185,7 @@ const emptyInvoice = (): InvoiceForm => ({
   payment_terms: "Due on Receipt",
   currency: "USD",
   invoice_type: "Freight Invoice",
-  seller_name: "SKY ARIANA & BALAM BAR BARAN",
+  seller_name: "SKY ARIANA LIMITED",
   seller_logo: "/images/account-ledger-logo.png",
   seller_tagline: "International Logistics & Freight Forwarding",
   seller_address: "2nd Floor, 16 No. Office, Shahidano, Chowk, Etimad Rahmi Market, Kandahar, Afghanistan",
@@ -232,7 +232,7 @@ const emptyInvoice = (): InvoiceForm => ({
   tax: "",
   discount: "",
   bank_name: "",
-  account_name: "SKY ARIANA & BALAM BAR BARAN",
+  account_name: "SKY ARIANA LIMITED",
   account_number: "",
   iban: "",
   swift_code: "",
@@ -488,7 +488,7 @@ async function invoicePdfBlob(invoiceInput: InvoiceForm) {
       }
     }
     doc.setTextColor(15, 23, 42) // #0F172A
-    invoicePdfText(doc, invoice.seller_name || "SKY ARIANA & BALAM BAR BARAN", 50, 20, { weight: "bold", size: 14, maxWidth: 94 })
+    invoicePdfText(doc, invoice.seller_name || "SKY ARIANA LIMITED", 50, 20, { weight: "bold", size: 14, maxWidth: 94 })
     doc.setTextColor(30, 78, 216) // #1E4ED8
     invoicePdfText(doc, invoice.seller_tagline || "International Logistics & Freight Forwarding", 50, 25, { weight: "bold", size: 8, maxWidth: 94 })
     doc.setTextColor(100, 116, 139)

@@ -434,7 +434,7 @@ function drawPartyCard(
 
 function drawFooter(doc: any, options: ModernBOLPDFOptions, page: number, totalPages: number) {
   const y = PAGE_HEIGHT - 18
-  const companyTitle = cleanPDFText(options.companyName) || "SKY ARIANA & BALAM BAR BARAN"
+  const companyTitle = cleanPDFText(options.companyName) || "SKY ARIANA LIMITED"
   const companyTagline = cleanPDFText(options.companySubtitle) || "Import & Export - International Transportation"
   roundedCard(doc, PAGE_MARGIN, y, CONTENT_WIDTH, 10, BLUE, BLUE, 2)
   drawText(
@@ -474,7 +474,7 @@ export async function generateModernBOLPDFBlob(options: ModernBOLPDFOptions): Pr
   doc.setProperties({
     title: `${options.bolNumber || "BOL"} - Bill of Lading`,
     subject: "Bill of Lading",
-    author: cleanPDFText(options.companyName) || "SKY ARIANA & BALAM BAR BARAN",
+    author: cleanPDFText(options.companyName) || "SKY ARIANA LIMITED",
     creator: "Sky Ariana BOL PDF Export",
     keywords: "bill of lading, logistics, cargo, shipment",
   })
@@ -483,9 +483,9 @@ export async function generateModernBOLPDFBlob(options: ModernBOLPDFOptions): Pr
   const logoDataUrl = await fetchImageDataURL(options.logoUrl)
 
   const form = options.formData
-  const companyTitle = cleanPDFText(options.companyName) || "SKY ARIANA & BALAM BAR BARAN"
+  const companyTitle = cleanPDFText(options.companyName) || "SKY ARIANA LIMITED"
   const companyTagline = cleanPDFText(options.companySubtitle) || "Import & Export - International Transportation"
-  const companyPersian = cleanPDFText(options.companyNamePersian) || "International Transport Company"
+  const companyPersian = cleanPDFText(options.companyNamePersian) || "شرکت حمل و نقل بین المللی سکای آریانا لمیتد"
   let pageNo = 1
   let y = PAGE_MARGIN
 
@@ -688,7 +688,7 @@ export async function generatePremiumBOLPDFBlob(options: ModernBOLPDFOptions): P
   doc.setProperties({
     title: `${options.bolNumber || "BOL"} - Bill of Lading`,
     subject: "Bill of Lading",
-    author: cleanPDFText(options.companyName) || "SKY ARIANA & BALAM BAR BARAN",
+    author: cleanPDFText(options.companyName) || "SKY ARIANA LIMITED",
     creator: "Sky Ariana BOL PDF Export",
     keywords: "bill of lading, logistics, cargo, shipment",
   })
@@ -697,9 +697,9 @@ export async function generatePremiumBOLPDFBlob(options: ModernBOLPDFOptions): P
   const logoDataUrl = await fetchImageDataURL(options.logoUrl)
 
   const form = options.formData
-  const companyTitle = cleanPDFText(options.companyName) || "SKY ARIANA & BALAM BAR BARAN"
+  const companyTitle = cleanPDFText(options.companyName) || "SKY ARIANA LIMITED"
   const companyTagline = cleanPDFText(options.companySubtitle) || "Import & Export - International Transportation"
-  const companyPersian = cleanPDFText(options.companyNamePersian) || "شرکت حمل و نقل بین المللی"
+  const companyPersian = cleanPDFText(options.companyNamePersian) || "شرکت حمل و نقل بین المللی سکای آریانا لمیتد"
   const contactCardWidth = (CONTENT_WIDTH - 3) / 2
   let y = PAGE_MARGIN
 

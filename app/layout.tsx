@@ -22,8 +22,8 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'SKY ARIANA & BALAM BAR BARAN',
-  description: 'Logistics Accounting & Invoice Management System',
+  title: 'SKY ARIANA LIMITED',
+  description: 'SKY ARIANA LIMITED — International Transport & Logistics Management System',
   generator: 'v0.app',
   icons: {
     icon: [

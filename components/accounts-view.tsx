@@ -288,7 +288,7 @@ export function AccountsView() {
             <div className="p-5 rounded-2xl bg-amber-100/80 mb-4 shadow-inner">
               <Building2 className="h-12 w-12 text-amber-800" />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 mb-2">Welcome to SKY ARIANA & BALAM BAR BARAN</h3>
+            <h3 className="text-2xl font-black text-slate-900 mb-2">Welcome to SKY ARIANA LIMITED</h3>
             <p className="text-slate-600 text-center mb-6 max-w-md font-medium text-sm">
               Get started by creating your first account. Each account can contain multiple companies with dedicated ledgers, invoices, and BOL documents.
             </p>

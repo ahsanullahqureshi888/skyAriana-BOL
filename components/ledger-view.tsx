@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, memo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2 } from 'lucide-react'
+import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -109,7 +109,25 @@ function LedgerPrintPortal({ children }: { children: ReactNode }) {
 }
 
 export const LedgerView = memo(function LedgerView() {
-  const { accounts, currentAccount, currentCompany, selectAccount, selectCompany, addLedgerEntry, updateLedgerEntry, deleteLedgerEntry, importLedgerEntries, setView, toggleSurrenderedBL, updateLedgerSettings, getLedgerSettings } = useApp()
+  const {
+    accounts,
+    currentAccount,
+    currentCompany,
+    selectAccount,
+    selectCompany,
+    addLedgerEntry,
+    updateLedgerEntry,
+    deleteLedgerEntry,
+    restoreLedgerEntry,
+    restoreAllDeletedEntries,
+    resyncMissingBols,
+    deletedLedgerEntries,
+    importLedgerEntries,
+    setView,
+    toggleSurrenderedBL,
+    updateLedgerSettings,
+    getLedgerSettings,
+  } = useApp()
   const [isOpen, setIsOpen] = useState(false)
   const [isImportOpen, setIsImportOpen] = useState(false)
   const [isColumnMappingOpen, setIsColumnMappingOpen] = useState(false)
@@ -140,12 +158,47 @@ export const LedgerView = memo(function LedgerView() {
   const [endDate, setEndDate] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Delete Confirmation Dialog State
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [entryToDelete, setEntryToDelete] = useState<LedgerEntry | null>(null)
+
+  // Restore & Resync States
+  const [isRestoreOpen, setIsRestoreOpen] = useState(false)
+  const [isResyncing, setIsResyncing] = useState(false)
+  const [resyncStatusMessage, setResyncStatusMessage] = useState<string | null>(null)
+  const [undoBanner, setUndoBanner] = useState<{ visible: boolean; entry: LedgerEntry | null }>({
+    visible: false,
+    entry: null,
+  })
+
   if (!currentAccount || !currentCompany) return null
 
   const handleAddEntry = () => {
-    addLedgerEntry(currentAccount.id, currentCompany.id, newEntry)
+    addLedgerEntry(currentAccount.id, currentCompany.id, {
+      ...newEntry,
+      debit: newEntry.debit === '' || newEntry.debit === undefined ? 0 : Number(newEntry.debit) || 0,
+      credit: newEntry.credit === '' || newEntry.credit === undefined ? 0 : Number(newEntry.credit) || 0,
+    })
     setNewEntry(emptyEntry)
     setIsOpen(false)
+  }
+
+  const handleResyncBols = async () => {
+    if (!currentAccount || !currentCompany) return
+    setIsResyncing(true)
+    try {
+      const recovered = await resyncMissingBols(currentAccount.id, currentCompany.id)
+      if (recovered > 0) {
+        setResyncStatusMessage(`Successfully brought back ${recovered} missing BOL entry/entries into this ledger!`)
+      } else {
+        setResyncStatusMessage('All saved BOLs for this company are already active in the ledger.')
+      }
+    } catch (e) {
+      setResyncStatusMessage('Could not resync BOLs. Please try again.')
+    } finally {
+      setIsResyncing(false)
+      setTimeout(() => setResyncStatusMessage(null), 6000)
+    }
   }
 
   const [printError, setPrintError] = useState<string | null>(null)
@@ -954,6 +1007,24 @@ export const LedgerView = memo(function LedgerView() {
             <Printer className="h-4 w-4" />
             Print
           </Button>
+
+          {/* Restore Deleted / Recycle Bin Button */}
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2 rounded-2xl h-12 px-4 bg-amber-50/90 hover:bg-amber-100 border-amber-300 text-amber-950 font-bold shadow-sm transition-all"
+            onClick={() => setIsRestoreOpen(true)}
+            title="Restore Deleted Entries & BOLs / بېرته راوستل"
+          >
+            <RotateCcw className="h-4 w-4 text-amber-700" />
+            <span>Restore / راوستل</span>
+            {deletedLedgerEntries && deletedLedgerEntries.filter(d => d.companyId === currentCompany.id || d.accountId === currentAccount.id).length > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] font-black bg-amber-600 text-white rounded-full">
+                {deletedLedgerEntries.filter(d => d.companyId === currentCompany.id || d.accountId === currentAccount.id).length}
+              </span>
+            )}
+          </Button>
+
           <Button type="button" variant="outline" className="gap-2 rounded-2xl h-12 px-5 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all" onClick={() => setIsSettingsOpen(true)}>
             <Settings2 className="h-4 w-4" />
             Settings
@@ -1131,6 +1202,19 @@ export const LedgerView = memo(function LedgerView() {
                 type="number"
                 value={newEntry.debit !== undefined ? newEntry.debit : ''}
                 onChange={e => setNewEntry({ ...newEntry, debit: e.target.value === '' ? '' as any : (parseFloat(e.target.value) || 0) })}
+                onFocus={(e) => {
+                  if (newEntry.debit === 0 || newEntry.debit === '0' || Number(newEntry.debit) === 0) {
+                    setNewEntry(prev => ({ ...prev, debit: '' as any }))
+                  } else {
+                    e.target.select()
+                  }
+                }}
+                onBlur={() => {
+                  if (newEntry.debit === '' || newEntry.debit === undefined) {
+                    setNewEntry(prev => ({ ...prev, debit: 0 }))
+                  }
+                }}
+                step="0.01"
                 className="bg-white/50 border-white/30"
               />
             </div>
@@ -1140,6 +1224,19 @@ export const LedgerView = memo(function LedgerView() {
                 type="number"
                 value={newEntry.credit !== undefined ? newEntry.credit : ''}
                 onChange={e => setNewEntry({ ...newEntry, credit: e.target.value === '' ? '' as any : (parseFloat(e.target.value) || 0) })}
+                onFocus={(e) => {
+                  if (newEntry.credit === 0 || newEntry.credit === '0' || Number(newEntry.credit) === 0) {
+                    setNewEntry(prev => ({ ...prev, credit: '' as any }))
+                  } else {
+                    e.target.select()
+                  }
+                }}
+                onBlur={() => {
+                  if (newEntry.credit === '' || newEntry.credit === undefined) {
+                    setNewEntry(prev => ({ ...prev, credit: 0 }))
+                  }
+                }}
+                step="0.01"
                 className="bg-white/50 border-white/30"
               />
             </div>

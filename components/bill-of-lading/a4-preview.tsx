@@ -1760,7 +1760,7 @@ export function A4Preview({
   backgroundOpacity = 0.11,
 }: A4PreviewProps) {
   const pdfMode = exportTarget || pdfExport
-  const companyTitle = cleanText(companyName) || "SKY ARIANA & BALAM BAR BARAN"
+  const companyTitle = cleanText(companyName) || "SKY ARIANA LIMITED"
   const companyTagline = cleanText(companySubtitle) || "Import & Export - International Transportation"
   const companyPersian = cleanText(companyNamePersian) || labels.persianCompanyFallback
   const companyFooter = joinOfficeLine([

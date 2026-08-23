@@ -21,7 +21,7 @@ function MainContent() {
       </main>
       <footer className="glass-strong border-t border-white/20 py-4 no-print">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} SKY ARIANA & BALAM BAR BARAN. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} SKY ARIANA LIMITED. All rights reserved.</p>
           <p className="text-xs mt-1">
             AFGHANISTAN: +93 700 939 365 | IRAN: +98 9172325086 | info@skyariana.com
           </p>

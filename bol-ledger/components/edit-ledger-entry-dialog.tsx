@@ -220,8 +220,20 @@ export function EditLedgerEntryDialog({
             <Input
               type="number"
               name="debit"
-              value={formData.debit || 0}
+              value={formData.debit !== undefined ? formData.debit : ''}
               onChange={handleChange}
+              onFocus={(e) => {
+                if (formData.debit === 0 || formData.debit === '0' || Number(formData.debit) === 0) {
+                  setFormData(prev => ({ ...prev, debit: '' as any }))
+                } else {
+                  e.target.select()
+                }
+              }}
+              onBlur={() => {
+                if (formData.debit === '' || formData.debit === undefined) {
+                  setFormData(prev => ({ ...prev, debit: 0 }))
+                }
+              }}
               step="0.01"
               className="mt-1"
             />
@@ -231,8 +243,20 @@ export function EditLedgerEntryDialog({
             <Input
               type="number"
               name="credit"
-              value={formData.credit || 0}
+              value={formData.credit !== undefined ? formData.credit : ''}
               onChange={handleChange}
+              onFocus={(e) => {
+                if (formData.credit === 0 || formData.credit === '0' || Number(formData.credit) === 0) {
+                  setFormData(prev => ({ ...prev, credit: '' as any }))
+                } else {
+                  e.target.select()
+                }
+              }}
+              onBlur={() => {
+                if (formData.credit === '' || formData.credit === undefined) {
+                  setFormData(prev => ({ ...prev, credit: 0 }))
+                }
+              }}
               step="0.01"
               className="mt-1"
             />

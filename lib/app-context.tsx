@@ -60,6 +60,13 @@ const SAMPLE_ACCOUNTS: Account[] = [
 
 
 
+export interface DeletedLedgerEntryItem {
+  entry: LedgerEntry
+  accountId: string
+  companyId: string
+  deletedAt: string
+}
+
 interface AppState {
   accounts: Account[]
   invoices: Invoice[]
@@ -69,6 +76,7 @@ interface AppState {
   isAuthenticated: boolean
   currentUser: User | null
   users: User[]
+  deletedLedgerEntries: DeletedLedgerEntryItem[]
 }
 
 interface AppContextType extends AppState {
@@ -87,6 +95,9 @@ interface AppContextType extends AppState {
   addLedgerEntry: (accountId: string, companyId: string, entry: Omit<LedgerEntry, 'id' | 'sNo' | 'balance'>) => void
   updateLedgerEntry: (accountId: string, companyId: string, entryId: string, entry: Partial<LedgerEntry>) => void
   deleteLedgerEntry: (accountId: string, companyId: string, entryId: string) => void
+  restoreLedgerEntry: (entryId: string) => void
+  restoreAllDeletedEntries: (accountId?: string, companyId?: string) => void
+  resyncMissingBols: (accountId: string, companyId: string) => Promise<number>
   importLedgerEntries: (accountId: string, companyId: string, entries: Omit<LedgerEntry, 'id' | 'sNo' | 'balance'>[]) => void
   updateLedgerSettings: (accountId: string, companyId: string, settings: Partial<LedgerSettings>) => void
   toggleSurrenderedBL: (accountId: string, companyId: string, entryId: string) => void
@@ -178,6 +189,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     isAuthenticated: false,
     currentUser: null,
     users: DEFAULT_USERS_LIST,
+    deletedLedgerEntries: [],
   })
 
   // Restore login session and stored users on mount
@@ -192,6 +204,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      let restoredDeletedEntries: DeletedLedgerEntryItem[] = []
+      const rawDeleted = localStorage.getItem("skybol:deleted-ledger-entries")
+      if (rawDeleted) {
+        try {
+          const parsedDeleted = JSON.parse(rawDeleted)
+          if (Array.isArray(parsedDeleted)) {
+            restoredDeletedEntries = parsedDeleted
+          }
+        } catch (e) {}
+      }
+
       const savedUser = localStorage.getItem("skybol:user") || sessionStorage.getItem("skybol:user")
       if (savedUser) {
         const parsed = JSON.parse(savedUser)
@@ -201,6 +224,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             isAuthenticated: true,
             currentUser: parsed,
             users: currentUsers,
+            deletedLedgerEntries: restoredDeletedEntries,
           }))
           return
         }
@@ -209,6 +233,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setState((prev) => ({
         ...prev,
         users: currentUsers,
+        deletedLedgerEntries: restoredDeletedEntries,
       }))
     } catch (e) {}
   }, [])
@@ -738,14 +763,245 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const deleteLedgerEntry = useCallback((accountId: string, companyId: string, entryId: string) => {
     setState(prev => {
+      let deletedItem: DeletedLedgerEntryItem | null = null
+
       const updatedAccounts = prev.accounts.map(a => {
         if (a.id !== accountId) return a
         return {
           ...a,
           companies: a.companies.map(c => {
             if (c.id !== companyId) return c
+            const target = c.ledgerEntries.find(e => e.id === entryId)
+            if (target) {
+              deletedItem = {
+                entry: { ...target },
+                accountId,
+                companyId,
+                deletedAt: new Date().toISOString(),
+              }
+            }
             const filteredEntries = c.ledgerEntries.filter(e => e.id !== entryId)
             return { ...c, ledgerEntries: calculateBalances(filteredEntries) }
+          }),
+        }
+      })
+
+      const updatedDeleted = deletedItem
+        ? [deletedItem, ...prev.deletedLedgerEntries.filter(i => i.entry.id !== entryId)]
+        : prev.deletedLedgerEntries
+
+      try {
+        window.localStorage.setItem("skybol:deleted-ledger-entries", JSON.stringify(updatedDeleted))
+      } catch (e) {}
+
+      const updatedCurrentAccount = prev.currentAccount?.id === accountId
+        ? updatedAccounts.find(a => a.id === accountId) || null
+        : prev.currentAccount
+
+      const updatedCurrentCompany = updatedCurrentAccount?.companies.find(c => c.id === companyId) || null
+
+      return {
+        ...prev,
+        accounts: updatedAccounts,
+        currentAccount: updatedCurrentAccount,
+        currentCompany: updatedCurrentCompany,
+        deletedLedgerEntries: updatedDeleted,
+      }
+    })
+  }, [])
+
+  const restoreLedgerEntry = useCallback((entryId: string) => {
+    setState(prev => {
+      const itemToRestore = prev.deletedLedgerEntries.find(i => i.entry.id === entryId)
+      if (!itemToRestore) return prev
+
+      const { entry, accountId, companyId } = itemToRestore
+
+      const updatedAccounts = prev.accounts.map(a => {
+        if (a.id !== accountId) return a
+        return {
+          ...a,
+          companies: a.companies.map(c => {
+            if (c.id !== companyId) return c
+            if (c.ledgerEntries.some(e => e.id === entry.id)) return c
+            const newEntries = calculateBalances([...c.ledgerEntries, entry])
+            return { ...c, ledgerEntries: newEntries }
+          }),
+        }
+      })
+
+      const updatedDeleted = prev.deletedLedgerEntries.filter(i => i.entry.id !== entryId)
+      try {
+        window.localStorage.setItem("skybol:deleted-ledger-entries", JSON.stringify(updatedDeleted))
+      } catch (e) {}
+
+      const updatedCurrentAccount = prev.currentAccount?.id === accountId
+        ? updatedAccounts.find(a => a.id === accountId) || null
+        : prev.currentAccount
+
+      const updatedCurrentCompany = updatedCurrentAccount?.companies.find(c => c.id === companyId) || null
+
+      return {
+        ...prev,
+        accounts: updatedAccounts,
+        currentAccount: updatedCurrentAccount,
+        currentCompany: updatedCurrentCompany,
+        deletedLedgerEntries: updatedDeleted,
+      }
+    })
+  }, [])
+
+  const restoreAllDeletedEntries = useCallback((accountId?: string, companyId?: string) => {
+    setState(prev => {
+      const targetItems = prev.deletedLedgerEntries.filter(
+        i => (!accountId || i.accountId === accountId) && (!companyId || i.companyId === companyId)
+      )
+      if (targetItems.length === 0) return prev
+
+      const updatedAccounts = prev.accounts.map(a => {
+        if (accountId && a.id !== accountId) return a
+        return {
+          ...a,
+          companies: a.companies.map(c => {
+            if (companyId && c.id !== companyId) return c
+            const itemsForCompany = targetItems.filter(i => i.companyId === c.id)
+            if (itemsForCompany.length === 0) return c
+
+            const newEntries = [...c.ledgerEntries]
+            for (const item of itemsForCompany) {
+              if (!newEntries.some(e => e.id === item.entry.id)) {
+                newEntries.push(item.entry)
+              }
+            }
+            return { ...c, ledgerEntries: calculateBalances(newEntries) }
+          }),
+        }
+      })
+
+      const remainingDeleted = prev.deletedLedgerEntries.filter(
+        i => !targetItems.some(t => t.entry.id === i.entry.id)
+      )
+
+      try {
+        window.localStorage.setItem("skybol:deleted-ledger-entries", JSON.stringify(remainingDeleted))
+      } catch (e) {}
+
+      const updatedCurrentAccount = prev.currentAccount
+        ? updatedAccounts.find(a => a.id === prev.currentAccount?.id) || prev.currentAccount
+        : prev.currentAccount
+
+      const updatedCurrentCompany = updatedCurrentAccount?.companies.find(c => c.id === prev.currentCompany?.id) || prev.currentCompany
+
+      return {
+        ...prev,
+        accounts: updatedAccounts,
+        currentAccount: updatedCurrentAccount,
+        currentCompany: updatedCurrentCompany,
+        deletedLedgerEntries: remainingDeleted,
+      }
+    })
+  }, [])
+
+  const resyncMissingBols = useCallback(async (accountId: string, companyId: string): Promise<number> => {
+    let apiDocs: any[] = []
+    try {
+      const res = await fetch("/api/bol")
+      if (res.ok) {
+        const body = await res.json()
+        apiDocs = Array.isArray(body) ? body : (Array.isArray(body?.data) ? body.data : [])
+      }
+    } catch (e) {
+      console.warn("Could not fetch /api/bol:", e)
+    }
+
+    let localDocs: any[] = []
+    try {
+      const raw1 = window.localStorage.getItem("skybol:saved-documents")
+      const raw2 = window.localStorage.getItem("sky-bol-browser-documents")
+      const docs1 = raw1 ? JSON.parse(raw1) : []
+      const docs2 = raw2 ? JSON.parse(raw2) : []
+      localDocs = [...docs1, ...docs2]
+    } catch (e) {}
+
+    const allDocsMap = new Map<string, any>()
+    for (const d of [...apiDocs, ...localDocs]) {
+      const key = d.id || d.bol_number
+      if (key && !allDocsMap.has(key)) {
+        allDocsMap.set(key, d)
+      }
+    }
+    const allDocs = Array.from(allDocsMap.values())
+
+    let recoveredCount = 0
+
+    setState(prev => {
+      const acc = prev.accounts.find(a => a.id === accountId)
+      if (!acc) return prev
+      const comp = acc.companies.find(c => c.id === companyId)
+      if (!comp) return prev
+
+      const companyNameLower = comp.name.toLowerCase().trim()
+      const accountNameLower = acc.name.toLowerCase().trim()
+
+      const matchingDocs = allDocs.filter(d => {
+        const shipper = (d.shipper_name || "").toLowerCase().trim()
+        return (
+          shipper === companyNameLower ||
+          shipper === accountNameLower ||
+          (shipper && companyNameLower.includes(shipper)) ||
+          (shipper && shipper.includes(companyNameLower))
+        )
+      })
+
+      const existingBolNumbers = new Set(
+        comp.ledgerEntries.map(e => (e.barnamehNo || e.billOfLanding || '').toLowerCase().trim()).filter(Boolean)
+      )
+      const existingIds = new Set(comp.ledgerEntries.map(e => e.id))
+
+      const missingEntries: LedgerEntry[] = []
+
+      matchingDocs.forEach((doc, idx) => {
+        const bolNo = (doc.bol_number || '').trim()
+        const docId = doc.id || `bol-doc-${idx}`
+
+        if (!existingBolNumbers.has(bolNo.toLowerCase()) && !existingIds.has(docId)) {
+          const parsedInvoice = parseInvoiceNo(doc.cargo_description, doc.bol_number)
+          const debitVal = doc.debit ? Number(doc.debit) || 0 : 0
+          const creditVal = doc.credit ? Number(doc.credit) || 0 : 0
+
+          missingEntries.push({
+            id: doc.id || crypto.randomUUID(),
+            sNo: 0,
+            date: doc.issue_date || new Date().toISOString().split("T")[0],
+            shipperDescription: doc.shipper_name || comp.name,
+            invoiceNo: parsedInvoice,
+            dateOfShip: doc.issue_date || "",
+            barnamehNo: bolNo,
+            driverFreight: doc.driver_rent || "",
+            billOfLanding: "",
+            surrenderedBL: false,
+            containerNo: doc.container_numbers || "N/A",
+            consignee: doc.consignee_name || "N/A",
+            quantity: doc.number_of_packages || "N/A",
+            debit: debitVal,
+            credit: creditVal,
+            balance: 0,
+          })
+          recoveredCount++
+        }
+      })
+
+      if (missingEntries.length === 0) return prev
+
+      const updatedEntries = calculateBalances([...comp.ledgerEntries, ...missingEntries])
+
+      const updatedAccounts = prev.accounts.map(a => {
+        if (a.id !== accountId) return a
+        return {
+          ...a,
+          companies: a.companies.map(c => {
+            if (c.id !== companyId) return c
+            return { ...c, ledgerEntries: updatedEntries }
           }),
         }
       })
@@ -763,6 +1019,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentCompany: updatedCurrentCompany,
       }
     })
+
+    return recoveredCount
   }, [])
 
   const importLedgerEntries = useCallback((accountId: string, companyId: string, entries: Omit<LedgerEntry, 'id' | 'sNo' | 'balance'>[]) => {
@@ -933,6 +1191,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addLedgerEntry,
         updateLedgerEntry,
         deleteLedgerEntry,
+        restoreLedgerEntry,
+        restoreAllDeletedEntries,
+        resyncMissingBols,
         importLedgerEntries,
         updateLedgerSettings,
         toggleSurrenderedBL,

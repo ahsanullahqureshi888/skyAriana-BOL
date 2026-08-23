@@ -107,7 +107,7 @@ export function LoginScreen() {
           <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
         </div>
         <div className="text-[11px] font-black tracking-wider uppercase">
-          SKY ARIANA & BALAM BARAN <span className="text-amber-400 font-bold ml-1 text-[9px]">v3.2</span>
+          SKY ARIANA LIMITED <span className="text-amber-400 font-bold ml-1 text-[9px]">v3.2</span>
         </div>
       </div>
 
@@ -136,16 +136,16 @@ export function LoginScreen() {
               <div className="bg-slate-50 p-2 rounded-xl shadow-2xs border border-slate-100 flex items-center justify-center mb-2">
                 <img 
                   src="/logo.png" 
-                  alt="SKY ARIANA LOGISTICS" 
-                  className="h-10 w-auto object-contain"
+                  alt="SKY ARIANA LIMITED" 
+                  className="h-12 w-auto object-contain"
                 />
               </div>
               
               <h1 className="text-lg font-black tracking-tight text-[#0a2540] uppercase text-center leading-tight">
-                SKY ARIANA
+                SKY ARIANA LIMITED
               </h1>
               <p className="text-[9px] font-extrabold tracking-[0.2em] text-slate-500 uppercase mt-0.5">
-                Logistics Enterprise Portal
+                سکای آریانا لمیتد • Global Logistics
               </p>
 
               <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-300/80 text-[9px] uppercase tracking-wider text-amber-900 font-extrabold shadow-2xs">

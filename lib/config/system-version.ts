@@ -22,8 +22,8 @@ export const CURRENT_SYSTEM_VERSION: SystemVersionInfo = {
   version: "v3.2.0",
   buildNumber: "2026.08.08-PRO",
   releaseDate: "2026-08-08",
-  edition: "SKY ARIANA & BALAM BAR BARAN Enterprise Edition",
-  companyName: "SKY ARIANA & BALAM BAR BARAN LOGISTICS CO.",
+  edition: "SKY ARIANA LIMITED Enterprise Edition",
+  companyName: "SKY ARIANA LIMITED",
   updateChannel: "stable",
   changelog: [
     {

@@ -111,9 +111,10 @@ export function EditLedgerEntryDialog({
   const handleSave = async () => {
     try {
       setIsSaving(true)
-      const debitVal = formData.debit ?? 0
       const finalFormData = {
         ...formData,
+        debit: !formData.debit || (formData.debit as any) === '' ? 0 : Number(formData.debit) || 0,
+        credit: !formData.credit || (formData.credit as any) === '' ? 0 : Number(formData.credit) || 0,
         driverFreight:
           formData.driverFreight && formData.driverFreight.trim() !== ''
             ? formData.driverFreight.trim()
@@ -294,6 +295,18 @@ export function EditLedgerEntryDialog({
                     name="debit"
                     value={formData.debit !== undefined ? formData.debit : ''}
                     onChange={handleChange}
+                    onFocus={(e) => {
+                      if (!formData.debit || Number(formData.debit) === 0) {
+                        setFormData(prev => ({ ...prev, debit: '' as any }))
+                      } else {
+                        e.target.select()
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!formData.debit || (formData.debit as any) === '') {
+                        setFormData(prev => ({ ...prev, debit: 0 }))
+                      }
+                    }}
                     step="0.01"
                     className="bg-white border-red-300 focus:border-red-500 text-xs font-mono font-bold text-red-600 h-9"
                   />
@@ -306,6 +319,18 @@ export function EditLedgerEntryDialog({
                     name="credit"
                     value={formData.credit !== undefined ? formData.credit : ''}
                     onChange={handleChange}
+                    onFocus={(e) => {
+                      if (!formData.credit || Number(formData.credit) === 0) {
+                        setFormData(prev => ({ ...prev, credit: '' as any }))
+                      } else {
+                        e.target.select()
+                      }
+                    }}
+                    onBlur={() => {
+                      if (!formData.credit || (formData.credit as any) === '') {
+                        setFormData(prev => ({ ...prev, credit: 0 }))
+                      }
+                    }}
                     step="0.01"
                     className="bg-white border-emerald-300 focus:border-emerald-500 text-xs font-mono font-bold text-emerald-700 h-9"
                   />

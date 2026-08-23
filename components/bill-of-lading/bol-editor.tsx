@@ -328,8 +328,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [logoUrl, setLogoUrl] = useState<string>("/images/logo.png")
   const logoInputRef = useRef<HTMLInputElement>(null)
   const isCompanySettingsLoadedRef = useRef(false)
-  const [companyName, setCompanyName] = useState("SKY ARIANA & BALAM BAR BARAN")
-  const [companyNamePersian, setCompanyNamePersian] = useState("شرکت حمل و نقل بین المللی")
+  const [companyName, setCompanyName] = useState("SKY ARIANA LIMITED")
+  const [companyNamePersian, setCompanyNamePersian] = useState("شرکت حمل و نقل بین المللی سکای آریانا لمیتد")
   const [companySubtitle, setCompanySubtitle] = useState("Import & Export - International Transportation")
   const [companyPhone, setCompanyPhone] = useState("+93 700 939 365, +93 711 435 529")
   const [companyEmail, setCompanyEmail] = useState("info@skyariana.com, transport@skyariana.com")
@@ -8089,7 +8089,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     <Input
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
-                      placeholder="SKY ARIANA & BALAM BAR BARAN"
+                      placeholder="SKY ARIANA LIMITED"
                       className="glass-input rounded-xl h-11"
                     />
                   </div>
@@ -8098,7 +8098,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     <Input
                       value={companyNamePersian}
                       onChange={(e) => setCompanyNamePersian(e.target.value)}
-                      placeholder="شرکت حمل و نقل بین المللی"
+                      placeholder="شرکت حمل و نقل بین المللی سکای آریانا لمیتد"
                       dir="rtl"
                       className="font-[vazirmatn] glass-input rounded-xl h-11"
                     />

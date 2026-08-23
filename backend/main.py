@@ -30,7 +30,7 @@ from backend.routes.users import router as users_router
 
 
 app = FastAPI(
-    title="SKY Ariana Logistics API",
+    title="SKY ARIANA LIMITED API",
     version="1.0.0",
     description="FastAPI backend for invoices, BOL, ledgers, trucks, media, documents, settings, and reports.",
 )

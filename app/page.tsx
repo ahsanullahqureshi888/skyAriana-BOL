@@ -32,7 +32,7 @@ function MainContent() {
         <div className="container mx-auto text-center text-xs font-bold text-slate-700 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.8)]" />
-            <span>© {new Date().getFullYear()} SKY ARIANA & BALAM BAR BARAN. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} SKY ARIANA LIMITED. All rights reserved.</span>
           </div>
           <div className="flex items-center gap-4 text-[11px] font-bold text-slate-700">
             <span className="flex items-center gap-1">🇦🇫 AFGHANISTAN: <span className="font-extrabold text-slate-900">+93 700 939 365</span></span>

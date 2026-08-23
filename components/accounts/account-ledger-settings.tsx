@@ -44,7 +44,7 @@ export const DEFAULT_ACCOUNT_LEDGER_SETTINGS: AccountLedgerDefaults = {
   officeAddress: DEFAULT_OFFICE_ADDRESS,
   footerInfo: DEFAULT_FOOTER_INFO,
   ledgerFooterTitle: "Ledger Footer",
-  footerNotes: "Thank you for choosing SKY ARIANA & BALAM BAR BARAN logistics services.",
+  footerNotes: "Thank you for choosing SKY ARIANA LIMITED logistics services.",
   termsConditions: DEFAULT_LEDGER_TERMS,
   authorizedSignatureName: "Authorized Manager",
   authorizedSignaturePosition: "Accounts Department",

@@ -160,8 +160,8 @@ export function InvoiceView() {
               <div className="flex items-center gap-4">
                 <Image src="/logo.png" alt="Logo" width={100} height={75} className="object-contain" />
                 <div>
-                  <h1 className="text-2xl font-bold text-foreground">SKY ARIANA & BALAM BAR BARAN</h1>
-                  <p className="text-sm text-muted-foreground">شرکت حمل ونقل بین المللی</p>
+                  <h1 className="text-2xl font-bold text-foreground">SKY ARIANA LIMITED</h1>
+                  <p className="text-sm text-muted-foreground">شرکت حمل ونقل بین المللی سکای آریانا لمیتد</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Safe, Fast & Reliable Transport Services
                   </p>
@@ -333,10 +333,10 @@ export function InvoiceView() {
             <div className="flex items-start justify-between border-b-2 border-blue-900 pb-4 mb-4">
               <div className="flex items-center gap-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/logo.png" alt="SKY ARIANA Logo" className="h-14 w-auto object-contain" />
+                <img src="/logo.png" alt="SKY ARIANA LIMITED Logo" className="h-14 w-auto object-contain" />
                 <div>
-                  <h1 className="text-xl font-bold text-blue-950">SKY ARIANA & BALAM BAR BARAN</h1>
-                  <p className="text-xs text-blue-800 font-semibold">شرکت حمل ونقل بین المللی</p>
+                  <h1 className="text-xl font-bold text-blue-950">SKY ARIANA LIMITED</h1>
+                  <p className="text-xs text-blue-800 font-semibold">شرکت حمل ونقل بین المللی سکای آریانا لمیتد</p>
                   <p className="text-[10px] text-slate-600 mt-0.5">Safe, Fast & Reliable Transport Services</p>
                   <p className="text-[10px] text-slate-600">خدمات خوندي، چټک او باوري ترانسپورت</p>
                 </div>
