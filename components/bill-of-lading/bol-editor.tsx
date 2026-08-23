@@ -7745,21 +7745,21 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
           <TabsContent value="preview" className="space-y-4">
             {/* Quick Watermark Floating Control Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-blue-200/80 bg-white/90 shadow-xl shadow-blue-500/5 backdrop-blur-xl print:hidden">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                  <span className="p-1 rounded-md bg-amber-500 text-white">✨</span>
-                  <span>Watermark Preset:</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-blue-200/80 bg-white/95 shadow-xl shadow-blue-500/5 backdrop-blur-xl print:hidden">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-black text-slate-800 flex items-center gap-1.5 mr-1">
+                  <span className="p-1 rounded-md bg-blue-600 text-white text-[10px]">🎨</span>
+                  <span>PDF Background:</span>
                 </span>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {[
-                    { label: "🏔️ Mountain", url: "/images/afghan_mountain_blueprint_bg.jpg", opacity: 0.11 },
-                    { label: "🚚 Truck Fleet", url: "/images/afghan_cargo_fleet_pass.jpg", opacity: 0.11 },
-                    { label: "🚢 Ocean Ship", url: "/images/maritime_port_cargo_ship.jpg", opacity: 0.11 },
-                    { label: "✈️ Air Plane", url: "/images/sky_freight_cargo_plane.jpg", opacity: 0.11 },
-                    { label: "📐 Truck Blueprint", url: "/images/overland_transit_blueprint.svg", opacity: 0.11 },
-                    { label: "🌊 Ship Blueprint", url: "/images/maritime_shipping_blueprint.svg", opacity: 0.11 },
-                    { label: "📄 Clean", url: "", opacity: 0 },
+                    { label: "📄 Clean White", url: "", opacity: 0 },
+                    { label: "🏔️ Mountain Watermark", url: "/images/afghan_mountain_blueprint_bg.jpg", opacity: 0.08 },
+                    { label: "📐 Truck Blueprint", url: "/images/overland_transit_blueprint.svg", opacity: 0.08 },
+                    { label: "🌊 Ship Blueprint", url: "/images/maritime_shipping_blueprint.svg", opacity: 0.08 },
+                    { label: "✈️ Air Cargo", url: "/images/sky_freight_cargo_plane.jpg", opacity: 0.08 },
+                    { label: "🚚 Fleet Pass", url: "/images/afghan_cargo_fleet_pass.jpg", opacity: 0.08 },
+                    { label: "🚢 Port Vessel", url: "/images/maritime_port_cargo_ship.jpg", opacity: 0.08 },
                   ].map((preset) => (
                     <button
                       key={preset.label}
@@ -7768,10 +7768,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         setBgImageUrl(preset.url)
                         setBgOpacity(preset.opacity)
                       }}
-                      className={`px-2.5 py-1 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
                         bgImageUrl === preset.url
-                          ? "bg-amber-500 text-slate-950 shadow-xs ring-2 ring-amber-400/40"
-                          : "bg-slate-100 text-slate-700 hover:bg-amber-100 hover:text-amber-900"
+                          ? "bg-blue-600 text-white shadow-sm ring-2 ring-blue-400/40"
+                          : "bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-900 border border-slate-200/80"
                       }`}
                     >
                       {preset.label}
@@ -7780,30 +7780,56 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 </div>
               </div>
 
-              {/* Quick Opacity Slider */}
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-slate-600">Opacity:</span>
-                <input
-                  type="range"
-                  min="0.01"
-                  max="0.60"
-                  step="0.01"
-                  value={bgOpacity}
-                  onChange={(e) => setBgOpacity(parseFloat(e.target.value))}
-                  className="w-28 sm:w-36 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                />
-                <span className="text-xs font-black font-mono text-amber-700 w-8">
-                  {Math.round(bgOpacity * 100)}%
-                </span>
+              {/* Quick Opacity & Download Actions */}
+              <div className="flex flex-wrap items-center gap-2.5 ml-auto">
+                {bgImageUrl && (
+                  <div className="flex items-center gap-2 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200">
+                    <span className="text-[11px] font-bold text-slate-600">Intensity:</span>
+                    <div className="flex items-center gap-1">
+                      {[
+                        { label: "0%", val: 0 },
+                        { label: "5%", val: 0.05 },
+                        { label: "8%", val: 0.08 },
+                        { label: "12%", val: 0.12 },
+                        { label: "18%", val: 0.18 },
+                      ].map((lvl) => (
+                        <button
+                          key={lvl.label}
+                          type="button"
+                          onClick={() => setBgOpacity(lvl.val)}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-black transition-all ${
+                            Math.round(bgOpacity * 100) === Math.round(lvl.val * 100)
+                              ? "bg-blue-600 text-white"
+                              : "bg-white text-slate-600 hover:bg-slate-200"
+                          }`}
+                        >
+                          {lvl.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => setIsPrintDialogOpen(true)}
-                  className="h-8 rounded-xl bg-linear-to-r from-blue-600 to-cyan-500 text-white font-extrabold text-xs shadow-md shadow-blue-500/20 hover:scale-105 transition-all ml-2"
+                  onClick={handleDownloadPDF}
+                  disabled={isSaving}
+                  className="h-8.5 rounded-xl bg-linear-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-black text-xs shadow-md shadow-blue-900/20 cursor-pointer"
                 >
-                  <Printer className="h-3.5 w-3.5 mr-1" />
-                  Print / Save PDF
+                  <Download className="h-3.5 w-3.5 mr-1" />
+                  Download PDF
+                </Button>
+
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsPrintDialogOpen(true)}
+                  className="h-8.5 rounded-xl border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-xs shadow-xs cursor-pointer"
+                >
+                  <Printer className="h-3.5 w-3.5 mr-1 text-slate-600" />
+                  Print
                 </Button>
               </div>
             </div>
@@ -7940,8 +7966,27 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     <button
                       type="button"
                       onClick={() => {
+                        setBgImageUrl("")
+                        setBgOpacity(0)
+                      }}
+                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        !bgImageUrl
+                          ? "border-blue-600 bg-blue-50/80 shadow-md ring-2 ring-blue-400/40"
+                          : "border-slate-200 bg-white hover:border-blue-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-black text-slate-900">📄 Clean White (Pure Paper)</span>
+                        {!bgImageUrl && <span className="w-2 h-2 rounded-full bg-blue-600" />}
+                      </div>
+                      <span className="text-[10px] text-slate-500">Pure White Background, Maximum Text Contrast & Print Clarity</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
                         setBgImageUrl("/images/afghan_mountain_blueprint_bg.jpg")
-                        setBgOpacity(0.11)
+                        setBgOpacity(0.08)
                       }}
                       className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
                         bgImageUrl === "/images/afghan_mountain_blueprint_bg.jpg"
@@ -7950,82 +7995,19 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">🏔️ Hindu Kush Mountain</span>
+                        <span className="text-xs font-black text-slate-900">🏔️ Mountain Watermark</span>
                         {bgImageUrl === "/images/afghan_mountain_blueprint_bg.jpg" && (
                           <span className="w-2 h-2 rounded-full bg-amber-500" />
                         )}
                       </div>
-                      <span className="text-[10px] text-slate-500">Snow Peaks & Blue Technical Vector Grid</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBgImageUrl("/images/afghan_cargo_fleet_pass.jpg")
-                        setBgOpacity(0.11)
-                      }}
-                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        bgImageUrl === "/images/afghan_cargo_fleet_pass.jpg"
-                          ? "border-orange-500 bg-orange-50/80 shadow-md ring-2 ring-orange-400/40"
-                          : "border-slate-200 bg-white hover:border-orange-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">🚚 Truck Fleet Pass</span>
-                        {bgImageUrl === "/images/afghan_cargo_fleet_pass.jpg" && (
-                          <span className="w-2 h-2 rounded-full bg-orange-500" />
-                        )}
-                      </div>
-                      <span className="text-[10px] text-slate-500">Afghan Cargo Truck Fleet in Mountain Pass</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBgImageUrl("/images/maritime_port_cargo_ship.jpg")
-                        setBgOpacity(0.11)
-                      }}
-                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        bgImageUrl === "/images/maritime_port_cargo_ship.jpg"
-                          ? "border-cyan-500 bg-cyan-50/80 shadow-md ring-2 ring-cyan-400/40"
-                          : "border-slate-200 bg-white hover:border-cyan-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">🚢 Ocean Cargo Vessel</span>
-                        {bgImageUrl === "/images/maritime_port_cargo_ship.jpg" && (
-                          <span className="w-2 h-2 rounded-full bg-cyan-500" />
-                        )}
-                      </div>
-                      <span className="text-[10px] text-slate-500">Container Cargo Ship & Sea Port Terminal</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBgImageUrl("/images/sky_freight_cargo_plane.jpg")
-                        setBgOpacity(0.11)
-                      }}
-                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        bgImageUrl === "/images/sky_freight_cargo_plane.jpg"
-                          ? "border-sky-500 bg-sky-50/80 shadow-md ring-2 ring-sky-400/40"
-                          : "border-slate-200 bg-white hover:border-sky-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">✈️ Air Freight Aircraft</span>
-                        {bgImageUrl === "/images/sky_freight_cargo_plane.jpg" && (
-                          <span className="w-2 h-2 rounded-full bg-sky-500" />
-                        )}
-                      </div>
-                      <span className="text-[10px] text-slate-500">Commercial Cargo Plane Above Sunset Clouds</span>
+                      <span className="text-[10px] text-slate-500">Subtle Snow Peaks & Technical Blueprint Silhouette</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => {
                         setBgImageUrl("/images/overland_transit_blueprint.svg")
-                        setBgOpacity(0.11)
+                        setBgOpacity(0.08)
                       }}
                       className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
                         bgImageUrl === "/images/overland_transit_blueprint.svg"
@@ -8046,7 +8028,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       type="button"
                       onClick={() => {
                         setBgImageUrl("/images/maritime_shipping_blueprint.svg")
-                        setBgOpacity(0.11)
+                        setBgOpacity(0.08)
                       }}
                       className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
                         bgImageUrl === "/images/maritime_shipping_blueprint.svg"
@@ -8067,7 +8049,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       type="button"
                       onClick={() => {
                         setBgImageUrl("/images/air_cargo_blueprint.svg")
-                        setBgOpacity(0.11)
+                        setBgOpacity(0.08)
                       }}
                       className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
                         bgImageUrl === "/images/air_cargo_blueprint.svg"
@@ -8087,20 +8069,64 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     <button
                       type="button"
                       onClick={() => {
-                        setBgImageUrl("")
-                        setBgOpacity(0)
+                        setBgImageUrl("/images/afghan_cargo_fleet_pass.jpg")
+                        setBgOpacity(0.08)
                       }}
                       className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        !bgImageUrl
-                          ? "border-slate-700 bg-slate-100 shadow-md"
-                          : "border-slate-200 bg-white hover:border-slate-400"
+                        bgImageUrl === "/images/afghan_cargo_fleet_pass.jpg"
+                          ? "border-orange-500 bg-orange-50/80 shadow-md ring-2 ring-orange-400/40"
+                          : "border-slate-200 bg-white hover:border-orange-300"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">📄 Clean Canvas (No Picture)</span>
-                        {!bgImageUrl && <span className="w-2 h-2 rounded-full bg-slate-700" />}
+                        <span className="text-xs font-black text-slate-900">🚚 Truck Fleet Pass</span>
+                        {bgImageUrl === "/images/afghan_cargo_fleet_pass.jpg" && (
+                          <span className="w-2 h-2 rounded-full bg-orange-500" />
+                        )}
                       </div>
-                      <span className="text-[10px] text-slate-500">Standard Light Gradient Paper</span>
+                      <span className="text-[10px] text-slate-500">Afghan Cargo Truck Fleet in Mountain Pass</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBgImageUrl("/images/maritime_port_cargo_ship.jpg")
+                        setBgOpacity(0.08)
+                      }}
+                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        bgImageUrl === "/images/maritime_port_cargo_ship.jpg"
+                          ? "border-cyan-500 bg-cyan-50/80 shadow-md ring-2 ring-cyan-400/40"
+                          : "border-slate-200 bg-white hover:border-cyan-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-black text-slate-900">🚢 Ocean Cargo Vessel</span>
+                        {bgImageUrl === "/images/maritime_port_cargo_ship.jpg" && (
+                          <span className="w-2 h-2 rounded-full bg-cyan-500" />
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-500">Container Cargo Ship & Sea Port Terminal</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBgImageUrl("/images/sky_freight_cargo_plane.jpg")
+                        setBgOpacity(0.08)
+                      }}
+                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        bgImageUrl === "/images/sky_freight_cargo_plane.jpg"
+                          ? "border-sky-500 bg-sky-50/80 shadow-md ring-2 ring-sky-400/40"
+                          : "border-slate-200 bg-white hover:border-sky-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-black text-slate-900">✈️ Air Freight Aircraft</span>
+                        {bgImageUrl === "/images/sky_freight_cargo_plane.jpg" && (
+                          <span className="w-2 h-2 rounded-full bg-sky-500" />
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-500">Commercial Cargo Plane Above Sunset Clouds</span>
                     </button>
                   </div>
 

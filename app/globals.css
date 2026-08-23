@@ -3779,25 +3779,17 @@
   overflow: hidden;
   border-radius: 0.85rem;
   border: 1px solid #cbd5e1;
-  background: rgba(255, 255, 255, 0.82);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
 .party-card-glass {
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.85),
-    rgba(241, 245, 249, 0.75)
-  );
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
+  background: #ffffff;
   border-color: #93c5fd;
 }
 
 .party-card-solid {
-  background: rgba(255, 255, 255, 0.82);
+  background: #ffffff;
   border-color: #cbd5e1;
 }
 
@@ -3815,7 +3807,7 @@
 }
 
 .party-card-header-glass {
-  background: rgba(239, 246, 255, 0.8);
+  background: #f0f7ff;
 }
 
 .party-card-icon {
