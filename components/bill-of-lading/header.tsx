@@ -5,12 +5,12 @@ export function BillOfLadingHeader() {
     <header className="w-full border-b-2 border-primary pb-6 mb-6">
       <div className="flex flex-col items-center gap-4">
         {/* Responsive Logo */}
-        <div className="relative w-32 h-24 sm:w-40 sm:h-28 md:w-48 md:h-32 lg:w-56 lg:h-36">
+        <div className="relative w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44">
           <Image
             src="/images/logo.png"
             alt="SKY ARIANA LIMITED - International Transport & Logistics"
             fill
-            className="object-contain"
+            className="object-contain drop-shadow-[0_10px_20px_rgba(30,64,175,0.15)]"
             priority
           />
         </div>

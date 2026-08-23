@@ -176,8 +176,8 @@ export const LedgerView = memo(function LedgerView() {
   const handleAddEntry = () => {
     addLedgerEntry(currentAccount.id, currentCompany.id, {
       ...newEntry,
-      debit: newEntry.debit === '' || newEntry.debit === undefined ? 0 : Number(newEntry.debit) || 0,
-      credit: newEntry.credit === '' || newEntry.credit === undefined ? 0 : Number(newEntry.credit) || 0,
+      debit: !newEntry.debit || (newEntry.debit as any) === '' ? 0 : Number(newEntry.debit) || 0,
+      credit: !newEntry.credit || (newEntry.credit as any) === '' ? 0 : Number(newEntry.credit) || 0,
     })
     setNewEntry(emptyEntry)
     setIsOpen(false)
@@ -1203,14 +1203,14 @@ export const LedgerView = memo(function LedgerView() {
                 value={newEntry.debit !== undefined ? newEntry.debit : ''}
                 onChange={e => setNewEntry({ ...newEntry, debit: e.target.value === '' ? '' as any : (parseFloat(e.target.value) || 0) })}
                 onFocus={(e) => {
-                  if (newEntry.debit === 0 || newEntry.debit === '0' || Number(newEntry.debit) === 0) {
+                  if (!newEntry.debit || Number(newEntry.debit) === 0) {
                     setNewEntry(prev => ({ ...prev, debit: '' as any }))
                   } else {
                     e.target.select()
                   }
                 }}
                 onBlur={() => {
-                  if (newEntry.debit === '' || newEntry.debit === undefined) {
+                  if (!newEntry.debit || (newEntry.debit as any) === '') {
                     setNewEntry(prev => ({ ...prev, debit: 0 }))
                   }
                 }}
@@ -1225,14 +1225,14 @@ export const LedgerView = memo(function LedgerView() {
                 value={newEntry.credit !== undefined ? newEntry.credit : ''}
                 onChange={e => setNewEntry({ ...newEntry, credit: e.target.value === '' ? '' as any : (parseFloat(e.target.value) || 0) })}
                 onFocus={(e) => {
-                  if (newEntry.credit === 0 || newEntry.credit === '0' || Number(newEntry.credit) === 0) {
+                  if (!newEntry.credit || Number(newEntry.credit) === 0) {
                     setNewEntry(prev => ({ ...prev, credit: '' as any }))
                   } else {
                     e.target.select()
                   }
                 }}
                 onBlur={() => {
-                  if (newEntry.credit === '' || newEntry.credit === undefined) {
+                  if (!newEntry.credit || (newEntry.credit as any) === '') {
                     setNewEntry(prev => ({ ...prev, credit: 0 }))
                   }
                 }}

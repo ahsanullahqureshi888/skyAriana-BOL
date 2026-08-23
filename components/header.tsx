@@ -49,12 +49,12 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
             </Button>
           )}
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="relative h-10 w-28 shrink-0 cursor-pointer" onClick={() => setView('accounts')}>
+            <div className="relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 cursor-pointer hover:scale-105 transition-transform" onClick={() => setView('accounts')}>
               <Image
                 src="/logo.png"
                 alt="SKY ARIANA LIMITED Logo"
                 fill
-                className="object-contain"
+                className="object-contain drop-shadow-xs"
                 priority
               />
             </div>

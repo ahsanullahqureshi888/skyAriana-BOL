@@ -132,12 +132,12 @@ export function LoginScreen() {
           <div className="relative bg-white/95 backdrop-blur-2xl rounded-[24px] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] border border-white p-5 sm:p-6 flex flex-col items-center">
             
             {/* Header / Logo */}
-            <div className="w-full flex flex-col items-center mb-4">
-              <div className="bg-slate-50 p-2 rounded-xl shadow-2xs border border-slate-100 flex items-center justify-center mb-2">
+            <div className="w-full flex flex-col items-center mb-3">
+              <div className="flex items-center justify-center mb-2">
                 <img 
                   src="/logo.png" 
                   alt="SKY ARIANA LIMITED" 
-                  className="h-12 w-auto object-contain"
+                  className="h-20 sm:h-24 w-auto object-contain drop-shadow-[0_8px_16px_rgba(10,37,64,0.18)] transition-transform hover:scale-105"
                 />
               </div>
               
