@@ -353,6 +353,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [consigneeSearchQuery, setConsigneeSearchQuery] = useState("")
   const [savedNotifyParties, setSavedNotifyParties] = useState<SavedParty[]>([])
   const [selectedNotifyPartyId, setSelectedNotifyPartyId] = useState<string>("")
+  const [showNotifyPartyDropdown, setShowNotifyPartyDropdown] = useState(false)
+  const [notifyPartySearchQuery, setNotifyPartySearchQuery] = useState("")
   const [savedNotes1, setSavedNotes1] = useState<SavedNoteOption[]>([])
   const [selectedNote1Id, setSelectedNote1Id] = useState<string>("")
   const [savedNotes2, setSavedNotes2] = useState<SavedNoteOption[]>([])
@@ -1109,6 +1111,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     )
   )
 
+  const isNotifyPartyExisting = Boolean(
+    savedNotifyParties.find(
+      (n) =>
+        n.name.trim().toLowerCase() === formData.notify_party.trim().toLowerCase() ||
+        (selectedNotifyPartyId && n.id === selectedNotifyPartyId)
+    )
+  )
+
   const matchingShippers = savedShippers.filter((s) => {
     const q = (shipperSearchQuery || formData.shipper_name || "").toLowerCase().trim()
     if (!q) return true
@@ -1119,6 +1129,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     const q = (consigneeSearchQuery || formData.consignee_name || "").toLowerCase().trim()
     if (!q) return true
     return [c.name, c.address, c.contact, c.email].filter(Boolean).some((field) => field.toLowerCase().includes(q))
+  })
+
+  const matchingNotifyParties = savedNotifyParties.filter((n) => {
+    const q = (notifyPartySearchQuery || formData.notify_party || "").toLowerCase().trim()
+    if (!q) return true
+    return [n.name, n.address, n.contact, n.email].filter(Boolean).some((field) => field.toLowerCase().includes(q))
   })
 
   const clearShipperFields = () => {
@@ -1145,6 +1161,46 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     setSelectedConsigneeId("")
     setConsigneeSearchQuery("")
     toast.info("Consignee fields cleared", { description: "اطلاعات گیرنده پاک شد" })
+  }
+
+  const clearNotifyPartyFields = () => {
+    setFormData((prev) => ({
+      ...prev,
+      notify_party: "",
+      notify_party_address: "",
+    }))
+    setSelectedNotifyPartyId("")
+    setNotifyPartySearchQuery("")
+    toast.info("Notify party cleared", { description: "اطلاعات طرف اطلاع پاک شد" })
+  }
+
+  const handleSetNotifySameAsConsignee = () => {
+    setFormData((prev) => ({
+      ...prev,
+      notify_party: "SAME AS CONSIGNEE",
+      notify_party_address: "",
+    }))
+    toast.success("Notify Party: SAME AS CONSIGNEE", { description: "طرف اطلاع به صورت برابر گیرنده تنظیم شد" })
+  }
+
+  const handleSetConsigneeToOrder = () => {
+    setFormData((prev) => ({
+      ...prev,
+      consignee_name: "TO ORDER OF SHIPPER",
+      consignee_address: "NEGOTIABLE BILL OF LADING",
+    }))
+    toast.success("Consignee: TO ORDER OF SHIPPER", { description: "گیرنده به حواله‌کرد فرستنده تنظیم شد" })
+  }
+
+  const handleSwapConsigneeNotify = () => {
+    setFormData((prev) => ({
+      ...prev,
+      consignee_name: prev.notify_party,
+      consignee_address: prev.notify_party_address,
+      notify_party: prev.consignee_name,
+      notify_party_address: [prev.consignee_address, prev.consignee_contact, prev.consignee_email].filter(Boolean).join(", "),
+    }))
+    toast.success("Swapped Consignee & Notify Party", { description: "اطلاعات گیرنده و طرف اطلاع جابجا شدند" })
   }
 
   const handleCopyShipperToConsignee = () => {
@@ -1309,15 +1365,19 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     const notifyPartyName = formData.notify_party.trim()
     if (!notifyPartyName) {
       toast.error("Add notify party name first", {
-        description: "Enter a notify party name before saving it.",
+        description: "ابتدا نام طرف اطلاع را وارد کنید",
       })
       return
     }
 
+    const existingMatch = savedNotifyParties.find(
+      (n) => n.name.trim().toLowerCase() === notifyPartyName.toLowerCase() || (selectedNotifyPartyId && n.id === selectedNotifyPartyId)
+    )
+
     const currentNotifyParty: SavedParty = {
-      id: selectedNotifyPartyId || crypto.randomUUID(),
+      id: existingMatch ? existingMatch.id : crypto.randomUUID(),
       name: notifyPartyName,
-      address: formData.notify_party_address || "",
+      address: (formData.notify_party_address || "").trim(),
       contact: "",
       email: "",
       savedAt: new Date().toISOString(),
@@ -1326,16 +1386,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     const nextNotifyParties = [
       currentNotifyParty,
       ...savedNotifyParties.filter(
-        (notifyParty) =>
-          notifyParty.id !== currentNotifyParty.id &&
-          notifyParty.name.trim().toLowerCase() !== notifyPartyName.toLowerCase()
+        (n) => n.id !== currentNotifyParty.id && n.name.trim().toLowerCase() !== notifyPartyName.toLowerCase()
       ),
-    ].slice(0, 50)
+    ].slice(0, 100)
 
     persistSavedParties(SAVED_NOTIFY_PARTIES_STORAGE_KEY, nextNotifyParties, setSavedNotifyParties)
     setSelectedNotifyPartyId(currentNotifyParty.id)
-    toast.success("Notify party saved", {
-      description: `${currentNotifyParty.name} is available for future BOLs.`,
+    toast.success(existingMatch ? "Notify party updated in directory!" : "New notify party saved successfully!", {
+      description: `${currentNotifyParty.name} در لیست ذخیره شد.`,
     })
   }
 
@@ -1346,9 +1404,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     setSelectedNotifyPartyId(notifyPartyId)
     setFormData((prev) => ({
       ...prev,
-      notify_party: notifyParty.name,
-      notify_party_address: notifyParty.address,
+      notify_party: notifyParty.name || prev.notify_party,
+      notify_party_address: notifyParty.address || "",
     }))
+    toast.success(`Loaded Notify Party: ${notifyParty.name}`, {
+      description: notifyParty.address ? notifyParty.address.slice(0, 40) + "..." : "طرف اطلاع بارگذاری شد",
+    })
   }
 
   const deleteSavedNotifyParty = () => {
@@ -3605,8 +3666,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             {/* Shipper & Consignee */}
             <div className="grid md:grid-cols-2 gap-6">
               {/* 02 Shipper Card */}
-              <Card id="section-shipper" className="bg-white/80 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden">
-                <CardHeader className="pb-4 border-b border-slate-100 bg-linear-to-r from-blue-50/60 via-indigo-50/30 to-white">
+              <Card id="section-shipper" className="bg-white/85 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden transition-all">
+                <CardHeader className="pb-4 border-b border-slate-100 bg-linear-to-r from-blue-50/70 via-indigo-50/40 to-white">
                   <CardTitle className="text-base flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5">
                       <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-[11px] font-black shadow-xs">
@@ -3626,7 +3687,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         variant="ghost"
                         size="sm"
                         onClick={handleSwapShipperConsignee}
-                        className="h-7.5 px-2 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-800 text-[10.5px] font-bold"
+                        className="h-7.5 px-2 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-800 text-[10.5px] font-bold cursor-pointer"
                         title="Swap Shipper with Consignee"
                       >
                         <ArrowLeftRight className="h-3 w-3 mr-1 text-blue-600" />
@@ -3637,7 +3698,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         variant="ghost"
                         size="sm"
                         onClick={handleCopyShipperToNotify}
-                        className="h-7.5 px-2 rounded-lg border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-800 text-[10.5px] font-bold"
+                        className="h-7.5 px-2 rounded-lg border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-800 text-[10.5px] font-bold cursor-pointer"
                         title="Copy Shipper to Notify Party"
                       >
                         <Copy className="h-3 w-3 mr-1 text-amber-600" />
@@ -3648,7 +3709,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         variant="ghost"
                         size="sm"
                         onClick={handleCopyShipperToConsignee}
-                        className="h-7.5 px-2 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-800 text-[10.5px] font-bold"
+                        className="h-7.5 px-2 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-800 text-[10.5px] font-bold cursor-pointer"
                         title="Copy Shipper to Consignee"
                       >
                         <Copy className="h-3 w-3 mr-1 text-emerald-600" />
@@ -3659,7 +3720,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         variant="ghost"
                         size="sm"
                         onClick={clearShipperFields}
-                        className="h-7.5 px-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-[10.5px] font-bold"
+                        className="h-7.5 px-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-[10.5px] font-bold cursor-pointer"
                         title="Clear all Shipper fields"
                       >
                         ✕ Clear
@@ -3731,13 +3792,82 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           variant="outline"
                           onClick={deleteSavedShipper}
                           disabled={!selectedShipperId}
-                          className="h-10.5 border-red-200 bg-white hover:bg-red-50 text-red-600 rounded-xl shadow-2xs disabled:opacity-30"
+                          className="h-10.5 border-red-200 bg-white hover:bg-red-50 text-red-600 rounded-xl shadow-2xs disabled:opacity-30 cursor-pointer"
                           title="Delete selected saved shipper"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Quick Shipper Preset Chips */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] font-black text-blue-900 uppercase">Presets:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          shipper_name: "AFGHAN ARYA DRY FRUITS & SAFFRON EXPORT CO.",
+                          shipper_address: "Charahi Haji Yaqoob, Shahr-e-Naw, Kabul, Afghanistan",
+                          shipper_contact: "+93 700 284 920",
+                          shipper_email: "export@afghanarya.af",
+                        }))
+                        toast.success("Loaded Afghan Exporter preset")
+                      }}
+                      className="rounded-lg border border-blue-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-800 hover:bg-blue-600 hover:text-white transition cursor-pointer"
+                    >
+                      🇦🇫 Afghan Exporter (Kabul)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          shipper_name: "SKY ARIANA GLOBAL LOGISTICS FZE",
+                          shipper_address: "Jebel Ali Free Zone (JAFZA), Dubai, United Arab Emirates",
+                          shipper_contact: "+971 4 881 2345",
+                          shipper_email: "ops@skyarianalogistics.com",
+                        }))
+                        toast.success("Loaded Dubai Shipper preset")
+                      }}
+                      className="rounded-lg border border-blue-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-800 hover:bg-blue-600 hover:text-white transition cursor-pointer"
+                    >
+                      🇦🇪 Sky Ariana (Dubai)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          shipper_name: "YAFEZ INTERNATIONAL TRADING CO.",
+                          shipper_address: "Boulevard Imam Khomeini, Bandar Abbas, Iran",
+                          shipper_contact: "+98 76 3222 6028",
+                          shipper_email: "yafez.trade@gmail.com",
+                        }))
+                        toast.success("Loaded Iran Exporter preset")
+                      }}
+                      className="rounded-lg border border-blue-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-800 hover:bg-blue-600 hover:text-white transition cursor-pointer"
+                    >
+                      🇮🇷 Bandar Abbas Trading
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          shipper_name: "YIWU SILK ROAD EXPORT & TRADING CO. LTD",
+                          shipper_address: "Chouzhou North Road, International Trade City, Yiwu, Zhejiang, China",
+                          shipper_contact: "+86 579 8551 2345",
+                          shipper_email: "info@yiwusilkroad.cn",
+                        }))
+                        toast.success("Loaded China Supplier preset")
+                      }}
+                      className="rounded-lg border border-blue-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-800 hover:bg-blue-600 hover:text-white transition cursor-pointer"
+                    >
+                      🇨🇳 China Supplier (Yiwu)
+                    </button>
                   </div>
 
                   {/* Shipper Name with Live Floating Autocomplete */}
@@ -3779,7 +3909,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           <button
                             type="button"
                             onClick={() => setShowShipperDropdown(false)}
-                            className="text-xs font-bold text-slate-400 hover:text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md transition"
+                            className="text-xs font-bold text-slate-400 hover:text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md transition cursor-pointer"
                           >
                             ✕ Close
                           </button>
@@ -3821,10 +3951,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   </div>
 
                   <div>
-                    <label className="text-xs font-black text-slate-800 mb-1.5 flex items-center justify-between">
-                      <span>Shipper Address</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-black text-slate-800">
+                        Shipper Address
+                      </label>
                       <span className="font-[vazirmatn] text-blue-900 font-bold text-[11px]">آدرس فرستنده</span>
-                    </label>
+                    </div>
                     <Textarea
                       name="shipper_address"
                       value={formData.shipper_address}
@@ -3833,6 +3965,24 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       rows={3}
                       className="rounded-xl p-3 text-sm font-medium text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs min-h-[76px] transition-all"
                     />
+                    <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                      <span className="text-[9px] font-bold text-slate-400">Quick Insert:</span>
+                      {["Kabul, Afghanistan", "Dubai, UAE", "Bandar Abbas, Iran", "Yiwu, China", "Mumbai, India"].map((city) => (
+                        <button
+                          key={city}
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              shipper_address: prev.shipper_address ? `${prev.shipper_address.trim()}, ${city}` : city,
+                            }))
+                          }}
+                          className="text-[9px] font-semibold bg-slate-100 hover:bg-blue-100 hover:text-blue-800 text-slate-600 rounded px-1.5 py-0.5 transition cursor-pointer"
+                        >
+                          + {city}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3879,8 +4029,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               </Card>
 
               {/* 03 Consignee Card */}
-              <Card id="section-consignee" className="bg-white/80 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden">
-                <CardHeader className="pb-4 border-b border-slate-100 bg-linear-to-r from-emerald-50/60 via-teal-50/30 to-white">
+              <Card id="section-consignee" className="bg-white/85 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden transition-all">
+                <CardHeader className="pb-4 border-b border-slate-100 bg-linear-to-r from-emerald-50/70 via-teal-50/40 to-white">
                   <CardTitle className="text-base flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5">
                       <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-600 text-white text-[11px] font-black shadow-xs">
@@ -3900,7 +4050,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         variant="ghost"
                         size="sm"
                         onClick={handleSwapShipperConsignee}
-                        className="h-7.5 px-2 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-800 text-[10.5px] font-bold"
+                        className="h-7.5 px-2 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-800 text-[10.5px] font-bold cursor-pointer"
                         title="Swap Consignee with Shipper"
                       >
                         <ArrowLeftRight className="h-3 w-3 mr-1 text-emerald-600" />
@@ -3911,7 +4061,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         variant="ghost"
                         size="sm"
                         onClick={handleCopyConsigneeToNotify}
-                        className="h-7.5 px-2 rounded-lg border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-800 text-[10.5px] font-bold"
+                        className="h-7.5 px-2 rounded-lg border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-amber-800 text-[10.5px] font-bold cursor-pointer"
                         title="Copy Consignee to Notify Party"
                       >
                         <Copy className="h-3 w-3 mr-1 text-amber-600" />
@@ -3922,7 +4072,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         variant="ghost"
                         size="sm"
                         onClick={handleCopyConsigneeToShipper}
-                        className="h-7.5 px-2 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-800 text-[10.5px] font-bold"
+                        className="h-7.5 px-2 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-800 text-[10.5px] font-bold cursor-pointer"
                         title="Copy Consignee to Shipper"
                       >
                         <Copy className="h-3 w-3 mr-1 text-blue-600" />
@@ -3932,8 +4082,18 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         type="button"
                         variant="ghost"
                         size="sm"
+                        onClick={handleSetConsigneeToOrder}
+                        className="h-7.5 px-2 rounded-lg border border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-purple-800 text-[10.5px] font-black cursor-pointer"
+                        title="Set Consignee to 'TO ORDER OF SHIPPER' (Negotiable BOL)"
+                      >
+                        📜 "TO ORDER"
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={clearConsigneeFields}
-                        className="h-7.5 px-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-[10.5px] font-bold"
+                        className="h-7.5 px-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-[10.5px] font-bold cursor-pointer"
                         title="Clear all Consignee fields"
                       >
                         ✕ Clear
@@ -4005,13 +4165,73 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           variant="outline"
                           onClick={deleteSavedConsignee}
                           disabled={!selectedConsigneeId}
-                          className="h-10.5 border-red-200 bg-white hover:bg-red-50 text-red-600 rounded-xl shadow-2xs disabled:opacity-30"
+                          className="h-10.5 border-red-200 bg-white hover:bg-red-50 text-red-600 rounded-xl shadow-2xs disabled:opacity-30 cursor-pointer"
                           title="Delete selected saved consignee"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Quick Consignee Preset Chips */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] font-black text-emerald-900 uppercase">Presets:</span>
+                    <button
+                      type="button"
+                      onClick={handleSetConsigneeToOrder}
+                      className="rounded-lg border border-purple-300 bg-purple-50 px-2 py-0.5 text-[10px] font-black text-purple-900 hover:bg-purple-600 hover:text-white transition cursor-pointer"
+                    >
+                      📜 TO ORDER OF SHIPPER
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          consignee_name: "YAAQOUB HAMDAN FOODSTUFF TRADING CO LLC",
+                          consignee_address: "Shop No: 28 Al Hawai Building, Al Ras Street, Deira Dubai, UAE\nTRN NO: 100340961000003",
+                          consignee_contact: "+971 4 226 8990",
+                          consignee_email: "yaaqoub.hamdan@gmail.com",
+                        }))
+                        toast.success("Loaded Yaaqoub Hamdan (Dubai) preset")
+                      }}
+                      className="rounded-lg border border-emerald-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-800 hover:bg-emerald-600 hover:text-white transition cursor-pointer"
+                    >
+                      🇦🇪 Yaaqoub Hamdan (Dubai)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          consignee_name: "ABDUL MAJID KAKAR GENERAL TRADING LLC",
+                          consignee_address: "Shaikh Maitha Bint Rashed Bin Saeed Almaktoum Bldg, Shop No. SM-17, Al Rega, Dubai, U.A.E",
+                          consignee_contact: "+971 4 229 1144",
+                          consignee_email: "abdulmajid.kakar@gmail.com",
+                        }))
+                        toast.success("Loaded Abdul Majid Kakar (Dubai) preset")
+                      }}
+                      className="rounded-lg border border-emerald-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-800 hover:bg-emerald-600 hover:text-white transition cursor-pointer"
+                    >
+                      🇦🇪 Abdul Majid Kakar (Dubai)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          consignee_name: "WEST AFRICA IMPORT & COMMODITIES DISTRIBUTION SARL",
+                          consignee_address: "Zone Industrielle de Vridi, 01 BP 4512, Abidjan 01, Ivory Coast",
+                          consignee_contact: "+225 21 25 40 80",
+                          consignee_email: "contact@africacommodities.ci",
+                        }))
+                        toast.success("Loaded Abidjan / Ivory Coast preset")
+                      }}
+                      className="rounded-lg border border-emerald-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-800 hover:bg-emerald-600 hover:text-white transition cursor-pointer"
+                    >
+                      🇨🇮 Abidjan (Ivory Coast)
+                    </button>
                   </div>
 
                   {/* Consignee Name with Live Floating Autocomplete */}
@@ -4054,7 +4274,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           <button
                             type="button"
                             onClick={() => setShowConsigneeDropdown(false)}
-                            className="text-xs font-bold text-slate-400 hover:text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md transition"
+                            className="text-xs font-bold text-slate-400 hover:text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md transition cursor-pointer"
                           >
                             ✕ Close
                           </button>
@@ -4096,10 +4316,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   </div>
 
                   <div>
-                    <label className="text-xs font-black text-slate-800 mb-1.5 flex items-center justify-between">
-                      <span>Consignee Address</span>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-black text-slate-800">
+                        Consignee Address
+                      </label>
                       <span className="font-[vazirmatn] text-emerald-900 font-bold text-[11px]">آدرس گیرنده</span>
-                    </label>
+                    </div>
                     <Textarea
                       name="consignee_address"
                       value={formData.consignee_address}
@@ -4108,6 +4330,24 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       rows={3}
                       className="rounded-xl p-3 text-sm font-medium text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 shadow-2xs min-h-[76px] transition-all"
                     />
+                    <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                      <span className="text-[9px] font-bold text-slate-400">Quick Insert:</span>
+                      {["Abidjan, Ivory Coast", "Dubai, UAE", "Nhava Sheva, India", "Rotterdam, Netherlands", "Kabul, Afghanistan"].map((city) => (
+                        <button
+                          key={city}
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              consignee_address: prev.consignee_address ? `${prev.consignee_address.trim()}, ${city}` : city,
+                            }))
+                          }}
+                          className="text-[9px] font-semibold bg-slate-100 hover:bg-emerald-100 hover:text-emerald-800 text-slate-600 rounded px-1.5 py-0.5 transition cursor-pointer"
+                        >
+                          + {city}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -4155,9 +4395,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             </div>
 
             {/* 04 Notify Party Card */}
-            <Card id="section-notify" className="bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden">
-              <CardHeader className="pb-4 border-b border-white/50 bg-white/40">
-                <CardTitle className="text-base flex items-center justify-between">
+            <Card id="section-notify" className="bg-white/85 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden transition-all">
+              <CardHeader className="pb-4 border-b border-slate-100 bg-linear-to-r from-amber-50/70 via-orange-50/30 to-white">
+                <CardTitle className="text-base flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5">
                     <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-amber-600 text-white text-[11px] font-black shadow-xs">
                       04
@@ -4170,17 +4410,75 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       <span className="text-[11px] text-amber-700 font-medium block">Secondary Contact on Arrival</span>
                     </div>
                   </div>
-                  <span className="text-xs font-extrabold text-amber-900 font-[vazirmatn] bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
-                    طرف اطلاع‌رسانی
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSetNotifySameAsConsignee}
+                      className="h-7.5 px-2 rounded-lg border border-amber-300 bg-amber-100/70 hover:bg-amber-200 text-amber-950 text-[10.5px] font-black cursor-pointer"
+                      title="Set Notify Party to 'SAME AS CONSIGNEE'"
+                    >
+                      📋 Same as Consignee
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCopyConsigneeToNotify}
+                      className="h-7.5 px-2 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-800 text-[10.5px] font-bold cursor-pointer"
+                      title="Copy full Consignee details into Notify Party"
+                    >
+                      <Copy className="h-3 w-3 mr-1 text-emerald-600" />
+                      Copy Consignee
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCopyShipperToNotify}
+                      className="h-7.5 px-2 rounded-lg border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-blue-800 text-[10.5px] font-bold cursor-pointer"
+                      title="Copy Shipper details into Notify Party"
+                    >
+                      <Copy className="h-3 w-3 mr-1 text-blue-600" />
+                      Copy Shipper
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSwapConsigneeNotify}
+                      className="h-7.5 px-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-[10.5px] font-bold cursor-pointer"
+                      title="Swap Notify Party with Consignee"
+                    >
+                      <ArrowLeftRight className="h-3 w-3 mr-1 text-slate-600" />
+                      Swap ⇄
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearNotifyPartyFields}
+                      className="h-7.5 px-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-[10.5px] font-bold cursor-pointer"
+                      title="Clear all Notify Party fields"
+                    >
+                      ✕ Clear
+                    </Button>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-5 pb-6">
-                <div className="rounded-2xl border border-amber-200/80 bg-amber-50/60 p-3.5 shadow-2xs">
+                {/* Saved Notify Parties Directory Bar */}
+                <div className="rounded-2xl border border-amber-200/80 bg-linear-to-br from-amber-50/80 to-orange-50/40 p-3.5 shadow-2xs">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                     <div className="flex-1">
                       <label className="text-xs font-black text-slate-800 mb-1.5 flex items-center justify-between">
-                        <span>Saved Notify Parties</span>
+                        <span className="flex items-center gap-1.5">
+                          <span>Saved Notify Parties Directory</span>
+                          <span className="rounded-full bg-amber-200/80 px-2 py-0.2 text-[10px] font-black text-amber-900">
+                            {savedNotifyParties.length}
+                          </span>
+                        </span>
                         <span className="font-[vazirmatn] text-amber-900 font-bold text-[11px]">طرف‌های اطلاع ذخیره شده</span>
                       </label>
                       <Select
@@ -4193,70 +4491,220 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           applySavedNotifyParty(value)
                         }}
                       >
-                        <SelectTrigger className="h-11 text-xs font-bold text-slate-900 border-white bg-white/60 backdrop-blur-md shadow-inner rounded-xl shadow-2xs">
-                          <SelectValue placeholder="Select saved notify party" />
+                        <SelectTrigger className="h-10.5 text-xs font-bold text-slate-900 border-white bg-white/80 backdrop-blur-md rounded-xl shadow-2xs">
+                          <SelectValue placeholder="Select from saved notify directory..." />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Select saved notify party</SelectItem>
+                        <SelectContent className="max-h-72">
+                          <SelectItem value="none">Select from saved notify directory...</SelectItem>
                           {savedNotifyParties.map((notifyParty, index) => (
-                            <SelectItem key={`${notifyParty.id}-${index}`} value={notifyParty.id} className="text-xs font-medium">
-                              {notifyParty.name}
+                            <SelectItem key={`${notifyParty.id}-${index}`} value={notifyParty.id} className="text-xs py-2">
+                              <div className="flex flex-col gap-0.5 text-left max-w-[320px]">
+                                <span className="font-extrabold text-slate-900 truncate">{notifyParty.name}</span>
+                                {notifyParty.address && (
+                                  <span className="text-[10px] text-slate-500 font-mono truncate">
+                                    {notifyParty.address}
+                                  </span>
+                                )}
+                              </div>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={saveCurrentNotifyParty}
-                        className="h-11 border-amber-300 bg-white hover:bg-amber-50 text-amber-900 font-extrabold text-xs rounded-xl shadow-2xs"
+                        className={`h-10.5 font-black text-xs rounded-xl shadow-2xs cursor-pointer transition-all ${
+                          isNotifyPartyExisting
+                            ? "border-blue-300 bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/20"
+                            : "border-amber-400 bg-amber-600 hover:bg-amber-700 text-white shadow-amber-500/20"
+                        }`}
+                        title={isNotifyPartyExisting ? "Update existing notify party in directory" : "Save as new notify party"}
                       >
-                        <Save className="h-3.5 w-3.5 mr-1 text-amber-700" />
-                        Save
+                        <Save className="h-3.5 w-3.5 mr-1" />
+                        {isNotifyPartyExisting ? "Update" : "Save New"}
                       </Button>
                       <Button
                         type="button"
                         variant="outline"
                         onClick={deleteSavedNotifyParty}
                         disabled={!selectedNotifyPartyId}
-                        className="h-10 border-red-200 bg-white hover:bg-red-50 text-red-600 rounded-xl shadow-2xs disabled:opacity-40"
-                        title="Delete saved notify party"
+                        className="h-10.5 border-red-200 bg-white hover:bg-red-50 text-red-600 rounded-xl shadow-2xs disabled:opacity-30 cursor-pointer"
+                        title="Delete selected saved notify party"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
                 </div>
-                <div className="grid md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-extrabold text-slate-800 mb-1.5 flex items-center justify-between">
-                      <span>Notify Party Name</span>
+
+                {/* Quick Notify Preset Chips */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  <span className="text-[10px] font-black text-amber-900 uppercase">Presets:</span>
+                  <button
+                    type="button"
+                    onClick={handleSetNotifySameAsConsignee}
+                    className="rounded-lg border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-950 hover:bg-amber-600 hover:text-white transition cursor-pointer"
+                  >
+                    📋 SAME AS CONSIGNEE
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        notify_party: "YAAQOUB HAMDAN FOODSTUFF TRADING CO LLC",
+                        notify_party_address: "Shop No: 28 Al Hawai Building, Al Ras Street, Deira Dubai, UAE\nTRN NO: 100340961000003",
+                      }))
+                      toast.success("Loaded Yaaqoub Hamdan (Dubai) Notify preset")
+                    }}
+                    className="rounded-lg border border-amber-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-800 hover:bg-amber-600 hover:text-white transition cursor-pointer"
+                  >
+                    🇦🇪 Yaaqoub Hamdan (Dubai)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        notify_party: "ABDUL MAJID KAKAR GENERAL TRADING LLC",
+                        notify_party_address: "Shaikh Maitha Bint Rashed Bin Saeed Almaktoum Bldg, Shop No. SM-17, Al Rega, Dubai, U.A.E",
+                      }))
+                      toast.success("Loaded Abdul Majid Kakar (Dubai) Notify preset")
+                    }}
+                    className="rounded-lg border border-amber-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-800 hover:bg-amber-600 hover:text-white transition cursor-pointer"
+                  >
+                    🇦🇪 Abdul Majid Kakar (Dubai)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        notify_party: "ABIDJAN PORT TRANSIT & CLEARANCE SARL",
+                        notify_party_address: "Port Autonome d'Abidjan, Boulevard de Vridi, BP 982, Abidjan, Côte d'Ivoire",
+                      }))
+                      toast.success("Loaded Abidjan Clearance Agent Notify preset")
+                    }}
+                    className="rounded-lg border border-amber-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-800 hover:bg-amber-600 hover:text-white transition cursor-pointer"
+                  >
+                    🇨🇮 Abidjan Port Transit Agent
+                  </button>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  {/* Notify Party Name with Live Floating Autocomplete */}
+                  <div className="relative">
+                    <label className="text-xs font-black text-slate-800 mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span>Notify Party Name</span>
+                        {isNotifyPartyExisting && (
+                          <span className="rounded-md bg-amber-100 text-amber-800 px-1.5 py-0.2 text-[9px] font-black">In Directory</span>
+                        )}
+                      </span>
                       <span className="font-[vazirmatn] text-amber-900 font-bold text-[11px]">نام طرف اطلاع</span>
                     </label>
-                    <Input
-                      name="notify_party"
-                      value={formData.notify_party}
-                      onChange={handleInputChange}
-                      placeholder="Enter notify party name"
-                      className="rounded-xl h-10 text-xs font-bold text-slate-950 bg-white/60 backdrop-blur-md border border-white shadow-inner focus:border-amber-500 shadow-2xs"
-                      dir="auto"
-                    />
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3 text-amber-600 pointer-events-none">
+                        <Bell className="w-4 h-4" />
+                      </div>
+                      <Input
+                        name="notify_party"
+                        value={formData.notify_party}
+                        onFocus={() => setShowNotifyPartyDropdown(true)}
+                        onChange={(e) => {
+                          handleInputChange(e)
+                          setShowNotifyPartyDropdown(true)
+                          setNotifyPartySearchQuery(e.target.value)
+                        }}
+                        placeholder="Type to search or enter notify party name"
+                        className="pl-9 rounded-xl h-11 text-sm font-extrabold text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-2xs transition-all"
+                        dir="auto"
+                      />
+                    </div>
+
+                    {/* Floating Autocomplete Suggestions */}
+                    {showNotifyPartyDropdown && matchingNotifyParties.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full z-40 mt-1.5 max-h-72 overflow-y-auto rounded-2xl border border-amber-200 bg-white/95 p-2.5 shadow-2xl shadow-slate-900/20 backdrop-blur-xl no-scrollbar">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 mb-1.5 px-1">
+                          <span className="text-[11px] font-black text-amber-950">
+                            Matching Saved Notify Parties ({matchingNotifyParties.length})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowNotifyPartyDropdown(false)}
+                            className="text-xs font-bold text-slate-400 hover:text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md transition cursor-pointer"
+                          >
+                            ✕ Close
+                          </button>
+                        </div>
+                        <div className="space-y-1">
+                          {matchingNotifyParties.slice(0, 10).map((notify) => (
+                            <button
+                              key={notify.id}
+                              type="button"
+                              onClick={() => {
+                                applySavedNotifyParty(notify.id)
+                                setShowNotifyPartyDropdown(false)
+                              }}
+                              className="w-full flex flex-col items-start p-2 rounded-xl text-left bg-slate-50/70 hover:bg-amber-50 border border-slate-100 hover:border-amber-300 transition-all cursor-pointer group"
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <span className="text-xs font-black text-slate-900 group-hover:text-amber-950 truncate">
+                                  {notify.name}
+                                </span>
+                                <span className="text-[9px] font-bold bg-amber-100 text-amber-800 rounded px-1.5 py-0.2 shrink-0 ml-1">
+                                  Select ➔
+                                </span>
+                              </div>
+                              {notify.address && (
+                                <p className="text-[10px] text-slate-500 font-medium truncate w-full mt-0.5">
+                                  {notify.address}
+                                </p>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Notify Party Address / Contact */}
                   <div>
-                    <label className="text-xs font-extrabold text-slate-800 mb-1.5 flex items-center justify-between">
-                      <span>Address / Contact</span>
-                      <span className="font-[vazirmatn] text-amber-900 font-bold text-[11px]">آدرس و تلفن</span>
-                    </label>
-                    <Input
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-black text-slate-800">
+                        Address & Arrival Contact
+                      </label>
+                      <span className="font-[vazirmatn] text-amber-900 font-bold text-[11px]">آدرس و تلفن طرف اطلاع</span>
+                    </div>
+                    <Textarea
                       name="notify_party_address"
                       value={formData.notify_party_address}
                       onChange={handleInputChange}
-                      placeholder="Enter notify party address"
-                      className="rounded-xl h-10 text-xs font-bold text-slate-950 bg-white/60 backdrop-blur-md border border-white shadow-inner focus:border-amber-500 shadow-2xs"
-                      dir="auto"
+                      placeholder="Enter notify party complete address, phone, and clearance instructions..."
+                      rows={3}
+                      className="rounded-xl p-3 text-sm font-medium text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-2xs min-h-[76px] transition-all"
                     />
+                    <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                      <span className="text-[9px] font-bold text-slate-400">Quick Insert:</span>
+                      {["Deira, Dubai, UAE", "Abidjan, Ivory Coast", "Bandar Abbas, Iran", "Kabul, Afghanistan"].map((city) => (
+                        <button
+                          key={city}
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              notify_party_address: prev.notify_party_address ? `${prev.notify_party_address.trim()}, ${city}` : city,
+                            }))
+                          }}
+                          className="text-[9px] font-semibold bg-slate-100 hover:bg-amber-100 hover:text-amber-900 text-slate-600 rounded px-1.5 py-0.5 transition cursor-pointer"
+                        >
+                          + {city}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </CardContent>
