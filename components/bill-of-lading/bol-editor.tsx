@@ -342,6 +342,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [activeRouteIndex, setActiveRouteIndex] = useState<number | null>(null)
   const [showLocationDropdown, setShowLocationDropdown] = useState<number | null>(null)
   const [selectedCountryFilter, setSelectedCountryFilter] = useState("ALL")
+  const [selectedIndiaCategoryFilter, setSelectedIndiaCategoryFilter] = useState("ALL")
   const [routeLocationSearch, setRouteLocationSearch] = useState("")
   const [savedShippers, setSavedShippers] = useState<SavedParty[]>([])
   const [selectedShipperId, setSelectedShipperId] = useState<string>("")
@@ -2268,10 +2269,24 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     persian: string
     country: string
     code: string
+    locationType?: string
+    state?: string
+    district?: string
+    portType?: string
+    borderCountry?: string
+    iataCode?: string
+    unLocode?: string
+    customsCode?: string
     isPort?: boolean
     portName?: string
     isBorder?: boolean
-    borderCountry?: string
+    cargoEnabled?: boolean
+    containerEnabled?: boolean
+    railConnected?: boolean
+    roadConnected?: boolean
+    airCargo?: boolean
+    seaCargo?: boolean
+    inlandWaterway?: boolean
   }> = [
     // 🇨🇮 Ivory Coast & West Africa (Explicit User Preset)
     { name: "Abidjan, Ivory Coast", persian: "ابیدجان، ساحل عاج", country: "Ivory Coast", code: "ABJ", isPort: true, portName: "Abidjan Port" },
@@ -2405,18 +2420,198 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     { name: "Aqaba Port, JO", persian: "بندر عقبه، اردن", country: "Jordan", code: "AQB", isPort: true, portName: "Port of Aqaba" },
     { name: "Beirut Port, LB", persian: "بندر بیروت، لبنان", country: "Lebanon", code: "BEY", isPort: true, portName: "Port of Beirut" },
     
-    // India & Indian Subcontinent
-    { name: "Nhava Sheva (JNPT), IN", persian: "نهاوا شوا (بمبئی)، هند", country: "India", code: "NSA", isPort: true, portName: "Nhava Sheva (JNPT)" },
-    { name: "Mundra Port, IN", persian: "بندر موندرا (گجرات)، هند", country: "India", code: "MUN", isPort: true, portName: "Mundra Port" },
-    { name: "Kandla Port (Deendayal), IN", persian: "بندر کاندلا، هند", country: "India", code: "KDL", isPort: true, portName: "Deendayal Port (Kandla)" },
-    { name: "Chennai Port (Madras), IN", persian: "بندر چنای (مدراس)، هند", country: "India", code: "CHN", isPort: true, portName: "Chennai Port" },
-    { name: "Cochin Port (Vallarpadam), IN", persian: "بندر کوچین، هند", country: "India", code: "COK", isPort: true, portName: "Cochin Port" },
-    { name: "Kolkata / Haldia Port, IN", persian: "بندر کلکته / هالدیا، هند", country: "India", code: "KOL", isPort: true, portName: "Kolkata Port" },
-    { name: "Visakhapatnam (Vizag), IN", persian: "بندر ویساکاپاتنام، هند", country: "India", code: "VTZ", isPort: true, portName: "Visakhapatnam Port" },
-    { name: "Tuticorin (V.O. Chidambaranar), IN", persian: "بندر توتیکورین، هند", country: "India", code: "TUT", isPort: true, portName: "V.O. Chidambaranar Port" },
-    { name: "Delhi (ICD Tughlakabad), IN", persian: "دهلی (پایانه کانتینری)، هند", country: "India", code: "DEL" },
-    { name: "Mumbai, IN", persian: "ممبئی، هند", country: "India", code: "MUM", isPort: true, portName: "Mumbai Port" },
-    { name: "Amritsar, IN", persian: "امریتسر، هند", country: "India", code: "AMR" },
+    // 🇮🇳 INDIA — LAND BORDERS, INTEGRATED CHECK POSTS (ICP) & CUSTOMS CROSSINGS
+    { name: "Attari / Wagah (ICP Attari), Punjab, IN", persian: "اٹاری بارڈر / واہگہ (پایانه مرزی پاکستان)، هند", country: "India", code: "ATT", locationType: "INTEGRATED_CHECK_POST", state: "Punjab", district: "Amritsar", borderCountry: "Pakistan", isBorder: true, roadConnected: true, railConnected: true, customsCode: "INATT1", unLocode: "INATQ" },
+    { name: "Dera Baba Nanak (Kartarpur Corridor), Punjab, IN", persian: "دیره بابا نانک (مرز پاکستان)، هند", country: "India", code: "DBN", locationType: "CUSTOMS_BORDER", state: "Punjab", district: "Gurdaspur", borderCountry: "Pakistan", isBorder: true },
+    { name: "Raxaul (ICP Raxaul / Birgunj Gateway), Bihar, IN", persian: "راکسول (پایانه مرزی نپال)، هند", country: "India", code: "RXL", locationType: "INTEGRATED_CHECK_POST", state: "Bihar", district: "East Champaran", borderCountry: "Nepal", isBorder: true, railConnected: true, roadConnected: true, unLocode: "INRXL", customsCode: "INRXL1" },
+    { name: "Jogbani (ICP Jogbani / Biratnagar Gateway), Bihar, IN", persian: "جوگبانی (مرز نپال)، هند", country: "India", code: "JGB", locationType: "INTEGRATED_CHECK_POST", state: "Bihar", district: "Araria", borderCountry: "Nepal", isBorder: true, railConnected: true, roadConnected: true, unLocode: "INJGB", customsCode: "INJGB1" },
+    { name: "Rupaidiha (ICP Rupaidiha / Nepalgunj), UP, IN", persian: "روپیدیها (مرز نپال)، هند", country: "India", code: "RPD", locationType: "INTEGRATED_CHECK_POST", state: "Uttar Pradesh", district: "Bahraich", borderCountry: "Nepal", isBorder: true, roadConnected: true, unLocode: "INRPD" },
+    { name: "Panitanki (Raniganj / Kakarbhitta Gateway), WB, IN", persian: "پانی تانکی (مرز نپال)، هند", country: "India", code: "PTK", locationType: "CUSTOMS_BORDER", state: "West Bengal", district: "Darjeeling", borderCountry: "Nepal", isBorder: true, roadConnected: true },
+    { name: "Jaigaon (Phuntsholing Gateway), WB, IN", persian: "جایگاون (مرز بوتان)، هند", country: "India", code: "JGN", locationType: "LAND_BORDER", state: "West Bengal", district: "Alipurduar", borderCountry: "Bhutan", isBorder: true, roadConnected: true, unLocode: "INJGN" },
+    { name: "Petrapole (ICP Petrapole / Benapole Gateway), WB, IN", persian: "پتراپول (پایانه مرزی بنگلادش)، هند", country: "India", code: "PTP", locationType: "INTEGRATED_CHECK_POST", state: "West Bengal", district: "North 24 Parganas", borderCountry: "Bangladesh", isBorder: true, railConnected: true, roadConnected: true, unLocode: "INPTP", customsCode: "INPTP1" },
+    { name: "Hili (Hili Land Customs Station), WB, IN", persian: "هیلی (گمرک مرزی بنگلادش)، هند", country: "India", code: "HLI", locationType: "CUSTOMS_BORDER", state: "West Bengal", district: "Dakshin Dinajpur", borderCountry: "Bangladesh", isBorder: true, unLocode: "INHLI" },
+    { name: "Changrabandha (Burimari Gateway), WB, IN", persian: "چانگرابندها (مرز بنگلادش)، هند", country: "India", code: "CGB", locationType: "CUSTOMS_BORDER", state: "West Bengal", district: "Cooch Behar", borderCountry: "Bangladesh", isBorder: true, unLocode: "INCGB" },
+    { name: "Ghojadanga (Bhomra Gateway), WB, IN", persian: "غوجادانگا (مرز بنگلادش)، هند", country: "India", code: "GHD", locationType: "CUSTOMS_BORDER", state: "West Bengal", district: "North 24 Parganas", borderCountry: "Bangladesh", isBorder: true, unLocode: "INGHD" },
+    { name: "Mahadipur (Sonamasjid Gateway), WB, IN", persian: "مهدی‌پور (مرز بنگلادش)، هند", country: "India", code: "MDP", locationType: "CUSTOMS_BORDER", state: "West Bengal", district: "Malda", borderCountry: "Bangladesh", isBorder: true, unLocode: "INMDP" },
+    { name: "Fulbari (Banglabandha Gateway), WB, IN", persian: "فولباری (مرز بنگلادش)، هند", country: "India", code: "FLB", locationType: "CUSTOMS_BORDER", state: "West Bengal", district: "Jalpaiguri", borderCountry: "Bangladesh", isBorder: true, unLocode: "INFLB" },
+    { name: "Dawki (ICP Dawki / Tamabil Gateway), Meghalaya, IN", persian: "داوکی (پایانه مرزی بنگلادش)، هند", country: "India", code: "DWK", locationType: "INTEGRATED_CHECK_POST", state: "Meghalaya", district: "West Jaintia Hills", borderCountry: "Bangladesh", isBorder: true, unLocode: "INDWK" },
+    { name: "Sutarkandi (ICP Sutarkandi / Sheola Gateway), Assam, IN", persian: "سوتارکندی (مرز بنگلادش)، هند", country: "India", code: "STK", locationType: "INTEGRATED_CHECK_POST", state: "Assam", district: "Karimganj", borderCountry: "Bangladesh", isBorder: true, unLocode: "INSTK" },
+    { name: "Agartala (ICP Agartala / Akhaura Gateway), Tripura, IN", persian: "آگارتالا (پایانه مرزی بنگلادش)، هند", country: "India", code: "AGT", locationType: "INTEGRATED_CHECK_POST", state: "Tripura", district: "West Tripura", borderCountry: "Bangladesh", isBorder: true, unLocode: "INAGT" },
+    { name: "Srimantapur (Bibirbazar Gateway), Tripura, IN", persian: "سریماتاپور (مرز بنگلادش)، هند", country: "India", code: "SMP", locationType: "CUSTOMS_BORDER", state: "Tripura", district: "Sepahijala", borderCountry: "Bangladesh", isBorder: true, unLocode: "INSMP" },
+    { name: "Sabroom (ICP Sabroom / Chittagong Corridor), Tripura, IN", persian: "سابروم (مرز بنگلادش)، هند", country: "India", code: "SBR", locationType: "INTEGRATED_CHECK_POST", state: "Tripura", district: "South Tripura", borderCountry: "Bangladesh", isBorder: true, unLocode: "INSBR" },
+    { name: "Moreh (ICP Moreh / Tamu Gateway), Manipur, IN", persian: "موره (مرز میانمار)، هند", country: "India", code: "MRH", locationType: "INTEGRATED_CHECK_POST", state: "Manipur", district: "Tengnoupal", borderCountry: "Myanmar", isBorder: true, unLocode: "INMRH" },
+    { name: "Zokhawthar (Rih Dil Gateway), Mizoram, IN", persian: "زوخاوتر (مرز میانمار)، هند", country: "India", code: "ZKT", locationType: "CUSTOMS_BORDER", state: "Mizoram", district: "Champhai", borderCountry: "Myanmar", isBorder: true, unLocode: "INZKT" },
+
+    // 🇮🇳 INDIA — MAJOR SEAPORTS & PREMIER CONTAINER TERMINALS
+    { name: "Jawaharlal Nehru Port (JNPT / Nhava Sheva), MH, IN", persian: "بندر نهاوا شوا (JNPT ممبئی)، هند", country: "India", code: "INNSA", isPort: true, portName: "Jawaharlal Nehru Port (JNPT / Nhava Sheva)", locationType: "SEA_PORT_MAJOR", state: "Maharashtra", district: "Raigad / Navi Mumbai", unLocode: "INNSA", customsCode: "INNSA1", containerEnabled: true, railConnected: true, seaCargo: true },
+    { name: "Mumbai Port Trust (MbPT), Maharashtra, IN", persian: "بندر ممبئی، هند", country: "India", code: "INBOM", isPort: true, portName: "Mumbai Port Trust", locationType: "SEA_PORT_MAJOR", state: "Maharashtra", district: "Mumbai", unLocode: "INBOM", seaCargo: true },
+    { name: "Mundra Port (Adani Ports & SEZ), Gujarat, IN", persian: "بندر موندرا (بزرگترین بندر تجاری گجرات)، هند", country: "India", code: "INMUN", isPort: true, portName: "Mundra Port & SEZ (APSEZ)", locationType: "SEA_PORT_MAJOR", state: "Gujarat", district: "Kutch", unLocode: "INMUN", customsCode: "INMUN1", containerEnabled: true, railConnected: true, seaCargo: true },
+    { name: "Deendayal Port (Kandla), Gujarat, IN", persian: "بندر کاندلا (دیندایال)، هند", country: "India", code: "INIXY", isPort: true, portName: "Deendayal Port (Kandla)", locationType: "SEA_PORT_MAJOR", state: "Gujarat", district: "Kutch", unLocode: "INIXY", customsCode: "INIXY1", seaCargo: true },
+    { name: "Pipavav Port (APM Terminals), Gujarat, IN", persian: "بندر پیپاوائو (گجرات)، هند", country: "India", code: "INPAV", isPort: true, portName: "Port Pipavav (APM Terminals)", locationType: "SEA_PORT_MAJOR", state: "Gujarat", district: "Amreli", unLocode: "INPAV", containerEnabled: true, railConnected: true, seaCargo: true },
+    { name: "Hazira Port (Adani / Essar), Gujarat, IN", persian: "بندر هزیرا (سورت)، هند", country: "India", code: "INHZA", isPort: true, portName: "Hazira Port (Adani Hazira)", locationType: "SEA_PORT_MAJOR", state: "Gujarat", district: "Surat", unLocode: "INHZA", containerEnabled: true, seaCargo: true },
+    { name: "Chennai Port Trust, Tamil Nadu, IN", persian: "بندر چنای (مدراس)، هند", country: "India", code: "INMAA", isPort: true, portName: "Chennai Port Trust", locationType: "SEA_PORT_MAJOR", state: "Tamil Nadu", district: "Chennai", unLocode: "INMAA", customsCode: "INMAA1", containerEnabled: true, railConnected: true, seaCargo: true },
+    { name: "Kamarajar Port (Ennore), Tamil Nadu, IN", persian: "بندر کاماراجار (انور)، هند", country: "India", code: "INENR", isPort: true, portName: "Kamarajar Port (Ennore)", locationType: "SEA_PORT_MAJOR", state: "Tamil Nadu", district: "Chennai", unLocode: "INENR", containerEnabled: true, seaCargo: true },
+    { name: "Kattupalli Port (Adani Kattupalli), Tamil Nadu, IN", persian: "بندر کاتوپالی (چنای)، هند", country: "India", code: "INKAT", isPort: true, portName: "Adani Kattupalli Port", locationType: "SEA_PORT_MAJOR", state: "Tamil Nadu", district: "Tiruvallur", unLocode: "INKAT", containerEnabled: true, seaCargo: true },
+    { name: "V.O. Chidambaranar Port (Tuticorin), Tamil Nadu, IN", persian: "بندر توتیکورین (VOC Port)، هند", country: "India", code: "INTUT", isPort: true, portName: "V.O. Chidambaranar Port (Tuticorin)", locationType: "SEA_PORT_MAJOR", state: "Tamil Nadu", district: "Thoothukudi", unLocode: "INTUT", containerEnabled: true, seaCargo: true },
+    { name: "Cochin Port Trust (Vallarpadam ICTT), Kerala, IN", persian: "بندر کوچین (پایانه بین‌المللی کانتینری والرپادام)، هند", country: "India", code: "INCOK", isPort: true, portName: "Cochin Port (Vallarpadam ICTT)", locationType: "SEA_PORT_MAJOR", state: "Kerala", district: "Ernakulam", unLocode: "INCOK", containerEnabled: true, seaCargo: true },
+    { name: "Vizhinjam International Seaport, Kerala, IN", persian: "بندر بین‌المللی ویژینجام (ترانس‌شیپ‌منت کانتینری)، هند", country: "India", code: "INVIZ", isPort: true, portName: "Vizhinjam International Transshipment Deepwater Port", locationType: "SEA_PORT_MAJOR", state: "Kerala", district: "Thiruvananthapuram", unLocode: "INVIZ", containerEnabled: true, seaCargo: true },
+    { name: "New Mangalore Port, Karnataka, IN", persian: "بندر نیو منگلور، هند", country: "India", code: "INNML", isPort: true, portName: "New Mangalore Port Trust", locationType: "SEA_PORT_MAJOR", state: "Karnataka", district: "Dakshina Kannada", unLocode: "INNML", seaCargo: true },
+    { name: "Mormugao Port Trust, Goa, IN", persian: "بندر مورموگائو (گوا)، هند", country: "India", code: "INMRM", isPort: true, portName: "Mormugao Port Trust", locationType: "SEA_PORT_MAJOR", state: "Goa", district: "South Goa", unLocode: "INMRM", seaCargo: true },
+    { name: "Visakhapatnam Port Trust (Vizag Port), AP, IN", persian: "بندر ویساکاپاتنام (ویزگ)، هند", country: "India", code: "INVTZ", isPort: true, portName: "Visakhapatnam Port Trust", locationType: "SEA_PORT_MAJOR", state: "Andhra Pradesh", district: "Visakhapatnam", unLocode: "INVTZ", containerEnabled: true, railConnected: true, seaCargo: true },
+    { name: "Gangavaram Port (Adani Gangavaram), AP, IN", persian: "بندر گانگااورام (ویزگ)، هند", country: "India", code: "INGGV", isPort: true, portName: "Gangavaram Port", locationType: "SEA_PORT_MAJOR", state: "Andhra Pradesh", district: "Visakhapatnam", unLocode: "INGGV", seaCargo: true },
+    { name: "Krishnapatnam Port (Adani KPCL), AP, IN", persian: "بندر کریشناپاتنام (نلور)، هند", country: "India", code: "INKRI", isPort: true, portName: "Krishnapatnam Port (KPCL)", locationType: "SEA_PORT_MAJOR", state: "Andhra Pradesh", district: "Nellore", unLocode: "INKRI", containerEnabled: true, seaCargo: true },
+    { name: "Paradip Port Trust, Odisha, IN", persian: "بندر پارادیپ (اودیشا)، هند", country: "India", code: "INPRT", isPort: true, portName: "Paradip Port Trust", locationType: "SEA_PORT_MAJOR", state: "Odisha", district: "Jagatsinghpur", unLocode: "INPRT", seaCargo: true },
+    { name: "Dhamra Port (Adani Dhamra), Odisha, IN", persian: "بندر دهامرا (اودیشا)، هند", country: "India", code: "INDHM", isPort: true, portName: "Dhamra Port (DPCL)", locationType: "SEA_PORT_MAJOR", state: "Odisha", district: "Bhadrak", unLocode: "INDHM", seaCargo: true },
+    { name: "Syama Prasad Mookerjee Port (Kolkata Dock), WB, IN", persian: "بندر کلکته (سیااما پراساد)، هند", country: "India", code: "INCCU", isPort: true, portName: "Syama Prasad Mookerjee Port Kolkata", locationType: "SEA_PORT_MAJOR", state: "West Bengal", district: "Kolkata", unLocode: "INCCU", containerEnabled: true, seaCargo: true },
+    { name: "Haldia Dock Complex (HDC), West Bengal, IN", persian: "بندر هالدیا (داک کمپلکس کلکته)، هند", country: "India", code: "INHAL", isPort: true, portName: "Haldia Dock Complex", locationType: "SEA_PORT_MAJOR", state: "West Bengal", district: "Purba Medinipur", unLocode: "INHAL", containerEnabled: true, seaCargo: true },
+
+    // 🇮🇳 INDIA — COMMERCIAL NON-MAJOR CARGO SEAPORTS
+    { name: "Bedi Port, Gujarat, IN", persian: "بندر بدی (جام‌نگر)، هند", country: "India", code: "INBED", isPort: true, portName: "Bedi Port", locationType: "SEA_PORT_NON_MAJOR", state: "Gujarat", unLocode: "INBED" },
+    { name: "Sikka Port (Reliance Terminal), Gujarat, IN", persian: "بندر سیکا (پایانه نفتی ریلاینس)، هند", country: "India", code: "INSIK", isPort: true, portName: "Sikka Port", locationType: "SEA_PORT_NON_MAJOR", state: "Gujarat", unLocode: "INSIK" },
+    { name: "Dahej Port (Petronet LNG), Gujarat, IN", persian: "بندر داهج (گجرات)، هند", country: "India", code: "INDHJ", isPort: true, portName: "Dahej Port", locationType: "SEA_PORT_NON_MAJOR", state: "Gujarat", unLocode: "INDHJ" },
+    { name: "Porbandar Port, Gujarat, IN", persian: "بندر پوربندر، هند", country: "India", code: "INPBD-PORT", isPort: true, portName: "Porbandar Port", locationType: "SEA_PORT_NON_MAJOR", state: "Gujarat", unLocode: "INPBD" },
+    { name: "Okha Port, Gujarat, IN", persian: "بندر اوخا (دوارکا)، هند", country: "India", code: "INOKH", isPort: true, portName: "Okha Port", locationType: "SEA_PORT_NON_MAJOR", state: "Gujarat", unLocode: "INOKH" },
+    { name: "Navlakhi Port, Gujarat, IN", persian: "بندر ناولاخی (موربی)، هند", country: "India", code: "INNAV", isPort: true, portName: "Navlakhi Port", locationType: "SEA_PORT_NON_MAJOR", state: "Gujarat", unLocode: "INNAV" },
+    { name: "Jaigad Port (JSW Jaigad), Maharashtra, IN", persian: "بندر جایگاد (راتناگیری)، هند", country: "India", code: "INJAI-PORT", isPort: true, portName: "JSW Jaigad Port", locationType: "SEA_PORT_NON_MAJOR", state: "Maharashtra", unLocode: "INJAI" },
+    { name: "Dighi Port (Adani Dighi), Maharashtra, IN", persian: "بندر دیگی (رایگاد)، هند", country: "India", code: "INDGI", isPort: true, portName: "Dighi Port", locationType: "SEA_PORT_NON_MAJOR", state: "Maharashtra", unLocode: "INDGI" },
+    { name: "Dharamtar Port, Maharashtra, IN", persian: "بندر دهارام‌تار (رایگاد)، هند", country: "India", code: "INDMT", isPort: true, portName: "Dharamtar Port", locationType: "SEA_PORT_NON_MAJOR", state: "Maharashtra", unLocode: "INDMT" },
+    { name: "Redi Port, Maharashtra, IN", persian: "بندر ردی (سیندودورگ)، هند", country: "India", code: "INRED", isPort: true, portName: "Redi Port", locationType: "SEA_PORT_NON_MAJOR", state: "Maharashtra", unLocode: "INRED" },
+    { name: "Karwar Port, Karnataka, IN", persian: "بندر کاروار، هند", country: "India", code: "INKRW", isPort: true, portName: "Karwar Port", locationType: "SEA_PORT_NON_MAJOR", state: "Karnataka", unLocode: "INKRW" },
+    { name: "Old Mangalore Port, Karnataka, IN", persian: "بندر قدیم منگلور، هند", country: "India", code: "INMNP", isPort: true, portName: "Old Mangalore Port", locationType: "SEA_PORT_NON_MAJOR", state: "Karnataka", unLocode: "INMNP" },
+    { name: "Beypore Port, Kerala, IN", persian: "بندر بیپور (کوزیکود)، هند", country: "India", code: "INBEY", isPort: true, portName: "Beypore Port", locationType: "SEA_PORT_NON_MAJOR", state: "Kerala", unLocode: "INBEY" },
+    { name: "Azhikkal Port (Kannur), Kerala, IN", persian: "بندر آژیکال (کانور)، هند", country: "India", code: "INAZH", isPort: true, portName: "Azhikkal Port", locationType: "SEA_PORT_NON_MAJOR", state: "Kerala", unLocode: "INAZH" },
+    { name: "Cuddalore Port, Tamil Nadu, IN", persian: "بندر کادالور، هند", country: "India", code: "INCDL", isPort: true, portName: "Cuddalore Port", locationType: "SEA_PORT_NON_MAJOR", state: "Tamil Nadu", unLocode: "INCDL" },
+    { name: "Nagapattinam Port, Tamil Nadu, IN", persian: "بندر ناگاپاتینام، هند", country: "India", code: "INNAG-PORT", isPort: true, portName: "Nagapattinam Port", locationType: "SEA_PORT_NON_MAJOR", state: "Tamil Nadu", unLocode: "INNAG" },
+    { name: "Karaikal Port (Adani Karaikal), Puducherry, IN", persian: "بندر کارایکال، هند", country: "India", code: "INKRK", isPort: true, portName: "Karaikal Port", locationType: "SEA_PORT_NON_MAJOR", state: "Puducherry", unLocode: "INKRK" },
+    { name: "Kakinada Deep Water Port, AP, IN", persian: "بندر کاکینادا، هند", country: "India", code: "INKAK", isPort: true, portName: "Kakinada Deep Water Port", locationType: "SEA_PORT_NON_MAJOR", state: "Andhra Pradesh", unLocode: "INKAK" },
+    { name: "Machilipatnam Port, AP, IN", persian: "بندر ماچیلی‌پاتنام، هند", country: "India", code: "INMTM", isPort: true, portName: "Machilipatnam Port", locationType: "SEA_PORT_NON_MAJOR", state: "Andhra Pradesh", unLocode: "INMTM" },
+    { name: "Gopalpur Port, Odisha, IN", persian: "بندر گوپال‌پور (گانجام)، هند", country: "India", code: "INGPR", isPort: true, portName: "Gopalpur Port", locationType: "SEA_PORT_NON_MAJOR", state: "Odisha", unLocode: "INGPR" },
+
+    // 🇮🇳 INDIA — INTERNATIONAL & CUSTOMS AIRPORTS (AIR CARGO)
+    { name: "Delhi — Indira Gandhi Intl Airport (DEL / INDEL), IN", persian: "میدان هوایی بین‌المللی دهلی (IGI)، هند", country: "India", code: "DEL", locationType: "AIRPORT_INTERNATIONAL", state: "Delhi", iataCode: "DEL", unLocode: "INDEL", customsCode: "INDEL4", airCargo: true, cargoEnabled: true },
+    { name: "Mumbai — Chhatrapati Shivaji Maharaj Intl Airport (BOM / INBOM), IN", persian: "میدان هوایی بین‌المللی ممبئی (CSMIA)، هند", country: "India", code: "BOM", locationType: "AIRPORT_INTERNATIONAL", state: "Maharashtra", iataCode: "BOM", unLocode: "INBOM", customsCode: "INBOM4", airCargo: true, cargoEnabled: true },
+    { name: "Bengaluru — Kempegowda Intl Airport (BLR / INBLR), IN", persian: "میدان هوایی بین‌المللی بنگلور (KIA)، هند", country: "India", code: "BLR", locationType: "AIRPORT_INTERNATIONAL", state: "Karnataka", iataCode: "BLR", unLocode: "INBLR", customsCode: "INBLR4", airCargo: true, cargoEnabled: true },
+    { name: "Hyderabad — Rajiv Gandhi Intl Airport (HYD / INHYD), IN", persian: "میدان هوایی بین‌المللی حیدرآباد (RGIA)، هند", country: "India", code: "HYD", locationType: "AIRPORT_INTERNATIONAL", state: "Telangana", iataCode: "HYD", unLocode: "INHYD", customsCode: "INHYD4", airCargo: true, cargoEnabled: true },
+    { name: "Chennai International Airport (MAA / INMAA), IN", persian: "میدان هوایی بین‌المللی چنای، هند", country: "India", code: "MAA", locationType: "AIRPORT_INTERNATIONAL", state: "Tamil Nadu", iataCode: "MAA", unLocode: "INMAA", customsCode: "INMAA4", airCargo: true, cargoEnabled: true },
+    { name: "Kolkata — Netaji Subhas Chandra Bose Intl Airport (CCU / INCCU), IN", persian: "میدان هوایی بین‌المللی کلکته (NSCBIA)، هند", country: "India", code: "CCU", locationType: "AIRPORT_INTERNATIONAL", state: "West Bengal", iataCode: "CCU", unLocode: "INCCU", customsCode: "INCCU4", airCargo: true, cargoEnabled: true },
+    { name: "Ahmedabad — Sardar Vallabhbhai Patel Intl Airport (AMD / INAMD), IN", persian: "میدان هوایی بین‌المللی احمدآباد، هند", country: "India", code: "AMD", locationType: "AIRPORT_INTERNATIONAL", state: "Gujarat", iataCode: "AMD", unLocode: "INAMD", customsCode: "INAMD4", airCargo: true, cargoEnabled: true },
+    { name: "Kochi — Cochin International Airport (COK / INCOK), IN", persian: "میدان هوایی بین‌المللی کوچین، هند", country: "India", code: "COK", locationType: "AIRPORT_INTERNATIONAL", state: "Kerala", iataCode: "COK", unLocode: "INCOK", customsCode: "INCOK4", airCargo: true, cargoEnabled: true },
+    { name: "Goa — Manohar Intl Airport (Mopa / GOX), IN", persian: "میدان هوایی بین‌المللی موپا، گوا، هند", country: "India", code: "GOX", locationType: "AIRPORT_INTERNATIONAL", state: "Goa", iataCode: "GOX", unLocode: "INGOX", airCargo: true },
+    { name: "Goa — Dabolim Airport (GOI / INGOI), IN", persian: "میدان هوایی دابولیم، گوا، هند", country: "India", code: "GOI", locationType: "AIRPORT_INTERNATIONAL", state: "Goa", iataCode: "GOI", unLocode: "INGOI", airCargo: true },
+    { name: "Pune International Airport (PNQ / INPNQ), IN", persian: "میدان هوایی بین‌المللی پونا، هند", country: "India", code: "PNQ", locationType: "AIRPORT_CUSTOMS", state: "Maharashtra", iataCode: "PNQ", unLocode: "INPNQ", airCargo: true },
+    { name: "Jaipur International Airport (JAI / INJAI), IN", persian: "میدان هوایی بین‌المللی جیپور، هند", country: "India", code: "JAI", locationType: "AIRPORT_INTERNATIONAL", state: "Rajasthan", iataCode: "JAI", unLocode: "INJAI", airCargo: true },
+    { name: "Lucknow — Chaudhary Charan Singh Intl Airport (LKO / INLKO), IN", persian: "میدان هوایی بین‌المللی لکهنو، هند", country: "India", code: "LKO", locationType: "AIRPORT_INTERNATIONAL", state: "Uttar Pradesh", iataCode: "LKO", unLocode: "INLKO", airCargo: true },
+    { name: "Amritsar — Sri Guru Ram Dass Jee Intl Airport (ATQ / INATQ), IN", persian: "میدان هوایی بین‌المللی امریتسر، هند", country: "India", code: "ATQ", locationType: "AIRPORT_INTERNATIONAL", state: "Punjab", iataCode: "ATQ", unLocode: "INATQ", customsCode: "INATQ4", airCargo: true },
+    { name: "Varanasi — Lal Bahadur Shastri Intl Airport (VNS / INVNS), IN", persian: "میدان هوایی بین‌المللی واراناسی، هند", country: "India", code: "VNS", locationType: "AIRPORT_INTERNATIONAL", state: "Uttar Pradesh", iataCode: "VNS", unLocode: "INVNS", airCargo: true },
+    { name: "Guwahati — Lokpriya Gopinath Bordoloi Intl Airport (GAU / INGAU), IN", persian: "میدان هوایی بین‌المللی گواتی، هند", country: "India", code: "GAU", locationType: "AIRPORT_INTERNATIONAL", state: "Assam", iataCode: "GAU", unLocode: "INGAU", airCargo: true },
+    { name: "Kozhikode — Calicut International Airport (CCJ / INCCJ), IN", persian: "میدان هوایی بین‌المللی کالیکوت (کوزیکود)، هند", country: "India", code: "CCJ", locationType: "AIRPORT_INTERNATIONAL", state: "Kerala", iataCode: "CCJ", unLocode: "INCCJ", airCargo: true },
+    { name: "Thiruvananthapuram International Airport (TRV / INTRV), IN", persian: "میدان هوایی بین‌المللی تریواندروم، هند", country: "India", code: "TRV", locationType: "AIRPORT_INTERNATIONAL", state: "Kerala", iataCode: "TRV", unLocode: "INTRV", airCargo: true },
+    { name: "Tiruchirappalli International Airport (TRZ / INTRZ), IN", persian: "میدان هوایی بین‌المللی تیروچیراپالی، هند", country: "India", code: "TRZ", locationType: "AIRPORT_INTERNATIONAL", state: "Tamil Nadu", iataCode: "TRZ", unLocode: "INTRZ", airCargo: true },
+    { name: "Mangaluru International Airport (IXE / INIXE), IN", persian: "میدان هوایی بین‌المللی منگلور، هند", country: "India", code: "IXE", locationType: "AIRPORT_INTERNATIONAL", state: "Karnataka", iataCode: "IXE", unLocode: "INIXE", airCargo: true },
+    { name: "Kannur International Airport (CNN / INCNN), IN", persian: "میدان هوایی بین‌المللی کانور، هند", country: "India", code: "CNN", locationType: "AIRPORT_INTERNATIONAL", state: "Kerala", iataCode: "CNN", unLocode: "INCNN", airCargo: true },
+    { name: "Bhubaneswar — Biju Patnaik Intl Airport (BBI / INBBI), IN", persian: "میدان هوایی بین‌المللی بوبانسوار، هند", country: "India", code: "BBI", locationType: "AIRPORT_INTERNATIONAL", state: "Odisha", iataCode: "BBI", unLocode: "INBBI", airCargo: true },
+    { name: "Patna — Jay Prakash Narayan Airport (PAT / INPAT), IN", persian: "میدان هوایی پتنه، هند", country: "India", code: "PAT", locationType: "AIRPORT_CUSTOMS", state: "Bihar", iataCode: "PAT", unLocode: "INPAT" },
+    { name: "Raipur — Swami Vivekananda Airport (RPR / INRPR), IN", persian: "میدان هوایی رایپور، هند", country: "India", code: "RPR", locationType: "AIRPORT_DOMESTIC", state: "Chhattisgarh", iataCode: "RPR", unLocode: "INRPR" },
+    { name: "Srinagar International Airport (SXR / INSXR), IN", persian: "میدان هوایی بین‌المللی سرینگر (کشمیر)، هند", country: "India", code: "SXR", locationType: "AIRPORT_INTERNATIONAL", state: "Jammu and Kashmir", iataCode: "SXR", unLocode: "INSXR", airCargo: true },
+    { name: "Nagpur — Dr. Babasaheb Ambedkar Intl Airport (NAG / INNAG), IN", persian: "میدان هوایی بین‌المللی ناگپور (MIHAN)، هند", country: "India", code: "NAG", locationType: "AIRPORT_INTERNATIONAL", state: "Maharashtra", iataCode: "NAG", unLocode: "INNAG", airCargo: true },
+    { name: "Chandigarh International Airport (IXC / INIXC), IN", persian: "میدان هوایی بین‌المللی چندیگر، هند", country: "India", code: "IXC", locationType: "AIRPORT_CUSTOMS", state: "Punjab / Chandigarh", iataCode: "IXC", unLocode: "INIXC", airCargo: true },
+    { name: "Port Blair — Veer Savarkar Intl Airport (IXZ / INIXZ), IN", persian: "میدان هوایی پورت بلیر (جزایر آندامان)، هند", country: "India", code: "IXZ", locationType: "AIRPORT_INTERNATIONAL", state: "Andaman and Nicobar", iataCode: "IXZ", unLocode: "INIXZ" },
+    { name: "Bagdogra Airport (IXB / INIXB), West Bengal, IN", persian: "میدان هوایی باگدوگرا (سیلیگوری)، هند", country: "India", code: "IXB", locationType: "AIRPORT_CUSTOMS", state: "West Bengal", iataCode: "IXB", unLocode: "INIXB" },
+    { name: "Gaya International Airport (GAY / INGAY), IN", persian: "میدان هوایی بین‌المللی گایا، هند", country: "India", code: "GAY", locationType: "AIRPORT_INTERNATIONAL", state: "Bihar", iataCode: "GAY", unLocode: "INGAY" },
+    { name: "Madurai Airport (IXM / INIXM), IN", persian: "میدان هوایی مادورای، هند", country: "India", code: "IXM", locationType: "AIRPORT_CUSTOMS", state: "Tamil Nadu", iataCode: "IXM", unLocode: "INIXM", airCargo: true },
+    { name: "Coimbatore International Airport (CJB / INCJB), IN", persian: "میدان هوایی بین‌المللی کویمباتور، هند", country: "India", code: "CJB", locationType: "AIRPORT_INTERNATIONAL", state: "Tamil Nadu", iataCode: "CJB", unLocode: "INCJB", airCargo: true },
+    { name: "Surat International Airport (STV / INSTV), IN", persian: "میدان هوایی بین‌المللی سورت، هند", country: "India", code: "STV", locationType: "AIRPORT_INTERNATIONAL", state: "Gujarat", iataCode: "STV", unLocode: "INSTV", airCargo: true },
+    { name: "Tirupati International Airport (TIR / INTIR), IN", persian: "میدان هوایی بین‌المللی تیروپاتی، هند", country: "India", code: "TIR", locationType: "AIRPORT_INTERNATIONAL", state: "Andhra Pradesh", iataCode: "TIR", unLocode: "INTIR" },
+    { name: "Vijayawada International Airport (VGA / INVGA), IN", persian: "میدان هوایی بین‌المللی ویجیاوادا، هند", country: "India", code: "VGA", locationType: "AIRPORT_INTERNATIONAL", state: "Andhra Pradesh", iataCode: "VGA", unLocode: "INVGA", airCargo: true },
+    { name: "Visakhapatnam International Airport (VTZ / INVTZ), IN", persian: "میدان هوایی بین‌المللی ویساکاپاتنام، هند", country: "India", code: "VTZ-AIR", locationType: "AIRPORT_INTERNATIONAL", state: "Andhra Pradesh", iataCode: "VTZ", unLocode: "INVTZ", airCargo: true },
+    { name: "Indore — Devi Ahilya Bai Holkar Intl Airport (IDR / INIDR), IN", persian: "میدان هوایی بین‌المللی ایندور، هند", country: "India", code: "IDR", locationType: "AIRPORT_INTERNATIONAL", state: "Madhya Pradesh", iataCode: "IDR", unLocode: "INIDR", airCargo: true },
+
+    // 🇮🇳 INDIA — OPERATIONAL DOMESTIC CARGO & CIVIL AIRPORTS
+    { name: "Agartala Airport (MBB / IXA), Tripura, IN", persian: "میدان هوایی آگارتالا، هند", country: "India", code: "IXA", locationType: "AIRPORT_DOMESTIC", state: "Tripura", iataCode: "IXA" },
+    { name: "Agatti Airport (AGX), Lakshadweep, IN", persian: "میدان هوایی آگاتی (لاکشادویپ)، هند", country: "India", code: "AGX", locationType: "AIRPORT_DOMESTIC", state: "Lakshadweep", iataCode: "AGX" },
+    { name: "Aurangabad Airport (IXU), Maharashtra, IN", persian: "میدان هوایی اورنگ‌آباد (سامباجی‌نگر)، هند", country: "India", code: "IXU", locationType: "AIRPORT_DOMESTIC", state: "Maharashtra", iataCode: "IXU" },
+    { name: "Bhopal — Raja Bhoj Airport (BHO), MP, IN", persian: "میدان هوایی راجا بوج (بوپال)، هند", country: "India", code: "BHO", locationType: "AIRPORT_DOMESTIC", state: "Madhya Pradesh", iataCode: "BHO" },
+    { name: "Dehradun — Jolly Grant Airport (DED), Uttarakhand, IN", persian: "میدان هوایی دهرادون، هند", country: "India", code: "DED", locationType: "AIRPORT_DOMESTIC", state: "Uttarakhand", iataCode: "DED" },
+    { name: "Dibrugarh Airport (DIB), Assam, IN", persian: "میدان هوایی دیبروگار، هند", country: "India", code: "DIB", locationType: "AIRPORT_DOMESTIC", state: "Assam", iataCode: "DIB" },
+    { name: "Dimapur Airport (DMU), Nagaland, IN", persian: "میدان هوایی دیماپور، هند", country: "India", code: "DMU", locationType: "AIRPORT_DOMESTIC", state: "Nagaland", iataCode: "DMU" },
+    { name: "Hubballi Airport (HBX), Karnataka, IN", persian: "میدان هوایی هوبلی، هند", country: "India", code: "HBX", locationType: "AIRPORT_DOMESTIC", state: "Karnataka", iataCode: "HBX" },
+    { name: "Imphal — Bir Tikendrajit Airport (IMF), Manipur, IN", persian: "میدان هوایی ایمفال، هند", country: "India", code: "IMF", locationType: "AIRPORT_DOMESTIC", state: "Manipur", iataCode: "IMF" },
+    { name: "Jabalpur Airport (JLR), MP, IN", persian: "میدان هوایی جبل‌پور، هند", country: "India", code: "JLR", locationType: "AIRPORT_DOMESTIC", state: "Madhya Pradesh", iataCode: "JLR" },
+    { name: "Jaisalmer Airport (JSA), Rajasthan, IN", persian: "میدان هوایی جیسلمیر، هند", country: "India", code: "JSA", locationType: "AIRPORT_DOMESTIC", state: "Rajasthan", iataCode: "JSA" },
+    { name: "Jammu Airport (IXJ), J&K, IN", persian: "میدان هوایی جمو، هند", country: "India", code: "IXJ", locationType: "AIRPORT_DOMESTIC", state: "Jammu and Kashmir", iataCode: "IXJ" },
+    { name: "Jodhpur Airport (JDH), Rajasthan, IN", persian: "میدان هوایی جودپور، هند", country: "India", code: "JDH", locationType: "AIRPORT_DOMESTIC", state: "Rajasthan", iataCode: "JDH" },
+    { name: "Kanpur Airport (KNU / Chakeri), UP, IN", persian: "میدان هوایی کانپور، هند", country: "India", code: "KNU", locationType: "AIRPORT_DOMESTIC", state: "Uttar Pradesh", iataCode: "KNU" },
+    { name: "Khajuraho Airport (HJR), MP, IN", persian: "میدان هوایی خاجوراهو، هند", country: "India", code: "HJR", locationType: "AIRPORT_DOMESTIC", state: "Madhya Pradesh", iataCode: "HJR" },
+    { name: "Kullu Manali Airport (KUU / Bhuntar), HP, IN", persian: "میدان هوایی کولو مانالی، هند", country: "India", code: "KUU", locationType: "AIRPORT_DOMESTIC", state: "Himachal Pradesh", iataCode: "KUU" },
+    { name: "Leh — Kushok Bakula Rimpochee Airport (IXL), Ladakh, IN", persian: "میدان هوایی لیه (لداخ)، هند", country: "India", code: "IXL", locationType: "AIRPORT_DOMESTIC", state: "Ladakh", iataCode: "IXL" },
+    { name: "Lilabari Airport (IXI), Assam, IN", persian: "میدان هوایی لیلاباری، هند", country: "India", code: "IXI", locationType: "AIRPORT_DOMESTIC", state: "Assam", iataCode: "IXI" },
+    { name: "Ludhiana — Sahnewal Airport (LUH), Punjab, IN", persian: "میدان هوایی لودیانا، هند", country: "India", code: "LUH", locationType: "AIRPORT_DOMESTIC", state: "Punjab", iataCode: "LUH" },
+    { name: "Mysuru — Mandakalli Airport (MYQ), Karnataka, IN", persian: "میدان هوایی میسور، هند", country: "India", code: "MYQ", locationType: "AIRPORT_DOMESTIC", state: "Karnataka", iataCode: "MYQ" },
+    { name: "Pantnagar Airport (PGH), Uttarakhand, IN", persian: "میدان هوایی پنت‌نگر، هند", country: "India", code: "PGH", locationType: "AIRPORT_DOMESTIC", state: "Uttarakhand", iataCode: "PGH" },
+    { name: "Pondicherry Airport (PNY), Puducherry, IN", persian: "میدان هوایی پوندیچری، هند", country: "India", code: "PNY", locationType: "AIRPORT_DOMESTIC", state: "Puducherry", iataCode: "PNY" },
+    { name: "Porbandar Airport (PBD), Gujarat, IN", persian: "میدان هوایی پوربندر، هند", country: "India", code: "PBD", locationType: "AIRPORT_DOMESTIC", state: "Gujarat", iataCode: "PBD" },
+    { name: "Rajahmundry Airport (RJA), AP, IN", persian: "میدان هوایی راجاهموندری، هند", country: "India", code: "RJA", locationType: "AIRPORT_DOMESTIC", state: "Andhra Pradesh", iataCode: "RJA" },
+    { name: "Rajkot International Airport (Hirasar / HSR), Gujarat, IN", persian: "میدان هوایی بین‌المللی راجکوت (هیراسار)، هند", country: "India", code: "HSR", locationType: "AIRPORT_DOMESTIC", state: "Gujarat", iataCode: "HSR" },
+    { name: "Ranchi — Birsa Munda Airport (IXR), Jharkhand, IN", persian: "میدان هوایی رانچی، هند", country: "India", code: "IXR", locationType: "AIRPORT_DOMESTIC", state: "Jharkhand", iataCode: "IXR" },
+    { name: "Shillong — Umroi Airport (SHL), Meghalaya, IN", persian: "میدان هوایی شیلانگ، هند", country: "India", code: "SHL", locationType: "AIRPORT_DOMESTIC", state: "Meghalaya", iataCode: "SHL" },
+    { name: "Shimla Airport (SLV / Jubbarhatti), HP, IN", persian: "میدان هوایی شیملا، هند", country: "India", code: "SLV", locationType: "AIRPORT_DOMESTIC", state: "Himachal Pradesh", iataCode: "SLV" },
+    { name: "Shirdi Airport (SAG), Maharashtra, IN", persian: "میدان هوایی شیردی، هند", country: "India", code: "SAG", locationType: "AIRPORT_DOMESTIC", state: "Maharashtra", iataCode: "SAG" },
+    { name: "Tezpur Airport (TEZ), Assam, IN", persian: "میدان هوایی تزپور، هند", country: "India", code: "TEZ", locationType: "AIRPORT_DOMESTIC", state: "Assam", iataCode: "TEZ" },
+    { name: "Tezu Airport (TEI), Arunachal Pradesh, IN", persian: "میدان هوایی تزو، هند", country: "India", code: "TEI", locationType: "AIRPORT_DOMESTIC", state: "Arunachal Pradesh", iataCode: "TEI" },
+    { name: "Udaipur — Maharana Pratap Airport (UDR), Rajasthan, IN", persian: "میدان هوایی اودیپور، هند", country: "India", code: "UDR", locationType: "AIRPORT_DOMESTIC", state: "Rajasthan", iataCode: "UDR" },
+    { name: "Vadodara Airport (BDQ), Gujarat, IN", persian: "میدان هوایی وادودارا، هند", country: "India", code: "BDQ", locationType: "AIRPORT_DOMESTIC", state: "Gujarat", iataCode: "BDQ" },
+
+    // 🇮🇳 INDIA — INLAND CONTAINER DEPOTS (ICD) & RAIL CONTAINER TERMINALS (CONCOR)
+    { name: "ICD Tughlakabad (TKD / CONCOR Delhi), IN", persian: "پایانه کانتینری خشکی توغلق‌آباد دهلی (بزرگترین ICD هند)", country: "India", code: "INTKD", locationType: "ICD", state: "Delhi", customsCode: "INTKD6", unLocode: "INTKD", containerEnabled: true, railConnected: true, cargoEnabled: true },
+    { name: "ICD Dadri (DER / CONCOR Greater Noida), UP, IN", persian: "پایانه کانتینری دادری (نویدا / DFC)، هند", country: "India", code: "INDER", locationType: "ICD", state: "Uttar Pradesh", customsCode: "INDER6", containerEnabled: true, railConnected: true, cargoEnabled: true },
+    { name: "ICD Patparganj (PPG / East Delhi), IN", persian: "پایانه کانتینری پتپرگنج دهلی، هند", country: "India", code: "INPPG", locationType: "ICD", state: "Delhi", customsCode: "INPPG6", containerEnabled: true },
+    { name: "ICD Garhi Harsaru (GHR / Gateway Distriparks Gurugram), Haryana, IN", persian: "پایانه کانتینری گارهی هارسارو (گورگان)، هند", country: "India", code: "INGHR", locationType: "ICD", state: "Haryana", customsCode: "INGHR6", containerEnabled: true, railConnected: true },
+    { name: "ICD Rewari (CONCOR Haryana), IN", persian: "پایانه کانتینری ریواری، هند", country: "India", code: "INREW", locationType: "ICD", state: "Haryana", containerEnabled: true, railConnected: true },
+    { name: "ICD Kanakpura (KNK / CONCOR Jaipur), Rajasthan, IN", persian: "پایانه کانتینری کاناکپورا (جیپور)، هند", country: "India", code: "INKNK", locationType: "ICD", state: "Rajasthan", customsCode: "INKNK6", containerEnabled: true, railConnected: true },
+    { name: "ICD Sabarmati / Khodiyar (SBI / CONCOR Ahmedabad), Gujarat, IN", persian: "پایانه کانتینری سابرماتی (احمدآباد)، هند", country: "India", code: "INSBI", locationType: "ICD", state: "Gujarat", customsCode: "INSBI6", containerEnabled: true, railConnected: true },
+    { name: "ICD Ludhiana (LDH / Dhandari Kalan CONCOR), Punjab, IN", persian: "پایانه کانتینری لودیانا (دانداری کالان پنجاب)، هند", country: "India", code: "INLDH", locationType: "ICD", state: "Punjab", customsCode: "INLDH6", containerEnabled: true, railConnected: true },
+    { name: "ICD Amritsar / Khasa (ASR / CONCOR Punjab), IN", persian: "پایانه کانتینری امریتسر (خاسا)، هند", country: "India", code: "INASR", locationType: "ICD", state: "Punjab", customsCode: "INASR6", containerEnabled: true, railConnected: true },
+    { name: "ICD Jaipur / Sanganer, Rajasthan, IN", persian: "پایانه کانتینری سانگانر (جیپور)، هند", country: "India", code: "INJAI6", locationType: "ICD", state: "Rajasthan", customsCode: "INJAI6", containerEnabled: true },
+    { name: "ICD Moradabad (MBD / CONCOR UP), IN", persian: "پایانه کانتینری مرادآباد، هند", country: "India", code: "INMBD", locationType: "ICD", state: "Uttar Pradesh", customsCode: "INMBD6", containerEnabled: true, railConnected: true },
+    { name: "ICD Kanpur / JRY (Juhi / Chakeri), UP, IN", persian: "پایانه کانتینری کانپور (JRY)، هند", country: "India", code: "INCPC", locationType: "ICD", state: "Uttar Pradesh", customsCode: "INCPC6", containerEnabled: true, railConnected: true },
+    { name: "ICD Agra / Jhandi, UP, IN", persian: "پایانه کانتینری آگرا، هند", country: "India", code: "INAGR", locationType: "ICD", state: "Uttar Pradesh", customsCode: "INAGR6", containerEnabled: true },
+    { name: "ICD Nagpur / Butibori & MIHAN, MH, IN", persian: "پایانه کانتینری ناگپور (بوتیبوری)، هند", country: "India", code: "INNAG6", locationType: "ICD", state: "Maharashtra", customsCode: "INNAG6", containerEnabled: true, railConnected: true },
+    { name: "ICD Pithampur / Dhannad (Indore), MP, IN", persian: "پایانه کانتینری پیتامپور (ایندور)، هند", country: "India", code: "INPTI", locationType: "ICD", state: "Madhya Pradesh", customsCode: "INPTI6", containerEnabled: true, railConnected: true },
+    { name: "ICD Raipur / Mandir Hasaud, Chhattisgarh, IN", persian: "پایانه کانتینری رایپور، هند", country: "India", code: "INRPR6", locationType: "ICD", state: "Chhattisgarh", customsCode: "INRPR6", containerEnabled: true, railConnected: true },
+    { name: "ICD Sanathnagar / Hyderabad (SNF / CONCOR), Telangana, IN", persian: "پایانه کانتینری سنات‌نگر حیدرآباد، هند", country: "India", code: "INSNF", locationType: "ICD", state: "Telangana", customsCode: "INSNF6", containerEnabled: true, railConnected: true },
+    { name: "ICD Whitefield / Bengaluru (WFD / CONCOR), Karnataka, IN", persian: "پایانه کانتینری وایت‌فیلد بنگلور، هند", country: "India", code: "INWFD", locationType: "ICD", state: "Karnataka", customsCode: "INWFD6", containerEnabled: true, railConnected: true },
+    { name: "ICD Tondiarpet / Chennai (TNP / CONCOR), Tamil Nadu, IN", persian: "پایانه کانتینری تون‌دیارپت چنای، هند", country: "India", code: "INTNP", locationType: "ICD", state: "Tamil Nadu", customsCode: "INTNP6", containerEnabled: true, railConnected: true },
+    { name: "ICD Irugur / Coimbatore (IGU / CONCOR), Tamil Nadu, IN", persian: "پایانه کانتینری ایروگور (کویمباتور)، هند", country: "India", code: "INIGU", locationType: "ICD", state: "Tamil Nadu", customsCode: "INIGU6", containerEnabled: true, railConnected: true },
+    { name: "ICD Cossipore / Kolkata (CONCOR), West Bengal, IN", persian: "پایانه کانتینری کوسیپور کلکته، هند", country: "India", code: "INCOSI", locationType: "ICD", state: "West Bengal", containerEnabled: true, railConnected: true },
+
+    // 🇮🇳 INDIA — CONTAINER FREIGHT STATIONS (CFS GATEWAYS)
+    { name: "CFS Dronagiri Node (Nhava Sheva / JNPT), Maharashtra, IN", persian: "ایستگاه بارانداز کانتینری درونازیری (نهاوا شوا)، هند", country: "India", code: "CFS-DRN", locationType: "CFS", state: "Maharashtra", district: "Navi Mumbai", containerEnabled: true, roadConnected: true },
+    { name: "CFS Seabird Marine Services (Nhava Sheva), Maharashtra, IN", persian: "پایانه بار کانتینری سی‌برد (نهاوا شوا ممبئی)، هند", country: "India", code: "CFS-SBD", locationType: "CFS", state: "Maharashtra", district: "Navi Mumbai", containerEnabled: true },
+    { name: "CFS Allcargo Logistics Park (JNPT), Maharashtra, IN", persian: "پارک لجستیک آل‌کارگو (نهاوا شوا)، هند", country: "India", code: "CFS-ACG", locationType: "CFS", state: "Maharashtra", district: "Navi Mumbai", containerEnabled: true },
+    { name: "CFS Gateway Distriparks (Nhava Sheva), Maharashtra, IN", persian: "ایستگاه کانتینری گیت‌وی (نهاوا شوا)، هند", country: "India", code: "CFS-GDL", locationType: "CFS", state: "Maharashtra", district: "Navi Mumbai", containerEnabled: true },
+    { name: "CFS Adani Logistics (Mundra SEZ), Gujarat, IN", persian: "ایستگاه بار کانتینری آدانی (موندرا)، هند", country: "India", code: "CFS-ADL", locationType: "CFS", state: "Gujarat", district: "Kutch", containerEnabled: true },
+    { name: "CFS CWC Mundra, Gujarat, IN", persian: "انبار مرکزی بار کانتینری موندرا، هند", country: "India", code: "CFS-CWC", locationType: "CFS", state: "Gujarat", district: "Kutch", containerEnabled: true },
+    { name: "CFS Kandla (CWC / Gandhidham), Gujarat, IN", persian: "ایستگاه کانتینری گاندی‌دام / کاندلا، هند", country: "India", code: "CFS-KDL", locationType: "CFS", state: "Gujarat", district: "Kutch", containerEnabled: true },
+    { name: "CFS Manali / Thiruvottiyur (Chennai Port), Tamil Nadu, IN", persian: "ایستگاه کانتینری منالی چنای، هند", country: "India", code: "CFS-MNL", locationType: "CFS", state: "Tamil Nadu", district: "Chennai", containerEnabled: true },
+    { name: "CFS Sattva Logistics (Chennai / Kattupalli), Tamil Nadu, IN", persian: "ایستگاه کانتینری ساتوا (چنای)، هند", country: "India", code: "CFS-STV", locationType: "CFS", state: "Tamil Nadu", district: "Tiruvallur", containerEnabled: true },
+    { name: "CFS Tuticorin (St. John / Pearl City), Tamil Nadu, IN", persian: "ایستگاه کانتینری توتیکورین، هند", country: "India", code: "CFS-TUT", locationType: "CFS", state: "Tamil Nadu", district: "Thoothukudi", containerEnabled: true },
+    { name: "CFS Vallarpadam / Willingdon Island (Cochin), Kerala, IN", persian: "ایستگاه کانتینری کوچین، هند", country: "India", code: "CFS-COK", locationType: "CFS", state: "Kerala", district: "Ernakulam", containerEnabled: true },
+    { name: "CFS Haldia / Kolkata Dock (Balmer Lawrie / CWC), WB, IN", persian: "ایستگاه بار کانتینری هالدیا کلکته، هند", country: "India", code: "CFS-HLD", locationType: "CFS", state: "West Bengal", district: "Purba Medinipur", containerEnabled: true },
+    { name: "CFS Visakhapatnam (VPA / CONCOR CFS), AP, IN", persian: "ایستگاه کانتینری ویزگ، هند", country: "India", code: "CFS-VTZ", locationType: "CFS", state: "Andhra Pradesh", district: "Visakhapatnam", containerEnabled: true },
+
+    // 🇮🇳 INDIA — INLAND WATERWAYS & MULTIMODAL TERMINALS (IWAI)
+    { name: "Varanasi Multimodal Terminal (MMT Varanasi / NW-1), UP, IN", persian: "پایانه چندوجهی آبراه ملی ۱ واراناسی (گنگ)، هند", country: "India", code: "INVAR-MMT", locationType: "INLAND_WATERWAY_TERMINAL", state: "Uttar Pradesh", district: "Varanasi", inlandWaterway: true, railConnected: true, roadConnected: true, cargoEnabled: true },
+    { name: "Sahibganj Multimodal Terminal (MMT Sahibganj / NW-1), Jharkhand, IN", persian: "پایانه آبراه چندوجهی صاحب‌گنج (گنگ)، هند", country: "India", code: "INSBG-MMT", locationType: "INLAND_WATERWAY_TERMINAL", state: "Jharkhand", district: "Sahibganj", inlandWaterway: true, railConnected: true, roadConnected: true, cargoEnabled: true },
+    { name: "Haldia Multimodal Terminal (MMT Haldia / NW-1), WB, IN", persian: "پایانه چندوجهی آبراه هالدیا (هوگلی)، هند", country: "India", code: "INHAL-MMT", locationType: "INLAND_WATERWAY_TERMINAL", state: "West Bengal", district: "Purba Medinipur", inlandWaterway: true, railConnected: true, roadConnected: true, cargoEnabled: true },
+    { name: "Kalughat Intermodal Terminal (Saran / NW-1), Bihar, IN", persian: "پایانه آبراه کلوگهات (ساران / بهار)، هند", country: "India", code: "INKAL-MMT", locationType: "INLAND_WATERWAY_TERMINAL", state: "Bihar", district: "Saran", inlandWaterway: true, containerEnabled: true, roadConnected: true },
+    { name: "Gaighat Cargo Terminal (Patna / NW-1), Bihar, IN", persian: "پایانه باربری گای‌گهات پتنه (آبراه گنگ)، هند", country: "India", code: "INPAT-MMT", locationType: "INLAND_WATERWAY_TERMINAL", state: "Bihar", district: "Patna", inlandWaterway: true, cargoEnabled: true },
+    { name: "Farakka Navigational Lock & Terminal (NW-1), WB, IN", persian: "پایانه و سد آبراه فاراکا، هند", country: "India", code: "INFRK-MMT", locationType: "INLAND_WATERWAY_TERMINAL", state: "West Bengal", district: "Murshidabad", inlandWaterway: true },
+    { name: "Pandu Multimodal Terminal (Guwahati / NW-2), Assam, IN", persian: "پایانه چندوجهی پاندو گواتی (آبراه براهماپوترا)، هند", country: "India", code: "INGAU-MMT", locationType: "INLAND_WATERWAY_TERMINAL", state: "Assam", district: "Kamrup", inlandWaterway: true, railConnected: true, roadConnected: true },
+    { name: "Dhubri River Terminal (NW-2), Assam, IN", persian: "پایانه رودخانه‌ای دوبری (مرز بنگلادش)، هند", country: "India", code: "INDHB-MMT", locationType: "INLAND_WATERWAY_TERMINAL", state: "Assam", district: "Dhubri", borderCountry: "Bangladesh", inlandWaterway: true, isBorder: true },
+    { name: "Jogighopa Multimodal Logistics Park (MMLP / NW-2), Assam, IN", persian: "پارک لجستیک چندوجهی جوگیگوپا، هند", country: "India", code: "INJGH-MMT", locationType: "MULTIMODAL_TERMINAL", state: "Assam", district: "Bongaigaon", inlandWaterway: true, railConnected: true, roadConnected: true },
+    { name: "Prayagraj Terminal (Allahabad / NW-1), UP, IN", persian: "پایانه آبراه پرایاگ‌راج (الله‌آباد)، هند", country: "India", code: "INPRG-MMT", locationType: "INLAND_WATERWAY_TERMINAL", state: "Uttar Pradesh", district: "Prayagraj", inlandWaterway: true },
+
+    // Indian Subcontinent Neighbours
     { name: "Colombo Port, LK", persian: "بندر کلمبو، سری‌لانکا", country: "Sri Lanka", code: "CMB", isPort: true, portName: "Port of Colombo" },
     { name: "Chittagong Port, BD", persian: "بندر چتاگانگ، بنگلادش", country: "Bangladesh", code: "CGP", isPort: true, portName: "Chittagong Port" },
 
@@ -2456,10 +2651,31 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     { name: "Ankara, TR", persian: "آنکارا، ترکیه", country: "Turkey", code: "ANK" },
     { name: "Gaziantep, TR", persian: "غازی‌عینتاب، ترکیه", country: "Turkey", code: "GZT" },
 
-    // Central Asia
-    { name: "Tashkent, UZ", persian: "تاشکند، ازبکستان", country: "Uzbekistan", code: "TSH" },
-    { name: "Samarkand, UZ", persian: "سمرقند، ازبکستان", country: "Uzbekistan", code: "SMR" },
-    { name: "Bukhara, UZ", persian: "بخارا، ازبکستان", country: "Uzbekistan", code: "BKH" },
+    // 🇺🇿 UZBEKISTAN — AIRPORTS, RIVER PORTS, ICD & BORDER LOGISTICS
+    { name: "Tashkent — Islam Karimov Intl Airport (TAS / UTTT), UZ", persian: "میدان هوایی بین‌المللی تاشکند (اسلام کریموف)، ازبکستان", country: "Uzbekistan", code: "TAS", locationType: "AIRPORT_INTERNATIONAL", state: "Tashkent", iataCode: "TAS", unLocode: "UZTAS", airCargo: true, cargoEnabled: true },
+    { name: "Navoi International Airport (NVI / UTSA Cargo Hub), UZ", persian: "میدان هوایی بین‌المللی ناوی (بزرگترین هاب کارگو هوایی آسیای مرکزی)، ازبکستان", country: "Uzbekistan", code: "NVI", locationType: "AIRPORT_INTERNATIONAL", state: "Navoiy", iataCode: "NVI", unLocode: "UZNVI", airCargo: true, cargoEnabled: true },
+    { name: "Termez International River Port (TICC / Amu Darya), UZ", persian: "بندر بین‌المللی رودخانه‌ای ترمذ (مرکز لجستیک آمودریا / مرز حیرتان)، ازبکستان", country: "Uzbekistan", code: "TMZ-PORT", isPort: true, portName: "Termez International River Port (TICC)", locationType: "INLAND_WATERWAY_TERMINAL", state: "Surxondaryo", district: "Termez", borderCountry: "Afghanistan", isBorder: true, inlandWaterway: true, railConnected: true, roadConnected: true, containerEnabled: true, cargoEnabled: true },
+    { name: "Termez International Airport (TMZ / UTST), UZ", persian: "میدان هوایی بین‌المللی ترمذ (مرز افغانستان)، ازبکستان", country: "Uzbekistan", code: "TMZ", locationType: "AIRPORT_INTERNATIONAL", state: "Surxondaryo", iataCode: "TMZ", unLocode: "UZTMZ", borderCountry: "Afghanistan", isBorder: true, airCargo: true },
+    { name: "Samarkand International Airport (SKD / UTSS), UZ", persian: "میدان هوایی بین‌المللی سمرقند (Air Marakanda)، ازبکستان", country: "Uzbekistan", code: "SKD", locationType: "AIRPORT_INTERNATIONAL", state: "Samarkand", iataCode: "SKD", unLocode: "UZSKD", airCargo: true },
+    { name: "Bukhara International Airport (BHK / UTSB), UZ", persian: "میدان هوایی بین‌المللی بخارا، ازبکستان", country: "Uzbekistan", code: "BHK", locationType: "AIRPORT_INTERNATIONAL", state: "Bukhara", iataCode: "BHK", unLocode: "UZBHK", airCargo: true },
+    { name: "Andijan International Airport (AZN / UTKA), UZ", persian: "میدان هوایی بین‌المللی اندیجان، ازبکستان", country: "Uzbekistan", code: "AZN", locationType: "AIRPORT_INTERNATIONAL", state: "Andijan", iataCode: "AZN", unLocode: "UZAZN", airCargo: true },
+    { name: "Fergana International Airport (FEG / UTKF), UZ", persian: "میدان هوایی بین‌المللی فرغانه، ازبکستان", country: "Uzbekistan", code: "FEG", locationType: "AIRPORT_INTERNATIONAL", state: "Fergana", iataCode: "FEG", unLocode: "UZFEG", airCargo: true },
+    { name: "Namangan International Airport (NMA / UTKN), UZ", persian: "میدان هوایی بین‌المللی نمنگان، ازبکستان", country: "Uzbekistan", code: "NMA", locationType: "AIRPORT_INTERNATIONAL", state: "Namangan", iataCode: "NMA", unLocode: "UZNMA", airCargo: true },
+    { name: "Urgench International Airport (UGC / UTNU), UZ", persian: "میدان هوایی بین‌المللی اورگنچ (خوارزم)، ازبکستان", country: "Uzbekistan", code: "UGC", locationType: "AIRPORT_INTERNATIONAL", state: "Khorezm", iataCode: "UGC", unLocode: "UZUGC", airCargo: true },
+    { name: "Nukus Airport (NCU / UTNN), UZ", persian: "میدان هوایی نوکوس (قره‌قالپاقستان)، ازبکستان", country: "Uzbekistan", code: "NCU", locationType: "AIRPORT_DOMESTIC", state: "Karakalpakstan", iataCode: "NCU", unLocode: "UZNCU" },
+    { name: "Chukursay Container Terminal (Tashkent ICD / Rail Hub), UZ", persian: "پایانه کانتینری ریل چوقورسای تاشکند (بزرگترین هاب ریلی کانتینری ازبکستان)", country: "Uzbekistan", code: "CHUKUR", locationType: "ICD", state: "Tashkent", railConnected: true, containerEnabled: true, cargoEnabled: true },
+    { name: "Sergeli Logistics Center (Tashkent Customs Hub), UZ", persian: "مرکز لجستیک و گمرک سرگیلی تاشکند، ازبکستان", country: "Uzbekistan", code: "SERGELI", locationType: "LOGISTICS_HUB", state: "Tashkent", railConnected: true, containerEnabled: true },
+    { name: "Angren Logistics Center (Tashkent Region Dry Port), UZ", persian: "پایانه کانتینری و مرکز لجستیک آنگرن، ازبکستان", country: "Uzbekistan", code: "ANGREN", locationType: "ICD", state: "Tashkent Region", railConnected: true, containerEnabled: true },
+    { name: "Hairatan / Termez Friendship Bridge (Border Post), UZ", persian: "پل دوستی ترمذ / حیرتان (گذرگاه ریلی و جاده‌ای افغانستان و ازبکستان)", country: "Uzbekistan", code: "FRND-BRG", locationType: "INTEGRATED_CHECK_POST", state: "Surxondaryo", borderCountry: "Afghanistan", isBorder: true, railConnected: true, roadConnected: true },
+    { name: "Alat / Farap Customs Border Crossing, UZ", persian: "گذرگاه مرزی آلات / فاراب (مرز ترکمنستان)، ازبکستان", country: "Uzbekistan", code: "ALAT", locationType: "CUSTOMS_BORDER", state: "Bukhara", borderCountry: "Turkmenistan", isBorder: true, roadConnected: true },
+    { name: "Gisht Kuprik / Chernyaevka Customs Border, UZ", persian: "گذرگاه مرزی گیشت کوپریک (مرز قزاقستان)، ازبکستان", country: "Uzbekistan", code: "GISHT", locationType: "CUSTOMS_BORDER", state: "Tashkent Region", borderCountry: "Kazakhstan", isBorder: true, roadConnected: true },
+    { name: "Dustlik / Andijan Customs Border, UZ", persian: "گذرگاه مرزی دوستلیک (مرز قرقیزستان)، ازبکستان", country: "Uzbekistan", code: "DSTLK", locationType: "CUSTOMS_BORDER", state: "Andijan", borderCountry: "Kyrgyzstan", isBorder: true, roadConnected: true },
+    { name: "Oybek / Bekabad Customs Border, UZ", persian: "گذرگاه مرزی اویبیک (مرز تاجیکستان)، ازبکستان", country: "Uzbekistan", code: "OYBEK", locationType: "CUSTOMS_BORDER", state: "Tashkent Region", borderCountry: "Tajikistan", isBorder: true, roadConnected: true },
+    { name: "Tashkent City (Central Logistics Hub), UZ", persian: "شهر تاشکند (مرکز ترانزیت و لجستیک)، ازبکستان", country: "Uzbekistan", code: "TSH", locationType: "LOGISTICS_HUB", state: "Tashkent", roadConnected: true, railConnected: true },
+    { name: "Samarkand, UZ", persian: "سمرقند، ازبکستان", country: "Uzbekistan", code: "SMR", locationType: "LOGISTICS_HUB", state: "Samarkand" },
+    { name: "Bukhara, UZ", persian: "بخارا، ازبکستان", country: "Uzbekistan", code: "BKH", locationType: "LOGISTICS_HUB", state: "Bukhara" },
+
+    // Central Asia Neighbours
     { name: "Ashgabat, TM", persian: "عشق‌آباد، تركمنستان", country: "Turkmenistan", code: "ASH" },
     { name: "Turkmenbashi Port, TM", persian: "بندر ترکمن‌باشی، تركمنستان", country: "Turkmenistan", code: "TBH", isPort: true, portName: "Turkmenbashi Port" },
     { name: "Dushanbe, TJ", persian: "دوشنبه، تاجیکستان", country: "Tajikistan", code: "DSH" },
@@ -2507,9 +2723,37 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     })
   }
 
-  const quickLocationQuery = routeLocationSearch.trim().toLowerCase()
+  const activeInputLocation = showLocationDropdown !== null && activeRouteIndex !== null ? (formData.routes[activeRouteIndex]?.location || "") : ""
+  const quickLocationQuery = (routeLocationSearch || activeInputLocation).trim().toLowerCase()
 
   const quickLocationMatches = predefinedLocations.filter((loc) => {
+    // Match against full searchable metadata
+    const searchableText = [
+      loc.name,
+      loc.persian,
+      loc.country,
+      loc.code,
+      loc.portName || "",
+      loc.borderCountry || "",
+      loc.state || "",
+      loc.district || "",
+      loc.locationType || "",
+      loc.iataCode || "",
+      loc.unLocode || "",
+      loc.customsCode || "",
+      loc.portType || "",
+    ]
+      .join(" ")
+      .toLowerCase()
+
+    const matchesQuery = !quickLocationQuery || searchableText.includes(quickLocationQuery)
+
+    if (!matchesQuery) return false
+
+    // If an explicit search term is typed, show all global matches immediately
+    if (quickLocationQuery) return true
+
+    // Otherwise apply country / region filters
     if (selectedCountryFilter === "PORTS") {
       if (!loc.isPort) return false
     } else if (selectedCountryFilter === "AFRICA") {
@@ -2527,12 +2771,27 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     } else if (selectedCountryFilter !== "ALL" && loc.country !== selectedCountryFilter) {
       return false
     }
-    if (!quickLocationQuery) return true
 
-    return [loc.name, loc.persian, loc.country, loc.code, loc.portName || "", loc.borderCountry || ""]
-      .join(" ")
-      .toLowerCase()
-      .includes(quickLocationQuery)
+    // Secondary category filter for India
+    if (selectedCountryFilter === "India" && selectedIndiaCategoryFilter !== "ALL") {
+      if (selectedIndiaCategoryFilter === "AIRPORTS") {
+        if (!loc.locationType?.startsWith("AIRPORT") && !loc.airCargo && !loc.iataCode) return false
+      } else if (selectedIndiaCategoryFilter === "SEAPORTS") {
+        if (!loc.locationType?.startsWith("SEA_PORT") && !loc.isPort) return false
+      } else if (selectedIndiaCategoryFilter === "LAND_PORTS") {
+        if (loc.locationType !== "LAND_BORDER" && loc.locationType !== "INTEGRATED_CHECK_POST" && loc.locationType !== "CUSTOMS_BORDER" && !loc.isBorder) return false
+      } else if (selectedIndiaCategoryFilter === "ICD") {
+        if (loc.locationType !== "ICD" && loc.locationType !== "RAIL_CONTAINER_TERMINAL") return false
+      } else if (selectedIndiaCategoryFilter === "CFS") {
+        if (loc.locationType !== "CFS") return false
+      } else if (selectedIndiaCategoryFilter === "TERMINALS") {
+        if (!loc.locationType?.includes("TERMINAL") && !loc.inlandWaterway) return false
+      } else if (selectedIndiaCategoryFilter === "LOGISTICS") {
+        if (loc.locationType !== "LOGISTICS_HUB" && !loc.cargoEnabled && !loc.containerEnabled) return false
+      }
+    }
+
+    return true
   })
 
   const handleQuickLocationSelect = (loc: { name: string; persian: string }) => {
@@ -2677,6 +2936,21 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             }
             const nextC = [curC, ...savedConsignees.filter((c) => c.id !== curC.id)].slice(0, 100)
             persistSavedParties(SAVED_CONSIGNEES_STORAGE_KEY, nextC, setSavedConsignees)
+          }
+
+          if (updatedFormData.notify_party?.trim()) {
+            const nName = updatedFormData.notify_party.trim()
+            const matchN = savedNotifyParties.find((n) => n.name.trim().toLowerCase() === nName.toLowerCase())
+            const curN: SavedParty = {
+              id: matchN ? matchN.id : crypto.randomUUID(),
+              name: nName,
+              address: updatedFormData.notify_party_address || "",
+              contact: "",
+              email: "",
+              savedAt: new Date().toISOString(),
+            }
+            const nextN = [curN, ...savedNotifyParties.filter((n) => n.id !== curN.id)].slice(0, 100)
+            persistSavedParties(SAVED_NOTIFY_PARTIES_STORAGE_KEY, nextN, setSavedNotifyParties)
           }
         } catch (err) {
           console.error("Auto-save party error:", err)
@@ -5831,15 +6105,16 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                                     { label: "⚓ Ports", value: "PORTS" },
                                     { label: "🇦🇪 UAE / Dubai", value: "UAE" },
                                     { label: "🇨🇮 Ivory Coast / Africa", value: "AFRICA" },
-                                    { label: "🇮🇷 Iran", value: "Iran" },
                                     { label: "🇦🇫 Afghanistan", value: "Afghanistan" },
+                                    { label: "🇺🇿 Uzbekistan", value: "Uzbekistan" },
+                                    { label: "🇮🇷 Iran", value: "Iran" },
                                     { label: "🇮🇳 India", value: "India" },
                                     { label: "🇵🇰 Pakistan", value: "Pakistan" },
                                     { label: "🇸🇦 Gulf", value: "GULF" },
                                     { label: "🇹🇷 Turkey", value: "Turkey" },
                                     { label: "🇨🇳 China", value: "China" },
                                     { label: "🇪🇺 Europe / US", value: "EUROPE_AMERICAS" },
-                                    { label: "🇺🇿 Central Asia", value: "CENTRAL_ASIA" },
+                                    { label: "🌐 Central Asia", value: "CENTRAL_ASIA" },
                                   ].map((tab) => (
                                     <button
                                       key={tab.value}
@@ -5856,11 +6131,41 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                                   ))}
                                 </div>
 
+                                {/* Secondary category filter for India inside popover */}
+                                {selectedCountryFilter === "India" && (
+                                  <div className="flex flex-wrap items-center gap-1 mb-2.5 pb-1.5 border-b border-amber-200/80 bg-amber-50/60 p-1.5 rounded-xl">
+                                    <span className="text-[9px] font-black text-amber-950 self-center mr-1">🇮🇳 Filter:</span>
+                                    {[
+                                      { label: "ALL", value: "ALL" },
+                                      { label: "✈️ AIRPORTS", value: "AIRPORTS" },
+                                      { label: "⚓ SEAPORTS", value: "SEAPORTS" },
+                                      { label: "🚚 LAND PORTS", value: "LAND_PORTS" },
+                                      { label: "📦 ICD", value: "ICD" },
+                                      { label: "🏢 CFS", value: "CFS" },
+                                      { label: "🚢 TERMINALS", value: "TERMINALS" },
+                                      { label: "🌐 LOGISTICS", value: "LOGISTICS" },
+                                    ].map((cat) => (
+                                      <button
+                                        key={cat.value}
+                                        type="button"
+                                        onClick={() => setSelectedIndiaCategoryFilter(cat.value)}
+                                        className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold transition cursor-pointer ${
+                                          selectedIndiaCategoryFilter === cat.value
+                                            ? "bg-amber-600 text-white shadow-xs"
+                                            : "bg-white text-slate-700 hover:bg-amber-100 hover:text-amber-900 border border-slate-200"
+                                        }`}
+                                      >
+                                        {cat.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
                                   {quickLocationMatches.map((loc) => (
                                     <div
                                       key={loc.name}
-                                      className="flex flex-col justify-between rounded-xl p-2 text-left transition bg-slate-50/70 hover:bg-amber-50/60 border border-slate-200/80 hover:border-amber-400 group"
+                                      className="flex flex-col justify-between rounded-xl p-2.5 text-left transition bg-slate-50/80 hover:bg-amber-50/70 border border-slate-200/90 hover:border-amber-400 group shadow-2xs"
                                     >
                                       <button
                                         type="button"
@@ -5868,23 +6173,33 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                                           handleQuickLocationSelect(loc)
                                           setShowLocationDropdown(null)
                                         }}
-                                        className="flex items-center justify-between w-full cursor-pointer text-left"
+                                        className="flex items-start justify-between w-full cursor-pointer text-left gap-1.5"
                                       >
-                                        <div className="flex items-center gap-1.5 min-w-0">
-                                          <span className="text-base shrink-0">{countryFlags[loc.country] || "🌍"}</span>
-                                          <div className="min-w-0">
-                                            <div className="flex items-center gap-1">
-                                              <p className="text-xs font-black text-slate-900 group-hover:text-amber-950 truncate">{loc.name}</p>
+                                        <div className="flex items-start gap-2 min-w-0 flex-1">
+                                          <span className="text-lg shrink-0 mt-0.5">{countryFlags[loc.country] || "🌍"}</span>
+                                          <div className="min-w-0 flex-1">
+                                            <p className="text-xs font-black text-slate-900 group-hover:text-amber-950 leading-snug break-words">{loc.name}</p>
+                                            <div className="flex flex-wrap items-center gap-1 mt-1">
                                               {loc.borderCountry && (
-                                                <span className="text-[8.5px] font-bold text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200/60 shrink-0">
+                                                <span className="text-[8px] font-extrabold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200/60 shrink-0">
                                                   ⇄ {loc.borderCountry}
                                                 </span>
                                               )}
+                                              {loc.locationType && (
+                                                <span className="text-[8px] font-black text-amber-900 bg-amber-100/90 px-1.5 py-0.2 rounded shrink-0">
+                                                  {loc.locationType.replace(/_/g, " ")}
+                                                </span>
+                                              )}
+                                              {loc.state && (
+                                                <span className="text-[8px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded shrink-0">
+                                                  {loc.state}
+                                                </span>
+                                              )}
                                             </div>
-                                            <p className="text-[10px] font-bold text-slate-500 font-[vazirmatn] truncate" dir="rtl">{loc.persian}</p>
+                                            <p className="text-[10px] font-bold text-slate-600 font-[vazirmatn] leading-snug break-words mt-1" dir="rtl">{loc.persian}</p>
                                           </div>
                                         </div>
-                                        <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-900 shrink-0 ml-1">{loc.code}</span>
+                                        <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-black text-amber-900 shrink-0 self-start">{loc.code}</span>
                                       </button>
 
                                       <div className="mt-1.5 pt-1 border-t border-slate-100 flex flex-wrap items-center gap-1">
@@ -6271,15 +6586,16 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         { label: "⚓ ALL SEAPORTS", country: "PORTS" },
                         { label: "🇦🇪 DUBAI & UAE PORTS", country: "UAE" },
                         { label: "🇨🇮 IVORY COAST & AFRICA", country: "AFRICA" },
-                        { label: "🇮🇷 IRAN", country: "Iran" },
                         { label: "🇦🇫 AFGHANISTAN", country: "Afghanistan" },
+                        { label: "🇺🇿 UZBEKISTAN", country: "Uzbekistan" },
+                        { label: "🇮🇷 IRAN", country: "Iran" },
                         { label: "🇮🇳 INDIA", country: "India" },
                         { label: "🇵🇰 PAKISTAN", country: "Pakistan" },
                         { label: "🇸🇦 🇶🇦 GULF STATES", country: "GULF" },
                         { label: "🇹🇷 TURKEY", country: "Turkey" },
                         { label: "🇨🇳 CHINA & ASIA", country: "China" },
                         { label: "🇪🇺 EUROPE & AMERICAS", country: "EUROPE_AMERICAS" },
-                        { label: "🇺🇿 CENTRAL ASIA", country: "CENTRAL_ASIA" },
+                        { label: "🌐 CENTRAL ASIA", country: "CENTRAL_ASIA" },
                       ].map((tab) => (
                         <button
                           key={tab.country}
@@ -6295,13 +6611,46 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         </button>
                       ))}
                     </div>
+
+                    {/* Secondary Category Filter Pill Bar for INDIA */}
+                    {selectedCountryFilter === "India" && (
+                      <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-2xl bg-linear-to-r from-amber-50/90 via-orange-50/50 to-white border border-amber-200/80 shadow-2xs">
+                        <span className="text-[10px] font-black text-amber-950 uppercase tracking-wider mr-1 flex items-center gap-1">
+                          <span>🇮🇳</span>
+                          <span>India Category:</span>
+                        </span>
+                        {[
+                          { label: "ALL", value: "ALL" },
+                          { label: "✈️ AIRPORTS", value: "AIRPORTS" },
+                          { label: "⚓ SEAPORTS", value: "SEAPORTS" },
+                          { label: "🚚 LAND PORTS", value: "LAND_PORTS" },
+                          { label: "📦 ICD", value: "ICD" },
+                          { label: "🏢 CFS", value: "CFS" },
+                          { label: "🚢 WATERWAY TERMINALS", value: "TERMINALS" },
+                          { label: "🌐 LOGISTICS HUBS", value: "LOGISTICS" },
+                        ].map((cat) => (
+                          <button
+                            key={cat.value}
+                            type="button"
+                            onClick={() => setSelectedIndiaCategoryFilter(cat.value)}
+                            className={`rounded-xl px-2.5 py-1 text-[10px] font-black transition-all cursor-pointer ${
+                              selectedIndiaCategoryFilter === cat.value
+                                ? "bg-amber-600 text-white shadow-xs ring-2 ring-amber-300"
+                                : "bg-white text-slate-700 hover:bg-amber-100 hover:text-amber-900 border border-slate-200"
+                            }`}
+                          >
+                            {cat.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="grid max-h-80 grid-cols-2 gap-2 overflow-y-auto pr-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  <div className="grid max-h-96 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 overflow-y-auto pr-1">
                     {quickLocationMatches.map((loc) => (
                       <div
                         key={loc.name}
-                        className="group relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white/95 p-2 transition-all hover:border-amber-400 hover:bg-amber-50/40 hover:shadow-md"
+                        className="group relative flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white/95 p-3 transition-all hover:border-amber-400 hover:bg-amber-50/40 hover:shadow-md shadow-2xs"
                       >
                         <button
                           type="button"
@@ -6309,19 +6658,31 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           className="flex flex-col items-start w-full text-left cursor-pointer"
                           title={`Add to Route Stop: ${loc.name}${loc.borderCountry ? ` (Border: ${loc.borderCountry})` : ""}`}
                         >
-                          <div className="flex items-center gap-1.5 w-full">
-                            <span className="text-base shrink-0">{countryFlags[loc.country] || "🌍"}</span>
-                            <span className="font-black text-slate-900 truncate text-[11px]">{loc.name}</span>
-                            <span className="text-[9px] font-black bg-amber-100 text-amber-900 rounded px-1 py-0.5 ml-auto shrink-0">{loc.code}</span>
+                          <div className="flex items-start justify-between gap-1.5 w-full">
+                            <div className="flex items-start gap-1.5 flex-1 min-w-0">
+                              <span className="text-base shrink-0 mt-0.5">{countryFlags[loc.country] || "🌍"}</span>
+                              <span className="font-black text-slate-900 text-xs leading-snug break-words">{loc.name}</span>
+                            </div>
+                            <span className="text-[9px] font-black bg-amber-100 text-amber-900 rounded px-1.5 py-0.5 shrink-0 self-start">{loc.code}</span>
                           </div>
-                          <div className="flex items-center justify-between w-full mt-0.5">
-                            {loc.borderCountry ? (
-                              <span className="text-[8.5px] font-extrabold text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200/60 shrink-0">
+                          <div className="flex flex-wrap items-center gap-1 w-full mt-1.5">
+                            {loc.borderCountry && (
+                              <span className="text-[8px] font-extrabold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200/60 shrink-0">
                                 ⇄ {loc.borderCountry}
                               </span>
-                            ) : <span />}
-                            <span className="text-slate-500 font-[vazirmatn] text-[10px] font-bold truncate text-right" dir="rtl">{loc.persian}</span>
+                            )}
+                            {loc.locationType && (
+                              <span className="text-[8px] font-black text-amber-900 bg-amber-100/80 px-1.5 py-0.2 rounded shrink-0">
+                                {loc.locationType.replace(/_/g, " ")}
+                              </span>
+                            )}
+                            {loc.state && (
+                              <span className="text-[8px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded shrink-0">
+                                {loc.state}
+                              </span>
+                            )}
                           </div>
+                          <span className="text-slate-600 font-[vazirmatn] text-[10.5px] font-bold break-words w-full text-right mt-1.5 leading-snug" dir="rtl">{loc.persian}</span>
                         </button>
 
                         {/* Quick 1-Click Set Actions */}
