@@ -2270,6 +2270,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     code: string
     isPort?: boolean
     portName?: string
+    isBorder?: boolean
+    borderCountry?: string
   }> = [
     // 🇨🇮 Ivory Coast & West Africa (Explicit User Preset)
     { name: "Abidjan, Ivory Coast", persian: "ابیدجان، ساحل عاج", country: "Ivory Coast", code: "ABJ", isPort: true, portName: "Abidjan Port" },
@@ -2295,31 +2297,42 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     { name: "Djibouti Port, DJ", persian: "بندر جیبوتی", country: "Djibouti", code: "JIB", isPort: true, portName: "Djibouti Port" },
     { name: "Port Sudan, SD", persian: "پورت سودان", country: "Sudan", code: "PZU", isPort: true, portName: "Port Sudan" },
 
-    // Afghanistan - Major Cities & Borders
-    { name: "Kandahar, AF", persian: "کندهار، افغانستان", country: "Afghanistan", code: "KDH" },
-    { name: "Nimroz, AF", persian: "نیمروز، افغانستان", country: "Afghanistan", code: "NMZ" },
-    { name: "Herat, AF", persian: "هرات، افغانستان", country: "Afghanistan", code: "HRA" },
+    // 🇦🇫 Afghanistan — Major Cities & Commercial Transport Hubs
     { name: "Kabul, AF", persian: "کابل، افغانستان", country: "Afghanistan", code: "KBL" },
-    { name: "Islam Qala, AF", persian: "اسلام قلعه، افغانستان", country: "Afghanistan", code: "ISQ" },
-    { name: "Zaranj, AF", persian: "زرنج، افغانستان", country: "Afghanistan", code: "ZRJ" },
-    { name: "Jalalabad, AF", persian: "جلال‌آباد، افغانستان", country: "Afghanistan", code: "JBD" },
+    { name: "Kandahar, AF", persian: "کندهار، افغانستان", country: "Afghanistan", code: "KDH" },
+    { name: "Herat, AF", persian: "هرات، افغانستان", country: "Afghanistan", code: "HRA" },
     { name: "Mazar-e Sharif, AF", persian: "مزارشریف، افغانستان", country: "Afghanistan", code: "MAZ" },
-    { name: "Ghazni, AF", persian: "غزنی، افغانستان", country: "Afghanistan", code: "GHZ" },
+    { name: "Jalalabad, AF", persian: "جلال‌آباد، افغانستان", country: "Afghanistan", code: "JBD" },
     { name: "Kunduz, AF", persian: "کندوز، افغانستان", country: "Afghanistan", code: "KDZ" },
+    { name: "Ghazni, AF", persian: "غزنی، افغانستان", country: "Afghanistan", code: "GHZ" },
     { name: "Baghlan, AF", persian: "بغلان، افغانستان", country: "Afghanistan", code: "BGH" },
+    { name: "Nimroz, AF", persian: "نیمروز، افغانستان", country: "Afghanistan", code: "NMZ" },
     { name: "Logar, AF", persian: "لوگر، افغانستان", country: "Afghanistan", code: "LOG" },
     { name: "Paktia, AF", persian: "پکتیا، افغانستان", country: "Afghanistan", code: "PKT" },
     { name: "Nangarhar, AF", persian: "ننگرهار، افغانستان", country: "Afghanistan", code: "NGR" },
-    { name: "Spin Boldak, AF", persian: "سپین بولدک، افغانستان", country: "Afghanistan", code: "SPB" },
-    { name: "Torkham, AF", persian: "تورخم، افغانستان", country: "Afghanistan", code: "THM" },
-    { name: "Hairatan, AF", persian: "حیرتان، افغانستان", country: "Afghanistan", code: "HAI" },
-    { name: "Torghundi, AF", persian: "تورغندی، افغانستان", country: "Afghanistan", code: "TRG" },
-    { name: "Sher Khan Bandar, AF", persian: "شیرخان بندر، افغانستان", country: "Afghanistan", code: "SKB" },
-    { name: "Aqina, AF", persian: "آقینه، افغانستان", country: "Afghanistan", code: "AQN" },
-    { name: "Bamyan, AF", persian: "باميان، افغانستان", country: "Afghanistan", code: "BAM" },
+    { name: "Bamyan, AF", persian: "بامیان، افغانستان", country: "Afghanistan", code: "BAM" },
     { name: "Faizabad, AF", persian: "فیض‌آباد، افغانستان", country: "Afghanistan", code: "FAZ" },
-    { name: "Mahiroud, AF", persian: "ماهیرود، افغانستان", country: "Afghanistan", code: "MAH" },
-    { name: "Taptan, AF", persian: "تپتن، افغانستان", country: "Afghanistan", code: "TAP" },
+
+    // 🇦🇫 Afghanistan — Official Border & Customs Crossings (Cross-Border Transit)
+    { name: "Hairatan, AF", persian: "حیرتان، افغانستان", country: "Afghanistan", code: "HRT", isBorder: true, borderCountry: "Uzbekistan" },
+    { name: "Sher Khan Bandar, AF", persian: "شیرخان بندر، افغانستان", country: "Afghanistan", code: "SKB", isBorder: true, borderCountry: "Tajikistan" },
+    { name: "Aqina, AF", persian: "آقینه، افغانستان", country: "Afghanistan", code: "AQI", isBorder: true, borderCountry: "Turkmenistan" },
+    { name: "Torghundi, AF", persian: "تورغندی، افغانستان", country: "Afghanistan", code: "TRG", isBorder: true, borderCountry: "Turkmenistan" },
+    { name: "Islam Qala, AF", persian: "اسلام قلعه، افغانستان", country: "Afghanistan", code: "ISQ", isBorder: true, borderCountry: "Iran" },
+    { name: "Abu Nasr Farahi, AF", persian: "ابونصر فراهی، افغانستان", country: "Afghanistan", code: "ANF", isBorder: true, borderCountry: "Iran" },
+    { name: "Zaranj, AF", persian: "زرنج، افغانستان", country: "Afghanistan", code: "ZRJ", isBorder: true, borderCountry: "Iran" },
+    { name: "Milak, AF", persian: "میلک، افغانستان", country: "Afghanistan", code: "MLK", isBorder: true, borderCountry: "Iran" },
+    { name: "Mahiroud, AF", persian: "ماهیرود، افغانستان", country: "Afghanistan", code: "MAH", isBorder: true, borderCountry: "Iran" },
+    { name: "Torkham, AF", persian: "تورخم، افغانستان", country: "Afghanistan", code: "THM", isBorder: true, borderCountry: "Pakistan" },
+    { name: "Spin Boldak, AF", persian: "سپین بولدک، افغانستان", country: "Afghanistan", code: "SPB", isBorder: true, borderCountry: "Pakistan" },
+    { name: "Ghulam Khan, AF", persian: "غلام خان، افغانستان", country: "Afghanistan", code: "GLK", isBorder: true, borderCountry: "Pakistan" },
+    { name: "Dand Patan, AF", persian: "ډنډ پټان، افغانستان", country: "Afghanistan", code: "DPT", isBorder: true, borderCountry: "Pakistan" },
+    { name: "Angur Ada, AF", persian: "انګور اډه، افغانستان", country: "Afghanistan", code: "AAD", isBorder: true, borderCountry: "Pakistan" },
+    { name: "Kharlachi, AF", persian: "خرلاچي، افغانستان", country: "Afghanistan", code: "KHL", isBorder: true, borderCountry: "Pakistan" },
+    { name: "Bahramcha, AF", persian: "بهرامچه، افغانستان", country: "Afghanistan", code: "BRC", isBorder: true, borderCountry: "Pakistan" },
+    { name: "Taptan, AF", persian: "تپتن، افغانستان", country: "Afghanistan", code: "TAP", isBorder: true, borderCountry: "Pakistan" },
+    { name: "Ishkashim, AF", persian: "اشکاشم، افغانستان", country: "Afghanistan", code: "ISH", isBorder: true, borderCountry: "Tajikistan" },
+    { name: "Ai-Khanoum, AF", persian: "آیخانم، افغانستان", country: "Afghanistan", code: "AIK", isBorder: true, borderCountry: "Tajikistan" },
     
     // Iran - Ports & Major Cities
     { name: "Bandar Abbas, IR", persian: "بندرعباس، ایران", country: "Iran", code: "BND", isPort: true, portName: "Bandar Abbas (Shahid Rajaee)" },
@@ -2516,7 +2529,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     }
     if (!quickLocationQuery) return true
 
-    return [loc.name, loc.persian, loc.country, loc.code, loc.portName || ""]
+    return [loc.name, loc.persian, loc.country, loc.code, loc.portName || "", loc.borderCountry || ""]
       .join(" ")
       .toLowerCase()
       .includes(quickLocationQuery)
@@ -5860,7 +5873,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                                         <div className="flex items-center gap-1.5 min-w-0">
                                           <span className="text-base shrink-0">{countryFlags[loc.country] || "🌍"}</span>
                                           <div className="min-w-0">
-                                            <p className="text-xs font-black text-slate-900 group-hover:text-amber-950 truncate">{loc.name}</p>
+                                            <div className="flex items-center gap-1">
+                                              <p className="text-xs font-black text-slate-900 group-hover:text-amber-950 truncate">{loc.name}</p>
+                                              {loc.borderCountry && (
+                                                <span className="text-[8.5px] font-bold text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200/60 shrink-0">
+                                                  ⇄ {loc.borderCountry}
+                                                </span>
+                                              )}
+                                            </div>
                                             <p className="text-[10px] font-bold text-slate-500 font-[vazirmatn] truncate" dir="rtl">{loc.persian}</p>
                                           </div>
                                         </div>
@@ -6287,14 +6307,21 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           type="button"
                           onClick={() => handleQuickLocationSelect(loc)}
                           className="flex flex-col items-start w-full text-left cursor-pointer"
-                          title={`Add to Route Stop: ${loc.name}`}
+                          title={`Add to Route Stop: ${loc.name}${loc.borderCountry ? ` (Border: ${loc.borderCountry})` : ""}`}
                         >
                           <div className="flex items-center gap-1.5 w-full">
                             <span className="text-base shrink-0">{countryFlags[loc.country] || "🌍"}</span>
                             <span className="font-black text-slate-900 truncate text-[11px]">{loc.name}</span>
                             <span className="text-[9px] font-black bg-amber-100 text-amber-900 rounded px-1 py-0.5 ml-auto shrink-0">{loc.code}</span>
                           </div>
-                          <span className="text-slate-500 font-[vazirmatn] text-[10px] font-bold truncate w-full text-right mt-0.5" dir="rtl">{loc.persian}</span>
+                          <div className="flex items-center justify-between w-full mt-0.5">
+                            {loc.borderCountry ? (
+                              <span className="text-[8.5px] font-extrabold text-blue-700 bg-blue-50 px-1 py-0.2 rounded border border-blue-200/60 shrink-0">
+                                ⇄ {loc.borderCountry}
+                              </span>
+                            ) : <span />}
+                            <span className="text-slate-500 font-[vazirmatn] text-[10px] font-bold truncate text-right" dir="rtl">{loc.persian}</span>
+                          </div>
                         </button>
 
                         {/* Quick 1-Click Set Actions */}
