@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useApp } from "@/lib/app-context"
 import { CURRENT_SYSTEM_VERSION } from "@/lib/config/system-version"
 import { UserRole } from "@/lib/types"
@@ -25,7 +25,19 @@ import {
   Save,
   Sliders,
   Terminal,
+  Upload,
+  RotateCcw,
+  ZoomIn,
+  ShieldCheck,
 } from "lucide-react"
+import {
+  COMPANY_STAMP_SIGNATURE_SRC,
+  COMPANY_STAMP_SIGNATURE_DATA_URL,
+  getStoredCompanyStamp,
+  getStoredCompanyStampScale,
+  saveStoredCompanyStamp,
+  resetStoredCompanyStamp,
+} from "@/lib/company-stamp-data"
 
 const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; icon: string }> = {
   superadmin: { label: "Superadmin", bg: "bg-purple-100 border-purple-300", text: "text-purple-900 font-extrabold", icon: "👑" },
@@ -36,7 +48,7 @@ const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; i
 
 export function SettingsView() {
   const { users, addUser, updateUserRole, deleteUser, changePassword, currentUser } = useApp()
-  const [activeTab, setActiveTab] = useState<"users" | "password" | "general" | "update">("users")
+  const [activeTab, setActiveTab] = useState<"users" | "password" | "stamp" | "general" | "update">("users")
 
   // Add User Form State
   const [newUsername, setNewUsername] = useState("")
@@ -53,9 +65,39 @@ export function SettingsView() {
   const [showNewPass, setShowNewPass] = useState(false)
   const [passMsg, setPassMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
+  // Stamp & Signature State
+  const [currentStamp, setCurrentStamp] = useState<string>(COMPANY_STAMP_SIGNATURE_SRC)
+  const [currentStampScale, setCurrentStampScale] = useState<number>(1.0)
+  const [stampMsg, setStampMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   // System Update Check State
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false)
   const [updateMsg, setUpdateMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    setCurrentStamp(getStoredCompanyStamp())
+    setCurrentStampScale(getStoredCompanyStampScale())
+
+    const handleStampUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ dataUrl?: string; scale?: number }>
+      if (customEvent.detail?.dataUrl) {
+        setCurrentStamp(customEvent.detail.dataUrl)
+      } else {
+        setCurrentStamp(getStoredCompanyStamp())
+      }
+      if (customEvent.detail?.scale !== undefined) {
+        setCurrentStampScale(customEvent.detail.scale)
+      } else {
+        setCurrentStampScale(getStoredCompanyStampScale())
+      }
+    }
+
+    window.addEventListener("company_stamp_updated", handleStampUpdate)
+    return () => {
+      window.removeEventListener("company_stamp_updated", handleStampUpdate)
+    }
+  }, [])
 
   const handleAddUserSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -105,6 +147,45 @@ export function SettingsView() {
     }
   }
 
+  const handleStampUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setStampMsg(null)
+
+    if (!file.type.startsWith("image/")) {
+      setStampMsg({ type: "error", text: "Please select a valid image file (PNG, JPG, SVG, WEBP)." })
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string
+      if (dataUrl) {
+        saveStoredCompanyStamp(dataUrl, currentStampScale)
+        setCurrentStamp(dataUrl)
+        setStampMsg({ type: "success", text: "Official Stamp & Signature successfully updated across the system!" })
+      }
+    }
+    reader.onerror = () => {
+      setStampMsg({ type: "error", text: "Failed to read image file. Please try another image." })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleResetStamp = () => {
+    resetStoredCompanyStamp()
+    setCurrentStamp(COMPANY_STAMP_SIGNATURE_SRC)
+    setCurrentStampScale(1.0)
+    setStampMsg({ type: "success", text: "Restored to official Sky Ariana Limited seal and signature." })
+  }
+
+  const handleScaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newScale = parseFloat(e.target.value)
+    setCurrentStampScale(newScale)
+    saveStoredCompanyStamp(currentStamp, newScale)
+  }
+
   const handleCheckForUpdates = () => {
     setIsCheckingUpdate(true)
     setUpdateMsg(null)
@@ -116,30 +197,32 @@ export function SettingsView() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+    <div className="w-full max-w-7xl mx-auto p-2.5 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
       {/* Header Banner - Premium Glassmorphism */}
-      <div className="rounded-[32px] border border-blue-200/60 bg-gradient-to-r from-blue-900 via-[#1e3a8a] to-slate-900 p-6 md:p-8 text-white shadow-[0_20px_80px_-15px_rgba(30,58,138,0.4)] relative overflow-hidden">
+      <div className="rounded-2xl sm:rounded-[32px] border border-blue-200/60 bg-gradient-to-r from-blue-900 via-[#1e3a8a] to-slate-900 p-4 sm:p-6 md:p-8 text-white shadow-[0_20px_80px_-15px_rgba(30,58,138,0.4)] relative overflow-hidden">
         <div className="absolute -top-20 -right-20 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[10px] font-black uppercase tracking-widest text-blue-100 shadow-inner">
-              <Sliders className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-blue-100 shadow-inner">
+              <Sliders className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
               <span>SYSTEM CONTROL PANEL</span>
             </div>
-            <h1 className="text-2xl md:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-200">System Settings</h1>
-            <p className="text-xs md:text-sm text-blue-200/90 font-[vazirmatn] font-bold" dir="rtl">
-              تنظیمات سیستم، مدیریت کاربران، امنیت و بروزرسانی نرم‌افزار
+            <h1 className="text-xl sm:text-2xl md:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-200">
+              System Settings
+            </h1>
+            <p className="text-[11px] sm:text-xs md:text-sm text-blue-200/90 font-[vazirmatn] font-bold" dir="rtl">
+              تنظیمات سیستم، مهر و امضا، مدیریت کاربران و امنیت
             </p>
           </div>
 
-          <div className="flex items-center gap-3 bg-white/10 backdrop-blur-xl p-3.5 rounded-2xl border border-white/20 self-start md:self-auto shadow-inner">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 border border-amber-300 shadow-lg flex items-center justify-center font-black text-xl text-amber-950">
+          <div className="flex items-center gap-2.5 sm:gap-3 bg-white/10 backdrop-blur-xl p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-white/20 self-start sm:self-auto shadow-inner">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 border border-amber-300 shadow-lg flex items-center justify-center font-black text-base sm:text-xl text-amber-950">
               {currentUser?.name?.charAt(0) || "A"}
             </div>
             <div>
-              <div className="text-sm font-black text-white">{currentUser?.name || "Administrator"}</div>
-              <div className="text-[10px] text-amber-300 font-black tracking-widest uppercase">
+              <div className="text-xs sm:text-sm font-black text-white">{currentUser?.name || "Administrator"}</div>
+              <div className="text-[9px] sm:text-[10px] text-amber-300 font-black tracking-widest uppercase">
                 {currentUser?.role || "superadmin"}
               </div>
             </div>
@@ -147,73 +230,241 @@ export function SettingsView() {
         </div>
       </div>
 
-      {/* Tabs Navigation Bar - Frosted Glass */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white/60 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl overflow-x-auto">
+      {/* Tabs Navigation Bar - Frosted Glass & Smooth Horizontal Swipe */}
+      <div className="flex items-center gap-1 sm:gap-2 p-1.5 rounded-xl sm:rounded-2xl bg-white/70 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl overflow-x-auto scrollbar-none flex-nowrap shrink-0">
         <button
           type="button"
           onClick={() => setActiveTab("users")}
-          className={`flex items-center gap-2 px-5 py-3 rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
             activeTab === "users"
               ? "bg-gradient-to-b from-white to-slate-50 text-blue-700 shadow-md border border-slate-100"
-              : "text-slate-500 hover:bg-white/50 hover:text-slate-800"
+              : "text-slate-600 hover:bg-white/50 hover:text-slate-800"
           }`}
         >
-          <Users className="w-4 h-4" />
+          <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           <span>User Management</span>
-          <span className="ml-1 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-800">{users.length}</span>
+          <span className="ml-0.5 sm:ml-1 rounded-md bg-blue-100 px-1.5 py-0.5 text-[9px] sm:text-[10px] text-blue-800">{users.length}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("stamp")}
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+            activeTab === "stamp"
+              ? "bg-gradient-to-b from-white to-slate-50 text-blue-700 shadow-md border border-slate-100"
+              : "text-slate-600 hover:bg-white/50 hover:text-slate-800"
+          }`}
+        >
+          <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
+          <span>Stamp & Signature (مهر و امضا)</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("password")}
-          className={`flex items-center gap-2 px-5 py-3 rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
             activeTab === "password"
               ? "bg-gradient-to-b from-white to-slate-50 text-blue-700 shadow-md border border-slate-100"
-              : "text-slate-500 hover:bg-white/50 hover:text-slate-800"
+              : "text-slate-600 hover:bg-white/50 hover:text-slate-800"
           }`}
         >
-          <Key className="w-4 h-4" />
+          <Key className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           <span>Security</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("general")}
-          className={`flex items-center gap-2 px-5 py-3 rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
             activeTab === "general"
               ? "bg-gradient-to-b from-white to-slate-50 text-blue-700 shadow-md border border-slate-100"
-              : "text-slate-500 hover:bg-white/50 hover:text-slate-800"
+              : "text-slate-600 hover:bg-white/50 hover:text-slate-800"
           }`}
         >
-          <Building2 className="w-4 h-4" />
+          <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           <span>Company Info</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("update")}
-          className={`flex items-center gap-2 px-5 py-3 rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
             activeTab === "update"
               ? "bg-gradient-to-b from-white to-slate-50 text-blue-700 shadow-md border border-slate-100"
-              : "text-slate-500 hover:bg-white/50 hover:text-slate-800"
+              : "text-slate-600 hover:bg-white/50 hover:text-slate-800"
           }`}
         >
-          <Download className="w-4 h-4" />
+          <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           <span>Updates & Build</span>
         </button>
       </div>
 
-      {/* Tab 1: User Management */}
-      {activeTab === "users" && (
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Add New User Panel */}
-          <div className="lg:col-span-1 bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-6 md:p-8 space-y-6">
-            <div className="flex items-center gap-3 pb-4 border-b border-white/50">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/30">
-                <UserPlus className="w-6 h-6" />
+      {/* Tab: Official Stamp & Signature Management */}
+      {activeTab === "stamp" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+          {/* Stamp Preview Card */}
+          <div className="lg:col-span-6 bg-white/80 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+              <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-lg shadow-blue-600/30">
+                <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-900 tracking-tight">Add System User</h3>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Active Stamp & Signature</h3>
+                <p className="text-[11px] text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                  پیش‌نمایش زنده مهر و امضای رسمی شرکت
+                </p>
+              </div>
+            </div>
+
+            {stampMsg && (
+              <div
+                className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                  stampMsg.type === "success"
+                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                    : "bg-red-50 text-red-800 border border-red-200"
+                }`}
+              >
+                {stampMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                <span>{stampMsg.text}</span>
+              </div>
+            )}
+
+            {/* Document Signature Preview Box */}
+            <div className="relative rounded-2xl border-2 border-dashed border-blue-200 bg-linear-to-b from-blue-50/40 via-white to-slate-50 p-6 flex flex-col items-center justify-center min-h-[220px] overflow-hidden">
+              <div className="absolute top-2 left-2 text-[9px] font-black uppercase tracking-wider text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
+                Live Preview (پیش‌نمایش)
+              </div>
+
+              {/* Signature Overlay - 2x Bigger Scale */}
+              <div className="relative flex items-center justify-center w-full h-[120px] my-2">
+                <div
+                  className="flex items-center justify-center transition-transform duration-200"
+                  style={{ transform: `scale(${currentStampScale})` }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={currentStamp || COMPANY_STAMP_SIGNATURE_SRC}
+                    alt="Company Stamp & Signature"
+                    className="max-h-[110px] w-auto object-contain drop-shadow-md transform -rotate-2"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      const target = e.currentTarget
+                      if (target.src !== COMPANY_STAMP_SIGNATURE_DATA_URL) {
+                        target.src = COMPANY_STAMP_SIGNATURE_DATA_URL
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="w-48 border-b-2 border-slate-700 my-1" />
+              <p className="text-xs font-black text-blue-950 uppercase tracking-tight">For & On Behalf of: SKY ARIANA LIMITED</p>
+              <p className="font-[vazirmatn] text-[11px] font-extrabold text-blue-900 mt-0.5" dir="rtl">مهر و امضای مجاز شرکت</p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+              <div className="flex items-center gap-1.5 font-bold">
+                <Sparkles className="w-4 h-4 text-blue-600" />
+                <span>Synchronized with BOL Prints & PDF Exports</span>
+              </div>
+              <span className="text-[11px] font-mono bg-white px-2 py-0.5 rounded border">
+                Scale: {(currentStampScale * 100).toFixed(0)}%
+              </span>
+            </div>
+          </div>
+
+          {/* Stamp Controls & Upload Card */}
+          <div className="lg:col-span-6 bg-white/80 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+              <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-lg shadow-indigo-600/30">
+                <Upload className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Upload & Scale Stamp</h3>
+                <p className="text-[11px] text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                  تغییر و بارگذاری تصویر مهر، تنظیم اندازه و مقیاس
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* File Upload Trigger */}
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-2">
+                  Upload Custom Stamp (PNG / SVG / JPG) / بارگذاری مهر
+                </label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                  className="hidden"
+                  onChange={handleStampUpload}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs shadow-md shadow-blue-900/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Choose Image File / انتخاب فایل مهر و امضا</span>
+                </button>
+                <p className="text-[10px] text-slate-400 mt-1.5 ml-1">
+                  Transparent PNG or SVG recommended for cleanest realistic print look.
+                </p>
+              </div>
+
+              {/* Stamp Scale Slider */}
+              <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                  <div className="flex items-center gap-1.5">
+                    <ZoomIn className="w-4 h-4 text-blue-600" />
+                    <span>Stamp Size & Scaling (اندازه مهر):</span>
+                  </div>
+                  <span className="font-mono text-blue-700 font-black">{(currentStampScale * 100).toFixed(0)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0.6"
+                  max="2.0"
+                  step="0.05"
+                  value={currentStampScale}
+                  onChange={handleScaleChange}
+                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                />
+                <div className="flex justify-between text-[10px] text-slate-400 font-bold">
+                  <span>Small (60%)</span>
+                  <span>Default (100%)</span>
+                  <span>Large 2X (200%)</span>
+                </div>
+              </div>
+
+              {/* Reset to Default */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleResetStamp}
+                  className="w-full h-11 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <RotateCcw className="w-4 h-4 text-slate-500" />
+                  <span>Reset to Official Sky Ariana Seal / بازنشانی به مهر اصلی</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 1: User Management */}
+      {activeTab === "users" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+          {/* Add New User Panel */}
+          <div className="lg:col-span-5 bg-white/70 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b border-white/50">
+              <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/30">
+                <UserPlus className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Add System User</h3>
                 <p className="text-[11px] text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
                   ایجاد کاربر جدید با سطوح دسترسی
                 </p>
@@ -233,37 +484,37 @@ export function SettingsView() {
               </div>
             )}
 
-            <form onSubmit={handleAddUserSubmit} className="space-y-4">
+            <form onSubmit={handleAddUserSubmit} className="space-y-3 sm:space-y-4">
               <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1.5 ml-1">Username / شناسه کاربر</label>
+                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1 ml-1">Username / شناسه کاربر</label>
                 <input
                   type="text"
                   required
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
                   placeholder="e.g. jsmith"
-                  className="w-full h-12 px-4 text-sm font-bold text-slate-900 bg-white/60 backdrop-blur-md border border-white shadow-inner rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
+                  className="w-full h-11 sm:h-12 px-3.5 text-xs sm:text-sm font-bold text-slate-900 bg-white/60 backdrop-blur-md border border-white shadow-inner rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1.5 ml-1">Full Name / نام کامل</label>
+                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1 ml-1">Full Name / نام کامل</label>
                 <input
                   type="text"
                   required
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="e.g. John Smith"
-                  className="w-full h-12 px-4 text-sm font-bold text-slate-900 bg-white/60 backdrop-blur-md border border-white shadow-inner rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
+                  className="w-full h-11 sm:h-12 px-3.5 text-xs sm:text-sm font-bold text-slate-900 bg-white/60 backdrop-blur-md border border-white shadow-inner rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1.5 ml-1">System Role / نقش کاربر</label>
+                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1 ml-1">System Role / نقش کاربر</label>
                 <select
                   value={newRole}
                   onChange={(e) => setNewRole(e.target.value as UserRole)}
-                  className="w-full h-12 px-4 text-sm font-bold text-slate-900 bg-white/60 backdrop-blur-md border border-white shadow-inner rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all appearance-none"
+                  className="w-full h-11 sm:h-12 px-3.5 text-xs sm:text-sm font-bold text-slate-900 bg-white/60 backdrop-blur-md border border-white shadow-inner rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all appearance-none"
                 >
                   <option value="superadmin">👑 Superadmin (Full System Access)</option>
                   <option value="admin">🛡️ Admin (BOL & Accounting Access)</option>
@@ -273,21 +524,20 @@ export function SettingsView() {
               </div>
 
               <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1.5 ml-1">Email (Optional)</label>
+                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1 ml-1">Email (Optional)</label>
                 <input
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="user@skybalam.com"
-                  className="w-full h-12 px-4 text-sm font-bold text-slate-900 bg-white/60 backdrop-blur-md border border-white shadow-inner rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
+                  className="w-full h-11 sm:h-12 px-3.5 text-xs sm:text-sm font-bold text-slate-900 bg-white/60 backdrop-blur-md border border-white shadow-inner rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
                 />
               </div>
 
               <button
                 type="submit"
-                className="group relative w-full h-12 mt-4 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-black uppercase tracking-wider text-[11px] rounded-xl shadow-lg shadow-blue-900/20 transition-all flex items-center justify-center gap-2 cursor-pointer overflow-hidden"
+                className="group relative w-full h-11 sm:h-12 mt-2 sm:mt-4 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-black uppercase tracking-wider text-[11px] rounded-xl shadow-lg shadow-blue-900/20 transition-all flex items-center justify-center gap-2 cursor-pointer overflow-hidden"
               >
-                <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 <span className="relative z-10 flex items-center gap-2">
                   <UserPlus className="w-4 h-4" />
                   Create System Account
@@ -297,84 +547,62 @@ export function SettingsView() {
           </div>
 
           {/* Active Users Table Panel */}
-          <div className="lg:col-span-2 bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-6 md:p-8 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-white/50 gap-4">
+          <div className="lg:col-span-7 bg-white/70 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
+            <div className="flex items-center justify-between pb-3 border-b border-white/50">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 text-white shadow-lg shadow-purple-500/30">
-                  <Shield className="w-6 h-6" />
+                <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/30">
+                  <Users className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-slate-900 tracking-tight">System Users & Roles</h3>
-                  <p className="text-xs font-bold text-slate-500">Manage user access levels across 4 roles</p>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Active User Accounts</h3>
+                  <p className="text-[11px] text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                    کاربران فعال سیستم و سطوح دسترسی
+                  </p>
                 </div>
               </div>
-              <span className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-xs font-black text-slate-700 shadow-sm self-start md:self-auto">
-                {users.length} Users Enrolled
-              </span>
             </div>
 
-            <div className="overflow-x-auto rounded-[24px] border border-white bg-white/40 backdrop-blur-md shadow-inner">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-white/60 text-slate-500 font-black uppercase tracking-widest text-[10px]">
-                    <th className="p-4 pl-6">User</th>
-                    <th className="p-4">Role Level</th>
-                    <th className="p-4">Created</th>
-                    <th className="p-4 pr-6 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/50 font-medium">
-                  {users.map((u) => {
-                    const badge = ROLE_BADGES[u.role] || ROLE_BADGES.viewer
-                    return (
-                      <tr key={u.id} className="hover:bg-white/60 transition-colors group">
-                        <td className="p-4 pl-6">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-100 to-white border border-white shadow-sm flex items-center justify-center font-black text-slate-700 shrink-0 text-sm group-hover:scale-105 transition-transform">
-                              {u.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="font-black text-slate-900 text-sm tracking-tight">{u.name}</div>
-                              <div className="text-[11px] text-slate-500 font-bold">@{u.username}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-sm text-[10px] uppercase tracking-wider ${badge.bg} ${badge.text}`}>
-                              <span className="text-sm">{badge.icon}</span>
-                              <span>{badge.label}</span>
-                            </span>
-                            <select
-                              value={u.role}
-                              onChange={(e) => updateUserRole(u.id, e.target.value as UserRole)}
-                              className="h-8 px-2 text-[11px] font-black uppercase tracking-wider bg-white/50 backdrop-blur-sm border border-white rounded-xl text-slate-700 cursor-pointer hover:bg-white/80 transition-colors focus:ring-2 focus:ring-blue-100 outline-none shadow-sm appearance-none"
-                              title="Change User Role"
-                            >
-                              <option value="superadmin">Superadmin</option>
-                              <option value="admin">Admin</option>
-                              <option value="accountant">Accountant</option>
-                              <option value="viewer">Viewer</option>
-                            </select>
-                          </div>
-                        </td>
-                        <td className="p-4 text-slate-500 font-bold text-[11px] uppercase tracking-widest">{u.createdAt || "2026-01-01"}</td>
-                        <td className="p-4 pr-6 text-right">
-                          <button
-                            type="button"
-                            onClick={() => deleteUser(u.id)}
-                            disabled={users.length <= 1 || u.username === "admin"}
-                            className="p-2.5 rounded-xl border border-red-200/50 bg-red-50/50 text-red-600 hover:bg-red-100 hover:border-red-300 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-all shadow-sm group-hover:shadow-md"
-                            title="Delete User Account"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+            <div className="space-y-3">
+              {users.map((u) => {
+                const badge = ROLE_BADGES[u.role] || ROLE_BADGES.viewer
+                const isSuper = u.role === "superadmin"
+                return (
+                  <div
+                    key={u.id}
+                    className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white/80 border border-slate-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-900 font-black flex items-center justify-center text-sm shadow-inner">
+                        {u.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-xs sm:text-sm font-black text-slate-900">{u.name}</div>
+                        <div className="text-[10px] sm:text-[11px] text-slate-500 font-mono font-bold">@{u.username}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border ${badge.bg} ${badge.text}`}>
+                        {badge.icon} {badge.label}
+                      </span>
+                      {!isSuper && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`Delete user '${u.username}'?`)) {
+                              deleteUser(u.id)
+                            }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer"
+                          title="Delete User"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -382,13 +610,13 @@ export function SettingsView() {
 
       {/* Tab 2: Change Password */}
       {activeTab === "password" && (
-        <div className="max-w-xl mx-auto bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-6 md:p-10 space-y-6">
-          <div className="flex items-center gap-3 pb-4 border-b border-white/50">
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-lg shadow-amber-500/30">
-              <Key className="w-6 h-6" />
+        <div className="max-w-xl mx-auto bg-white/70 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-10 space-y-4 sm:space-y-6">
+          <div className="flex items-center gap-3 pb-3 border-b border-white/50">
+            <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-lg shadow-amber-500/30">
+              <Key className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h3 className="text-xl font-black tracking-tight text-slate-900">Change Account Password</h3>
+              <h3 className="text-lg sm:text-xl font-black tracking-tight text-slate-900">Change Account Password</h3>
               <p className="text-xs font-bold text-slate-500 font-[vazirmatn]" dir="rtl">
                 تغییر رمز عبور حساب کاربری فعلی
               </p>
@@ -397,7 +625,7 @@ export function SettingsView() {
 
           {passMsg && (
             <div
-              className={`p-3.5 rounded-xl text-xs font-bold flex items-center gap-2 ${
+              className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
                 passMsg.type === "success"
                   ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                   : "bg-red-50 text-red-800 border border-red-200"
@@ -408,9 +636,9 @@ export function SettingsView() {
             </div>
           )}
 
-          <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
+          <form onSubmit={handleChangePasswordSubmit} className="space-y-3 sm:space-y-4">
             <div>
-              <label className="text-xs font-extrabold text-slate-800 block mb-1.5">Current Password / رمز عبور فعلی</label>
+              <label className="text-xs font-extrabold text-slate-800 block mb-1">Current Password / رمز عبور فعلی</label>
               <div className="relative">
                 <input
                   type={showOldPass ? "text" : "password"}
@@ -431,7 +659,7 @@ export function SettingsView() {
             </div>
 
             <div>
-              <label className="text-xs font-extrabold text-slate-800 block mb-1.5">New Password / رمز عبور جدید</label>
+              <label className="text-xs font-extrabold text-slate-800 block mb-1">New Password / رمز عبور جدید</label>
               <div className="relative">
                 <input
                   type={showNewPass ? "text" : "password"}
@@ -452,7 +680,7 @@ export function SettingsView() {
             </div>
 
             <div>
-              <label className="text-xs font-extrabold text-slate-800 block mb-1.5">Confirm New Password / تایید رمز عبور جدید</label>
+              <label className="text-xs font-extrabold text-slate-800 block mb-1">Confirm New Password / تایید رمز عبور جدید</label>
               <input
                 type="password"
                 required
@@ -465,7 +693,7 @@ export function SettingsView() {
 
             <button
               type="submit"
-              className="w-full h-11 mt-3 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full h-11 mt-2 sm:mt-3 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <Lock className="w-4 h-4" />
               <span>Update Password</span>
@@ -476,18 +704,18 @@ export function SettingsView() {
 
       {/* Tab 3: Company & Regional Info */}
       {activeTab === "general" && (
-        <div className="bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-6 md:p-8 space-y-6">
-          <div className="flex items-center gap-3 pb-4 border-b border-white/50">
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 text-white shadow-lg shadow-teal-500/30">
-              <Building2 className="w-6 h-6" />
+        <div className="bg-white/70 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
+          <div className="flex items-center gap-3 pb-3 border-b border-white/50">
+            <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 text-white shadow-lg shadow-teal-500/30">
+              <Building2 className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h3 className="text-xl font-black tracking-tight text-slate-900">Company & Regional Preferences</h3>
+              <h3 className="text-lg sm:text-xl font-black tracking-tight text-slate-900">Company & Regional Preferences</h3>
               <p className="text-xs font-bold text-slate-500">Official contact information and database backup settings</p>
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <div className="space-y-4 p-4 rounded-2xl border border-slate-200 bg-slate-50/50">
               <h4 className="text-xs font-black uppercase text-blue-900 flex items-center gap-1.5">
                 <Globe className="w-4 h-4" /> Regional Contact Info
@@ -526,7 +754,7 @@ export function SettingsView() {
               </div>
             </div>
 
-            <div className="space-y-4 p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50">
+            <div className="md:col-span-2 space-y-4 p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50">
               <h4 className="text-xs font-black uppercase text-emerald-900 flex items-center gap-1.5">
                 <Download className="w-4 h-4 text-emerald-700" /> Database Backup & Safety
               </h4>
@@ -601,14 +829,14 @@ export function SettingsView() {
 
       {/* Tab 4: System Version & Updates (from system-version.ts) */}
       {activeTab === "update" && (
-        <div className="bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-6 md:p-8 space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/50">
+        <div className="bg-white/70 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-white/50">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/30">
-                <Download className="w-6 h-6" />
+              <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/30">
+                <Download className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div>
-                <h3 className="text-xl font-black tracking-tight text-slate-900">System Version & Software Updates</h3>
+                <h3 className="text-lg sm:text-xl font-black tracking-tight text-slate-900">System Version & Software Updates</h3>
                 <p className="text-xs font-bold text-slate-500">Loaded directly from system configuration file (`system-version.ts`)</p>
               </div>
             </div>
@@ -632,7 +860,7 @@ export function SettingsView() {
           )}
 
           {/* Current Version Box */}
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             <div className="p-4 rounded-2xl border border-blue-200 bg-blue-50/50 space-y-1">
               <span className="text-[11px] font-bold text-slate-500 uppercase">Installed Version</span>
               <div className="text-2xl font-black text-blue-900 font-mono">{CURRENT_SYSTEM_VERSION.version}</div>
@@ -645,7 +873,7 @@ export function SettingsView() {
               <span className="text-[11px] font-bold text-purple-700">Released: {CURRENT_SYSTEM_VERSION.releaseDate}</span>
             </div>
 
-            <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 space-y-1">
+            <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 space-y-1 sm:col-span-2 md:col-span-1">
               <span className="text-[11px] font-bold text-slate-500 uppercase">Update Channel</span>
               <div className="text-sm font-black text-emerald-900 capitalize flex items-center gap-1">
                 <Sparkles className="w-4 h-4 text-emerald-600" />
@@ -656,14 +884,14 @@ export function SettingsView() {
           </div>
 
           {/* System Release Changelog */}
-          <div className="space-y-4 pt-2">
+          <div className="space-y-3 sm:space-y-4 pt-2">
             <h4 className="text-xs font-black uppercase text-slate-900 flex items-center gap-1.5">
               <Terminal className="w-4 h-4 text-slate-700" /> System Release Log (`changelog`)
             </h4>
 
             <div className="space-y-3">
               {CURRENT_SYSTEM_VERSION.changelog.map((log) => (
-                <div key={log.version} className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
+                <div key={log.version} className="p-3.5 sm:p-4 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-extrabold text-slate-900 font-mono">
                       {log.version} - {log.title}

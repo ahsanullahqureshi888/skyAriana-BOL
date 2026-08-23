@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { CSSProperties, ReactNode, ComponentType } from "react"
 import type { BillOfLadingFormData } from "@/lib/types/bill-of-lading"
 import {
@@ -26,7 +26,12 @@ import {
   RouteTruckIcon,
   RouteVesselIcon,
 } from "../icons/RouteTransportIcons"
-import { COMPANY_STAMP_SIGNATURE_SRC, COMPANY_STAMP_SIGNATURE_DATA_URL } from "@/lib/company-stamp-data"
+import {
+  COMPANY_STAMP_SIGNATURE_SRC,
+  COMPANY_STAMP_SIGNATURE_DATA_URL,
+  getStoredCompanyStamp,
+  getStoredCompanyStampScale,
+} from "@/lib/company-stamp-data"
 
 interface A4PreviewProps {
   bolNumber: string
@@ -1762,6 +1767,33 @@ export function A4Preview({
 }: A4PreviewProps) {
   const [internalStampActive, setInternalStampActive] = useState(true)
   const isStampActive = showStampSignature !== undefined ? showStampSignature : internalStampActive
+  const [stampImageSrc, setStampImageSrc] = useState<string>(COMPANY_STAMP_SIGNATURE_SRC)
+  const [stampScale, setStampScale] = useState<number>(1.0)
+
+  useEffect(() => {
+    setStampImageSrc(getStoredCompanyStamp())
+    setStampScale(getStoredCompanyStampScale())
+
+    const handleStampUpdate = (e: Event) => {
+      const customEvent = e as CustomEvent<{ dataUrl?: string; scale?: number }>
+      if (customEvent.detail?.dataUrl) {
+        setStampImageSrc(customEvent.detail.dataUrl)
+      } else {
+        setStampImageSrc(getStoredCompanyStamp())
+      }
+      if (customEvent.detail?.scale !== undefined) {
+        setStampScale(customEvent.detail.scale)
+      } else {
+        setStampScale(getStoredCompanyStampScale())
+      }
+    }
+
+    window.addEventListener("company_stamp_updated", handleStampUpdate)
+    return () => {
+      window.removeEventListener("company_stamp_updated", handleStampUpdate)
+    }
+  }, [])
+
   const toggleStamp = () => {
     if (onToggleStampSignature) {
       onToggleStampSignature(!isStampActive)
@@ -2123,16 +2155,19 @@ export function A4Preview({
             </div>
 
             {/* Right side: Authorized Signature & Official Seal Block (NO ENCLOSING BOX) */}
-            <div className="relative flex flex-col items-center justify-center min-w-[58mm] max-w-[66mm] text-center">
-              {/* Official Stamp & Signature Overlay - Rendered ON TOP without a box */}
-              <div className="relative w-full h-[26mm] flex items-center justify-center">
+            <div className="relative flex flex-col items-center justify-center min-w-[68mm] max-w-[82mm] text-center">
+              {/* Official Stamp & Signature Overlay - Rendered 2X BIGGER ON TOP without a box */}
+              <div className="relative w-full h-[32mm] flex items-center justify-center">
                 {isStampActive ? (
-                  <div className="absolute -top-3.5 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10">
+                  <div
+                    className="absolute -top-7 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10"
+                    style={{ transform: `scale(${stampScale})`, transformOrigin: "center center" }}
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={COMPANY_STAMP_SIGNATURE_SRC}
+                      src={stampImageSrc || COMPANY_STAMP_SIGNATURE_SRC}
                       alt="Sky Ariana Limited Official Stamp & Signature"
-                      className="h-[34mm] w-auto max-w-none object-contain drop-shadow-sm transform -rotate-2"
+                      className="h-[56mm] w-auto max-w-none object-contain drop-shadow-md transform -rotate-2"
                       crossOrigin="anonymous"
                       onError={(e) => {
                         const target = e.currentTarget
@@ -2143,7 +2178,7 @@ export function A4Preview({
                     />
                   </div>
                 ) : (
-                  <div className="text-[6.5pt] italic text-slate-400 font-semibold my-auto">
+                  <div className="text-[7pt] italic text-slate-400 font-semibold my-auto">
                     (Sign & Stamp Here / محل امضا و مهر)
                   </div>
                 )}
@@ -2153,10 +2188,10 @@ export function A4Preview({
               <div className="w-full border-b-1.5 border-slate-700/80 my-0.5" />
 
               {/* Authorized Labels */}
-              <p className="text-[7.2pt] font-black text-blue-950 uppercase tracking-tight leading-tight">
+              <p className="text-[7.5pt] font-black text-blue-950 uppercase tracking-tight leading-tight">
                 For & On Behalf of: {companyTitle}
               </p>
-              <p className="persian-text bol-persian-text font-[vazirmatn] text-[6.5pt] font-extrabold text-blue-900 leading-tight mt-0.2" dir="rtl">
+              <p className="persian-text bol-persian-text font-[vazirmatn] text-[6.8pt] font-extrabold text-blue-900 leading-tight mt-0.2" dir="rtl">
                 {labels.companyStampSignFa || "مهر و امضای مجاز شرکت"}
               </p>
             </div>

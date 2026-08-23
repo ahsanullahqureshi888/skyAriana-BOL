@@ -4378,16 +4378,22 @@
 }
 
 @page {
-  size: A4;
-  margin: 3mm;
+  size: A4 portrait !important;
+  margin-top: 0.15in !important;
+  margin-left: 0.15in !important;
+  margin-right: 0.15in !important;
+  margin-bottom: 0in !important;
 }
 
 /* Print styles for Bill of Lading, Invoices, and Ledgers */
 @media print {
-  /* 1. Standard A4 Portrait setup for Bill of Lading & Invoices */
+  /* 1. Standard A4 Portrait setup for Bill of Lading & Invoices (Default 0.15" top/left/right, 0" bottom) */
   @page {
     size: A4 portrait !important;
-    margin: 0mm !important;
+    margin-top: 0.15in !important;
+    margin-left: 0.15in !important;
+    margin-right: 0.15in !important;
+    margin-bottom: 0in !important;
   }
 
   /* 1b. Dedicated A4 Landscape setup for Account Ledger printing */
@@ -4449,8 +4455,8 @@
     visibility: visible !important;
     opacity: 1 !important;
     position: static !important;
-    width: 210mm !important;
-    max-width: 210mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
@@ -4466,11 +4472,11 @@
   }
 
   [data-bol-a4="true"] {
-    width: 210mm !important;
-    max-width: 210mm !important;
-    min-height: 297mm !important;
-    height: 297mm !important;
-    max-height: 297mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: calc(297mm - 0.15in) !important;
+    height: calc(297mm - 0.15in) !important;
+    max-height: calc(297mm - 0.15in) !important;
     margin: 0 auto !important;
     padding: 0 !important;
     box-sizing: border-box !important;
