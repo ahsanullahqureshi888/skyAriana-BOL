@@ -1027,33 +1027,33 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
   if (!routes?.length) return null
 
   const modeThemeMap: Record<string, { icon: string; label: string; persian: string; bg: string }> = {
-    truck: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-950 border-emerald-300 shadow-2xs" },
-    road: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-950 border-emerald-300 shadow-2xs" },
-    lorry: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-950 border-emerald-300 shadow-2xs" },
-    vessel: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-950 border-blue-300 shadow-2xs" },
-    ship: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-950 border-blue-300 shadow-2xs" },
-    boat: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-950 border-blue-300 shadow-2xs" },
-    sea: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-950 border-blue-300 shadow-2xs" },
-    ocean: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-950 border-blue-300 shadow-2xs" },
-    train: { icon: "🚆", label: "TRAIN", persian: "ریلی", bg: "bg-amber-50 text-amber-950 border-amber-300 shadow-2xs" },
-    rail: { icon: "🚆", label: "TRAIN", persian: "ریلی", bg: "bg-amber-50 text-amber-950 border-amber-300 shadow-2xs" },
-    airplane: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-950 border-sky-300 shadow-2xs" },
-    air: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-950 border-sky-300 shadow-2xs" },
-    plane: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-950 border-sky-300 shadow-2xs" },
+    truck: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-950 border-emerald-400 shadow-2xs" },
+    road: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-950 border-emerald-400 shadow-2xs" },
+    lorry: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-950 border-emerald-400 shadow-2xs" },
+    vessel: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-cyan-50 text-cyan-950 border-cyan-400 shadow-2xs" },
+    ship: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-cyan-50 text-cyan-950 border-cyan-400 shadow-2xs" },
+    boat: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-cyan-50 text-cyan-950 border-cyan-400 shadow-2xs" },
+    sea: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-cyan-50 text-cyan-950 border-cyan-400 shadow-2xs" },
+    ocean: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-cyan-50 text-cyan-950 border-cyan-400 shadow-2xs" },
+    train: { icon: "🚆", label: "TRAIN", persian: "ریلی", bg: "bg-purple-50 text-purple-950 border-purple-400 shadow-2xs" },
+    rail: { icon: "🚆", label: "TRAIN", persian: "ریلی", bg: "bg-purple-50 text-purple-950 border-purple-400 shadow-2xs" },
+    airplane: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-950 border-sky-400 shadow-2xs" },
+    air: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-950 border-sky-400 shadow-2xs" },
+    plane: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-950 border-sky-400 shadow-2xs" },
     car: { icon: "🚗", label: "CAR", persian: "خودرو", bg: "bg-blue-50 text-blue-900 border-blue-200" },
     van: { icon: "🚐", label: "VAN", persian: "ون", bg: "bg-blue-50 text-blue-900 border-blue-200" },
   }
-  const defaultModeTheme = { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-blue-50 text-blue-900 border-blue-200" }
+  const defaultModeTheme = { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-950 border-emerald-400 shadow-2xs" }
 
   return (
     <div
       className={`route-timeline-container ${glass ? "glass-card" : ""}`}
       style={{
         background: "linear-gradient(145deg, #ffffff 0%, #f8faff 50%, #eff6ff 100%)",
-        border: "1px solid #bfdbfe",
-        borderRadius: "10px",
-        padding: "6px 6px",
-        boxShadow: "0 2px 10px rgba(37, 99, 235, 0.04)",
+        border: "1.5px solid #bfdbfe",
+        borderRadius: "12px",
+        padding: "6px 8px",
+        boxShadow: "0 2px 10px rgba(37, 99, 235, 0.05)",
       }}
       aria-label="Route and transportation path timeline"
     >
@@ -1074,19 +1074,19 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
               <div
                 className={`route-timeline-card transition-all duration-200 w-full text-center relative overflow-hidden flex flex-col justify-between ${
                   isOrigin
-                    ? "border-1.5 border-emerald-500/90 bg-linear-to-b from-emerald-50/60 via-white to-emerald-50/25 shadow-2xs shadow-emerald-100/50"
+                    ? "border-1.5 border-emerald-500/90 bg-linear-to-b from-emerald-50/70 via-white to-emerald-50/25 shadow-2xs shadow-emerald-100/60"
                     : isLastRoute
-                    ? "border-1.5 border-indigo-500/90 bg-linear-to-b from-indigo-50/60 via-white to-indigo-50/25 shadow-2xs shadow-indigo-100/50"
-                    : "border-1.5 border-blue-300/90 bg-linear-to-b from-blue-50/50 via-white to-blue-50/20 shadow-2xs shadow-blue-100/50"
+                    ? "border-1.5 border-indigo-500/90 bg-linear-to-b from-indigo-50/70 via-white to-indigo-50/25 shadow-2xs shadow-indigo-100/60"
+                    : "border-1.5 border-blue-300/90 bg-linear-to-b from-blue-50/60 via-white to-blue-50/20 shadow-2xs shadow-blue-100/60"
                 }`}
                 style={{
-                  borderRadius: "8px",
-                  padding: "4px 3px 4px",
-                  minHeight: "72px",
+                  borderRadius: "10px",
+                  padding: "5px 4px",
+                  minHeight: "82px",
                 }}
               >
                 {/* Top Accent Strip */}
-                <div className={`h-0.8 w-full absolute top-0 left-0 right-0 ${
+                <div className={`h-1 w-full absolute top-0 left-0 right-0 ${
                   isOrigin ? 'bg-linear-to-r from-emerald-500 to-teal-500' : isLastRoute ? 'bg-linear-to-r from-indigo-600 to-purple-600' : 'bg-linear-to-r from-blue-500 to-cyan-500'
                 }`} />
 
@@ -1105,31 +1105,31 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
                     </span>
                     {/* Country Code & Flag */}
                     {countryMeta.code && (
-                      <span className="px-1 py-0.2 bg-slate-100/90 text-slate-800 flex items-center gap-0.5 border-l border-slate-200 truncate font-extrabold text-[5.2pt]">
-                        <span className="text-[6pt] leading-none shrink-0">{countryMeta.emoji}</span>
-                        <span className="truncate">{countryMeta.label || countryMeta.code}</span>
+                      <span className="px-1.5 py-0.2 bg-slate-100/95 text-slate-800 flex items-center gap-0.5 border-l border-slate-200 truncate font-extrabold text-[5.2pt]">
+                        <span className="text-[6.5pt] leading-none shrink-0">{countryMeta.emoji}</span>
+                        <span className="truncate">{countryMeta.label?.toUpperCase() || countryMeta.code}</span>
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* City & Location Name (Hierarchical with Zero Cut-off) */}
-                <div className="space-y-0.5 text-center px-0.5 my-auto">
-                  <div className="text-[7.8pt] font-black text-slate-950 leading-[1.15] break-words line-clamp-2 tracking-tight">
+                {/* City & Location Name (Vertically Balanced with Zero Cut-off) */}
+                <div className="flex-1 flex flex-col justify-center px-0.5 my-auto min-h-[38px] space-y-0.5">
+                  <div className="text-[8pt] font-black text-slate-950 leading-tight break-words line-clamp-2 tracking-tight">
                     <span>{formattedLoc.primaryName}</span>
                     {formattedLoc.codeBadge && (
-                      <span className="ml-1 inline-block rounded bg-amber-100/90 text-amber-950 font-mono text-[5.5pt] px-1 py-0.2 font-black border border-amber-200/80 align-middle">
+                      <span className="ml-1 inline-block rounded bg-amber-100 text-amber-950 font-mono text-[5.8pt] px-1 py-0.2 font-black border border-amber-300 align-middle">
                         {formattedLoc.codeBadge}
                       </span>
                     )}
                   </div>
                   {formattedLoc.subFacility && (
-                    <div className="text-[5.5pt] font-bold text-slate-500 leading-tight break-words line-clamp-1">
+                    <div className="text-[5.8pt] font-semibold text-slate-600 leading-tight break-words line-clamp-1">
                       {formattedLoc.subFacility}
                     </div>
                   )}
                   {hasValue(formattedLoc.persianMain) && (
-                    <div className="text-[6.8pt] font-extrabold text-blue-900 font-[vazirmatn] leading-[1.2] break-words line-clamp-2 mt-0.5" dir="rtl">
+                    <div className="text-[7pt] font-bold text-blue-950 font-[vazirmatn] leading-tight break-words line-clamp-2 mt-0.5" dir="rtl">
                       {formattedLoc.persianMain}
                     </div>
                   )}
@@ -1137,8 +1137,8 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
 
                 {/* Bottom Row: Mode Pill */}
                 <div className="mt-1">
-                  <span className={`inline-flex items-center justify-center gap-0.5 px-1.5 py-0.3 rounded-full text-[5.4pt] font-black uppercase tracking-wide border whitespace-nowrap ${modeTheme.bg}`}>
-                    <span className="text-[6.8pt] leading-none">{modeTheme.icon}</span>
+                  <span className={`inline-flex items-center justify-center gap-0.5 px-2 py-0.3 rounded-full text-[5.5pt] font-black uppercase tracking-wide border whitespace-nowrap ${modeTheme.bg}`}>
+                    <span className="text-[7pt] leading-none">{modeTheme.icon}</span>
                     <span>{modeTheme.label}</span>
                     <span className="font-[vazirmatn] text-[5.2pt] opacity-90">({modeTheme.persian})</span>
                   </span>
@@ -1176,10 +1176,10 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
               {/* Connecting Arrow Circle */}
               {!isLastRoute && (
                 <div
-                  className="route-timeline-arrow mx-0.5 shrink-0 flex items-center justify-center w-4 h-4 rounded-full bg-white border border-blue-300 shadow-2xs text-blue-600"
+                  className="route-timeline-arrow mx-1 shrink-0 flex items-center justify-center w-4.5 h-4.5 rounded-full bg-linear-to-b from-white to-blue-50 border border-blue-400 shadow-2xs text-blue-600 z-10"
                   aria-hidden="true"
                 >
-                  <ArrowRight className="w-2.5 h-2.5 text-blue-600" />
+                  <ArrowRight className="w-2.5 h-2.5 text-blue-700" />
                 </div>
               )}
             </div>
