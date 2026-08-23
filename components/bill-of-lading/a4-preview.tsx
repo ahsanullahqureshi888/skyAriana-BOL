@@ -26,6 +26,7 @@ import {
   RouteTruckIcon,
   RouteVesselIcon,
 } from "../icons/RouteTransportIcons"
+import { COMPANY_STAMP_SIGNATURE_SRC, COMPANY_STAMP_SIGNATURE_DATA_URL } from "@/lib/company-stamp-data"
 
 interface A4PreviewProps {
   bolNumber: string
@@ -82,7 +83,7 @@ export const sampleBillOfLadingData: Partial<BillOfLadingFormData> = {
 }
 
 const a4ShellStyle = {
-  background: "linear-gradient(135deg, #eff6ff 0%, #ffffff 48%, #ecfeff 100%)",
+  background: "#ffffff",
   fontFamily: "Arial, Helvetica, Inter, Calibri, sans-serif",
 } satisfies CSSProperties
 
@@ -602,21 +603,17 @@ function DetailCard({
       dir={forceLTR ? "ltr" : rightAligned ? "rtl" : "ltr"}
       {...(pdfMode ? { 'data-no-break': true } : {})}
         className={`min-h-[7.5mm] rounded-lg border px-2 py-1 ${pdfMode ? '' : 'shadow-xs shadow-blue-100/60'} ${
-        glass
-          ? isRedHighlight
-            ? "border-red-200/60 bg-red-50/30 backdrop-blur-2xl"
-            : isBlueHighlight
-            ? "border-blue-200/60 bg-sky-50/40 backdrop-blur-2xl"
-            : isGreenHighlight
-            ? "border-green-200/60 bg-green-50/30 backdrop-blur-2xl"
-            : (highlight ? "border-blue-200/60 bg-sky-50/40 backdrop-blur-2xl" : "border-white/80 bg-white/60 backdrop-blur-md")
-          : isRedHighlight
-          ? "border-red-200 bg-red-50/60"
+        isRedHighlight
+          ? "border-red-200 bg-red-50/80"
           : isBlueHighlight
-          ? "border-blue-200 bg-sky-50/60"
+          ? "border-blue-200 bg-sky-50/80"
           : isGreenHighlight
-          ? "border-green-200 bg-green-50/60"
-          : pdfMode ? "border-blue-100 bg-white" : "border-blue-100/80 bg-white/95 backdrop-blur-xs"
+          ? "border-green-200 bg-green-50/80"
+          : highlight
+          ? "border-blue-200 bg-sky-50/70"
+          : pdfMode
+          ? "border-blue-100 bg-white"
+          : "border-blue-100/80 bg-white shadow-2xs"
       } ${center ? "text-center" : forceLTR ? "text-left" : rightAligned ? "text-right" : "text-left"} break-word ${className || ""}`}
       style={{ unicodeBidi: 'plaintext', textAlign: forceLTR ? 'left' : rightAligned ? 'right' : 'left' }}
     >
@@ -1848,10 +1845,12 @@ export function A4Preview({
               backgroundSize: "cover",
               backgroundPosition: "center center",
               backgroundRepeat: "no-repeat",
-              opacity: pdfMode ? Math.min(0.20, backgroundOpacity) : backgroundOpacity,
-              filter: "contrast(1.05) brightness(1.02)",
+              opacity: pdfMode ? Math.min(0.09, backgroundOpacity) : Math.min(0.12, backgroundOpacity),
+              filter: "contrast(1.02) brightness(1.04)",
               WebkitPrintColorAdjust: "exact",
               printColorAdjust: "exact",
+              maskImage: "radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0.85) 100%)",
+              WebkitMaskImage: "radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0.85) 100%)",
             }}
             aria-hidden="true"
           />
@@ -1859,7 +1858,7 @@ export function A4Preview({
         <header
           data-bol-header="true"
           className={`overflow-hidden rounded-xl border shrink-0 ${
-            pdfMode ? "border-blue-200 bg-white" : "border-white/80 bg-white/60 backdrop-blur-xl shadow-md shadow-blue-100/70"
+            pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white shadow-md shadow-blue-100/70"
           }`}
           style={pdfMode ? { boxShadow: "none" } : undefined}
         >
@@ -2068,8 +2067,8 @@ export function A4Preview({
               )}
               {hasValue(cleanedCargoDesc) && (
                 <div
-                  className={`mt-1.5 rounded-xl border p-2 shadow-inner ${
-                    pdfMode ? "border-blue-100 bg-white" : "border-white/80 bg-white/65 backdrop-blur-md"
+                  className={`mt-1.5 rounded-xl border p-2 shadow-xs ${
+                    pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white shadow-2xs"
                   }`}
                 >
                   <div className="mb-1 flex items-center gap-1.5 text-blue-800">
@@ -2089,15 +2088,32 @@ export function A4Preview({
 
           <div data-no-break className="mt-auto flex justify-center pt-0.5 flex-shrink-0">
             <div
-              className={`w-full max-w-[50mm] rounded-lg border border-dashed p-1 text-center shadow-2xs print:shadow-none ${
-                pdfMode ? "border-blue-300 bg-white" : "border-white/80 bg-white/65 backdrop-blur-md"
+              className={`w-full max-w-[56mm] rounded-xl border border-dashed p-1 text-center shadow-xs print:shadow-none relative overflow-hidden flex flex-col items-center justify-center ${
+                pdfMode ? "border-blue-300 bg-white" : "border-blue-200 bg-white"
               }`}
             >
-              <div className="flex h-4 items-center justify-center rounded bg-blue-50/90 text-[5.2pt] font-medium italic text-blue-600">
-                Stamp / <span className="persian-text bol-persian-text" dir="rtl">{labels.stampFa}</span>
+              <div className="flex h-3.5 items-center justify-center rounded-md bg-blue-50/90 px-1.5 text-[5pt] font-extrabold uppercase text-blue-700 w-full mb-0.5">
+                <span>Stamp / <span className="persian-text bol-persian-text font-[vazirmatn]" dir="rtl">{labels.stampFa}</span></span>
               </div>
-              <p className="mt-0.5 text-[7.8pt] font-black text-blue-950 leading-tight">Company Stamp & Sign</p>
-              <p className="persian-text bol-persian-text font-[vazirmatn] text-[7.2pt] font-bold text-slate-500 leading-tight" dir="rtl">
+              
+              {/* Authentic Company Stamp & Signature Overlay */}
+              <div className="relative flex items-center justify-center -my-0.5 w-full h-[26mm] max-h-[28mm] pointer-events-none select-none">
+                <img
+                  src={COMPANY_STAMP_SIGNATURE_SRC}
+                  alt="Sky Ariana Limited Official Stamp & Signature"
+                  className="h-full max-h-[26mm] w-auto object-contain drop-shadow-xs"
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    const target = e.currentTarget
+                    if (target.src !== COMPANY_STAMP_SIGNATURE_DATA_URL) {
+                      target.src = COMPANY_STAMP_SIGNATURE_DATA_URL
+                    }
+                  }}
+                />
+              </div>
+
+              <p className="mt-0.5 text-[7pt] font-black text-blue-950 leading-tight">Company Stamp & Sign</p>
+              <p className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-slate-600 leading-tight" dir="rtl">
                 {labels.companyStampSignFa}
               </p>
             </div>
@@ -2107,7 +2123,7 @@ export function A4Preview({
         <footer
           data-bol-footer="true"
           className={`mt-1 overflow-hidden rounded-xl border text-center shadow-sm shadow-blue-100/70 ${
-            pdfMode ? "border-blue-200 bg-white" : "border-white/80 bg-white/70 backdrop-blur-lg"
+            pdfMode ? "border-blue-200 bg-white" : "border-blue-200/80 bg-white"
           }`}
           data-no-break
         >

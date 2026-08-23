@@ -1,5 +1,6 @@
 "use client"
 import type { BillOfLadingFormData } from "@/lib/types/bill-of-lading"
+import { COMPANY_STAMP_SIGNATURE_DATA_URL } from "@/lib/company-stamp-data"
 
 // Dynamically import PDF libraries only in browser environment
 let html2canvasLib: any = null
@@ -656,10 +657,10 @@ export async function generateModernBOLPDFBlob(options: ModernBOLPDFOptions): Pr
   const sigW = (CONTENT_WIDTH - 3) / 2
   const sigX = PAGE_MARGIN + (CONTENT_WIDTH - sigW) / 2
   roundedCard(doc, sigX, y, sigW, 24, [255, 255, 255], BORDER_BLUE, 2)
-  setColor(doc, SKY_BG, "fill")
-  doc.roundedRect(sigX + 3, y + 4, sigW - 6, 9, 1.6, 1.6, "F")
-  drawText(doc, "Stamp", sigX + sigW / 2, y + 6.4, { size: 6, color: BLUE, align: "center" })
-  drawText(doc, "Company Stamp & Sign", sigX + sigW / 2, y + 16, { size: 7, weight: "bold", color: TEXT_DARK, align: "center" })
+  try {
+    doc.addImage(COMPANY_STAMP_SIGNATURE_DATA_URL, "PNG", sigX + sigW / 2 - 10, y + 2, 20, 20)
+  } catch {}
+  drawText(doc, "Company Stamp & Sign", sigX + sigW / 2, y + 21.5, { size: 6.5, weight: "bold", color: TEXT_DARK, align: "center" })
 
   const totalPages = doc.internal.getNumberOfPages()
   for (let page = 1; page <= totalPages; page += 1) {
@@ -861,17 +862,13 @@ export async function generatePremiumBOLPDFBlob(options: ModernBOLPDFOptions): P
   options.onProgress?.(82, "Adding signature section")
   const signatureWidth = (CONTENT_WIDTH - 3) / 2
   const sigX = PAGE_MARGIN + (CONTENT_WIDTH - signatureWidth) / 2
-  const sigHeight = 17
+  const sigHeight = 22
   roundedCard(doc, sigX, y, signatureWidth, sigHeight, [255, 255, 255], BORDER_BLUE, 2)
-  setColor(doc, SKY_BG, "fill")
-  doc.roundedRect(sigX + 3, y + 2.5, signatureWidth - 6, 6.5, 1.4, 1.4, "F")
-  drawText(doc, "Stamp / مهر", sigX + signatureWidth / 2, y + 4.2, {
-    size: 5.5,
-    color: BLUE,
-    align: "center",
-  })
-  drawText(doc, "Company Stamp & Sign", sigX + signatureWidth / 2, y + 11.5, {
-    size: 6.5,
+  try {
+    doc.addImage(COMPANY_STAMP_SIGNATURE_DATA_URL, "PNG", sigX + signatureWidth / 2 - 9, y + 1.5, 18, 18)
+  } catch {}
+  drawText(doc, "Company Stamp & Sign", sigX + signatureWidth / 2, y + 20, {
+    size: 6.0,
     weight: "bold",
     color: TEXT_DARK,
     align: "center",
