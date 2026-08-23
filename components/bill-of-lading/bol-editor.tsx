@@ -2287,6 +2287,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     airCargo?: boolean
     seaCargo?: boolean
     inlandWaterway?: boolean
+    aliases?: string[] | string
   }> = [
     // 🇨🇮 Ivory Coast & West Africa (Explicit User Preset)
     { name: "Abidjan, Ivory Coast", persian: "ابیدجان، ساحل عاج", country: "Ivory Coast", code: "ABJ", isPort: true, portName: "Abidjan Port" },
@@ -2488,8 +2489,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     { name: "Gopalpur Port, Odisha, IN", persian: "بندر گوپال‌پور (گانجام)، هند", country: "India", code: "INGPR", isPort: true, portName: "Gopalpur Port", locationType: "SEA_PORT_NON_MAJOR", state: "Odisha", unLocode: "INGPR" },
 
     // 🇮🇳 INDIA — INTERNATIONAL & CUSTOMS AIRPORTS (AIR CARGO)
-    { name: "Delhi — Indira Gandhi Intl Airport (DEL / INDEL), IN", persian: "میدان هوایی بین‌المللی دهلی (IGI)، هند", country: "India", code: "DEL", locationType: "AIRPORT_INTERNATIONAL", state: "Delhi", iataCode: "DEL", unLocode: "INDEL", customsCode: "INDEL4", airCargo: true, cargoEnabled: true },
-    { name: "Mumbai — Chhatrapati Shivaji Maharaj Intl Airport (BOM / INBOM), IN", persian: "میدان هوایی بین‌المللی ممبئی (CSMIA)، هند", country: "India", code: "BOM", locationType: "AIRPORT_INTERNATIONAL", state: "Maharashtra", iataCode: "BOM", unLocode: "INBOM", customsCode: "INBOM4", airCargo: true, cargoEnabled: true },
+    { name: "New Delhi — Indira Gandhi Intl Airport (DEL / IGI / INDEL), IN", persian: "میدان هوایی بین‌المللی دهلی نو (IGI / دهلی)، هند", country: "India", code: "DEL", locationType: "AIRPORT_INTERNATIONAL", state: "Delhi", district: "New Delhi", iataCode: "DEL", unLocode: "INDEL", customsCode: "INDEL4", airCargo: true, cargoEnabled: true, aliases: "New Delhi, New Delhi Airport, Delhi Airport, IGI, IGI Airport, Indira Gandhi, Cargo Terminal Delhi, INDEL" },
+    { name: "Delhi — Indira Gandhi Intl Airport (DEL / INDEL), IN", persian: "میدان هوایی بین‌المللی دهلی (IGI)، هند", country: "India", code: "DEL", locationType: "AIRPORT_INTERNATIONAL", state: "Delhi", district: "New Delhi", iataCode: "DEL", unLocode: "INDEL", customsCode: "INDEL4", airCargo: true, cargoEnabled: true, aliases: "New Delhi, New Delhi Airport, Delhi Airport, IGI, IGI Airport, Indira Gandhi, INDEL" },
+    { name: "Mumbai — Chhatrapati Shivaji Maharaj Intl Airport (BOM / INBOM), IN", persian: "میدان هوایی بین‌المللی ممبئی (CSMIA)، هند", country: "India", code: "BOM", locationType: "AIRPORT_INTERNATIONAL", state: "Maharashtra", iataCode: "BOM", unLocode: "INBOM", customsCode: "INBOM4", airCargo: true, cargoEnabled: true, aliases: "Bombay Airport, Mumbai Cargo, CSMIA" },
     { name: "Bengaluru — Kempegowda Intl Airport (BLR / INBLR), IN", persian: "میدان هوایی بین‌المللی بنگلور (KIA)، هند", country: "India", code: "BLR", locationType: "AIRPORT_INTERNATIONAL", state: "Karnataka", iataCode: "BLR", unLocode: "INBLR", customsCode: "INBLR4", airCargo: true, cargoEnabled: true },
     { name: "Hyderabad — Rajiv Gandhi Intl Airport (HYD / INHYD), IN", persian: "میدان هوایی بین‌المللی حیدرآباد (RGIA)، هند", country: "India", code: "HYD", locationType: "AIRPORT_INTERNATIONAL", state: "Telangana", iataCode: "HYD", unLocode: "INHYD", customsCode: "INHYD4", airCargo: true, cargoEnabled: true },
     { name: "Chennai International Airport (MAA / INMAA), IN", persian: "میدان هوایی بین‌المللی چنای، هند", country: "India", code: "MAA", locationType: "AIRPORT_INTERNATIONAL", state: "Tamil Nadu", iataCode: "MAA", unLocode: "INMAA", customsCode: "INMAA4", airCargo: true, cargoEnabled: true },
@@ -2725,6 +2727,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
   const activeInputLocation = showLocationDropdown !== null && activeRouteIndex !== null ? (formData.routes[activeRouteIndex]?.location || "") : ""
   const quickLocationQuery = (routeLocationSearch || activeInputLocation).trim().toLowerCase()
+  const queryTokens = quickLocationQuery
+    .split(/[\s,./\-_()]+/)
+    .filter((t) => t.length > 0)
 
   const quickLocationMatches = predefinedLocations.filter((loc) => {
     // Match against full searchable metadata
@@ -2742,11 +2747,33 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       loc.unLocode || "",
       loc.customsCode || "",
       loc.portType || "",
+      typeof loc.aliases === "string" ? loc.aliases : (loc.aliases || []).join(" "),
     ]
       .join(" ")
       .toLowerCase()
 
-    const matchesQuery = !quickLocationQuery || searchableText.includes(quickLocationQuery)
+    let matchesQuery = !quickLocationQuery || searchableText.includes(quickLocationQuery)
+
+    // Multi-word and token-based matching (e.g. "new del", "delhi air", "tashkent cargo")
+    if (!matchesQuery && queryTokens.length > 0) {
+      const allTokensMatch = queryTokens.every((token) => {
+        if (token === "new" && (queryTokens.includes("del") || queryTokens.includes("delhi") || queryTokens.includes("york"))) {
+          return searchableText.includes("delhi") || searchableText.includes("new") || searchableText.includes("york")
+        }
+        return searchableText.includes(token)
+      })
+      if (allTokensMatch) matchesQuery = true
+    }
+
+    // Special prefix matching (e.g. "new del", "new delhi", "delhi air", "igi")
+    if (!matchesQuery && quickLocationQuery.length >= 3) {
+      if (
+        (quickLocationQuery.startsWith("new del") || quickLocationQuery === "new delhi" || quickLocationQuery.includes("igi")) &&
+        (loc.code === "DEL" || searchableText.includes("delhi") || searchableText.includes("indira gandhi"))
+      ) {
+        matchesQuery = true
+      }
+    }
 
     if (!matchesQuery) return false
 
