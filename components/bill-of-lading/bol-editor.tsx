@@ -343,6 +343,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [showLocationDropdown, setShowLocationDropdown] = useState<number | null>(null)
   const [selectedCountryFilter, setSelectedCountryFilter] = useState("ALL")
   const [selectedIndiaCategoryFilter, setSelectedIndiaCategoryFilter] = useState("ALL")
+  const [disableModeFilter, setDisableModeFilter] = useState(false)
   const [routeLocationSearch, setRouteLocationSearch] = useState("")
   const [savedShippers, setSavedShippers] = useState<SavedParty[]>([])
   const [selectedShipperId, setSelectedShipperId] = useState<string>("")
@@ -2329,6 +2330,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     { name: "Bamyan, AF", persian: "بامیان، افغانستان", country: "Afghanistan", code: "BAM" },
     { name: "Faizabad, AF", persian: "فیض‌آباد، افغانستان", country: "Afghanistan", code: "FAZ" },
 
+    // 🇦🇫 Afghanistan — International Airports (Air Cargo)
+    { name: "Kabul — Hamid Karzai Intl Airport (KBL / OAKB), AF", persian: "میدان هوایی بین‌المللی کابل (حامد کرزی)، افغانستان", country: "Afghanistan", code: "KBL", locationType: "AIRPORT_INTERNATIONAL", iataCode: "KBL", airCargo: true, cargoEnabled: true, aliases: "Kabul Airport, KBL, OAKB, میدان هوایی کابل" },
+    { name: "Kandahar — Ahmad Shah Baba Intl Airport (KDH / OAKN), AF", persian: "میدان هوایی بین‌المللی کندهار (احمد شاه بابا)، افغانستان", country: "Afghanistan", code: "KDH", locationType: "AIRPORT_INTERNATIONAL", iataCode: "KDH", airCargo: true, cargoEnabled: true, aliases: "Kandahar Airport, KDH, OAKN, میدان هوایی کندهار" },
+    { name: "Mazar-i-Sharif — Maulana Jalaluddin Balkhi Intl Airport (MZR / OAMS), AF", persian: "میدان هوایی بین‌المللی مزارشریف (مولانا جلال‌الدین بلخی)، افغانستان", country: "Afghanistan", code: "MZR", locationType: "AIRPORT_INTERNATIONAL", iataCode: "MZR", airCargo: true, aliases: "Mazar Airport, MZR, OAMS, میدان هوایی مزارشریف" },
+    { name: "Herat — Khwaja Abdullah Ansari Intl Airport (HEA / OAHR), AF", persian: "میدان هوایی بین‌المللی هرات (خواجه عبدالله انصاری)، افغانستان", country: "Afghanistan", code: "HEA", locationType: "AIRPORT_INTERNATIONAL", iataCode: "HEA", airCargo: true, aliases: "Herat Airport, HEA, OAHR, میدان هوایی هرات" },
+
     // 🇦🇫 Afghanistan — Official Border & Customs Crossings (Cross-Border Transit)
     { name: "Hairatan, AF", persian: "حیرتان، افغانستان", country: "Afghanistan", code: "HRT", isBorder: true, borderCountry: "Uzbekistan" },
     { name: "Sher Khan Bandar, AF", persian: "شیرخان بندر، افغانستان", country: "Afghanistan", code: "SKB", isBorder: true, borderCountry: "Tajikistan" },
@@ -2371,6 +2378,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     { name: "Shiraz, IR", persian: "شیراز، ایران", country: "Iran", code: "SHZ" },
     { name: "Abadan, IR", persian: "آبادان، ایران", country: "Iran", code: "ABD" },
     { name: "Birjand, IR", persian: "بیرجند، ایران", country: "Iran", code: "BRJ" },
+
+    // 🇮🇷 Iran — International Airports (Air Cargo)
+    { name: "Tehran — Imam Khomeini Intl Airport (IKA / OIIE), IR", persian: "فرودگاه بین‌المللی امام خمینی تهران (هاب بار هوایی)، ایران", country: "Iran", code: "IKA", locationType: "AIRPORT_INTERNATIONAL", iataCode: "IKA", airCargo: true, cargoEnabled: true, aliases: "Tehran Airport, IKA, OIIE, فرودگاه امام خمینی" },
+    { name: "Tehran — Mehrabad Intl Airport (THR / OIII), IR", persian: "فرودگاه بین‌المللی مهرآباد تهران، ایران", country: "Iran", code: "THR", locationType: "AIRPORT_INTERNATIONAL", iataCode: "THR", airCargo: true, aliases: "Mehrabad Airport, THR, OIII, فرودگاه مهرآباد" },
+    { name: "Mashhad — Shahid Hasheminejad Intl Airport (MHD / OIMM), IR", persian: "فرودگاه بین‌المللی مشهد (شهید هاشمی‌نژاد)، ایران", country: "Iran", code: "MHD", locationType: "AIRPORT_INTERNATIONAL", iataCode: "MHD", airCargo: true, aliases: "Mashhad Airport, MHD, فرودگاه مشهد" },
+    { name: "Shiraz — Shahid Dastghaib Intl Airport (SYZ / OISS), IR", persian: "فرودگاه بین‌المللی شیراز، ایران", country: "Iran", code: "SYZ", locationType: "AIRPORT_INTERNATIONAL", iataCode: "SYZ", airCargo: true, aliases: "Shiraz Airport, SYZ, فرودگاه شیراز" },
+    { name: "Isfahan — Shahid Beheshti Intl Airport (IFN / OIFM), IR", persian: "فرودگاه بین‌المللی اصفهان، ایران", country: "Iran", code: "IFN", locationType: "AIRPORT_INTERNATIONAL", iataCode: "IFN", airCargo: true, aliases: "Isfahan Airport, IFN" },
+    { name: "Bandar Abbas International Airport (BND / OIKB), IR", persian: "فرودگاه بین‌المللی بندرعباس، ایران", country: "Iran", code: "BND-AIR", locationType: "AIRPORT_INTERNATIONAL", iataCode: "BND", airCargo: true, aliases: "Bandar Abbas Airport, BND" },
     
     // Pakistan - Major Cities & Ports
     { name: "Karachi, PK", persian: "کراچی، پاکستان", country: "Pakistan", code: "KRC", isPort: true, portName: "Karachi Port (KPT)" },
@@ -2384,6 +2399,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     { name: "Chaman, PK", persian: "چمن، پاکستان", country: "Pakistan", code: "CHM" },
     { name: "Multan, PK", persian: "ملتان، پاکستان", country: "Pakistan", code: "MLT" },
     { name: "Faisalabad, PK", persian: "فیصل‌آباد، پاکستان", country: "Pakistan", code: "FSB" },
+
+    // 🇵🇰 Pakistan — International Airports (Air Cargo)
+    { name: "Karachi — Jinnah Intl Airport (KHI / OPKC), PK", persian: "میدان هوایی بین‌المللی جناح کراچی، پاکستان", country: "Pakistan", code: "KHI", locationType: "AIRPORT_INTERNATIONAL", iataCode: "KHI", airCargo: true, cargoEnabled: true, aliases: "Karachi Airport, KHI, OPKC" },
+    { name: "Islamabad International Airport (ISB / OPIS), PK", persian: "میدان هوایی بین‌المللی اسلام‌آباد، پاکستان", country: "Pakistan", code: "ISB-AIR", locationType: "AIRPORT_INTERNATIONAL", iataCode: "ISB", airCargo: true, cargoEnabled: true, aliases: "Islamabad Airport, ISB" },
+    { name: "Lahore — Allama Iqbal Intl Airport (LHE / OPLA), PK", persian: "میدان هوایی بین‌المللی علامه اقبال لاهور، پاکستان", country: "Pakistan", code: "LHE", locationType: "AIRPORT_INTERNATIONAL", iataCode: "LHE", airCargo: true, cargoEnabled: true, aliases: "Lahore Airport, LHE" },
+    { name: "Peshawar — Bacha Khan Intl Airport (PEW / OPPS), PK", persian: "میدان هوایی بین‌المللی باچا خان پشاور، پاکستان", country: "Pakistan", code: "PEW", locationType: "AIRPORT_INTERNATIONAL", iataCode: "PEW", airCargo: true, aliases: "Peshawar Airport, PEW" },
+    { name: "Quetta International Airport (UET / OPQT), PK", persian: "میدان هوایی بین‌المللی کویته، پاکستان", country: "Pakistan", code: "UET", locationType: "AIRPORT_INTERNATIONAL", iataCode: "UET", airCargo: true, aliases: "Quetta Airport, UET" },
+    { name: "Sialkot International Airport (SKT / OPST), PK", persian: "میدان هوایی بین‌المللی سیالکوت (هاب صادرات)، پاکستان", country: "Pakistan", code: "SKT", locationType: "AIRPORT_INTERNATIONAL", iataCode: "SKT", airCargo: true, cargoEnabled: true, aliases: "Sialkot Airport, SKT" },
     
     // 🇦🇪 Dubai All Ports & UAE Seaports (Complete Marine Terminals)
     { name: "Jebel Ali Port (Mina Jebel Ali), Dubai, AE", persian: "بندر جبل علی، دبی", country: "UAE", code: "JEA", isPort: true, portName: "Jebel Ali Port (Mina Jebel Ali)" },
@@ -2408,6 +2431,15 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     { name: "Umm Al Quwain Port, AE", persian: "بندر ام‌القیوین، امارات", country: "UAE", code: "UAQ", isPort: true, portName: "Port of Umm Al Quwain" },
     { name: "Abu Dhabi, AE", persian: "ابوظبی، امارات", country: "UAE", code: "AUH" },
     { name: "Sharjah, AE", persian: "شارجہ، امارات", country: "UAE", code: "SHJ" },
+
+    // 🇦🇪 UAE — International Airports (Air Cargo)
+    { name: "Dubai International Airport (DXB / OMDB), AE", persian: "میدان هوایی بین‌المللی دبی (هاب بار هوایی امارات)", country: "UAE", code: "DXB-AIR", locationType: "AIRPORT_INTERNATIONAL", iataCode: "DXB", unLocode: "AEDXB", airCargo: true, cargoEnabled: true, aliases: "Dubai Airport, DXB, OMDB, میدان هوایی دبی, Dubai Cargo" },
+    { name: "Dubai — Al Maktoum Intl Airport (DWC / OMDW / Dubai World Central), AE", persian: "میدان هوایی آل مکتوم دبی (دبی ورلد سنترال / DWC)", country: "UAE", code: "DWC-AIR", locationType: "AIRPORT_INTERNATIONAL", iataCode: "DWC", unLocode: "AEDWC", airCargo: true, cargoEnabled: true, aliases: "DWC Airport, Dubai World Central, Al Maktoum, OMDW, میدان هوایی آل مکتوم" },
+    { name: "Sharjah International Airport (SHJ / OMSJ), AE", persian: "میدان هوایی بین‌المللی شارجه (هاب بار هوایی منطقه‌ای)", country: "UAE", code: "SHJ-AIR", locationType: "AIRPORT_INTERNATIONAL", iataCode: "SHJ", unLocode: "AESHJ", airCargo: true, cargoEnabled: true, aliases: "Sharjah Airport, SHJ, OMSJ, میدان هوایی شارجه" },
+    { name: "Abu Dhabi — Zayed Intl Airport (AUH / OMAA), AE", persian: "میدان هوایی بین‌المللی زاید ابوظبی", country: "UAE", code: "AUH-AIR", locationType: "AIRPORT_INTERNATIONAL", iataCode: "AUH", unLocode: "AEAUH", airCargo: true, cargoEnabled: true, aliases: "Abu Dhabi Airport, AUH, OMAA, میدان هوایی ابوظبی" },
+    { name: "Ras Al Khaimah International Airport (RKT / OMRK), AE", persian: "میدان هوایی بین‌المللی رأس الخیمه، امارات", country: "UAE", code: "RKT", locationType: "AIRPORT_INTERNATIONAL", iataCode: "RKT", unLocode: "AERKT", airCargo: true, aliases: "RAK Airport, RKT" },
+    { name: "Fujairah International Airport (FJR / OMFJ), AE", persian: "میدان هوایی بین‌المللی فجیره، امارات", country: "UAE", code: "FJR-AIR", locationType: "AIRPORT_INTERNATIONAL", iataCode: "FJR", unLocode: "AEFJR", airCargo: true, aliases: "Fujairah Airport, FJR" },
+
     { name: "Hamad Port (Doha), QA", persian: "بندر حمد، قطر", country: "Qatar", code: "DOH", isPort: true, portName: "Hamad Port" },
     { name: "Dammam (King Abdulaziz Port), SA", persian: "بندر دمام، عربستان", country: "Saudi Arabia", code: "DMM", isPort: true, portName: "King Abdulaziz Port (Dammam)" },
     { name: "Jeddah Islamic Port, SA", persian: "بندر اسلامی جده، عربستان", country: "Saudi Arabia", code: "JED", isPort: true, portName: "Jeddah Islamic Port" },
@@ -2726,12 +2758,86 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   }
 
   const activeInputLocation = showLocationDropdown !== null && activeRouteIndex !== null ? (formData.routes[activeRouteIndex]?.location || "") : ""
+  const activeStopTransportMode = showLocationDropdown !== null && activeRouteIndex !== null ? (formData.routes[activeRouteIndex]?.transportMode || "truck") : null
   const quickLocationQuery = (routeLocationSearch || activeInputLocation).trim().toLowerCase()
   const queryTokens = quickLocationQuery
     .split(/[\s,./\-_()]+/)
     .filter((t) => t.length > 0)
 
+  const isAirportLocation = (loc: (typeof predefinedLocations)[0]) => {
+    const nameLow = (loc.name || "").toLowerCase()
+    const fa = loc.persian || ""
+    const lType = loc.locationType || ""
+    return (
+      Boolean(loc.airCargo) ||
+      Boolean(loc.iataCode) ||
+      lType.startsWith("AIRPORT") ||
+      lType === "AIR_CARGO" ||
+      nameLow.includes("airport") ||
+      nameLow.includes("air cargo") ||
+      nameLow.includes("intl air") ||
+      nameLow.includes("igi") ||
+      fa.includes("میدان هوایی") ||
+      fa.includes("فرودگاه") ||
+      fa.includes("هوایی")
+    )
+  }
+
+  const isSeaPortLocation = (loc: (typeof predefinedLocations)[0]) => {
+    const nameLow = (loc.name || "").toLowerCase()
+    const fa = loc.persian || ""
+    const lType = loc.locationType || ""
+    const pType = loc.portType || ""
+    return (
+      Boolean(loc.isPort) ||
+      Boolean(loc.portName) ||
+      lType.startsWith("SEA_PORT") ||
+      lType === "TERMINAL" ||
+      pType === "SEA" ||
+      pType === "SEA_CARGO" ||
+      nameLow.includes("port") ||
+      nameLow.includes("harbour") ||
+      nameLow.includes("dock") ||
+      nameLow.includes("wharf") ||
+      nameLow.includes("seaport") ||
+      fa.includes("بندر") ||
+      fa.includes("ترمینال بحری") ||
+      fa.includes("اسکله") ||
+      fa.includes("لنگرگاه")
+    )
+  }
+
+  const isRailLocation = (loc: (typeof predefinedLocations)[0]) => {
+    const nameLow = (loc.name || "").toLowerCase()
+    const fa = loc.persian || ""
+    const lType = loc.locationType || ""
+    return (
+      Boolean(loc.railConnected) ||
+      lType.startsWith("ICD") ||
+      lType.startsWith("RAIL") ||
+      nameLow.includes("icd") ||
+      nameLow.includes("rail") ||
+      nameLow.includes("station") ||
+      fa.includes("راه آهن") ||
+      fa.includes("ریل") ||
+      fa.includes("پایانه کانتینری")
+    )
+  }
+
   const quickLocationMatches = predefinedLocations.filter((loc) => {
+    // 0. Strict Transport Mode Filter (AIR = Airports only, SEA = Ports only, RAIL = Rail/ICD only)
+    if (!disableModeFilter && activeStopTransportMode) {
+      if (activeStopTransportMode === "airplane" && !isAirportLocation(loc)) {
+        return false
+      }
+      if (activeStopTransportMode === "vessel" && !isSeaPortLocation(loc)) {
+        return false
+      }
+      if (activeStopTransportMode === "train" && !isRailLocation(loc)) {
+        return false
+      }
+    }
+
     // Match against full searchable metadata
     const searchableText = [
       loc.name,
@@ -6105,6 +6211,21 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">
                                       {quickLocationMatches.length}
                                     </span>
+                                    {route.transportMode === "airplane" && !disableModeFilter && (
+                                      <span className="rounded-full bg-sky-100 text-sky-800 px-2 py-0.5 text-[9px] font-black border border-sky-200">
+                                        ✈️ Airports Only
+                                      </span>
+                                    )}
+                                    {route.transportMode === "vessel" && !disableModeFilter && (
+                                      <span className="rounded-full bg-cyan-100 text-cyan-800 px-2 py-0.5 text-[9px] font-black border border-cyan-200">
+                                        🚢 Ports Only
+                                      </span>
+                                    )}
+                                    {route.transportMode === "train" && !disableModeFilter && (
+                                      <span className="rounded-full bg-purple-100 text-purple-800 px-2 py-0.5 text-[9px] font-black border border-purple-200">
+                                        🚆 Rail Only
+                                      </span>
+                                    )}
                                   </div>
 
                                   <div className="flex items-center gap-1.5 flex-1 max-w-[200px]">
@@ -6124,6 +6245,55 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                                     </button>
                                   </div>
                                 </div>
+
+                                {/* Mode-Specific Filtering Alert & Toggle */}
+                                {route.transportMode === "airplane" && (
+                                  <div className="flex flex-wrap items-center justify-between bg-sky-50 border border-sky-200 rounded-xl px-2.5 py-1.5 mb-2 gap-1.5 shadow-2xs">
+                                    <div className="flex items-center gap-1.5 text-sky-950 font-black text-[11px]">
+                                      <Plane className="h-3.5 w-3.5 text-sky-600" />
+                                      <span>AIR MODE: Showing Airports Only (میدان‌های هوایی)</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDisableModeFilter(!disableModeFilter)}
+                                      className="text-[9px] font-extrabold px-2 py-0.5 rounded-lg border border-sky-300 bg-white text-sky-800 hover:bg-sky-100 transition cursor-pointer shadow-2xs"
+                                    >
+                                      {disableModeFilter ? "✈️ Filter Airports Only" : "🌐 Show All Locations"}
+                                    </button>
+                                  </div>
+                                )}
+
+                                {route.transportMode === "vessel" && (
+                                  <div className="flex flex-wrap items-center justify-between bg-cyan-50 border border-cyan-200 rounded-xl px-2.5 py-1.5 mb-2 gap-1.5 shadow-2xs">
+                                    <div className="flex items-center gap-1.5 text-cyan-950 font-black text-[11px]">
+                                      <Ship className="h-3.5 w-3.5 text-cyan-600" />
+                                      <span>SEA MODE: Showing Ports Only (بنادر دریایی)</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDisableModeFilter(!disableModeFilter)}
+                                      className="text-[9px] font-extrabold px-2 py-0.5 rounded-lg border border-cyan-300 bg-white text-cyan-800 hover:bg-cyan-100 transition cursor-pointer shadow-2xs"
+                                    >
+                                      {disableModeFilter ? "⚓ Filter Ports Only" : "🌐 Show All Locations"}
+                                    </button>
+                                  </div>
+                                )}
+
+                                {route.transportMode === "train" && (
+                                  <div className="flex flex-wrap items-center justify-between bg-purple-50 border border-purple-200 rounded-xl px-2.5 py-1.5 mb-2 gap-1.5 shadow-2xs">
+                                    <div className="flex items-center gap-1.5 text-purple-950 font-black text-[11px]">
+                                      <Train className="h-3.5 w-3.5 text-purple-600" />
+                                      <span>RAIL MODE: Showing Rail & ICD Hubs (ایستگاه‌های ریل)</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDisableModeFilter(!disableModeFilter)}
+                                      className="text-[9px] font-extrabold px-2 py-0.5 rounded-lg border border-purple-300 bg-white text-purple-800 hover:bg-purple-100 transition cursor-pointer shadow-2xs"
+                                    >
+                                      {disableModeFilter ? "🚆 Filter Rail Only" : "🌐 Show All Locations"}
+                                    </button>
+                                  </div>
+                                )}
 
                                 {/* Quick Country Filter Chips */}
                                 <div className="flex flex-wrap gap-1 mb-2.5 pb-1.5 border-b border-slate-100">
@@ -6309,7 +6479,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                               {/* Option: Truck/Road */}
                               <button
                                 type="button"
-                                onClick={() => handleRouteChange(index, "transportMode", "truck")}
+                                onClick={() => {
+                                  handleRouteChange(index, "transportMode", "truck")
+                                  setDisableModeFilter(false)
+                                }}
                                 className={`flex flex-col items-center justify-center gap-1 h-14 rounded-xl border transition-all cursor-pointer ${
                                   route.transportMode === "truck" || route.transportMode === "road" || !route.transportMode
                                     ? "border-blue-500 bg-blue-50 text-blue-900 shadow-sm ring-2 ring-blue-500/20 font-black"
@@ -6323,7 +6496,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                               {/* Option: Vessel/Sea */}
                               <button
                                 type="button"
-                                onClick={() => handleRouteChange(index, "transportMode", "vessel")}
+                                onClick={() => {
+                                  handleRouteChange(index, "transportMode", "vessel")
+                                  setDisableModeFilter(false)
+                                }}
                                 className={`flex flex-col items-center justify-center gap-1 h-14 rounded-xl border transition-all cursor-pointer ${
                                   route.transportMode === "vessel"
                                     ? "border-cyan-500 bg-cyan-50 text-cyan-900 shadow-sm ring-2 ring-cyan-500/20 font-black"
@@ -6337,7 +6513,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                               {/* Option: Plane/Air */}
                               <button
                                 type="button"
-                                onClick={() => handleRouteChange(index, "transportMode", "airplane")}
+                                onClick={() => {
+                                  handleRouteChange(index, "transportMode", "airplane")
+                                  setDisableModeFilter(false)
+                                }}
                                 className={`flex flex-col items-center justify-center gap-1 h-14 rounded-xl border transition-all cursor-pointer ${
                                   route.transportMode === "airplane"
                                     ? "border-sky-500 bg-sky-50 text-sky-900 shadow-sm ring-2 ring-sky-500/20 font-black"
@@ -6351,14 +6530,17 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                               {/* Option: Train/Rail */}
                               <button
                                 type="button"
-                                onClick={() => handleRouteChange(index, "transportMode", "train")}
+                                onClick={() => {
+                                  handleRouteChange(index, "transportMode", "train")
+                                  setDisableModeFilter(false)
+                                }}
                                 className={`flex flex-col items-center justify-center gap-1 h-14 rounded-xl border transition-all cursor-pointer ${
                                   route.transportMode === "train"
-                                    ? "border-amber-500 bg-amber-50 text-amber-900 shadow-sm ring-2 ring-amber-500/20 font-black"
-                                    : "border-slate-200 bg-white text-slate-600 hover:border-amber-300 hover:bg-slate-50 font-bold"
+                                    ? "border-purple-500 bg-purple-50 text-purple-900 shadow-sm ring-2 ring-purple-500/20 font-black"
+                                    : "border-slate-200 bg-white text-slate-600 hover:border-purple-300 hover:bg-slate-50 font-bold"
                                 }`}
                               >
-                                <Train className={`h-5 w-5 ${route.transportMode === "train" ? "text-amber-600" : "text-slate-400"}`} />
+                                <Train className={`h-5 w-5 ${route.transportMode === "train" ? "text-purple-600" : "text-slate-400"}`} />
                                 <span className="text-[10px] uppercase">Rail</span>
                               </button>
                             </div>
