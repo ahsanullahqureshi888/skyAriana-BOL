@@ -47,6 +47,8 @@ interface A4PreviewProps {
   includeColorStrip?: boolean
   backgroundImageUrl?: string
   backgroundOpacity?: number
+  showStampSignature?: boolean
+  onToggleStampSignature?: (show: boolean) => void
 }
 
 type DetailItem = {
@@ -1755,7 +1757,19 @@ export function A4Preview({
   includeColorStrip = true,
   backgroundImageUrl = "/images/mountain_logistics_bg.jpg",
   backgroundOpacity = 0.11,
+  showStampSignature,
+  onToggleStampSignature,
 }: A4PreviewProps) {
+  const [internalStampActive, setInternalStampActive] = useState(true)
+  const isStampActive = showStampSignature !== undefined ? showStampSignature : internalStampActive
+  const toggleStamp = () => {
+    if (onToggleStampSignature) {
+      onToggleStampSignature(!isStampActive)
+    } else {
+      setInternalStampActive(!internalStampActive)
+    }
+  }
+
   const pdfMode = exportTarget || pdfExport
   const companyTitle = cleanText(companyName) || "SKY ARIANA LIMITED"
   const companyTagline = cleanText(companySubtitle) || "Import & Export - International Transportation"
@@ -2086,35 +2100,64 @@ export function A4Preview({
             </Section>
           )}
 
-          <div data-no-break className="mt-auto flex justify-center pt-0.5 flex-shrink-0">
-            <div
-              className={`w-full max-w-[56mm] rounded-xl border border-dashed p-1 text-center shadow-xs print:shadow-none relative overflow-hidden flex flex-col items-center justify-center ${
-                pdfMode ? "border-blue-300 bg-white" : "border-blue-200 bg-white"
-              }`}
-            >
-              <div className="flex h-3.5 items-center justify-center rounded-md bg-blue-50/90 px-1.5 text-[5pt] font-extrabold uppercase text-blue-700 w-full mb-0.5">
-                <span>Stamp / <span className="persian-text bol-persian-text font-[vazirmatn]" dir="rtl">{labels.stampFa}</span></span>
+          <div data-no-break className="mt-auto flex items-end justify-between pt-0.5 px-3 flex-shrink-0">
+            {/* Left side: Official Document Verification & interactive toggle */}
+            <div className="flex flex-col items-start justify-end text-left text-[5.2pt] text-slate-500 font-medium pb-0.5">
+              <div className="flex items-center gap-1 font-extrabold text-blue-900 uppercase tracking-wider text-[5.5pt]">
+                <ShieldCheck className="h-3 w-3 text-blue-600 shrink-0" />
+                <span>Verified Carrier Document</span>
               </div>
-              
-              {/* Authentic Company Stamp & Signature Overlay */}
-              <div className="relative flex items-center justify-center -my-0.5 w-full h-[26mm] max-h-[28mm] pointer-events-none select-none">
-                <img
-                  src={COMPANY_STAMP_SIGNATURE_SRC}
-                  alt="Sky Ariana Limited Official Stamp & Signature"
-                  className="h-full max-h-[26mm] w-auto object-contain drop-shadow-xs"
-                  crossOrigin="anonymous"
-                  onError={(e) => {
-                    const target = e.currentTarget
-                    if (target.src !== COMPANY_STAMP_SIGNATURE_DATA_URL) {
-                      target.src = COMPANY_STAMP_SIGNATURE_DATA_URL
-                    }
-                  }}
-                />
+              <span className="font-[vazirmatn] text-slate-500 text-[5pt] mt-0.2" dir="rtl">
+                سند رسمی و قانونی حمل و نقل بین‌المللی
+              </span>
+              {!pdfMode && (
+                <button
+                  type="button"
+                  onClick={toggleStamp}
+                  className="no-print mt-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[6.5pt] font-black transition cursor-pointer border shadow-2xs bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100"
+                  title="Click to toggle official stamp and signature on/off"
+                >
+                  <span>{isStampActive ? "🖋️ Stamp & Sign: ON" : "⚪ Stamp & Sign: OFF"}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Right side: Authorized Signature & Official Seal Block (NO ENCLOSING BOX) */}
+            <div className="relative flex flex-col items-center justify-center min-w-[58mm] max-w-[66mm] text-center">
+              {/* Official Stamp & Signature Overlay - Rendered ON TOP without a box */}
+              <div className="relative w-full h-[26mm] flex items-center justify-center">
+                {isStampActive ? (
+                  <div className="absolute -top-3.5 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={COMPANY_STAMP_SIGNATURE_SRC}
+                      alt="Sky Ariana Limited Official Stamp & Signature"
+                      className="h-[34mm] w-auto max-w-none object-contain drop-shadow-sm transform -rotate-2"
+                      crossOrigin="anonymous"
+                      onError={(e) => {
+                        const target = e.currentTarget
+                        if (target.src !== COMPANY_STAMP_SIGNATURE_DATA_URL) {
+                          target.src = COMPANY_STAMP_SIGNATURE_DATA_URL
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="text-[6.5pt] italic text-slate-400 font-semibold my-auto">
+                    (Sign & Stamp Here / محل امضا و مهر)
+                  </div>
+                )}
               </div>
 
-              <p className="mt-0.5 text-[7pt] font-black text-blue-950 leading-tight">Company Stamp & Sign</p>
-              <p className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-slate-600 leading-tight" dir="rtl">
-                {labels.companyStampSignFa}
+              {/* Clean Signature Baseline Line */}
+              <div className="w-full border-b-1.5 border-slate-700/80 my-0.5" />
+
+              {/* Authorized Labels */}
+              <p className="text-[7.2pt] font-black text-blue-950 uppercase tracking-tight leading-tight">
+                For & On Behalf of: {companyTitle}
+              </p>
+              <p className="persian-text bol-persian-text font-[vazirmatn] text-[6.5pt] font-extrabold text-blue-900 leading-tight mt-0.2" dir="rtl">
+                {labels.companyStampSignFa || "مهر و امضای مجاز شرکت"}
               </p>
             </div>
           </div>

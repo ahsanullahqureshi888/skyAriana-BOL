@@ -4413,7 +4413,7 @@
   }
 
   /* 3. CRITICAL: Hide all non-portaled body children (main React tree) except print portals! */
-  body > *:not(.ledger-print-root, .invoice-print-root, [data-print-root="true"], #sky-ledger-print-root, #sky-invoice-print-root) {
+  body > *:not(.ledger-print-root, .invoice-print-root, [data-print-root="true"], #sky-ledger-print-root, #sky-invoice-print-root, #bol-print-preview-root) {
     display: none !important;
     height: 0 !important;
     max-height: 0 !important;
@@ -4438,6 +4438,8 @@
   }
 
   /* 5. Printable Portal positioning starting AT THE VERY TOP of Page 1 */
+  #bol-print-preview-root,
+  #bol-print-preview,
   [data-print-root="true"],
   .invoice-print-root,
   .ledger-print-root,
@@ -4447,15 +4449,13 @@
     visibility: visible !important;
     opacity: 1 !important;
     position: static !important;
-    width: 100% !important;
-    max-width: 100% !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
-    margin: 0 !important;
-    margin-top: 0 !important;
+    margin: 0 auto !important;
     padding: 0 !important;
-    padding-top: 0 !important;
     overflow: visible !important;
     background: #ffffff !important;
     box-shadow: none !important;
@@ -4465,9 +4465,32 @@
     break-after: avoid !important;
   }
 
+  [data-bol-a4="true"] {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 297mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    break-inside: avoid !important;
+    break-before: avoid !important;
+    break-after: avoid !important;
+    box-shadow: none !important;
+    border: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   [data-print-root="true"] *:not([data-bol-watermark="true"]),
   .invoice-print-root *,
-  .ledger-print-root * {
+  .ledger-print-root *,
+  [data-bol-a4="true"] * {
     visibility: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;

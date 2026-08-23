@@ -344,6 +344,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [selectedCountryFilter, setSelectedCountryFilter] = useState("ALL")
   const [selectedIndiaCategoryFilter, setSelectedIndiaCategoryFilter] = useState("ALL")
   const [disableModeFilter, setDisableModeFilter] = useState(false)
+  const [showStampSignature, setShowStampSignature] = useState(true)
   const [routeLocationSearch, setRouteLocationSearch] = useState("")
   const [savedShippers, setSavedShippers] = useState<SavedParty[]>([])
   const [selectedShipperId, setSelectedShipperId] = useState<string>("")
@@ -7813,6 +7814,22 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 <Button
                   type="button"
                   size="sm"
+                  variant="outline"
+                  onClick={() => setShowStampSignature(!showStampSignature)}
+                  className={`h-8.5 rounded-xl font-black text-xs shadow-xs cursor-pointer transition-all ${
+                    showStampSignature
+                      ? "border-blue-500 bg-blue-50 text-blue-900 hover:bg-blue-100 ring-2 ring-blue-500/20"
+                      : "border-slate-300 bg-white hover:bg-slate-50 text-slate-700"
+                  }`}
+                  title="Toggle Official Stamp & Signature Overlay"
+                >
+                  <span className="mr-1.5">{showStampSignature ? "🖋️" : "⚪"}</span>
+                  {showStampSignature ? "Stamp & Sign: ON" : "Stamp & Sign: OFF"}
+                </Button>
+
+                <Button
+                  type="button"
+                  size="sm"
                   onClick={handleDownloadPDF}
                   disabled={isSaving}
                   className="h-8.5 rounded-xl bg-linear-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-black text-xs shadow-md shadow-blue-900/20 cursor-pointer"
@@ -7852,6 +7869,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   companyLicence={companyLicence}
                   backgroundImageUrl={bgImageUrl}
                   backgroundOpacity={bgOpacity}
+                  showStampSignature={showStampSignature}
+                  onToggleStampSignature={setShowStampSignature}
                 />
               </div>
             </div>
@@ -8513,6 +8532,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 includeColorStrip={activePrintOptions.includeColorStrip}
                 backgroundImageUrl={bgImageUrl}
                 backgroundOpacity={bgOpacity}
+                showStampSignature={showStampSignature}
+                onToggleStampSignature={setShowStampSignature}
               />
             </PrintSafeBOL>
           </div>
@@ -8540,6 +8561,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             companyLicence={companyLicence}
             backgroundImageUrl={bgImageUrl}
             backgroundOpacity={bgOpacity}
+            showStampSignature={showStampSignature}
+            onToggleStampSignature={setShowStampSignature}
             pdfExport
           />
         </div>
