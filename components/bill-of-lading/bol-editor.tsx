@@ -5899,7 +5899,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                               {index + 1}
                             </div>
 
-                            <div className="min-w-28 max-w-52">
+                            <div className="min-w-[140px] max-w-[260px]">
                               <div className="flex items-center gap-1.5">
                                 {getTransportIcon(route.transportMode)}
                                 <span className={`text-[10px] font-black uppercase tracking-wider ${
@@ -5908,9 +5908,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                                   {isOrigin ? "Origin (مبدأ)" : isDest ? "Destination (مقصد)" : `Stop #${index + 1}`}
                                 </span>
                               </div>
-                              <p className="mt-0.5 truncate text-xs font-black text-blue-950">{stopName}</p>
+                              <p className="mt-0.5 text-xs font-black text-blue-950 leading-snug break-words line-clamp-2">{stopName}</p>
                               {route.locationPersian && (
-                                <p className="truncate text-[10px] font-bold text-slate-500 font-[vazirmatn]" dir="rtl">{route.locationPersian}</p>
+                                <p className="text-[10px] font-bold text-slate-500 font-[vazirmatn] leading-tight break-words line-clamp-2 mt-0.5" dir="rtl">{route.locationPersian}</p>
                               )}
 
                               {/* Truck / Seal details badge */}

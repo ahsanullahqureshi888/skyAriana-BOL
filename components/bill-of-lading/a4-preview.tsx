@@ -949,29 +949,97 @@ function getRouteCountryMeta(location?: string, locationPersian?: string) {
   }
 }
 
-function formatCityName(location?: string | null): string {
-  const text = cleanText(location)
-  if (!text) return ""
-  return text.replace(/,\s*[A-Za-z]{2,3}$/i, "").trim()
+interface FormattedRouteStopLocation {
+  primaryName: string
+  subFacility: string
+  codeBadge: string
+  persianMain: string
+  persianSub: string
+}
+
+function formatRouteStopLocation(location?: string | null, locationPersian?: string | null): FormattedRouteStopLocation {
+  const rawLoc = cleanText(location) || ""
+  const rawFa = cleanText(locationPersian) || ""
+
+  // Clean country code suffix like ", UZ", ", IN", ", AF", ", IR", ", AE", ", CI", ", GH"
+  const cleanedLoc = rawLoc.replace(/,\s*[A-Za-z]{2,3}$/i, "").trim()
+
+  // Extract airport/port code in parentheses e.g. (TAS / UTTT) -> TAS, (DEL / INDEL) -> DEL, (JNPT / Nhava Sheva) -> JNPT
+  let codeBadge = ""
+  const codeMatch = cleanedLoc.match(/\(([A-Za-z0-9\s\/\-_]+)\)/)
+  if (codeMatch) {
+    const inside = codeMatch[1].trim()
+    const firstCode = inside.split(/[\/\s,]+/)[0].trim()
+    if (firstCode.length >= 2 && firstCode.length <= 6) {
+      codeBadge = firstCode
+    }
+  }
+
+  let primaryName = cleanedLoc
+  let subFacility = ""
+
+  if (cleanedLoc.includes(" — ")) {
+    const parts = cleanedLoc.split(" — ")
+    primaryName = parts[0].trim()
+    subFacility = parts[1].replace(/\([^)]+\)/g, "").trim()
+  } else if (cleanedLoc.includes(" - ")) {
+    const parts = cleanedLoc.split(" - ")
+    primaryName = parts[0].trim()
+    subFacility = parts[1].replace(/\([^)]+\)/g, "").trim()
+  } else if (cleanedLoc.includes(" / ")) {
+    const parts = cleanedLoc.split(" / ")
+    primaryName = parts[0].trim()
+    if (parts[1]) {
+      subFacility = parts[1].replace(/\([^)]+\)/g, "").trim()
+    }
+  } else if (cleanedLoc.includes(" (") && cleanedLoc.length > 20) {
+    primaryName = cleanedLoc.split(" (")[0].trim()
+    const inside = cleanedLoc.match(/\(([^)]+)\)/)?.[1] || ""
+    if (inside && inside !== codeBadge) {
+      subFacility = inside
+    }
+  }
+
+  // Persian formatting
+  let persianMain = rawFa.replace(/،\s*(ازبکستان|هند|افغانستان|ایران|پاکستان|امارات|چین|ترکیه|آسیای مرکزی).*$/g, "").trim()
+  let persianSub = ""
+
+  if (persianMain.includes(" — ")) {
+    const faParts = persianMain.split(" — ")
+    persianMain = faParts[0].trim()
+    persianSub = faParts[1]?.trim() || ""
+  } else if (persianMain.includes(" (") && persianMain.length > 25) {
+    const faParts = persianMain.split(" (")
+    persianMain = faParts[0].trim()
+    persianSub = faParts[1]?.replace(")", "").trim() || ""
+  }
+
+  return {
+    primaryName: primaryName || cleanedLoc,
+    subFacility: subFacility !== primaryName ? subFacility : "",
+    codeBadge,
+    persianMain: persianMain || rawFa,
+    persianSub,
+  }
 }
 
 function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData["routes"]; glass?: boolean }) {
   if (!routes?.length) return null
 
   const modeThemeMap: Record<string, { icon: string; label: string; persian: string; bg: string }> = {
-    truck: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-900 border-emerald-200" },
-    road: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-900 border-emerald-200" },
-    lorry: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-900 border-emerald-200" },
-    vessel: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-900 border-blue-200" },
-    ship: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-900 border-blue-200" },
-    boat: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-900 border-blue-200" },
-    sea: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-900 border-blue-200" },
-    ocean: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-900 border-blue-200" },
-    train: { icon: "🚆", label: "TRAIN", persian: "ریلی", bg: "bg-amber-50 text-amber-900 border-amber-200" },
-    rail: { icon: "🚆", label: "TRAIN", persian: "ریلی", bg: "bg-amber-50 text-amber-900 border-amber-200" },
-    airplane: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-900 border-sky-200" },
-    air: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-900 border-sky-200" },
-    plane: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-900 border-sky-200" },
+    truck: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-950 border-emerald-300 shadow-2xs" },
+    road: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-950 border-emerald-300 shadow-2xs" },
+    lorry: { icon: "🚚", label: "TRUCK", persian: "جاده‌ای", bg: "bg-emerald-50 text-emerald-950 border-emerald-300 shadow-2xs" },
+    vessel: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-950 border-blue-300 shadow-2xs" },
+    ship: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-950 border-blue-300 shadow-2xs" },
+    boat: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-950 border-blue-300 shadow-2xs" },
+    sea: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-950 border-blue-300 shadow-2xs" },
+    ocean: { icon: "🚢", label: "VESSEL", persian: "دریایی", bg: "bg-blue-50 text-blue-950 border-blue-300 shadow-2xs" },
+    train: { icon: "🚆", label: "TRAIN", persian: "ریلی", bg: "bg-amber-50 text-amber-950 border-amber-300 shadow-2xs" },
+    rail: { icon: "🚆", label: "TRAIN", persian: "ریلی", bg: "bg-amber-50 text-amber-950 border-amber-300 shadow-2xs" },
+    airplane: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-950 border-sky-300 shadow-2xs" },
+    air: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-950 border-sky-300 shadow-2xs" },
+    plane: { icon: "✈️", label: "AIR", persian: "هوایی", bg: "bg-sky-50 text-sky-950 border-sky-300 shadow-2xs" },
     car: { icon: "🚗", label: "CAR", persian: "خودرو", bg: "bg-blue-50 text-blue-900 border-blue-200" },
     van: { icon: "🚐", label: "VAN", persian: "ون", bg: "bg-blue-50 text-blue-900 border-blue-200" },
   }
@@ -984,7 +1052,7 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
         background: "linear-gradient(145deg, #ffffff 0%, #f8faff 50%, #eff6ff 100%)",
         border: "1px solid #bfdbfe",
         borderRadius: "10px",
-        padding: "5px 6px",
+        padding: "6px 6px",
         boxShadow: "0 2px 10px rgba(37, 99, 235, 0.04)",
       }}
       aria-label="Route and transportation path timeline"
@@ -993,30 +1061,28 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
       <div className="route-timeline-cards flex items-stretch justify-between gap-1" role="list">
         {routes.map((route, index) => {
           const mode = (route.transportMode || "truck").toLowerCase().trim()
-          const fallback = routeFallbackLabels(route.location)
-          const persianLabel = cleanText(route.locationPersian) || fallback.persian
-          const pashtoLabel = fallback.pashto || persianLabel
-          const showPashtoLabel = hasValue(pashtoLabel) && cleanText(pashtoLabel) !== cleanText(persianLabel)
           const countryMeta = getRouteCountryMeta(route.location, route.locationPersian)
           const isLastRoute = index === routes.length - 1
           const isOrigin = index === 0
           const computedStopLabel = isOrigin ? "ORIGIN" : isLastRoute ? "DESTINATION" : `STOP ${index}`
           const modeTheme = modeThemeMap[mode] || defaultModeTheme
 
+          const formattedLoc = formatRouteStopLocation(route.location, route.locationPersian)
+
           return (
             <div key={route.id || `${route.location}-${index}`} className="route-timeline-item flex items-center flex-1 min-w-0" role="listitem">
               <div
                 className={`route-timeline-card transition-all duration-200 w-full text-center relative overflow-hidden flex flex-col justify-between ${
                   isOrigin
-                    ? "border-1.5 border-emerald-500/90 bg-linear-to-b from-emerald-50/50 via-white to-emerald-50/20 shadow-2xs shadow-emerald-100/50"
+                    ? "border-1.5 border-emerald-500/90 bg-linear-to-b from-emerald-50/60 via-white to-emerald-50/25 shadow-2xs shadow-emerald-100/50"
                     : isLastRoute
-                    ? "border-1.5 border-indigo-500/90 bg-linear-to-b from-indigo-50/50 via-white to-indigo-50/20 shadow-2xs shadow-indigo-100/50"
-                    : "border-1.5 border-blue-300/90 bg-linear-to-b from-blue-50/40 via-white to-blue-50/15 shadow-2xs shadow-blue-100/50"
+                    ? "border-1.5 border-indigo-500/90 bg-linear-to-b from-indigo-50/60 via-white to-indigo-50/25 shadow-2xs shadow-indigo-100/50"
+                    : "border-1.5 border-blue-300/90 bg-linear-to-b from-blue-50/50 via-white to-blue-50/20 shadow-2xs shadow-blue-100/50"
                 }`}
                 style={{
                   borderRadius: "8px",
                   padding: "4px 3px 4px",
-                  minHeight: "64px",
+                  minHeight: "72px",
                 }}
               >
                 {/* Top Accent Strip */}
@@ -1024,11 +1090,11 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
                   isOrigin ? 'bg-linear-to-r from-emerald-500 to-teal-500' : isLastRoute ? 'bg-linear-to-r from-indigo-600 to-purple-600' : 'bg-linear-to-r from-blue-500 to-cyan-500'
                 }`} />
 
-                {/* Header 2-Tone Capsule Badge: Never Overflows! */}
-                <div className="flex items-center justify-center mt-0.5 mb-0.5 px-0.5">
+                {/* Header 2-Tone Capsule Badge */}
+                <div className="flex items-center justify-center mt-0.5 mb-1 px-0.5">
                   <div className="inline-flex items-center rounded-full border shadow-2xs overflow-hidden max-w-full text-[5.2pt] font-black tracking-tight uppercase">
                     {/* Stop Type */}
-                    <span className={`px-1.2 py-0.2 text-white shrink-0 ${
+                    <span className={`px-1.5 py-0.2 text-white shrink-0 ${
                       isOrigin
                         ? "bg-emerald-600 border-emerald-700"
                         : isLastRoute
@@ -1047,29 +1113,34 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
                   </div>
                 </div>
 
-                {/* City Name English & Persian */}
-                <div className="space-y-0.2 text-center px-0.5 my-auto">
-                  <div className="text-[7.5pt] font-black text-slate-950 leading-tight truncate tracking-tight">
-                    {formatCityName(route.location)}
+                {/* City & Location Name (Hierarchical with Zero Cut-off) */}
+                <div className="space-y-0.5 text-center px-0.5 my-auto">
+                  <div className="text-[7.8pt] font-black text-slate-950 leading-[1.15] break-words line-clamp-2 tracking-tight">
+                    <span>{formattedLoc.primaryName}</span>
+                    {formattedLoc.codeBadge && (
+                      <span className="ml-1 inline-block rounded bg-amber-100/90 text-amber-950 font-mono text-[5.5pt] px-1 py-0.2 font-black border border-amber-200/80 align-middle">
+                        {formattedLoc.codeBadge}
+                      </span>
+                    )}
                   </div>
-                  {hasValue(persianLabel) && (
-                    <div className="text-[6.5pt] font-extrabold text-blue-900 font-[vazirmatn] leading-tight truncate" dir="rtl">
-                      {persianLabel}
+                  {formattedLoc.subFacility && (
+                    <div className="text-[5.5pt] font-bold text-slate-500 leading-tight break-words line-clamp-1">
+                      {formattedLoc.subFacility}
                     </div>
                   )}
-                  {showPashtoLabel && (
-                    <div className="text-[5.8pt] font-semibold text-slate-500 font-[vazirmatn] leading-tight truncate" dir="rtl">
-                      {pashtoLabel}
+                  {hasValue(formattedLoc.persianMain) && (
+                    <div className="text-[6.8pt] font-extrabold text-blue-900 font-[vazirmatn] leading-[1.2] break-words line-clamp-2 mt-0.5" dir="rtl">
+                      {formattedLoc.persianMain}
                     </div>
                   )}
                 </div>
 
                 {/* Bottom Row: Mode Pill */}
-                <div className="mt-0.5">
-                  <span className={`inline-flex items-center justify-center gap-0.5 px-1 py-0.2 rounded-full text-[5.2pt] font-black uppercase tracking-wide border shadow-2xs whitespace-nowrap ${modeTheme.bg}`}>
-                    <span className="text-[6.5pt] leading-none">{modeTheme.icon}</span>
+                <div className="mt-1">
+                  <span className={`inline-flex items-center justify-center gap-0.5 px-1.5 py-0.3 rounded-full text-[5.4pt] font-black uppercase tracking-wide border whitespace-nowrap ${modeTheme.bg}`}>
+                    <span className="text-[6.8pt] leading-none">{modeTheme.icon}</span>
                     <span>{modeTheme.label}</span>
-                    <span className="font-[vazirmatn] text-[5pt] opacity-80">({modeTheme.persian})</span>
+                    <span className="font-[vazirmatn] text-[5.2pt] opacity-90">({modeTheme.persian})</span>
                   </span>
                 </div>
 
