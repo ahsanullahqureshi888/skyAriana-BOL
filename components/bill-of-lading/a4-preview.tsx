@@ -15,6 +15,7 @@ import {
   Phone,
   Route,
   ShieldCheck,
+  Ship,
   Truck,
   UserRound,
 } from "lucide-react"
@@ -150,6 +151,12 @@ const labels = {
   stampFa: "\u0645\u0647\u0631",
   companyStampSignFa: "\u0645\u0647\u0631 \u0648 \u0627\u0645\u0636\u0627\u06cc \u0634\u0631\u06a9\u062a",
   authorityVerificationFa: "\u062a\u0627\u06cc\u06cc\u062f \u0631\u0633\u0645\u06cc",
+  shippingDetailsFa: "جزئیات حمل و بنادر",
+  portOfLoadingFa: "بندر بارگیری",
+  portOfDischargeFa: "بندر تخلیه",
+  placeOfDeliveryFa: "محل تحویل",
+  vesselVoyageFa: "کشتی و شماره سفر",
+  freightPayableFa: "محل پرداخت کرایه",
 } as const
 
 function cleanText(value?: string | null) {
@@ -1548,6 +1555,120 @@ function CargoOverview({
   )
 }
 
+function ShippingOverview({
+  formData,
+  labels,
+  pdfMode = false,
+}: {
+  formData: BillOfLadingFormData
+  labels: Record<string, string>
+  pdfMode?: boolean
+}) {
+  const hasLoading = hasValue(formData.port_of_loading)
+  const hasDischarge = hasValue(formData.port_of_discharge)
+  const hasDelivery = hasValue(formData.place_of_delivery)
+  const hasVessel = hasValue(formData.vessel_name) || hasValue(formData.voyage_number)
+  const hasFreight = hasValue(formData.freight_payable_at) || hasValue(formData.freight_terms)
+
+  const vesselVoyageText = [
+    formData.vessel_name ? `Vessel: ${formData.vessel_name}` : "",
+    formData.voyage_number ? `Voy: ${formData.voyage_number}` : "",
+  ].filter(Boolean).join(" / ")
+
+  const freightText = [
+    formData.freight_payable_at ? `Payable: ${formData.freight_payable_at}` : "",
+    formData.freight_terms ? `Terms: ${formData.freight_terms}` : "",
+  ].filter(Boolean).join(" | ")
+
+  const items = [
+    hasLoading && {
+      title: "PORT OF LOADING",
+      subtitle: labels.portOfLoadingFa || "بندر بارگیری",
+      icon: "⚓",
+      value: formData.port_of_loading,
+      color: "text-blue-900",
+      bg: "bg-blue-50/80",
+    },
+    hasDischarge && {
+      title: "PORT OF DISCHARGE",
+      subtitle: labels.portOfDischargeFa || "بندر تخلیه",
+      icon: "🚢",
+      value: formData.port_of_discharge,
+      color: "text-indigo-900",
+      bg: "bg-indigo-50/80",
+    },
+    hasDelivery && {
+      title: "PLACE OF DELIVERY",
+      subtitle: labels.placeOfDeliveryFa || "محل تحویل",
+      icon: "📍",
+      value: formData.place_of_delivery,
+      color: "text-emerald-900",
+      bg: "bg-emerald-50/80",
+    },
+    hasVessel && {
+      title: "VESSEL / VOYAGE",
+      subtitle: labels.vesselVoyageFa || "کشتی و سفر",
+      icon: "🛥️",
+      value: vesselVoyageText,
+      color: "text-cyan-900",
+      bg: "bg-cyan-50/80",
+    },
+    hasFreight && {
+      title: "FREIGHT CHARGES",
+      subtitle: labels.freightPayableFa || "پرداخت کرایه",
+      icon: "💳",
+      value: freightText,
+      color: "text-slate-900",
+      bg: "bg-slate-50/80",
+    },
+  ].filter(Boolean) as Array<{
+    title: string
+    subtitle: string
+    icon: string
+    value: string
+    color: string
+    bg: string
+  }>
+
+  if (items.length === 0) return null
+
+  return (
+    <div
+      className={`grid gap-1 ${
+        items.length >= 5 ? "grid-cols-2 sm:grid-cols-5" :
+        items.length === 4 ? "grid-cols-2 sm:grid-cols-4" :
+        items.length === 3 ? "grid-cols-3" :
+        items.length === 2 ? "grid-cols-2" : "grid-cols-1"
+      }`}
+      dir="ltr"
+    >
+      {items.map((item, idx) => (
+        <div
+          key={idx}
+          className={`rounded-lg border px-2 py-1 text-center flex flex-col justify-between ${
+            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-2xs shadow-blue-100/50"
+          }`}
+        >
+          <div>
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-[7.5pt] leading-none">{item.icon}</span>
+              <span className="text-[6.2pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
+                {item.title}
+              </span>
+            </div>
+            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
+              {item.subtitle}
+            </div>
+          </div>
+          <div className="mt-0.8 font-sans font-black text-slate-950 text-[8.2pt] leading-tight break-words px-0.5">
+            {item.value}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function A4Preview({
   bolNumber,
   issueDate,
@@ -1621,6 +1742,16 @@ export function A4Preview({
     formData.container_numbers,
     formData.seal_numbers,
     formData.measurement,
+  ].some(hasValue)
+
+  const hasShippingData = [
+    formData.port_of_loading,
+    formData.port_of_discharge,
+    formData.place_of_delivery,
+    formData.vessel_name,
+    formData.voyage_number,
+    formData.freight_payable_at,
+    formData.freight_terms,
   ].some(hasValue)
 
   const cleanedCargoDesc = cleanCargoDescriptionText(formData.cargo_description)
@@ -1844,6 +1975,20 @@ export function A4Preview({
           <Section title="Route / Transportation Path" subtitle={labels.routeFa} icon={<Route className="h-4 w-4" />} glass={!pdfMode} printKey="route" pdfMode={pdfMode}>
             <RouteTimeline routes={formData.routes} glass={!pdfMode} />
           </Section>
+
+          {hasShippingData && (
+            <Section
+              title="Shipping Details & Ports"
+              subtitle={labels.shippingDetailsFa}
+              icon={<Ship className="h-4 w-4" />}
+              glass={!pdfMode}
+              printKey="shipping"
+              pdfMode={pdfMode}
+              titleClassName="text-[9.2pt]"
+            >
+              <ShippingOverview formData={formData} labels={labels} pdfMode={pdfMode} />
+            </Section>
+          )}
 
           {(hasCargoData || hasValue(cleanedCargoDesc)) && (
             <Section title="Cargo Description" subtitle={labels.cargoDescFa} icon={<Package className="h-4 w-4" />} glass={!pdfMode} printKey="cargo" pdfMode={pdfMode} titleClassName="text-[9.2pt]">
