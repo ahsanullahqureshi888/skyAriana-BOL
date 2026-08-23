@@ -2142,28 +2142,98 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     }
   }
 
-  // Predefined locations for quick selection
-  // Country flag mapping
+  // Predefined locations for quick selection & Country flag mapping
   const countryFlags: Record<string, string> = {
     "Afghanistan": "🇦🇫",
     "Iran": "🇮🇷",
     "Pakistan": "🇵🇰",
     "UAE": "🇦🇪",
-    "Qatar": "🇶🇦",
     "Saudi Arabia": "🇸🇦",
+    "Qatar": "🇶🇦",
     "Bahrain": "🇧🇭",
     "Oman": "🇴🇲",
     "Kuwait": "🇰🇼",
+    "Iraq": "🇮🇶",
+    "Jordan": "🇯🇴",
+    "Lebanon": "🇱🇧",
     "Turkey": "🇹🇷",
     "Turkmenistan": "🇹🇲",
     "Uzbekistan": "🇺🇿",
     "Tajikistan": "🇹🇯",
     "Kyrgyzstan": "🇰🇬",
+    "Kazakhstan": "🇰🇿",
     "India": "🇮🇳",
+    "Sri Lanka": "🇱🇰",
+    "Bangladesh": "🇧🇩",
     "China": "🇨🇳",
+    "Ivory Coast": "🇨🇮",
+    "Nigeria": "🇳🇬",
+    "Ghana": "🇬🇭",
+    "Benin": "🇧🇯",
+    "Togo": "🇹🇬",
+    "Senegal": "🇸🇳",
+    "Kenya": "🇰🇪",
+    "Tanzania": "🇹🇿",
+    "South Africa": "🇿🇦",
+    "Egypt": "🇪🇬",
+    "Morocco": "🇲🇦",
+    "Sudan": "🇸🇩",
+    "Djibouti": "🇩🇯",
+    "Singapore": "🇸🇬",
+    "Malaysia": "🇲🇾",
+    "Vietnam": "🇻🇳",
+    "Thailand": "🇹🇭",
+    "Indonesia": "🇮🇩",
+    "Philippines": "🇵🇭",
+    "South Korea": "🇰🇷",
+    "Japan": "🇯🇵",
+    "Netherlands": "🇳🇱",
+    "Belgium": "🇧🇪",
+    "Germany": "🇩🇪",
+    "Spain": "🇪🇸",
+    "Italy": "🇮🇹",
+    "Greece": "🇬🇷",
+    "United Kingdom": "🇬🇧",
+    "France": "🇫🇷",
+    "Poland": "🇵🇱",
+    "USA": "🇺🇸",
+    "Canada": "🇨🇦",
+    "Brazil": "🇧🇷",
+    "Panama": "🇵🇦",
   }
 
-  const predefinedLocations = [
+  const predefinedLocations: Array<{
+    name: string
+    persian: string
+    country: string
+    code: string
+    isPort?: boolean
+    portName?: string
+  }> = [
+    // 🇨🇮 Ivory Coast & West Africa (Explicit User Preset)
+    { name: "Abidjan, Ivory Coast", persian: "ابیدجان، ساحل عاج", country: "Ivory Coast", code: "ABJ", isPort: true, portName: "Abidjan Port" },
+    { name: "Abidjan Port, CI", persian: "بندر ابیدجان، ساحل عاج", country: "Ivory Coast", code: "ABJ-PORT", isPort: true, portName: "Abidjan Port" },
+    { name: "Ivory Coast, West Africa", persian: "ساحل عاج، غرب آفریقا", country: "Ivory Coast", code: "CIV", isPort: false },
+    { name: "San Pedro Port, CI", persian: "بندر سن پدرو، ساحل عاج", country: "Ivory Coast", code: "SPY", isPort: true, portName: "San Pedro Port" },
+    { name: "Lagos Port (Apapa), NG", persian: "بندر لاگوس (آپاپا)، نیجریه", country: "Nigeria", code: "LOS", isPort: true, portName: "Lagos Port / Apapa" },
+    { name: "Tin Can Island Port, NG", persian: "بندر تین کن، نیجریه", country: "Nigeria", code: "TIN", isPort: true, portName: "Tin Can Island" },
+    { name: "Tema Port, GH", persian: "بندر تما، غنا", country: "Ghana", code: "TEM", isPort: true, portName: "Tema Port" },
+    { name: "Takoradi Port, GH", persian: "بندر تاکورادی، غنا", country: "Ghana", code: "TKD", isPort: true, portName: "Takoradi Port" },
+    { name: "Cotonou Port, BJ", persian: "بندر کوتونو، بنین", country: "Benin", code: "COO", isPort: true, portName: "Cotonou Port" },
+    { name: "Lome Port, TG", persian: "بندر لومه، توگو", country: "Togo", code: "LOM", isPort: true, portName: "Lome Port" },
+    { name: "Dakar Port, SN", persian: "بندر داکار، سنگال", country: "Senegal", code: "DKR", isPort: true, portName: "Dakar Port" },
+    { name: "Mombasa Port, KE", persian: "بندر مومباسا، کنیا", country: "Kenya", code: "MBA", isPort: true, portName: "Mombasa Port" },
+    { name: "Dar es Salaam Port, TZ", persian: "بندر دارالسلام، تانزانیا", country: "Tanzania", code: "DAR", isPort: true, portName: "Dar es Salaam Port" },
+    { name: "Durban Port, ZA", persian: "بندر دوربان، آفریقای جنوبی", country: "South Africa", code: "DUR", isPort: true, portName: "Durban Port" },
+    { name: "Cape Town Port, ZA", persian: "بندر کیپ‌تاون، آفریقای جنوبی", country: "South Africa", code: "CPT", isPort: true, portName: "Cape Town Port" },
+    { name: "Port Said, EG", persian: "پورت سعید، مصر", country: "Egypt", code: "PSD", isPort: true, portName: "Port Said" },
+    { name: "Alexandria Port, EG", persian: "بندر اسکندریه، مصر", country: "Egypt", code: "ALY", isPort: true, portName: "Alexandria Port" },
+    { name: "Damietta Port, EG", persian: "بندر دمیاط، مصر", country: "Egypt", code: "DAM", isPort: true, portName: "Damietta Port" },
+    { name: "Casablanca Port, MA", persian: "بندر کازابلانکا، مراکش", country: "Morocco", code: "CAS", isPort: true, portName: "Casablanca Port" },
+    { name: "Tanger Med Port, MA", persian: "بندر طنجه مد، مراکش", country: "Morocco", code: "TNG", isPort: true, portName: "Tanger Med Port" },
+    { name: "Djibouti Port, DJ", persian: "بندر جیبوتی", country: "Djibouti", code: "JIB", isPort: true, portName: "Djibouti Port" },
+    { name: "Port Sudan, SD", persian: "پورت سودان", country: "Sudan", code: "PZU", isPort: true, portName: "Port Sudan" },
+
     // Afghanistan - Major Cities & Borders
     { name: "Kandahar, AF", persian: "کندهار، افغانستان", country: "Afghanistan", code: "KDH" },
     { name: "Nimroz, AF", persian: "نیمروز، افغانستان", country: "Afghanistan", code: "NMZ" },
@@ -2181,16 +2251,24 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     { name: "Nangarhar, AF", persian: "ننگرهار، افغانستان", country: "Afghanistan", code: "NGR" },
     { name: "Spin Boldak, AF", persian: "سپین بولدک، افغانستان", country: "Afghanistan", code: "SPB" },
     { name: "Torkham, AF", persian: "تورخم، افغانستان", country: "Afghanistan", code: "THM" },
+    { name: "Hairatan, AF", persian: "حیرتان، افغانستان", country: "Afghanistan", code: "HAI" },
+    { name: "Torghundi, AF", persian: "تورغندی، افغانستان", country: "Afghanistan", code: "TRG" },
+    { name: "Sher Khan Bandar, AF", persian: "شیرخان بندر، افغانستان", country: "Afghanistan", code: "SKB" },
+    { name: "Aqina, AF", persian: "آقینه، افغانستان", country: "Afghanistan", code: "AQN" },
     { name: "Bamyan, AF", persian: "باميان، افغانستان", country: "Afghanistan", code: "BAM" },
     { name: "Faizabad, AF", persian: "فیض‌آباد، افغانستان", country: "Afghanistan", code: "FAZ" },
     { name: "Mahiroud, AF", persian: "ماهیرود، افغانستان", country: "Afghanistan", code: "MAH" },
     { name: "Taptan, AF", persian: "تپتن، افغانستان", country: "Afghanistan", code: "TAP" },
     
-  // Iran - Ports & Major Cities
+    // Iran - Ports & Major Cities
+    { name: "Bandar Abbas, IR", persian: "بندرعباس، ایران", country: "Iran", code: "BND", isPort: true, portName: "Bandar Abbas (Shahid Rajaee)" },
+    { name: "Chabahar, IR", persian: "چابهار، ایران", country: "Iran", code: "CHA", isPort: true, portName: "Chabahar Port (Shahid Beheshti)" },
+    { name: "Bandar Imam Khomeini, IR", persian: "بندر امام خمینی، ایران", country: "Iran", code: "BIK", isPort: true, portName: "Bandar Imam Khomeini (BIK)" },
+    { name: "Bushehr, IR", persian: "بوشهر، ایران", country: "Iran", code: "BSH", isPort: true, portName: "Bushehr Port" },
+    { name: "Khorramshahr, IR", persian: "خرمشهر، ایران", country: "Iran", code: "KHR", isPort: true, portName: "Khorramshahr Port" },
+    { name: "Bandar Lenguh, IR", persian: "بندر لنگه، ایران", country: "Iran", code: "BLG", isPort: true, portName: "Bandar Lengeh" },
+    { name: "Bandar Anzali, IR", persian: "بندر انزلی، ایران", country: "Iran", code: "ANZ", isPort: true, portName: "Bandar Anzali" },
     { name: "Dougharoun, IR", persian: "دوغارون، ایران", country: "Iran", code: "DGH" },
-    { name: "Chabahar, IR", persian: "چابهار، ایران", country: "Iran", code: "CHA" },
-    { name: "Bandar Abbas, IR", persian: "بندرعباس، ایران", country: "Iran", code: "BND" },
-    { name: "Bandar Lenguh, IR", persian: "بندر لنگه، ایران", country: "Iran", code: "BLG" },
     { name: "Tehran, IR", persian: "تهران، ایران", country: "Iran", code: "TEH" },
     { name: "Mashhad, IR", persian: "مشهد، ایران", country: "Iran", code: "MSH" },
     { name: "Zahedan, IR", persian: "زاهدان، ایران", country: "Iran", code: "ZAH" },
@@ -2201,126 +2279,129 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     { name: "Qom, IR", persian: "قم، ایران", country: "Iran", code: "QOM" },
     { name: "Ahvaz, IR", persian: "اهواز، ایران", country: "Iran", code: "AHZ" },
     { name: "Shiraz, IR", persian: "شیراز، ایران", country: "Iran", code: "SHZ" },
-    { name: "Hamedan, IR", persian: "همدان، ایران", country: "Iran", code: "HAM" },
-    { name: "Ardabil, IR", persian: "اردبیل، ایران", country: "Iran", code: "ARD" },
-    { name: "Yazd, IR", persian: "یزد، ایران", country: "Iran", code: "YZD" },
-    { name: "Gorgan, IR", persian: "گرگان، ایران", country: "Iran", code: "GRG" },
-    { name: "Sari, IR", persian: "ساری، ایران", country: "Iran", code: "SAR" },
     { name: "Abadan, IR", persian: "آبادان، ایران", country: "Iran", code: "ABD" },
-    { name: "Bushehr, IR", persian: "بوشهر، ایران", country: "Iran", code: "BSH" },
-    { name: "Qazvin, IR", persian: "قزوین، ایران", country: "Iran", code: "QZV" },
-    { name: "Khorramshahr, IR", persian: "خرمشهر، ایران", country: "Iran", code: "KHR" },
-    { name: "Arak, IR", persian: "اراک، ایران", country: "Iran", code: "ARK" },
-    { name: "Urmia, IR", persian: "ارومیه، ایران", country: "Iran", code: "URM" },
-    { name: "Sanandaj, IR", persian: "سنندج، ایران", country: "Iran", code: "SND" },
-    { name: "Kermanshah, IR", persian: "کرمانشاه، ایران", country: "Iran", code: "KSH" },
-    { name: "Karaj, IR", persian: "کرج، ایران", country: "Iran", code: "KRJ" },
     { name: "Birjand, IR", persian: "بیرجند، ایران", country: "Iran", code: "BRJ" },
-    { name: "Bojnurd, IR", persian: "بجنورد، ایران", country: "Iran", code: "BJD" },
-    { name: "Bandar Imam Khomeini, IR", persian: "بندر امام خمینی، ایران", country: "Iran", code: "BIK" },
     
     // Pakistan - Major Cities & Ports
+    { name: "Karachi, PK", persian: "کراچی، پاکستان", country: "Pakistan", code: "KRC", isPort: true, portName: "Karachi Port (KPT)" },
+    { name: "Port Qasim, PK", persian: "بندر قاسم، پاکستان", country: "Pakistan", code: "PQS", isPort: true, portName: "Port Muhammad Bin Qasim" },
+    { name: "Gwadar, PK", persian: "گوادر، پاکستان", country: "Pakistan", code: "GWD", isPort: true, portName: "Gwadar Deep Sea Port" },
     { name: "Peshawar, PK", persian: "پشاور، پاکستان", country: "Pakistan", code: "PSH" },
     { name: "Islamabad, PK", persian: "اسلام‌آباد، پاکستان", country: "Pakistan", code: "ISB" },
     { name: "Lahore, PK", persian: "لاهور، پاکستان", country: "Pakistan", code: "LHR" },
-    { name: "Karachi, PK", persian: "کراچی، پاکستان", country: "Pakistan", code: "KRC" },
     { name: "Quetta, PK", persian: "کویتہ، پاکستان", country: "Pakistan", code: "QTA" },
     { name: "Torkham, PK", persian: "تورخم، پاکستان", country: "Pakistan", code: "TRK" },
     { name: "Chaman, PK", persian: "چمن، پاکستان", country: "Pakistan", code: "CHM" },
-    { name: "Rawalpindi, PK", persian: "راولپندی، پاکستان", country: "Pakistan", code: "RWL" },
     { name: "Multan, PK", persian: "ملتان، پاکستان", country: "Pakistan", code: "MLT" },
     { name: "Faisalabad, PK", persian: "فیصل‌آباد، پاکستان", country: "Pakistan", code: "FSB" },
-    { name: "Gwadar, PK", persian: "گوادر، پاکستان", country: "Pakistan", code: "GWD" },
-    { name: "Port Qasim, PK", persian: "بندر قاسم، پاکستان", country: "Pakistan", code: "PQS" },
     
     // UAE & Gulf States
-    { name: "Dubai, AE", persian: "دبی، امارات", country: "UAE", code: "DXB" },
-    { name: "Abu Dhabi, AE", persian: "ابوظبی، امارات", country: "UAE", code: "AUH" },
-    { name: "Sharjah, AE", persian: "شارجہ، امارات", country: "UAE", code: "SHJ" },
-    { name: "Ajman, AE", persian: "عجمان، امارات", country: "UAE", code: "AJM" },
-    { name: "Ras Al Khaimah, AE", persian: "رأس الخیمة، امارات", country: "UAE", code: "RAK" },
-    { name: "Fujairah, AE", persian: "فجیرة، امارات", country: "UAE", code: "FJR" },
-    { name: "Doha, QA", persian: "دوحه، قطر", country: "Qatar", code: "DOH" },
-    { name: "Dammam, SA", persian: "مام، عربستان", country: "Saudi Arabia", code: "DMM" },
-    { name: "Jeddah, SA", persian: "جده، عربستان", country: "Saudi Arabia", code: "JED" },
-    { name: "Manama, BH", persian: "منامه، بحرین", country: "Bahrain", code: "BAH" },
-    { name: "Muscat, OM", persian: "مسقط، عمان", country: "Oman", code: "MCT" },
-    { name: "Salalah, OM", persian: "صلاله، عمان", country: "Oman", code: "SLL" },
-    { name: "Kuwait City, KW", persian: "کویت سیتی، کویت", country: "Kuwait", code: "KWT" },
+    { name: "Jebel Ali Port, AE", persian: "بندر جبل علی، دبی", country: "UAE", code: "JEA", isPort: true, portName: "Jebel Ali Port" },
+    { name: "Dubai, AE", persian: "دبی، امارات", country: "UAE", code: "DXB", isPort: true, portName: "Port Rashid / Dubai" },
+    { name: "Abu Dhabi (Khalifa Port), AE", persian: "بندر خلیفه، ابوظبی", country: "UAE", code: "AUH", isPort: true, portName: "Khalifa Port" },
+    { name: "Sharjah (Khorfakkan), AE", persian: "بندر خورفکان، شارجہ", country: "UAE", code: "SHJ", isPort: true, portName: "Khorfakkan / Port Khalid" },
+    { name: "Fujairah Port, AE", persian: "بندر فجیرة، امارات", country: "UAE", code: "FJR", isPort: true, portName: "Port of Fujairah" },
+    { name: "Hamad Port (Doha), QA", persian: "بندر حمد، قطر", country: "Qatar", code: "DOH", isPort: true, portName: "Hamad Port" },
+    { name: "Dammam (King Abdulaziz Port), SA", persian: "بندر دمام، عربستان", country: "Saudi Arabia", code: "DMM", isPort: true, portName: "King Abdulaziz Port (Dammam)" },
+    { name: "Jeddah Islamic Port, SA", persian: "بندر اسلامی جده، عربستان", country: "Saudi Arabia", code: "JED", isPort: true, portName: "Jeddah Islamic Port" },
+    { name: "King Abdullah Port, SA", persian: "بندر ملک عبدالله، عربستان", country: "Saudi Arabia", code: "KAP", isPort: true, portName: "King Abdullah Port" },
+    { name: "Bahrain Port (Khalifa Bin Salman), BH", persian: "بندر خلیفه بن سلمان، بحرین", country: "Bahrain", code: "BAH", isPort: true, portName: "Khalifa Bin Salman Port" },
+    { name: "Sohar Port, OM", persian: "بندر صحار، عمان", country: "Oman", code: "SOH", isPort: true, portName: "Sohar Port" },
+    { name: "Salalah Port, OM", persian: "بندر صلاله، عمان", country: "Oman", code: "SLL", isPort: true, portName: "Port of Salalah" },
+    { name: "Muscat (Sultan Qaboos), OM", persian: "بندر مسقط، عمان", country: "Oman", code: "MCT", isPort: true, portName: "Port Sultan Qaboos" },
+    { name: "Shuwaikh Port (Kuwait), KW", persian: "بندر شیوخ، کویت", country: "Kuwait", code: "KWT", isPort: true, portName: "Shuwaikh Port" },
+    { name: "Umm Qasr Port (Basra), IQ", persian: "بندر ام قصر (بصره)، عراق", country: "Iraq", code: "UQR", isPort: true, portName: "Umm Qasr Port" },
+    { name: "Aqaba Port, JO", persian: "بندر عقبه، اردن", country: "Jordan", code: "AQB", isPort: true, portName: "Port of Aqaba" },
+    { name: "Beirut Port, LB", persian: "بندر بیروت، لبنان", country: "Lebanon", code: "BEY", isPort: true, portName: "Port of Beirut" },
     
+    // India & Indian Subcontinent
+    { name: "Nhava Sheva (JNPT), IN", persian: "نهاوا شوا (بمبئی)، هند", country: "India", code: "NSA", isPort: true, portName: "Nhava Sheva (JNPT)" },
+    { name: "Mundra Port, IN", persian: "بندر موندرا (گجرات)، هند", country: "India", code: "MUN", isPort: true, portName: "Mundra Port" },
+    { name: "Kandla Port (Deendayal), IN", persian: "بندر کاندلا، هند", country: "India", code: "KDL", isPort: true, portName: "Deendayal Port (Kandla)" },
+    { name: "Chennai Port (Madras), IN", persian: "بندر چنای (مدراس)، هند", country: "India", code: "CHN", isPort: true, portName: "Chennai Port" },
+    { name: "Cochin Port (Vallarpadam), IN", persian: "بندر کوچین، هند", country: "India", code: "COK", isPort: true, portName: "Cochin Port" },
+    { name: "Kolkata / Haldia Port, IN", persian: "بندر کلکته / هالدیا، هند", country: "India", code: "KOL", isPort: true, portName: "Kolkata Port" },
+    { name: "Visakhapatnam (Vizag), IN", persian: "بندر ویساکاپاتنام، هند", country: "India", code: "VTZ", isPort: true, portName: "Visakhapatnam Port" },
+    { name: "Tuticorin (V.O. Chidambaranar), IN", persian: "بندر توتیکورین، هند", country: "India", code: "TUT", isPort: true, portName: "V.O. Chidambaranar Port" },
+    { name: "Delhi (ICD Tughlakabad), IN", persian: "دهلی (پایانه کانتینری)، هند", country: "India", code: "DEL" },
+    { name: "Mumbai, IN", persian: "ممبئی، هند", country: "India", code: "MUM", isPort: true, portName: "Mumbai Port" },
+    { name: "Amritsar, IN", persian: "امریتسر، هند", country: "India", code: "AMR" },
+    { name: "Colombo Port, LK", persian: "بندر کلمبو، سری‌لانکا", country: "Sri Lanka", code: "CMB", isPort: true, portName: "Port of Colombo" },
+    { name: "Chittagong Port, BD", persian: "بندر چتاگانگ، بنگلادش", country: "Bangladesh", code: "CGP", isPort: true, portName: "Chittagong Port" },
+
+    // China & East Asia
+    { name: "Shanghai Port (Yangshan), CN", persian: "بندر شانگهای، چین", country: "China", code: "SHA", isPort: true, portName: "Shanghai Port" },
+    { name: "Ningbo-Zhoushan Port, CN", persian: "بندر نینگبو، چین", country: "China", code: "NBO", isPort: true, portName: "Ningbo-Zhoushan Port" },
+    { name: "Shenzhen (Yantian/Shekou), CN", persian: "بندر شنژن (یانتیان)، چین", country: "China", code: "SZX", isPort: true, portName: "Shenzhen Port" },
+    { name: "Guangzhou Port (Nansha), CN", persian: "بندر گوانجو (نانشا)، چین", country: "China", code: "GZU", isPort: true, portName: "Guangzhou Port" },
+    { name: "Qingdao Port, CN", persian: "بندر چینگدائو، چین", country: "China", code: "TAO", isPort: true, portName: "Qingdao Port" },
+    { name: "Tianjin Port, CN", persian: "بندر تیانجین، چین", country: "China", code: "TSN", isPort: true, portName: "Tianjin Port" },
+    { name: "Xiamen Port, CN", persian: "بندر شیامن، چین", country: "China", code: "XMN", isPort: true, portName: "Xiamen Port" },
+    { name: "Hong Kong Port, HK", persian: "بندر هنگ کنگ", country: "China", code: "HKG", isPort: true, portName: "Port of Hong Kong" },
+    { name: "Busan Port, KR", persian: "بندر بوسان، کوریای جنوبی", country: "South Korea", code: "PUS", isPort: true, portName: "Busan Port" },
+    { name: "Incheon Port, KR", persian: "بندر اینچئون، کوریای جنوبی", country: "South Korea", code: "ICN", isPort: true, portName: "Incheon Port" },
+    { name: "Tokyo / Yokohama Port, JP", persian: "بندر توکیو / یوکوهاما، جاپان", country: "Japan", code: "TYO", isPort: true, portName: "Tokyo / Yokohama Port" },
+    { name: "Kobe Port, JP", persian: "بندر کوبه، جاپان", country: "Japan", code: "UKB", isPort: true, portName: "Kobe Port" },
+
+    // Southeast Asia
+    { name: "Singapore Port (PSA), SG", persian: "بندر سنگاپور", country: "Singapore", code: "SIN", isPort: true, portName: "Port of Singapore" },
+    { name: "Port Klang, MY", persian: "بندر کلانگ، مالزی", country: "Malaysia", code: "PKG", isPort: true, portName: "Port Klang" },
+    { name: "Tanjung Pelepas Port, MY", persian: "بندر تانجونگ پلپاس، مالزی", country: "Malaysia", code: "TPP", isPort: true, portName: "Port of Tanjung Pelepas" },
+    { name: "Laem Chabang Port, TH", persian: "بندر لئم چابانگ، تایلند", country: "Thailand", code: "LCH", isPort: true, portName: "Laem Chabang Port" },
+    { name: "Bangkok Port, TH", persian: "بندر بانکوک، تایلند", country: "Thailand", code: "BKK", isPort: true, portName: "Bangkok Port" },
+    { name: "Tanjung Priok (Jakarta), ID", persian: "بندر جاکارتا، اندونزیا", country: "Indonesia", code: "JKT", isPort: true, portName: "Tanjung Priok Port" },
+    { name: "Manila Port, PH", persian: "بندر مانیل، فیلیپین", country: "Philippines", code: "MNL", isPort: true, portName: "Port of Manila" },
+    { name: "Hai Phong Port, VN", persian: "بندر های فونگ، ویتنام", country: "Vietnam", code: "HPH", isPort: true, portName: "Hai Phong Port" },
+    { name: "Cai Mep Port (Vung Tau), VN", persian: "بندر کای مپ، ویتنام", country: "Vietnam", code: "VUT", isPort: true, portName: "Cai Mep Port" },
+
     // Turkey - Ports & Cities
+    { name: "Mersin Port, TR", persian: "بندر مرسین، ترکیه", country: "Turkey", code: "MRS", isPort: true, portName: "Mersin International Port" },
+    { name: "Ambarli Port (Istanbul), TR", persian: "بندر امبارلی، استانبول", country: "Turkey", code: "AMB", isPort: true, portName: "Ambarli Port" },
+    { name: "Izmir Port, TR", persian: "بندر ازمیر، ترکیه", country: "Turkey", code: "IZM", isPort: true, portName: "Izmir Port" },
+    { name: "Iskenderun Port, TR", persian: "بندر اسکندرون، ترکیه", country: "Turkey", code: "ISK", isPort: true, portName: "Iskenderun Port" },
+    { name: "Samsun Port, TR", persian: "بندر سامسون، ترکیه", country: "Turkey", code: "SAS", isPort: true, portName: "Samsun Port" },
+    { name: "Trabzon Port, TR", persian: "بندر ترابزون، ترکیه", country: "Turkey", code: "TRB", isPort: true, portName: "Trabzon Port" },
     { name: "Istanbul, TR", persian: "استانبول، ترکیه", country: "Turkey", code: "IST" },
     { name: "Ankara, TR", persian: "آنکارا، ترکیه", country: "Turkey", code: "ANK" },
-    { name: "Izmir, TR", persian: "ازمیر، ترکیه", country: "Turkey", code: "IZM" },
-    { name: "Mersin, TR", persian: "مرسین، ترکیه", country: "Turkey", code: "MRS" },
-    { name: "Antalya, TR", persian: "آنتالیا، ترکیه", country: "Turkey", code: "ANT" },
-    { name: "Trabzon, TR", persian: "تراپزون، ترکیه", country: "Turkey", code: "TRB" },
-    { name: "Bursa, TR", persian: "بورسا، ترکیه", country: "Turkey", code: "BRS" },
-    { name: "Adana, TR", persian: "آدانا، ترکیه", country: "Turkey", code: "ADA" },
-    { name: "Konya, TR", persian: "قونیه، ترکیه", country: "Turkey", code: "KYA" },
     { name: "Gaziantep, TR", persian: "غازی‌عینتاب، ترکیه", country: "Turkey", code: "GZT" },
-    { name: "Samsun, TR", persian: "سامسون، ترکیه", country: "Turkey", code: "SAS" },
-    { name: "Iskenderun, TR", persian: "اسکندرون، ترکیه", country: "Turkey", code: "ISK" },
-    { name: "Kayseri, TR", persian: "قیصریه، ترکیه", country: "Turkey", code: "KAY" },
-    { name: "Diyarbakir, TR", persian: "دیاربکر، ترکیه", country: "Turkey", code: "DIY" },
-    { name: "Erzurum, TR", persian: "ارزروم، ترکیه", country: "Turkey", code: "ERZ" },
-    { name: "Van, TR", persian: "وان، ترکیه", country: "Turkey", code: "VAN" },
-    
+
     // Central Asia
-    { name: "Ashgabat, TM", persian: "عشق‌آباد، تركمنستان", country: "Turkmenistan", code: "ASH" },
-    { name: "Turkmenbashi, TM", persian: "ترکمن‌باشی، تركمنستان", country: "Turkmenistan", code: "TBH" },
     { name: "Tashkent, UZ", persian: "تاشکند، ازبکستان", country: "Uzbekistan", code: "TSH" },
-    { name: "Bukhara, UZ", persian: "بخارا، ازبکستان", country: "Uzbekistan", code: "BKH" },
     { name: "Samarkand, UZ", persian: "سمرقند، ازبکستان", country: "Uzbekistan", code: "SMR" },
+    { name: "Bukhara, UZ", persian: "بخارا، ازبکستان", country: "Uzbekistan", code: "BKH" },
+    { name: "Ashgabat, TM", persian: "عشق‌آباد، تركمنستان", country: "Turkmenistan", code: "ASH" },
+    { name: "Turkmenbashi Port, TM", persian: "بندر ترکمن‌باشی، تركمنستان", country: "Turkmenistan", code: "TBH", isPort: true, portName: "Turkmenbashi Port" },
     { name: "Dushanbe, TJ", persian: "دوشنبه، تاجیکستان", country: "Tajikistan", code: "DSH" },
-    { name: "Khujand, TJ", persian: "خجند، تاجیکستان", country: "Tajikistan", code: "KHJ" },
     { name: "Bishkek, KG", persian: "بیشکک، قرقیزستان", country: "Kyrgyzstan", code: "BSK" },
+    { name: "Almaty, KZ", persian: "آلماتی، قزاقستان", country: "Kazakhstan", code: "ALA" },
+    { name: "Aktau Port, KZ", persian: "بندر آکتائو (خزر)، قزاقستان", country: "Kazakhstan", code: "SCO", isPort: true, portName: "Aktau Port" },
     
-    // India
-    { name: "Delhi, IN", persian: "دهلی، هند", country: "India", code: "DEL" },
-    { name: "Mumbai, IN", persian: "ممبئی، هند", country: "India", code: "MUM" },
-    { name: "Bangalore, IN", persian: "بنگلور، هند", country: "India", code: "BNG" },
-    { name: "Chennai, IN", persian: "چنای، هند", country: "India", code: "CHN" },
-    { name: "Kolkata, IN", persian: "کلکتہ، هند", country: "India", code: "KOL" },
-    { name: "Amritsar, IN", persian: "امریتسر، هند", country: "India", code: "AMR" },
-    { name: "Nhava Sheva, IN", persian: "نهاوا شوا، هند", country: "India", code: "NSA" },
-    { name: "Hyderabad, IN", persian: "حیدرآباد، هند", country: "India", code: "HYD" },
-    { name: "Ahmedabad, IN", persian: "احمدآباد، هند", country: "India", code: "AMD" },
-    { name: "Pune, IN", persian: "پونه، هند", country: "India", code: "PNQ" },
-    { name: "Surat, IN", persian: "سورت، هند", country: "India", code: "STV" },
-    { name: "Jaipur, IN", persian: "جیپور، هند", country: "India", code: "JAI" },
-    { name: "Lucknow, IN", persian: "لکھنؤ، هند", country: "India", code: "LKO" },
-    { name: "Kandla, IN", persian: "کاندلا، هند", country: "India", code: "KDL" },
-    { name: "Mundra, IN", persian: "موندرا، هند", country: "India", code: "MUN" },
-    { name: "Visakhapatnam, IN", persian: "ویساکاپاتنام، هند", country: "India", code: "VTZ" },
-    { name: "Cochin, IN", persian: "کوچین، هند", country: "India", code: "COK" },
-    { name: "Tuticorin, IN", persian: "توتیکورین، هند", country: "India", code: "TUT" },
-    { name: "Nagpur, IN", persian: "ناگپور، هند", country: "India", code: "NAG" },
-    { name: "Indore, IN", persian: "ایندور، هند", country: "India", code: "IDR" },
-    { name: "Bhopal, IN", persian: "بهوپال، هند", country: "India", code: "BHO" },
-    { name: "Vadodara, IN", persian: "وادودارا، هند", country: "India", code: "VAD" },
-    
-    // China
-    { name: "Beijing, CN", persian: "پکن، چین", country: "China", code: "PEK" },
-    { name: "Shanghai, CN", persian: "شانگهای، چین", country: "China", code: "SHA" },
-    { name: "Guangzhou, CN", persian: "گوانجو، چین", country: "China", code: "GZU" },
-    { name: "Chongqing, CN", persian: "چونگچینگ، چین", country: "China", code: "CKG" },
-    { name: "Xi'an, CN", persian: "کاشغر، چین", country: "China", code: "XIY" },
-    { name: "Urumqi, CN", persian: "اورومچی، چین", country: "China", code: "URC" },
-    
-    // Southeast Asia
-    { name: "Bangkok, TH", persian: "بانکوک، تایلند", country: "Thailand", code: "BKK" },
-    { name: "Ho Chi Minh City, VN", persian: "هوشی‌مین، ویتنام", country: "Vietnam", code: "SGN" },
-    { name: "Hanoi, VN", persian: "هانوی، ویتنام", country: "Vietnam", code: "HAN" },
-    { name: "Singapore, SG", persian: "سنگاپور", country: "Singapore", code: "SIN" },
-    { name: "Kuala Lumpur, MY", persian: "کوالالامپور، مالزی", country: "Malaysia", code: "KUL" },
-    
-    // Europe
-    { name: "Rotterdam, NL", persian: "روتردام، هلند", country: "Netherlands", code: "RTM" },
-    { name: "Hamburg, DE", persian: "هامبورگ، آلمان", country: "Germany", code: "HAM" },
-    { name: "London, UK", persian: "لندن، انگریس", country: "United Kingdom", code: "LON" },
-    { name: "Barcelona, ES", persian: "بارسلونا، اسپانیا", country: "Spain", code: "BCN" },
-    { name: "Venice, IT", persian: "ونیز، ایتالیا", country: "Italy", code: "VCE" },
+    // Europe & Americas Major Ports
+    { name: "Rotterdam Port, NL", persian: "بندر روتردام، هلند", country: "Netherlands", code: "RTM", isPort: true, portName: "Port of Rotterdam" },
+    { name: "Antwerp-Bruges Port, BE", persian: "بندر آنتورپ، بلجیم", country: "Belgium", code: "ANR", isPort: true, portName: "Port of Antwerp-Bruges" },
+    { name: "Hamburg Port, DE", persian: "بندر هامبورگ، آلمان", country: "Germany", code: "HAM", isPort: true, portName: "Port of Hamburg" },
+    { name: "Bremerhaven Port, DE", persian: "بندر برمرهافن، آلمان", country: "Germany", code: "BRV", isPort: true, portName: "Port of Bremerhaven" },
+    { name: "Valencia Port, ES", persian: "بندر والنسیا، اسپانیا", country: "Spain", code: "VLC", isPort: true, portName: "Port of Valencia" },
+    { name: "Algeciras Port, ES", persian: "بندر الجسیراس، اسپانیا", country: "Spain", code: "ALG", isPort: true, portName: "Port of Algeciras" },
+    { name: "Barcelona Port, ES", persian: "بندر بارسلونا، اسپانیا", country: "Spain", code: "BCN", isPort: true, portName: "Port of Barcelona" },
+    { name: "Piraeus Port, GR", persian: "بندر پیرئوس (آتن)، یونان", country: "Greece", code: "PIR", isPort: true, portName: "Port of Piraeus" },
+    { name: "Felixstowe Port, UK", persian: "بندر فلیکس‌استو، بریتانیا", country: "United Kingdom", code: "FXT", isPort: true, portName: "Port of Felixstowe" },
+    { name: "Southampton Port, UK", persian: "بندر ساوت‌همپتون، بریتانیا", country: "United Kingdom", code: "SOU", isPort: true, portName: "Port of Southampton" },
+    { name: "London Gateway, UK", persian: "بندر لندن گیت‌وی، بریتانیا", country: "United Kingdom", code: "LGP", isPort: true, portName: "London Gateway Port" },
+    { name: "Le Havre Port, FR", persian: "بندر لو هاور، فرانسه", country: "France", code: "LEH", isPort: true, portName: "Port of Le Havre" },
+    { name: "Marseille-Fos Port, FR", persian: "بندر مارسی، فرانسه", country: "France", code: "MRS", isPort: true, portName: "Port of Marseille-Fos" },
+    { name: "Genoa Port, IT", persian: "بندر جنوا، ایتالیا", country: "Italy", code: "GOA", isPort: true, portName: "Port of Genoa" },
+    { name: "Gdansk Port, PL", persian: "بندر گدانسک، پولند", country: "Poland", code: "GDN", isPort: true, portName: "Port of Gdansk" },
+    { name: "Los Angeles Port, US", persian: "بندر لس آنجلس، امریکا", country: "USA", code: "LAX", isPort: true, portName: "Port of Los Angeles" },
+    { name: "Long Beach Port, US", persian: "بندر لانگ بیچ، امریکا", country: "USA", code: "LGB", isPort: true, portName: "Port of Long Beach" },
+    { name: "New York & New Jersey, US", persian: "بندر نیویورک، امریکا", country: "USA", code: "NYC", isPort: true, portName: "Port of New York & New Jersey" },
+    { name: "Houston Port, US", persian: "بندر هیوستون، امریکا", country: "USA", code: "HOU", isPort: true, portName: "Port of Houston" },
+    { name: "Savannah Port, US", persian: "بندر ساوانا، امریکا", country: "USA", code: "SAV", isPort: true, portName: "Port of Savannah" },
+    { name: "Miami Port, US", persian: "بندر میامی، امریکا", country: "USA", code: "MIA", isPort: true, portName: "Port of Miami" },
+    { name: "Vancouver Port, CA", persian: "بندر ونکوور، کانادا", country: "Canada", code: "VAN", isPort: true, portName: "Port of Vancouver" },
+    { name: "Montreal Port, CA", persian: "بندر مونترال، کانادا", country: "Canada", code: "MTR", isPort: true, portName: "Port of Montreal" },
+    { name: "Santos Port, BR", persian: "بندر سانتوس (سائوپائولو)، برزیل", country: "Brazil", code: "SSZ", isPort: true, portName: "Port of Santos" },
+    { name: "Colon Port (Panama Canal), PA", persian: "بندر کولون (کانال پاناما)", country: "Panama", code: "ONX", isPort: true, portName: "Port of Colon" },
   ]
 
   const selectPredefinedLocation = (index: number, location: { name: string; persian: string }) => {
@@ -2341,12 +2422,23 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   ).toLowerCase()
 
   const quickLocationMatches = predefinedLocations.filter((loc) => {
-    if (selectedCountryFilter !== "ALL" && loc.country !== selectedCountryFilter) {
+    if (selectedCountryFilter === "PORTS") {
+      if (!loc.isPort) return false
+    } else if (selectedCountryFilter === "AFRICA") {
+      const africaCountries = ["Ivory Coast", "Nigeria", "Ghana", "Benin", "Togo", "Senegal", "Kenya", "Tanzania", "South Africa", "Egypt", "Morocco", "Djibouti", "Sudan"]
+      if (!africaCountries.includes(loc.country)) return false
+    } else if (selectedCountryFilter === "EUROPE_AMERICAS") {
+      const euroAmericas = ["Netherlands", "Belgium", "Germany", "Spain", "Italy", "Greece", "United Kingdom", "France", "Poland", "USA", "Canada", "Brazil", "Panama"]
+      if (!euroAmericas.includes(loc.country)) return false
+    } else if (selectedCountryFilter === "CENTRAL_ASIA") {
+      const centralAsia = ["Uzbekistan", "Turkmenistan", "Tajikistan", "Kyrgyzstan", "Kazakhstan"]
+      if (!centralAsia.includes(loc.country)) return false
+    } else if (selectedCountryFilter !== "ALL" && loc.country !== selectedCountryFilter) {
       return false
     }
     if (!quickLocationQuery) return true
 
-    return [loc.name, loc.persian, loc.country, loc.code]
+    return [loc.name, loc.persian, loc.country, loc.code, loc.portName || ""]
       .join(" ")
       .toLowerCase()
       .includes(quickLocationQuery)
@@ -2377,6 +2469,21 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       ],
     }))
     setActiveRouteIndex(formData.routes.length)
+  }
+
+  const handleQuickSetDischarge = (portName: string) => {
+    setFormData((prev) => ({ ...prev, port_of_discharge: portName }))
+    toast.success(`Port of Discharge: ${portName}`)
+  }
+
+  const handleQuickSetLoading = (portName: string) => {
+    setFormData((prev) => ({ ...prev, port_of_loading: portName }))
+    toast.success(`Port of Loading: ${portName}`)
+  }
+
+  const handleQuickSetDelivery = (place: string) => {
+    setFormData((prev) => ({ ...prev, place_of_delivery: place }))
+    toast.success(`Place of Delivery: ${place}`)
   }
 
   const handleSave = async () => {
@@ -5610,14 +5717,17 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     <div className="flex flex-wrap items-center gap-1.5">
                       {[
                         { label: "ALL", country: "ALL" },
+                        { label: "⚓ ALL SEAPORTS", country: "PORTS" },
+                        { label: "🇨🇮 IVORY COAST & AFRICA", country: "AFRICA" },
                         { label: "🇦🇫 AFGHANISTAN", country: "Afghanistan" },
                         { label: "🇮🇷 IRAN", country: "Iran" },
-                        { label: "🇦🇪 UAE", country: "UAE" },
+                        { label: "🇦🇪 UAE & GULF", country: "UAE" },
                         { label: "🇮🇳 INDIA", country: "India" },
                         { label: "🇵🇰 PAKISTAN", country: "Pakistan" },
                         { label: "🇹🇷 TURKEY", country: "Turkey" },
-                        { label: "🇨🇳 CHINA", country: "China" },
-                        { label: "🇺🇿 UZBEKISTAN", country: "Uzbekistan" },
+                        { label: "🇨🇳 CHINA & ASIA", country: "China" },
+                        { label: "🇪🇺 EUROPE & AMERICAS", country: "EUROPE_AMERICAS" },
+                        { label: "🇺🇿 CENTRAL ASIA", country: "CENTRAL_ASIA" },
                       ].map((tab) => (
                         <button
                           key={tab.country}
@@ -5625,8 +5735,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           onClick={() => setSelectedCountryFilter(tab.country)}
                           className={`rounded-xl px-2.5 py-1 text-[11px] font-black transition-all cursor-pointer ${
                             selectedCountryFilter === tab.country
-                              ? "bg-amber-500 text-slate-950 shadow-xs"
-                              : "bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-800"
+                              ? "bg-amber-500 text-slate-950 shadow-xs ring-2 ring-amber-300"
+                              : "bg-slate-100 text-slate-700 hover:bg-amber-100 hover:text-amber-900"
                           }`}
                         >
                           {tab.label}
@@ -5635,24 +5745,66 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     </div>
                   </div>
 
-                  <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  <div className="grid max-h-80 grid-cols-2 gap-2 overflow-y-auto pr-1 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {quickLocationMatches.map((loc) => (
-                      <Button
+                      <div
                         key={loc.name}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-auto py-2 px-2.5 flex flex-col items-start rounded-xl border-slate-200 bg-white/90 hover:border-amber-400 hover:bg-amber-50/60 transition-all shadow-2xs cursor-pointer text-left"
-                        onClick={() => handleQuickLocationSelect(loc)}
-                        title={`${loc.name} - ${loc.country} (${loc.code})`}
+                        className="group relative flex flex-col justify-between rounded-xl border border-slate-200 bg-white/95 p-2 transition-all hover:border-amber-400 hover:bg-amber-50/40 hover:shadow-md"
                       >
-                        <div className="flex items-center gap-1.5 w-full">
-                          <span className="text-base shrink-0">{countryFlags[loc.country] || "🌍"}</span>
-                          <span className="font-black text-slate-900 truncate">{loc.name}</span>
-                          <span className="text-[10px] font-black bg-amber-100 text-amber-800 rounded-md px-1.5 py-0.5 ml-auto shrink-0">{loc.code}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickLocationSelect(loc)}
+                          className="flex flex-col items-start w-full text-left cursor-pointer"
+                          title={`Add to Route Stop: ${loc.name}`}
+                        >
+                          <div className="flex items-center gap-1.5 w-full">
+                            <span className="text-base shrink-0">{countryFlags[loc.country] || "🌍"}</span>
+                            <span className="font-black text-slate-900 truncate text-[11px]">{loc.name}</span>
+                            <span className="text-[9px] font-black bg-amber-100 text-amber-900 rounded px-1 py-0.5 ml-auto shrink-0">{loc.code}</span>
+                          </div>
+                          <span className="text-slate-500 font-[vazirmatn] text-[10px] font-bold truncate w-full text-right mt-0.5" dir="rtl">{loc.persian}</span>
+                        </button>
+
+                        {/* Quick 1-Click Set Actions */}
+                        <div className="mt-2 pt-1.5 border-t border-slate-100 flex flex-wrap items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleQuickLocationSelect(loc)}
+                            className="text-[9px] font-extrabold bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 rounded px-1.5 py-0.5 transition-colors cursor-pointer"
+                            title="Add to Route Stops"
+                          >
+                            + Route
+                          </button>
+                          {loc.isPort && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleQuickSetDischarge(loc.portName || loc.name)}
+                                className="text-[9px] font-black bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 rounded px-1.5 py-0.5 transition-colors cursor-pointer"
+                                title="Set as Port of Discharge (بندر تخلیه)"
+                              >
+                                🚢 POD
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleQuickSetLoading(loc.portName || loc.name)}
+                                className="text-[9px] font-black bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 rounded px-1.5 py-0.5 transition-colors cursor-pointer"
+                                title="Set as Port of Loading (بندر بارگیری)"
+                              >
+                                ⚓ POL
+                              </button>
+                            </>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleQuickSetDelivery(loc.country === "Ivory Coast" ? "Ivory Coast, West Africa" : loc.name)}
+                            className="text-[9px] font-black bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-800 rounded px-1.5 py-0.5 transition-colors cursor-pointer"
+                            title="Set as Place of Delivery (محل تحویل)"
+                          >
+                            📍 Delivery
+                          </button>
                         </div>
-                        <span className="text-slate-500 font-[vazirmatn] text-[10px] font-bold truncate w-full text-right" dir="rtl">{loc.persian}</span>
-                      </Button>
+                      </div>
                     ))}
                     {quickLocationMatches.length === 0 && (
                       <div className="col-span-full rounded-xl border border-dashed border-slate-300 bg-white/40 backdrop-blur-md px-3 py-5 text-center text-xs font-bold text-slate-500">
@@ -5747,57 +5899,253 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   <span className="text-sm font-normal text-blue-600/80 font-[vazirmatn]">جزئیات حمل</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
-                <div>
-                  <label className="text-sm text-gray-600 mb-2 block">Vessel / کشتی</label>
-                  <Input
-                    name="vessel_name"
-                    value={formData.vessel_name}
-                    onChange={handleInputChange}
-                    placeholder="Vessel name"
-                    className="glass-input rounded-xl h-11"
-                  />
+              <CardContent className="space-y-4 pt-4">
+                {/* 1-Click Quick Port Presets */}
+                <div className="rounded-2xl border border-cyan-100 bg-cyan-50/50 p-3">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-cyan-900 flex items-center gap-1.5">
+                      <span>⚓</span> Quick Port & Location Presets / انتخاب سریع بندر و کشور:
+                    </span>
+                    <span className="text-[10px] font-bold text-cyan-700 font-[vazirmatn]" dir="rtl">
+                      یک کلیک برای پر کردن بنادر
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          port_of_discharge: "Abidjan Port",
+                          place_of_delivery: "Ivory Coast, West Africa",
+                        }))
+                        toast.success("Set POD: Abidjan Port & Delivery: Ivory Coast, West Africa")
+                      }}
+                      className="rounded-xl border border-cyan-300 bg-white px-2.5 py-1 text-xs font-black text-slate-900 shadow-2xs hover:bg-cyan-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇨🇮</span>
+                      <span>Abidjan Port & Ivory Coast</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Bandar Abbas (Shahid Rajaee)" }))
+                        toast.success("Set POL: Bandar Abbas")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇮🇷</span>
+                      <span>Bandar Abbas</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Chabahar Port (Shahid Beheshti)" }))
+                        toast.success("Set POL: Chabahar Port")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇮🇷</span>
+                      <span>Chabahar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Jebel Ali Port, Dubai", port_of_discharge: prev.port_of_discharge || "Abidjan Port" }))
+                        toast.success("Set POL: Jebel Ali, Dubai")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇦🇪</span>
+                      <span>Jebel Ali / Dubai</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Nhava Sheva (JNPT), Mumbai" }))
+                        toast.success("Set POL: Nhava Sheva (JNPT)")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇮🇳</span>
+                      <span>Nhava Sheva (Mumbai)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Mundra Port, Gujarat" }))
+                        toast.success("Set POL: Mundra Port")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇮🇳</span>
+                      <span>Mundra Port</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Karachi Port (KPT)" }))
+                        toast.success("Set POL: Karachi Port")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇵🇰</span>
+                      <span>Karachi Port</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_discharge: "Port of Rotterdam" }))
+                        toast.success("Set POD: Port of Rotterdam")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇳🇱</span>
+                      <span>Rotterdam</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_discharge: "Port of Hamburg" }))
+                        toast.success("Set POD: Port of Hamburg")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇩🇪</span>
+                      <span>Hamburg</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Shanghai Port (Yangshan)" }))
+                        toast.success("Set POL: Shanghai Port")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇨🇳</span>
+                      <span>Shanghai</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_loading: "Port of Singapore" }))
+                        toast.success("Set POL: Port of Singapore")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇸🇬</span>
+                      <span>Singapore</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_discharge: "Lagos Port / Apapa" }))
+                        toast.success("Set POD: Lagos Port / Apapa")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇳🇬</span>
+                      <span>Lagos (Apapa)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_discharge: "Durban Port" }))
+                        toast.success("Set POD: Durban Port")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇿🇦</span>
+                      <span>Durban</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, port_of_discharge: "Mombasa Port" }))
+                        toast.success("Set POD: Mombasa Port")
+                      }}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-black text-slate-800 shadow-2xs hover:bg-blue-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span>🇰🇪</span>
+                      <span>Mombasa</span>
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-2 block">Voyage No. / سفر</label>
-                  <Input
-                    name="voyage_number"
-                    value={formData.voyage_number}
-                    onChange={handleInputChange}
-                    placeholder="Voyage number"
-                    className="glass-input rounded-xl h-11"
-                  />
+
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-sm text-gray-600 mb-2 block">Vessel / کشتی</label>
+                    <Input
+                      name="vessel_name"
+                      value={formData.vessel_name}
+                      onChange={handleInputChange}
+                      placeholder="e.g. MSC AURELIA"
+                      className="glass-input rounded-xl h-11"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600 mb-2 block">Voyage No. / سفر</label>
+                    <Input
+                      name="voyage_number"
+                      value={formData.voyage_number}
+                      onChange={handleInputChange}
+                      placeholder="e.g. 2410E"
+                      className="glass-input rounded-xl h-11"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600 mb-2 block">Port of Loading / بندر بارگیری</label>
+                    <Input
+                      name="port_of_loading"
+                      list="world-seaports-list"
+                      value={formData.port_of_loading}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Bandar Abbas / Jebel Ali"
+                      className="glass-input rounded-xl h-11"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-600 mb-2 block">Port of Discharge / بندر تخلیه</label>
+                    <Input
+                      name="port_of_discharge"
+                      list="world-seaports-list"
+                      value={formData.port_of_discharge}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Abidjan Port / Rotterdam"
+                      className="glass-input rounded-xl h-11"
+                    />
+                  </div>
+                  <div className="md:col-span-2 lg:col-span-4">
+                    <label className="text-sm text-gray-600 mb-2 block">Place of Delivery / محل تحویل</label>
+                    <Input
+                      name="place_of_delivery"
+                      list="world-places-list"
+                      value={formData.place_of_delivery}
+                      onChange={handleInputChange}
+                      placeholder="e.g. Ivory Coast, West Africa / Europe"
+                      className="glass-input rounded-xl h-11"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-2 block">Port of Loading / بندر بارگیری</label>
-                  <Input
-                    name="port_of_loading"
-                    value={formData.port_of_loading}
-                    onChange={handleInputChange}
-                    placeholder="Loading port"
-                    className="glass-input rounded-xl h-11"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-600 mb-2 block">Port of Discharge / بندر تخلیه</label>
-                  <Input
-                    name="port_of_discharge"
-                    value={formData.port_of_discharge}
-                    onChange={handleInputChange}
-                    placeholder="Discharge port"
-                    className="glass-input rounded-xl h-11"
-                  />
-                </div>
-                <div className="md:col-span-2 lg:col-span-4">
-                  <label className="text-sm text-gray-600 mb-2 block">Place of Delivery / محل تحویل</label>
-                  <Input
-                    name="place_of_delivery"
-                    value={formData.place_of_delivery}
-                    onChange={handleInputChange}
-                    placeholder="Final delivery location"
-                    className="glass-input rounded-xl h-11"
-                  />
-                </div>
+
+                {/* Datalists for global ports and locations autocomplete */}
+                <datalist id="world-seaports-list">
+                  {predefinedLocations
+                    .filter((loc) => loc.isPort)
+                    .map((loc) => (
+                      <option key={`port-${loc.name}`} value={loc.portName || loc.name}>
+                        {`${countryFlags[loc.country] || "⚓"} ${loc.name} (${loc.code})`}
+                      </option>
+                    ))}
+                </datalist>
+
+                <datalist id="world-places-list">
+                  {predefinedLocations.map((loc) => (
+                    <option key={`place-${loc.name}`} value={loc.name}>
+                      {`${countryFlags[loc.country] || "📍"} ${loc.name} - ${loc.persian}`}
+                    </option>
+                  ))}
+                </datalist>
               </CardContent>
             </Card>
 
