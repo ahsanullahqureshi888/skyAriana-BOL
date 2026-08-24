@@ -4379,15 +4379,21 @@
 
 @page {
   size: A4 portrait !important;
-  margin: 0 !important;
+  margin-top: 0.1in !important;
+  margin-left: 0.08in !important;
+  margin-right: 0.1in !important;
+  margin-bottom: 0in !important;
 }
 
 /* Print styles for Bill of Lading, Invoices, and Ledgers */
 @media print {
-  /* 1. Standard A4 Portrait setup for Bill of Lading & Invoices - Margin 0 for 100% 1-page guarantee */
+  /* 1. Standard A4 Portrait setup for Bill of Lading & Invoices - Margin 0.1in top/right, 0.08in left, 0in bottom */
   @page {
     size: A4 portrait !important;
-    margin: 0 !important;
+    margin-top: 0.1in !important;
+    margin-left: 0.08in !important;
+    margin-right: 0.1in !important;
+    margin-bottom: 0in !important;
   }
 
   /* 1b. Dedicated A4 Landscape setup for Account Ledger printing */
@@ -4449,11 +4455,11 @@
     visibility: visible !important;
     opacity: 1 !important;
     position: static !important;
-    width: 210mm !important;
-    max-width: 210mm !important;
-    height: 297mm !important;
-    min-height: 297mm !important;
-    max-height: 297mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: calc(297mm - 0.1in) !important;
+    min-height: calc(297mm - 0.1in) !important;
+    max-height: calc(297mm - 0.1in) !important;
     margin: 0 auto !important;
     padding: 0 !important;
     overflow: hidden !important;
@@ -4468,11 +4474,11 @@
   }
 
   [data-bol-a4="true"] {
-    width: 210mm !important;
-    max-width: 210mm !important;
-    height: 297mm !important;
-    min-height: 297mm !important;
-    max-height: 297mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: calc(297mm - 0.1in) !important;
+    min-height: calc(297mm - 0.1in) !important;
+    max-height: calc(297mm - 0.1in) !important;
     margin: 0 auto !important;
     padding: 0 !important;
     box-sizing: border-box !important;
@@ -4494,7 +4500,7 @@
     height: 100% !important;
     max-height: 100% !important;
     box-sizing: border-box !important;
-    padding: 1.8mm 2mm !important;
+    padding: 1.5mm 2mm !important;
     gap: 0.6mm !important;
     overflow: hidden !important;
   }
@@ -4511,6 +4517,18 @@
     shrink: 0 !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  [data-company-stamp-img="true"] {
+    display: block !important;
+    visibility: visible !important;
+    height: 65mm !important;
+    max-height: 70mm !important;
+    width: auto !important;
+    max-width: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    image-rendering: -webkit-optimize-contrast !important;
   }
 
   [data-print-root="true"] *:not([data-bol-watermark="true"]),

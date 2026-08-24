@@ -2155,19 +2155,20 @@ export function A4Preview({
             </div>
 
             {/* Right side: Authorized Signature & Official Seal Block (NO ENCLOSING BOX) */}
-            <div className="relative flex flex-col items-center justify-center min-w-[68mm] max-w-[82mm] text-center">
-              {/* Official Stamp & Signature Overlay - Rendered 2X BIGGER ON TOP without a box */}
-              <div className="relative w-full h-[26mm] flex items-center justify-center">
+            <div className="relative flex flex-col items-center justify-center min-w-[72mm] max-w-[88mm] text-center">
+              {/* Official Stamp & Signature Overlay - Rendered 2X–2.5X BIGGER ON TOP without a box */}
+              <div className="relative w-full h-[28mm] flex items-center justify-center">
                 {isStampActive ? (
                   <div
-                    className="absolute -top-7 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10"
+                    className="absolute -top-8 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10"
                     style={{ transform: `scale(${stampScale})`, transformOrigin: "center center" }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
+                      data-company-stamp-img="true"
                       src={stampImageSrc || COMPANY_STAMP_SIGNATURE_SRC}
                       alt="Sky Ariana Limited Official Stamp & Signature"
-                      className="h-[52mm] w-auto max-w-none object-contain drop-shadow-md transform -rotate-2"
+                      className="h-[60mm] print:h-[66mm] w-auto max-w-none object-contain drop-shadow-md transform -rotate-2"
                       crossOrigin="anonymous"
                       onError={(e) => {
                         const target = e.currentTarget
