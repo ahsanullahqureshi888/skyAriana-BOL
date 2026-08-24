@@ -4527,23 +4527,30 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     image-rendering: -webkit-optimize-contrast !important;
-    filter: contrast(1.05) saturate(1.1) !important;
+    filter: contrast(1.08) saturate(1.15) !important;
   }
 
   [data-print-root="true"] *:not([data-bol-watermark="true"]),
   .invoice-print-root *,
   .ledger-print-root *,
+  [data-bol-a4="true"],
   [data-bol-a4="true"] * {
     visibility: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: antialiased !important;
+  }
+
+  [data-bol-a4="true"] img {
+    image-rendering: -webkit-optimize-contrast !important;
   }
 
   [data-print-root="true"] section,
   [data-print-root="true"] .party-card,
   [data-print-root="true"] .party-card-solid,
   [data-print-root="true"] [data-print-section] {
-    background-color: rgba(255, 255, 255, 0.95) !important;
+    background-color: rgba(255, 255, 255, 0.98) !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
