@@ -109,28 +109,28 @@ const darkHeaderStyle = {
 
 const headerGridStyle = {
   display: "grid",
-  gridTemplateColumns: "36mm 1fr 50mm",
+  gridTemplateColumns: "32mm 1fr 48mm",
   alignItems: "center",
-  columnGap: "3mm",
+  columnGap: "2.5mm",
 } satisfies CSSProperties
 
 const logoFrameStyle = {
   alignItems: "center",
   display: "flex",
-  height: "26mm",
+  height: "22mm",
   justifyContent: "center",
-  maxHeight: "26mm",
-  maxWidth: "36mm",
-  minHeight: "26mm",
+  maxHeight: "22mm",
+  maxWidth: "32mm",
+  minHeight: "22mm",
   overflow: "visible",
-  width: "36mm",
+  width: "32mm",
 } satisfies CSSProperties
 
 const logoImageStyle = {
   display: "block",
   height: "auto",
-  maxHeight: "26mm",
-  maxWidth: "35mm",
+  maxHeight: "22mm",
+  maxWidth: "32mm",
   objectFit: "contain",
   width: "auto",
   filter: "drop-shadow(0 1px 2px rgba(30, 58, 138, 0.12))",
@@ -1085,21 +1085,21 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
                     : "border-1.5 border-blue-300/90 bg-linear-to-b from-blue-50/60 via-white to-blue-50/20 shadow-2xs shadow-blue-100/60"
                 }`}
                 style={{
-                  borderRadius: "8px",
-                  padding: "4px 3px",
-                  minHeight: "68px",
+                  borderRadius: "7px",
+                  padding: "3px 2px",
+                  minHeight: "46px",
                 }}
               >
                 {/* Top Accent Strip */}
-                <div className={`h-1 w-full absolute top-0 left-0 right-0 ${
+                <div className={`h-0.8 w-full absolute top-0 left-0 right-0 ${
                   isOrigin ? 'bg-linear-to-r from-emerald-500 to-teal-500' : isLastRoute ? 'bg-linear-to-r from-indigo-600 to-purple-600' : 'bg-linear-to-r from-blue-500 to-cyan-500'
                 }`} />
 
                 {/* Header 2-Tone Capsule Badge */}
-                <div className="flex items-center justify-center mt-0.5 mb-0.5 px-0.5">
-                  <div className="inline-flex items-center rounded-full border shadow-2xs overflow-hidden max-w-full text-[5.2pt] font-black tracking-tight uppercase">
+                <div className="flex items-center justify-center mt-0.2 mb-0.2 px-0.5">
+                  <div className="inline-flex items-center rounded-full border shadow-2xs overflow-hidden max-w-full text-[4.8pt] font-black tracking-tight uppercase">
                     {/* Stop Type */}
-                    <span className={`px-1.5 py-0.2 text-white shrink-0 ${
+                    <span className={`px-1 py-0.2 text-white shrink-0 ${
                       isOrigin
                         ? "bg-emerald-600 border-emerald-700"
                         : isLastRoute
@@ -1110,8 +1110,8 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
                     </span>
                     {/* Country Code & Flag */}
                     {countryMeta.code && (
-                      <span className="px-1.5 py-0.2 bg-slate-100/95 text-slate-800 flex items-center gap-0.5 border-l border-slate-200 truncate font-extrabold text-[5.2pt]">
-                        <span className="text-[6.5pt] leading-none shrink-0">{countryMeta.emoji}</span>
+                      <span className="px-1 py-0.2 bg-slate-100/95 text-slate-800 flex items-center gap-0.5 border-l border-slate-200 truncate font-extrabold text-[4.8pt]">
+                        <span className="text-[5.8pt] leading-none shrink-0">{countryMeta.emoji}</span>
                         <span className="truncate">{countryMeta.label?.toUpperCase() || countryMeta.code}</span>
                       </span>
                     )}
@@ -1119,33 +1119,33 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
                 </div>
 
                 {/* City & Location Name (Vertically Balanced with Zero Cut-off) */}
-                <div className="flex-1 flex flex-col justify-center px-0.5 my-auto min-h-[30px] space-y-0.5">
-                  <div className="text-[7.8pt] font-black text-slate-950 leading-tight break-words line-clamp-2 tracking-tight">
+                <div className="flex-1 flex flex-col justify-center px-0.5 my-auto min-h-[22px] space-y-0.2">
+                  <div className="text-[7.2pt] font-black text-slate-950 leading-tight break-words line-clamp-2 tracking-tight">
                     <span>{formattedLoc.primaryName}</span>
                     {formattedLoc.codeBadge && (
-                      <span className="ml-1 inline-block rounded bg-amber-100 text-amber-950 font-mono text-[5.8pt] px-1 py-0.2 font-black border border-amber-300 align-middle">
+                      <span className="ml-0.5 inline-block rounded bg-amber-100 text-amber-950 font-mono text-[5.2pt] px-0.8 py-0.2 font-black border border-amber-300 align-middle">
                         {formattedLoc.codeBadge}
                       </span>
                     )}
                   </div>
                   {formattedLoc.subFacility && (
-                    <div className="text-[5.8pt] font-semibold text-slate-600 leading-tight break-words line-clamp-1">
+                    <div className="text-[5.2pt] font-semibold text-slate-600 leading-tight break-words line-clamp-1">
                       {formattedLoc.subFacility}
                     </div>
                   )}
                   {hasValue(formattedLoc.persianMain) && (
-                    <div className="text-[7pt] font-bold text-blue-950 font-[vazirmatn] leading-tight break-words line-clamp-2 mt-0.5" dir="rtl">
+                    <div className="text-[6.2pt] font-bold text-blue-950 font-[vazirmatn] leading-tight break-words line-clamp-2 mt-0.2" dir="rtl">
                       {formattedLoc.persianMain}
                     </div>
                   )}
                 </div>
 
                 {/* Bottom Row: Mode Pill */}
-                <div className="mt-1">
-                  <span className={`inline-flex items-center justify-center gap-0.5 px-2 py-0.3 rounded-full text-[5.5pt] font-black uppercase tracking-wide border whitespace-nowrap ${modeTheme.bg}`}>
-                    <span className="text-[7pt] leading-none">{modeTheme.icon}</span>
+                <div className="mt-0.5">
+                  <span className={`inline-flex items-center justify-center gap-0.5 px-1.5 py-0.2 rounded-full text-[4.8pt] font-black uppercase tracking-wide border whitespace-nowrap ${modeTheme.bg}`}>
+                    <span className="text-[6pt] leading-none">{modeTheme.icon}</span>
                     <span>{modeTheme.label}</span>
-                    <span className="font-[vazirmatn] text-[5.2pt] opacity-90">({modeTheme.persian})</span>
+                    <span className="font-[vazirmatn] text-[4.6pt] opacity-90">({modeTheme.persian})</span>
                   </span>
                 </div>
 
@@ -1927,14 +1927,14 @@ export function A4Preview({
             </div>
 
             {/* 2. Center: Company Brand Title & Subtitle */}
-            <div className="bol-company-block min-w-0 px-2 text-center flex flex-col items-center justify-center">
-              <h1 className="bol-company-name english-text text-[15pt] font-black uppercase tracking-tight text-blue-950 leading-tight">
+            <div className="bol-company-block min-w-0 px-1 text-center flex flex-col items-center justify-center">
+              <h1 className="bol-company-name english-text text-[13.5pt] font-black uppercase tracking-tight text-blue-950 leading-tight">
                 {companyTitle}
               </h1>
-              <p className="english-text text-[6.8pt] mt-0.5 font-extrabold uppercase tracking-[0.2em] text-slate-500 leading-tight">
+              <p className="english-text text-[6.2pt] mt-0.2 font-extrabold uppercase tracking-[0.18em] text-slate-500 leading-tight">
                 {companyTagline}
               </p>
-              <p className="persian-text bol-persian-text text-[9.8pt] mt-0.5 font-[vazirmatn] font-black leading-tight text-blue-800" dir="rtl">
+              <p className="persian-text bol-persian-text text-[8.8pt] mt-0.2 font-[vazirmatn] font-black leading-tight text-blue-800" dir="rtl">
                 {companyPersian}
               </p>
             </div>
@@ -1946,32 +1946,32 @@ export function A4Preview({
                 pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white shadow-sm shadow-blue-100/60"
               }`}
             >
-              <div className="bol-title-box px-2 py-0.8 text-center text-white flex flex-col items-center justify-center" style={darkHeaderStyle}>
-                <p className="bol-title-en english-text text-[9.5pt] font-black uppercase tracking-wider leading-tight">
+              <div className="bol-title-box px-1.5 py-0.5 text-center text-white flex flex-col items-center justify-center" style={darkHeaderStyle}>
+                <p className="bol-title-en english-text text-[8.8pt] font-black uppercase tracking-wider leading-tight">
                   Bill of Lading
                 </p>
-                <p className="bol-title-fa persian-text bol-persian-text font-[vazirmatn] text-[8.5pt] font-bold leading-tight mt-0.2" dir="rtl">
+                <p className="bol-title-fa persian-text bol-persian-text font-[vazirmatn] text-[7.8pt] font-bold leading-tight" dir="rtl">
                   {labels.billOfLadingFa}
                 </p>
               </div>
               <div
                 data-pdf-bol-badge="true"
-                className="bol-number-box w-full bg-white px-1.5 py-1 border-t border-blue-100 flex items-center justify-between gap-1"
+                className="bol-number-box w-full bg-white px-1 py-0.6 border-t border-blue-100 flex items-center justify-between gap-1"
               >
                 <div className="flex-1 text-center min-w-0">
-                  <span className="block text-[5.2pt] font-black uppercase tracking-widest text-slate-400 leading-none mb-0.2">
+                  <span className="block text-[4.8pt] font-black uppercase tracking-widest text-slate-400 leading-none mb-0.2">
                     DOCUMENT NO.
                   </span>
                   <span
                     data-pdf-bol-number="true"
-                    className="bol-number-text block font-mono text-[8.5pt] font-black leading-tight text-blue-950 tracking-tight truncate"
+                    className="bol-number-text block font-mono text-[7.8pt] font-black leading-tight text-blue-950 tracking-tight truncate"
                     style={{ color: "#1e3a8a" }}
                   >
                     {bolNumber}
                   </span>
                 </div>
                 <div className="shrink-0 flex items-center justify-center p-0.5 bg-white border border-slate-200 rounded shadow-2xs">
-                  <DocumentQRCode value={bolNumber || "SKY-BOL"} size={26} />
+                  <DocumentQRCode value={bolNumber || "SKY-BOL"} size={22} />
                 </div>
               </div>
             </div>
@@ -2156,12 +2156,12 @@ export function A4Preview({
             </div>
 
             {/* Right side: Authorized Signature & Official Seal Block (NO ENCLOSING BOX) */}
-            <div className="relative flex flex-col items-center justify-center min-w-[65mm] max-w-[78mm] text-center">
+            <div className="relative flex flex-col items-center justify-center min-w-[55mm] max-w-[68mm] text-center">
               {/* Official Stamp & Signature Overlay - Balanced size identical in A4 preview and print */}
-              <div className="relative w-full h-[25mm] flex items-center justify-center">
+              <div className="relative w-full h-[18mm] flex items-center justify-center">
                 {isStampActive ? (
                   <div
-                    className="absolute -bottom-2 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10"
+                    className="absolute -bottom-1 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10"
                     style={{ transform: `scale(${stampScale})`, transformOrigin: "center bottom" }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2169,7 +2169,7 @@ export function A4Preview({
                       data-company-stamp-img="true"
                       src={stampImageSrc || COMPANY_STAMP_SIGNATURE_SRC}
                       alt="Sky Ariana Limited Official Stamp & Signature"
-                      className="h-[48mm] max-h-[50mm] w-auto max-w-[76mm] object-contain drop-shadow-sm transform -rotate-1"
+                      className="h-[35mm] max-h-[36mm] w-auto max-w-[58mm] object-contain drop-shadow-sm transform -rotate-1"
                       crossOrigin="anonymous"
                       onError={(e) => {
                         const target = e.currentTarget
@@ -2180,7 +2180,7 @@ export function A4Preview({
                     />
                   </div>
                 ) : (
-                  <div className="text-[7pt] italic text-slate-400 font-semibold my-auto">
+                  <div className="text-[6.5pt] italic text-slate-400 font-semibold my-auto">
                     (Sign & Stamp Here / محل امضا و مهر)
                   </div>
                 )}
@@ -2190,10 +2190,10 @@ export function A4Preview({
               <div className="w-full border-b-1.5 border-slate-700/80 my-0.5" />
 
               {/* Authorized Labels */}
-              <p className="text-[7.5pt] font-black text-blue-950 uppercase tracking-tight leading-tight">
+              <p className="text-[7pt] font-black text-blue-950 uppercase tracking-tight leading-tight">
                 For & On Behalf of: {companyTitle}
               </p>
-              <p className="persian-text bol-persian-text font-[vazirmatn] text-[6.8pt] font-extrabold text-blue-900 leading-tight mt-0.2" dir="rtl">
+              <p className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-extrabold text-blue-900 leading-tight mt-0.2" dir="rtl">
                 {labels.companyStampSignFa || "مهر و امضای مجاز شرکت"}
               </p>
             </div>

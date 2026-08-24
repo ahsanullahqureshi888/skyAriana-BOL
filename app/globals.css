@@ -4519,11 +4519,11 @@
   [data-pdf-export="true"] img[data-company-stamp-img="true"] {
     display: block !important;
     visibility: visible !important;
-    height: 48mm !important;
-    max-height: 50mm !important;
-    min-height: 48mm !important;
+    height: 35mm !important;
+    max-height: 36mm !important;
+    min-height: 35mm !important;
     width: auto !important;
-    max-width: 76mm !important;
+    max-width: 58mm !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     image-rendering: -webkit-optimize-contrast !important;
