@@ -9,6 +9,7 @@ import {
   Building2,
   CalendarDays,
   FileText,
+  Globe,
   Mail,
   MapPin,
   Package,
@@ -2202,24 +2203,74 @@ export function A4Preview({
         <footer
           data-bol-footer="true"
           className={`mt-0.5 overflow-hidden rounded-xl border text-center shadow-sm shadow-blue-100/70 ${
-            pdfMode ? "border-blue-200 bg-white" : "border-blue-200/80 bg-white"
+            pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white"
           }`}
           data-no-break
         >
-          <div className="px-2 py-0.6 text-white" style={blueBarStyle}>
-            <p className="text-[5.2pt] font-black uppercase leading-tight">
-              {companyTitle} - {companyTagline}
-              {companyFooter && ` | ${companyFooter}`}
-            </p>
-            <p className="mt-0.2 text-[4.6pt] font-semibold leading-tight">{companyAddressLine}</p>
+          {/* Main Executive Banner */}
+          <div className="px-2.5 py-0.8 text-white" style={blueBarStyle}>
+            <div className="flex items-center justify-between gap-2 border-b border-white/20 pb-0.5 mb-0.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[6.5pt] font-black uppercase tracking-wider text-white truncate">
+                  {companyTitle}
+                </span>
+                <span className="text-sky-200 opacity-60 text-[5.5pt]">•</span>
+                <span className="text-[5.8pt] font-bold text-sky-100 truncate">
+                  {companyTagline}
+                </span>
+              </div>
+              {companyLicence && (
+                <span className="shrink-0 bg-white/20 text-white font-mono font-black text-[5.2pt] px-1.5 py-0.2 rounded border border-white/25">
+                  LICENCE: {companyLicence}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-3 text-[5.2pt] font-semibold text-sky-50">
+              <div className="flex items-center gap-1 truncate">
+                <MapPin className="h-2.8 w-2.8 shrink-0 text-sky-200" />
+                <span className="truncate">{companyAddressLine}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 font-mono text-[5.2pt]">
+                {companyPhone && (
+                  <span className="flex items-center gap-0.5">
+                    <Phone className="h-2.5 w-2.5 text-sky-200" />
+                    <span>{companyPhone}</span>
+                  </span>
+                )}
+                {companyEmail && (
+                  <span className="flex items-center gap-0.5">
+                    <Mail className="h-2.5 w-2.5 text-sky-200" />
+                    <span>{companyEmail}</span>
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-2 py-0.5 text-[4.8pt] font-bold text-slate-500">
-            <span className="text-left">{iranOffice || "Website: www.skyariana.com"}</span>
-            <BadgeCheck className="h-3 w-3 text-blue-600" />
-            <span className="text-right">
-              <ShieldCheck className="mr-1 inline h-2.8 w-2.8 text-blue-600" />
-              A4 PDF Export Ready
-            </span>
+
+          {/* Sub-bar: Office & Official Verification */}
+          <div className="flex items-center justify-between gap-2 px-2.5 py-0.5 text-[5pt] font-bold text-slate-600 bg-slate-50/80">
+            <div className="flex items-center gap-1 truncate text-left">
+              {iranOffice ? (
+                <span className="truncate">{iranOffice}</span>
+              ) : (
+                <span className="flex items-center gap-1 text-slate-500">
+                  <Globe className="h-2.8 w-2.8 text-blue-600 shrink-0" />
+                  <span>www.skyariana.com</span>
+                  <span className="opacity-40">|</span>
+                  <Mail className="h-2.8 w-2.8 text-blue-600 shrink-0" />
+                  <span>transport@skyariana.com</span>
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0 text-blue-900 font-extrabold text-[5.2pt]">
+              <ShieldCheck className="h-3 w-3 text-blue-600 shrink-0" />
+              <span>OFFICIAL CARRIER DOCUMENT</span>
+              <span className="font-[vazirmatn] text-slate-500 text-[4.8pt] font-semibold" dir="rtl">
+                (سند معتبر حمل و نقل بین‌المللی)
+              </span>
+            </div>
           </div>
         </footer>
       </div>
