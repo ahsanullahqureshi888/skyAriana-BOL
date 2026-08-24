@@ -4522,13 +4522,14 @@
   [data-company-stamp-img="true"] {
     display: block !important;
     visibility: visible !important;
-    height: 65mm !important;
-    max-height: 70mm !important;
+    height: 84mm !important;
+    max-height: 92mm !important;
     width: auto !important;
     max-width: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     image-rendering: -webkit-optimize-contrast !important;
+    filter: contrast(1.1) saturate(1.15) !important;
   }
 
   [data-print-root="true"] *:not([data-bol-watermark="true"]),
