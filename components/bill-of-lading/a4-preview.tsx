@@ -1877,10 +1877,10 @@ export function A4Preview({
       data-bol-a4="true"
       data-pdf-export={pdfMode ? "true" : undefined}
       data-color-strip={includeColorStrip ? "true" : "false"}
-      className="mx-auto flex min-h-[297mm] w-[210mm] max-w-[210mm] flex-col overflow-hidden text-slate-950 shadow-2xl shadow-blue-200/50 ring-1 ring-blue-100 print:m-0 print:p-0 print:h-[297mm] print:min-h-[297mm] print:w-[210mm] print:max-w-none print:shadow-none print:ring-0 relative box-border"
+      className="mx-auto flex min-h-[297mm] w-[210mm] max-w-[210mm] h-[297mm] max-h-[297mm] flex-col overflow-hidden text-slate-950 shadow-2xl shadow-blue-200/50 ring-1 ring-blue-100 print:m-0 print:p-0 print:h-[297mm] print:min-h-[297mm] print:max-h-[297mm] print:w-[210mm] print:max-w-[210mm] print:shadow-none print:ring-0 relative box-border"
       style={pdfMode ? { ...a4ShellStyle, width: "210mm", minHeight: "297mm", height: "297mm", maxHeight: "297mm", overflow: "hidden", boxSizing: "border-box" } : a4ShellStyle}
     >
-      <div data-bol-page="true" className="relative flex h-full flex-col p-[2.5mm] print:p-[2.5mm] gap-[1.5mm] print:gap-[1.2mm] print:overflow-visible box-border">
+      <div data-bol-page="true" className="relative flex h-full flex-col p-[2.5mm] print:p-[2.2mm] gap-[1.2mm] print:gap-[1mm] overflow-hidden box-border">
         {/* Technical Blueprint & Mountain Scenery Background Overlay */}
         {backgroundImageUrl && (
           <div
@@ -1979,7 +1979,7 @@ export function A4Preview({
 
         <main
           data-bol-content="true"
-          className={`mt-0 flex min-h-0 flex-1 flex-col gap-[1.5mm] print:gap-[1.2mm] ${pdfMode ? "overflow-visible" : "overflow-y-auto"}`}
+          className="mt-0 flex min-h-0 flex-1 flex-col gap-[1.5mm] print:gap-[1.2mm] overflow-visible"
         >
           {hasShipmentData && (
             <Section title="Shipment Information" subtitle={labels.shipmentInfoFa} icon={<CalendarDays className="h-4 w-4" />} glass={!pdfMode} printKey="shipment" pdfMode={pdfMode} titleClassName="text-[9.2pt]">

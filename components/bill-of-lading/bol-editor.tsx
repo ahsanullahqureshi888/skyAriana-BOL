@@ -3239,89 +3239,70 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     }
   }
 
+  const handleDirectPrint = () => {
+    if (typeof window !== "undefined" && typeof window.print === "function") {
+      const previewEl = document.getElementById("bol-print-preview")
+      if (previewEl) {
+        previewEl.setAttribute("data-print-quality", "standard")
+        previewEl.setAttribute("data-color-strip", "true")
+        previewEl.setAttribute("data-fit-to-page", "true")
+      }
+      window.print()
+    }
+  }
+
   const handlePrint = async (options: PrintOptions) => {
     try {
       setIsSaving(true)
       setActivePrintOptions(options)
 
+      if (options.quality !== "high-quality") {
+        if (typeof window !== "undefined" && typeof window.print === "function") {
+          const previewEl = document.getElementById("bol-print-preview")
+          if (previewEl) {
+            previewEl.setAttribute("data-print-quality", options.quality)
+            previewEl.setAttribute("data-color-strip", options.includeColorStrip ? "true" : "false")
+            previewEl.setAttribute("data-fit-to-page", options.fitToPage ? "true" : "false")
+          }
+          window.print()
+          setIsSaving(false)
+          return
+        }
+      }
+
       const toastId = toast.loading("Opening print preview...", {
-        description: `Preparing BOL layout (${options.quality} quality, ${options.copies} ${options.copies === 1 ? "copy" : "copies"})...`,
+        description: `Preparing BOL layout (${options.quality} quality)...`,
       })
 
-      if (options.quality === "high-quality") {
-        const fileName = `${bolNumber || "BOL"}.pdf`
-        const printWindow = openPDFPrintWindow(fileName)
+      const fileName = `${bolNumber || "BOL"}.pdf`
+      const printWindow = openPDFPrintWindow(fileName)
 
-        const previewElement = document.querySelector('[data-pdf-export="true"]') as HTMLElement | null
-        const pdfBlob = await generateBOLPDFBlob({
-          fileName,
-          previewElement,
-          modern: {
-            bolNumber: bolNumber || "BOL",
-            issueDate,
-            persianDateNumeric,
-            formData,
-            logoUrl,
-            companyName,
-            companyNamePersian,
-            companySubtitle,
-            companyPhone,
-            companyEmail,
-            companyAddress,
-            companyLicence,
-            onProgress: (progress, message) => {
-              toast.loading(`${message} (${Math.round(progress)}%)`, {
-                id: toastId,
-                description: `Building high-quality PDF print preview...`,
-              })
-            },
-          },
-          onFallback: (reason) => {
-            toast.warning("Using compatibility PDF mode", {
-              description: reason,
-            })
-          },
-        })
-        const printed = await printPDFBlobInWindow(pdfBlob, fileName, printWindow)
-
-        if (printed) {
-          toast.success("High-quality PDF print preview opened", {
-            id: toastId,
-            description: `Review and click Print in the preview window (${options.copies} ${options.copies === 1 ? "copy" : "copies"}).`,
-          })
-        } else {
-          toast.error("Failed to open print PDF window", {
-            id: toastId,
-          })
-        }
-        setIsSaving(false)
-        return
-      }
-
-      if (typeof window !== "undefined" && typeof window.print === "function") {
-        const previewEl = document.getElementById("bol-print-preview")
-        if (previewEl) {
-          previewEl.setAttribute("data-print-quality", options.quality)
-          previewEl.setAttribute("data-color-strip", options.includeColorStrip ? "true" : "false")
-          previewEl.setAttribute("data-fit-to-page", options.fitToPage ? "true" : "false")
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 80))
-        window.print()
-
-        const copyText = options.copies > 1 ? ` (${options.copies} copies requested)` : ""
-        toast.success("Print preview opened", {
-          id: toastId,
-          description: `Use your browser print dialog to complete printing${copyText}.`,
-        })
-        setIsSaving(false)
-        return
-      }
+      const previewElement = document.querySelector('[data-pdf-export="true"]') as HTMLElement | null
+      const pdfBlob = await generateBOLPDFBlob({
+        fileName,
+        previewElement,
+        modern: {
+          bolNumber: bolNumber || "BOL",
+          issueDate,
+          persianDateNumeric,
+          formData,
+          logoUrl,
+          companyName,
+          companyNamePersian,
+          companySubtitle,
+          companyPhone,
+          companyEmail,
+          companyAddress,
+          companyLicence,
+        },
+      })
+      await printPDFBlobInWindow(pdfBlob, fileName, printWindow)
+      toast.dismiss(toastId)
     } catch (error) {
       console.error("Error preparing print:", error)
-      toast.error("Error preparing print", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-      })
+      if (typeof window !== "undefined" && typeof window.print === "function") {
+        window.print()
+      }
     } finally {
       setIsSaving(false)
     }
@@ -3447,7 +3428,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p" && !e.shiftKey) {
         e.preventDefault()
-        setIsPrintDialogOpen(true)
+        handleDirectPrint()
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "n") {
         e.preventDefault()
@@ -3546,10 +3527,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => setIsPrintDialogOpen(true)}
+              onClick={handleDirectPrint}
               disabled={isSaving}
               className="h-8 rounded-2xl border-white/60 bg-white/80 px-2.5 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm disabled:opacity-50 shrink-0 cursor-pointer"
-              title="Print & PDF (Ctrl + P)"
+              title="Instant Print (Ctrl + P)"
             >
               <Printer className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1" />
               <span>Print</span>
@@ -7842,8 +7823,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => setIsPrintDialogOpen(true)}
+                  onClick={handleDirectPrint}
                   className="h-8.5 rounded-xl border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-xs shadow-xs cursor-pointer"
+                  title="Instant Print (Ctrl + P)"
                 >
                   <Printer className="h-3.5 w-3.5 mr-1 text-slate-600" />
                   Print
@@ -7851,7 +7833,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               </div>
             </div>
 
-            <div className="overflow-x-auto max-w-full flex justify-center rounded-2xl sm:rounded-[30px] border border-white/80 bg-linear-to-br from-white/70 via-blue-50/45 to-cyan-50/30 p-1 sm:p-6 shadow-2xl shadow-blue-200/45 backdrop-blur-2xl ring-1 ring-blue-100/60 print:hidden">
+            <div className="overflow-x-auto max-w-full flex justify-center rounded-2xl sm:rounded-[30px] border border-white/80 bg-linear-to-br from-white/70 via-blue-50/45 to-cyan-50/30 p-1 sm:p-6 shadow-2xl shadow-blue-200/45 backdrop-blur-2xl ring-1 ring-blue-100/60 print:hidden scrollbar-none">
               <div className="w-full max-w-[210mm] min-w-[210mm] transform-gpu transition-all origin-top scale-[0.50] xs:scale-[0.62] sm:scale-[0.85] md:scale-100 mb-[-120mm] xs:mb-[-90mm] sm:mb-[-25mm] md:mb-0">
                 <A4Preview
                   bolNumber={bolNumber}

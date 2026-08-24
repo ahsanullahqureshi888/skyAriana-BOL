@@ -4379,21 +4379,15 @@
 
 @page {
   size: A4 portrait !important;
-  margin-top: 0.15in !important;
-  margin-left: 0.15in !important;
-  margin-right: 0.15in !important;
-  margin-bottom: 0in !important;
+  margin: 0 !important;
 }
 
 /* Print styles for Bill of Lading, Invoices, and Ledgers */
 @media print {
-  /* 1. Standard A4 Portrait setup for Bill of Lading & Invoices (Default 0.15" top/left/right, 0" bottom) */
+  /* 1. Standard A4 Portrait setup for Bill of Lading & Invoices - Margin 0 for 100% 1-page guarantee */
   @page {
     size: A4 portrait !important;
-    margin-top: 0.15in !important;
-    margin-left: 0.15in !important;
-    margin-right: 0.15in !important;
-    margin-bottom: 0in !important;
+    margin: 0 !important;
   }
 
   /* 1b. Dedicated A4 Landscape setup for Account Ledger printing */
@@ -4410,11 +4404,11 @@
   html, body {
     height: 100% !important;
     min-height: 100% !important;
-    max-height: none !important;
+    max-height: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     position: static !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     background: #ffffff !important;
   }
 
@@ -4455,28 +4449,30 @@
     visibility: visible !important;
     opacity: 1 !important;
     position: static !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
     margin: 0 auto !important;
     padding: 0 !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     background: #ffffff !important;
     box-shadow: none !important;
+    page-break-inside: avoid !important;
     page-break-before: avoid !important;
     page-break-after: avoid !important;
+    break-inside: avoid !important;
     break-before: avoid !important;
     break-after: avoid !important;
   }
 
   [data-bol-a4="true"] {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-height: calc(297mm - 0.15in) !important;
-    height: calc(297mm - 0.15in) !important;
-    max-height: calc(297mm - 0.15in) !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
     margin: 0 auto !important;
     padding: 0 !important;
     box-sizing: border-box !important;
@@ -4491,6 +4487,30 @@
     border: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  [data-bol-page="true"] {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    box-sizing: border-box !important;
+    padding: 2.2mm 2.5mm !important;
+    gap: 1mm !important;
+    overflow: hidden !important;
+  }
+
+  [data-bol-content="true"] {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    gap: 1mm !important;
+  }
+
+  [data-bol-footer="true"] {
+    margin-top: auto !important;
+    shrink: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   [data-print-root="true"] *:not([data-bol-watermark="true"]),
@@ -5693,5 +5713,18 @@
     image-rendering: -webkit-optimize-contrast !important;
     image-rendering: high-quality !important;
   }
+}
+
+/* Scrollbar hiding utilities */
+.scrollbar-none,
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
