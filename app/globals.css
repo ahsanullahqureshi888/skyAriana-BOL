@@ -4494,8 +4494,8 @@
     height: 100% !important;
     max-height: 100% !important;
     box-sizing: border-box !important;
-    padding: 2.2mm 2.5mm !important;
-    gap: 1mm !important;
+    padding: 1.8mm 2mm !important;
+    gap: 0.6mm !important;
     overflow: hidden !important;
   }
 
@@ -4503,7 +4503,7 @@
     flex: 1 1 auto !important;
     min-height: 0 !important;
     overflow: hidden !important;
-    gap: 1mm !important;
+    gap: 0.6mm !important;
   }
 
   [data-bol-footer="true"] {

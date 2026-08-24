@@ -499,21 +499,21 @@ function Section({
       {...(pdfMode ? { 'data-no-break': true } : {})}
       className={`overflow-hidden rounded-xl border ${pdfMode ? 'border-blue-200/90 bg-white' : 'shadow-md shadow-blue-100/70 border-blue-200/80 bg-white/92 backdrop-blur-xs'}`}
     >
-      <div className="flex items-center justify-between px-2.5 py-1 text-white" style={blueBarStyle}>
+      <div className="flex items-center justify-between px-2.5 py-0.6 text-white" style={blueBarStyle}>
         <div className="flex items-center gap-1.5">
           {icon}
           {/* Force English title to render left-to-right so mixed-language headers don't flip */}
-          <h3 dir="ltr" className={`${titleClassName || 'text-[9.2pt]'} font-black uppercase leading-none tracking-wide`}>
+          <h3 dir="ltr" className={`${titleClassName || 'text-[8.5pt]'} font-black uppercase leading-none tracking-wide`}>
             {title}
           </h3>
         </div>
         {subtitle && (
-          <p className="persian-text bol-persian-text font-[vazirmatn] text-[9.2pt] font-bold leading-none" dir="rtl">
+          <p className="persian-text bol-persian-text font-[vazirmatn] text-[8.5pt] font-bold leading-none" dir="rtl">
             {subtitle}
           </p>
         )}
       </div>
-      <div className="p-1.5">{children}</div>
+      <div className="p-1">{children}</div>
     </section>
   )
 }
@@ -609,7 +609,7 @@ function DetailCard({
     <div
       dir={forceLTR ? "ltr" : rightAligned ? "rtl" : "ltr"}
       {...(pdfMode ? { 'data-no-break': true } : {})}
-        className={`min-h-[7.5mm] rounded-lg border px-2 py-1 ${pdfMode ? '' : 'shadow-xs shadow-blue-100/60'} ${
+        className={`min-h-[7mm] rounded-lg border px-1.5 py-0.8 ${pdfMode ? '' : 'shadow-xs shadow-blue-100/60'} ${
         isRedHighlight
           ? "border-red-200 bg-red-50/80"
           : isBlueHighlight
@@ -1055,8 +1055,8 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
       style={{
         background: "linear-gradient(145deg, #ffffff 0%, #f8faff 50%, #eff6ff 100%)",
         border: "1.5px solid #bfdbfe",
-        borderRadius: "12px",
-        padding: "6px 8px",
+        borderRadius: "10px",
+        padding: "4px 6px",
         boxShadow: "0 2px 10px rgba(37, 99, 235, 0.05)",
       }}
       aria-label="Route and transportation path timeline"
@@ -1084,9 +1084,9 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
                     : "border-1.5 border-blue-300/90 bg-linear-to-b from-blue-50/60 via-white to-blue-50/20 shadow-2xs shadow-blue-100/60"
                 }`}
                 style={{
-                  borderRadius: "10px",
-                  padding: "5px 4px",
-                  minHeight: "82px",
+                  borderRadius: "8px",
+                  padding: "4px 3px",
+                  minHeight: "68px",
                 }}
               >
                 {/* Top Accent Strip */}
@@ -1095,7 +1095,7 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
                 }`} />
 
                 {/* Header 2-Tone Capsule Badge */}
-                <div className="flex items-center justify-center mt-0.5 mb-1 px-0.5">
+                <div className="flex items-center justify-center mt-0.5 mb-0.5 px-0.5">
                   <div className="inline-flex items-center rounded-full border shadow-2xs overflow-hidden max-w-full text-[5.2pt] font-black tracking-tight uppercase">
                     {/* Stop Type */}
                     <span className={`px-1.5 py-0.2 text-white shrink-0 ${
@@ -1118,8 +1118,8 @@ function RouteTimeline({ routes, glass = false }: { routes: BillOfLadingFormData
                 </div>
 
                 {/* City & Location Name (Vertically Balanced with Zero Cut-off) */}
-                <div className="flex-1 flex flex-col justify-center px-0.5 my-auto min-h-[38px] space-y-0.5">
-                  <div className="text-[8pt] font-black text-slate-950 leading-tight break-words line-clamp-2 tracking-tight">
+                <div className="flex-1 flex flex-col justify-center px-0.5 my-auto min-h-[30px] space-y-0.5">
+                  <div className="text-[7.8pt] font-black text-slate-950 leading-tight break-words line-clamp-2 tracking-tight">
                     <span>{formattedLoc.primaryName}</span>
                     {formattedLoc.codeBadge && (
                       <span className="ml-1 inline-block rounded bg-amber-100 text-amber-950 font-mono text-[5.8pt] px-1 py-0.2 font-black border border-amber-300 align-middle">
@@ -1503,51 +1503,51 @@ function CargoOverview({
         <div className="grid grid-cols-4 gap-1">
           {/* 1. NO. OF PACKAGES */}
           <div
-            className={`rounded-xl border px-2 py-1 text-center flex flex-col justify-between ${
+            className={`rounded-xl border px-1.5 py-0.8 text-center flex flex-col justify-between ${
               pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white/95 shadow-2xs shadow-blue-100/50"
             }`}
           >
             <div className="border-b border-blue-100/80 pb-0.5 mb-0.5">
-              <div className="text-[7.2pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
+              <div className="text-[7pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
                 NO. OF PACKAGES
               </div>
-              <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
+              <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
                 {labels.packagesFa || "تعداد بسته"}
               </div>
             </div>
-            <div className="flex-1 flex flex-col items-center justify-center min-h-[24px] py-0.5">
-              {formatMultiCargoValue(formData.number_of_packages, "text-[9pt] text-slate-950")}
+            <div className="flex-1 flex flex-col items-center justify-center min-h-[20px] py-0.5">
+              {formatMultiCargoValue(formData.number_of_packages, "text-[8.5pt] text-slate-950")}
             </div>
           </div>
 
           {/* 2. WEIGHT PER CARTON */}
           <div
-            className={`rounded-xl border px-2 py-1 text-center flex flex-col justify-between ${
+            className={`rounded-xl border px-1.5 py-0.8 text-center flex flex-col justify-between ${
               pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white/95 shadow-2xs shadow-blue-100/50"
             }`}
           >
             <div className="border-b border-blue-100/80 pb-0.5 mb-0.5">
-              <div className="text-[7.2pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
+              <div className="text-[7pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
                 WT / CARTON
               </div>
-              <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
+              <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
                 وزن خالص و ناخالص فی کارتن
               </div>
             </div>
             <div className="flex-1 flex flex-col justify-center space-y-0.5 text-left py-0.5">
               {hasNetCtn && (
                 <div className="flex flex-col gap-0 text-blue-950">
-                  <span className="text-[6.2pt] font-black text-blue-700 uppercase tracking-wide">NET / CTN:</span>
+                  <span className="text-[5.8pt] font-black text-blue-700 uppercase tracking-wide">NET / CTN:</span>
                   <div className="break-words">
-                    {formatMultiCargoValue(formData.kgs_per_carton, "text-[8.5pt] text-blue-950")}
+                    {formatMultiCargoValue(formData.kgs_per_carton, "text-[8pt] text-blue-950")}
                   </div>
                 </div>
               )}
               {hasGrossCtn && (
                 <div className="flex flex-col gap-0 text-slate-900 border-t border-slate-100 pt-0.5">
-                  <span className="text-[6.2pt] font-black text-slate-600 uppercase tracking-wide">GROSS / CTN:</span>
+                  <span className="text-[5.8pt] font-black text-slate-600 uppercase tracking-wide">GROSS / CTN:</span>
                   <div className="break-words">
-                    {formatMultiCargoValue(formData.gross_weight_per_carton, "text-[8.5pt] text-slate-900")}
+                    {formatMultiCargoValue(formData.gross_weight_per_carton, "text-[8pt] text-slate-900")}
                   </div>
                 </div>
               )}
@@ -1557,32 +1557,32 @@ function CargoOverview({
 
           {/* 3. TOTAL WEIGHTS */}
           <div
-            className={`rounded-xl border px-2 py-1 text-center flex flex-col justify-between ${
+            className={`rounded-xl border px-1.5 py-0.8 text-center flex flex-col justify-between ${
               pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white/95 shadow-2xs shadow-blue-100/50"
             }`}
           >
             <div className="border-b border-blue-100/80 pb-0.5 mb-0.5">
-              <div className="text-[7.2pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
+              <div className="text-[7pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
                 TOTAL WEIGHTS
               </div>
-              <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
+              <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
                 وزن کل خالص و ناخالص
               </div>
             </div>
             <div className="flex-1 flex flex-col justify-center space-y-0.5 text-left py-0.5">
               {hasNetWeight && (
                 <div className="flex flex-col gap-0 text-blue-950">
-                  <span className="text-[6.2pt] font-black text-blue-700 uppercase tracking-wide">NET WT:</span>
+                  <span className="text-[5.8pt] font-black text-blue-700 uppercase tracking-wide">NET WT:</span>
                   <div className="break-words">
-                    {formatMultiCargoValue(formData.net_weight, "text-[8.5pt] text-blue-950")}
+                    {formatMultiCargoValue(formData.net_weight, "text-[8pt] text-blue-950")}
                   </div>
                 </div>
               )}
               {hasGrossWeight && (
                 <div className="flex flex-col gap-0 text-slate-900 border-t border-slate-100 pt-0.5">
-                  <span className="text-[6.2pt] font-black text-slate-600 uppercase tracking-wide">GROSS WT:</span>
+                  <span className="text-[5.8pt] font-black text-slate-600 uppercase tracking-wide">GROSS WT:</span>
                   <div className="break-words">
-                    {formatMultiCargoValue(formData.gross_weight, "text-[8.5pt] text-slate-900")}
+                    {formatMultiCargoValue(formData.gross_weight, "text-[8pt] text-slate-900")}
                   </div>
                 </div>
               )}
@@ -1592,32 +1592,32 @@ function CargoOverview({
 
           {/* 4. RATE & GOODS VALUE */}
           <div
-            className={`rounded-xl border px-2 py-1 text-center flex flex-col justify-between ${
+            className={`rounded-xl border px-1.5 py-0.8 text-center flex flex-col justify-between ${
               pdfMode ? "border-blue-200 bg-white" : "border-blue-200/90 bg-white/95 shadow-2xs shadow-blue-100/50"
             }`}
           >
             <div className="border-b border-blue-100/80 pb-0.5 mb-0.5">
-              <div className="text-[7.2pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
-                RATE &amp; GOODS VALUE
+              <div className="text-[7pt] font-black uppercase tracking-wider text-blue-800 leading-tight">
+                RATE & GOODS VALUE
               </div>
-              <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
+              <div className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
                 نرخ و ارزش کالا
               </div>
             </div>
             <div className="flex-1 flex flex-col justify-center space-y-0.5 text-left py-0.5">
               {hasRate && (
                 <div className="flex flex-col gap-0 text-slate-800">
-                  <span className="text-[6.2pt] font-black text-slate-600 uppercase tracking-wide">RATE / KG:</span>
+                  <span className="text-[5.8pt] font-black text-slate-600 uppercase tracking-wide">RATE / KG:</span>
                   <div className="break-words">
-                    {formatMultiCargoValue(formData.rate_per_kgs, "text-[8.5pt] text-slate-900")}
+                    {formatMultiCargoValue(formData.rate_per_kgs, "text-[8pt] text-slate-900")}
                   </div>
                 </div>
               )}
               {hasGoodsValue && (
                 <div className="flex flex-col gap-0 text-emerald-950 border-t border-slate-100 pt-0.5">
-                  <span className="text-[6.2pt] font-black text-emerald-700 uppercase tracking-wide">GOODS VALUE:</span>
+                  <span className="text-[5.8pt] font-black text-emerald-700 uppercase tracking-wide">GOODS VALUE:</span>
                   <div className="break-words">
-                    {formatMultiCargoValue(formData.goods_value, "text-[8.5pt] text-emerald-900")}
+                    {formatMultiCargoValue(formData.goods_value, "text-[8pt] text-emerald-900")}
                   </div>
                 </div>
               )}
@@ -1880,7 +1880,7 @@ export function A4Preview({
       className="mx-auto flex min-h-[297mm] w-[210mm] max-w-[210mm] h-[297mm] max-h-[297mm] flex-col overflow-hidden text-slate-950 shadow-2xl shadow-blue-200/50 ring-1 ring-blue-100 print:m-0 print:p-0 print:h-[297mm] print:min-h-[297mm] print:max-h-[297mm] print:w-[210mm] print:max-w-[210mm] print:shadow-none print:ring-0 relative box-border"
       style={pdfMode ? { ...a4ShellStyle, width: "210mm", minHeight: "297mm", height: "297mm", maxHeight: "297mm", overflow: "hidden", boxSizing: "border-box" } : a4ShellStyle}
     >
-      <div data-bol-page="true" className="relative flex h-full flex-col p-[2.5mm] print:p-[2.2mm] gap-[1.2mm] print:gap-[1mm] overflow-hidden box-border">
+      <div data-bol-page="true" className="relative flex h-full flex-col p-[2mm] print:p-[1.8mm] gap-[0.8mm] print:gap-[0.6mm] overflow-hidden box-border">
         {/* Technical Blueprint & Mountain Scenery Background Overlay */}
         {backgroundImageUrl && (
           <div
@@ -1979,7 +1979,7 @@ export function A4Preview({
 
         <main
           data-bol-content="true"
-          className="mt-0 flex min-h-0 flex-1 flex-col gap-[1.5mm] print:gap-[1.2mm] overflow-visible"
+          className="mt-0 flex min-h-0 flex-1 flex-col gap-[0.8mm] print:gap-[0.6mm] overflow-visible"
         >
           {hasShipmentData && (
             <Section title="Shipment Information" subtitle={labels.shipmentInfoFa} icon={<CalendarDays className="h-4 w-4" />} glass={!pdfMode} printKey="shipment" pdfMode={pdfMode} titleClassName="text-[9.2pt]">
@@ -2157,7 +2157,7 @@ export function A4Preview({
             {/* Right side: Authorized Signature & Official Seal Block (NO ENCLOSING BOX) */}
             <div className="relative flex flex-col items-center justify-center min-w-[68mm] max-w-[82mm] text-center">
               {/* Official Stamp & Signature Overlay - Rendered 2X BIGGER ON TOP without a box */}
-              <div className="relative w-full h-[32mm] flex items-center justify-center">
+              <div className="relative w-full h-[26mm] flex items-center justify-center">
                 {isStampActive ? (
                   <div
                     className="absolute -top-7 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10"
@@ -2167,7 +2167,7 @@ export function A4Preview({
                     <img
                       src={stampImageSrc || COMPANY_STAMP_SIGNATURE_SRC}
                       alt="Sky Ariana Limited Official Stamp & Signature"
-                      className="h-[56mm] w-auto max-w-none object-contain drop-shadow-md transform -rotate-2"
+                      className="h-[52mm] w-auto max-w-none object-contain drop-shadow-md transform -rotate-2"
                       crossOrigin="anonymous"
                       onError={(e) => {
                         const target = e.currentTarget
@@ -2200,12 +2200,12 @@ export function A4Preview({
 
         <footer
           data-bol-footer="true"
-          className={`mt-1 overflow-hidden rounded-xl border text-center shadow-sm shadow-blue-100/70 ${
+          className={`mt-0.5 overflow-hidden rounded-xl border text-center shadow-sm shadow-blue-100/70 ${
             pdfMode ? "border-blue-200 bg-white" : "border-blue-200/80 bg-white"
           }`}
           data-no-break
         >
-          <div className="px-2 py-0.8 text-white" style={blueBarStyle}>
+          <div className="px-2 py-0.6 text-white" style={blueBarStyle}>
             <p className="text-[5.2pt] font-black uppercase leading-tight">
               {companyTitle} - {companyTagline}
               {companyFooter && ` | ${companyFooter}`}
