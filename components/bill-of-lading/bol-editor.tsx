@@ -3450,7 +3450,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   return (
     <div className="min-h-screen bg-transparent print:min-h-0 print:bg-white print:overflow-visible">
       {/* Action Bar - Mobile & Desktop sticky beneath header */}
-      <div className="sticky top-[61px] z-30 border-b border-white/50/70 bg-white/95 px-2.5 py-2 shadow-md shadow-blue-900/5 backdrop-blur-xl md:px-4 md:py-2.5 print:hidden">
+      <div className="sticky top-[61px] z-30 border-b border-slate-200/80 bg-white/95 px-2.5 py-2 shadow-md shadow-blue-900/5 backdrop-blur-xl md:px-4 md:py-2.5 print:hidden">
         <div className="max-w-7xl mx-auto flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           {/* Header Info */}
           <div className="flex items-center justify-between gap-2">
