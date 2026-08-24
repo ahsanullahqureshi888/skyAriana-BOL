@@ -4519,17 +4519,21 @@
     break-inside: avoid !important;
   }
 
-  [data-company-stamp-img="true"] {
+  [data-company-stamp-img="true"],
+  img[data-company-stamp-img="true"],
+  [data-print-root="true"] img[data-company-stamp-img="true"],
+  [data-pdf-export="true"] img[data-company-stamp-img="true"] {
     display: block !important;
     visibility: visible !important;
-    height: 84mm !important;
-    max-height: 92mm !important;
+    height: 48mm !important;
+    max-height: 50mm !important;
+    min-height: 48mm !important;
     width: auto !important;
-    max-width: none !important;
+    max-width: 76mm !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     image-rendering: -webkit-optimize-contrast !important;
-    filter: contrast(1.1) saturate(1.15) !important;
+    filter: contrast(1.05) saturate(1.1) !important;
   }
 
   [data-print-root="true"] *:not([data-bol-watermark="true"]),
@@ -4888,7 +4892,7 @@
     height: auto !important;
   }
 
-  [data-print-root="true"] img:not(.logo),
+  [data-print-root="true"] img:not(.logo):not([data-company-stamp-img="true"]),
   img.print-logo,
   .print-logo {
     max-width: 130px !important;

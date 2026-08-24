@@ -2155,20 +2155,20 @@ export function A4Preview({
             </div>
 
             {/* Right side: Authorized Signature & Official Seal Block (NO ENCLOSING BOX) */}
-            <div className="relative flex flex-col items-center justify-center min-w-[78mm] max-w-[96mm] text-center">
-              {/* Official Stamp & Signature Overlay - BIGGER, SHARPER, AND CENTERED ON BASELINE */}
-              <div className="relative w-full h-[30mm] print:h-[34mm] flex items-center justify-center">
+            <div className="relative flex flex-col items-center justify-center min-w-[65mm] max-w-[78mm] text-center">
+              {/* Official Stamp & Signature Overlay - Balanced size identical in A4 preview and print */}
+              <div className="relative w-full h-[25mm] flex items-center justify-center">
                 {isStampActive ? (
                   <div
-                    className="absolute -bottom-3.5 print:-bottom-4.5 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10"
-                    style={{ transform: `scale(${Math.max(1.15, stampScale)})`, transformOrigin: "center bottom" }}
+                    className="absolute -bottom-2 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10"
+                    style={{ transform: `scale(${stampScale})`, transformOrigin: "center bottom" }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       data-company-stamp-img="true"
                       src={stampImageSrc || COMPANY_STAMP_SIGNATURE_SRC}
                       alt="Sky Ariana Limited Official Stamp & Signature"
-                      className="h-[74mm] print:h-[84mm] w-auto max-w-none object-contain drop-shadow-md transform -rotate-1"
+                      className="h-[48mm] max-h-[50mm] w-auto max-w-[76mm] object-contain drop-shadow-sm transform -rotate-1"
                       crossOrigin="anonymous"
                       onError={(e) => {
                         const target = e.currentTarget
@@ -2186,13 +2186,13 @@ export function A4Preview({
               </div>
 
               {/* Clean Signature Baseline Line */}
-              <div className="w-full border-b-2 border-slate-700/80 my-0.5" />
+              <div className="w-full border-b-1.5 border-slate-700/80 my-0.5" />
 
               {/* Authorized Labels */}
-              <p className="text-[7.8pt] font-black text-blue-950 uppercase tracking-tight leading-tight">
+              <p className="text-[7.5pt] font-black text-blue-950 uppercase tracking-tight leading-tight">
                 For & On Behalf of: {companyTitle}
               </p>
-              <p className="persian-text bol-persian-text font-[vazirmatn] text-[7pt] font-extrabold text-blue-900 leading-tight mt-0.2" dir="rtl">
+              <p className="persian-text bol-persian-text font-[vazirmatn] text-[6.8pt] font-extrabold text-blue-900 leading-tight mt-0.2" dir="rtl">
                 {labels.companyStampSignFa || "مهر و امضای مجاز شرکت"}
               </p>
             </div>
