@@ -39,7 +39,7 @@ import {
   FileSpreadsheet,
   Cloud,
 } from "lucide-react"
-import { generateBOLPDFBlob, savePDFToDevice } from "@/lib/utils/pdf-upload"
+import { generateBOLPDFBlob, savePDFToDevice, buildBolSmartFileName } from "@/lib/utils/pdf-upload"
 import { CloudSyncModal } from "./cloud-sync-modal"
 
 type DocumentCategoryKey = "all" | "latest" | "account" | "export" | "import" | "with-pdf"
@@ -1048,7 +1048,7 @@ function parseBolSeq(bolNum: string): number {
     setTimeout(async () => {
       try {
         const previewElement = document.querySelector('[data-pdf-export="true"]') as HTMLElement | null
-        const fileName = `${doc.bol_number || doc.id}.pdf`
+        const fileName = buildBolSmartFileName(doc, doc.bol_number || doc.id, ".pdf")
         const pdfBlob = await generateBOLPDFBlob({
           fileName,
           previewElement,
@@ -1071,12 +1071,15 @@ function parseBolSeq(bolNum: string): number {
         await savePDFToDevice(pdfBlob, fileName)
         toast.success("PDF Downloaded successfully!", {
           id: "doc-pdf-download",
-          description: `BOL #${doc.bol_number || doc.id} saved to your device.`,
+          description: `${fileName} saved to your device.`,
         })
       } catch (err) {
         console.error("Failed to download PDF:", err)
         toast.error("Download failed, opening print dialog...", { id: "doc-pdf-download" })
+        const prevTitle = document.title
+        document.title = buildBolSmartFileName(doc, doc.bol_number || doc.id, "")
         window.print()
+        setTimeout(() => { document.title = prevTitle }, 2000)
       } finally {
         setDownloadingPdfId(null)
       }

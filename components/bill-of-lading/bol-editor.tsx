@@ -24,6 +24,7 @@ import {
   savePDFToDevice,
   openPDFPrintWindow,
   printPDFBlobInWindow,
+  buildBolSmartFileName,
 } from "@/lib/utils/pdf-upload"
 import { SavedDocuments } from "./saved-documents"
 import { LedgerView } from "@/components/ledger-view"
@@ -3243,6 +3244,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
   const handleDirectPrint = () => {
     if (typeof window !== "undefined" && typeof window.print === "function") {
+      const smartTitle = buildBolSmartFileName(formData, bolNumber, "")
+      const prevTitle = document.title
+      document.title = smartTitle
       const previewEl = document.getElementById("bol-print-preview")
       if (previewEl) {
         previewEl.setAttribute("data-print-quality", "standard")
@@ -3250,6 +3254,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         previewEl.setAttribute("data-fit-to-page", "true")
       }
       window.print()
+      setTimeout(() => { document.title = prevTitle }, 2500)
     }
   }
 
@@ -3258,8 +3263,13 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       setIsSaving(true)
       setActivePrintOptions(options)
 
+      const smartTitle = buildBolSmartFileName(formData, bolNumber, "")
+      const fileName = buildBolSmartFileName(formData, bolNumber, ".pdf")
+
       if (options.quality !== "high-quality") {
         if (typeof window !== "undefined" && typeof window.print === "function") {
+          const prevTitle = document.title
+          document.title = smartTitle
           const previewEl = document.getElementById("bol-print-preview")
           if (previewEl) {
             previewEl.setAttribute("data-print-quality", options.quality)
@@ -3267,6 +3277,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             previewEl.setAttribute("data-fit-to-page", options.fitToPage ? "true" : "false")
           }
           window.print()
+          setTimeout(() => { document.title = prevTitle }, 2500)
           setIsSaving(false)
           return
         }
@@ -3276,7 +3287,6 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         description: `Preparing BOL layout (${options.quality} quality)...`,
       })
 
-      const fileName = `${bolNumber || "BOL"}.pdf`
       const printWindow = openPDFPrintWindow(fileName)
 
       const previewElement = document.querySelector('[data-pdf-export="true"]') as HTMLElement | null
@@ -3317,7 +3327,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         description: "Please wait, this may take a moment...",
       })
 
-      const fileName = `${bolNumber || "BOL"}.pdf`
+      const fileName = buildBolSmartFileName(formData, bolNumber, ".pdf")
       const previewElement = document.querySelector('[data-pdf-export="true"]') as HTMLElement | null
       const pdfBlob = await generateBOLPDFBlob({
         fileName,
@@ -3353,7 +3363,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       if (saved.success) {
         toast.success("PDF saved locally", {
           id: toastId,
-          description: saved.path || `${bolNumber}.pdf has been saved to your device`,
+          description: saved.path || `${fileName} has been saved to your device`,
         })
       } else {
         toast.error("Failed to save PDF locally", {

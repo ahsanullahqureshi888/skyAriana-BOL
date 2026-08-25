@@ -1432,6 +1432,56 @@ export async function downloadPDFFromServer(
 }
 
 /**
+ * Automatically builds a rich document and file name from the BOL data following the user's specification:
+ * [Consignee Name] - [Quantity] - [Inv No] - [Shipper Name] - [BOL Number]
+ */
+export function buildBolSmartFileName(
+  docOrFormData: any,
+  fallbackBolNumber: string = "BOL",
+  extension: string = ".pdf"
+): string {
+  if (!docOrFormData) {
+    const cleanFallback = (fallbackBolNumber || "BOL").trim()
+    return extension ? (cleanFallback.endsWith(extension) ? cleanFallback : `${cleanFallback}${extension}`) : cleanFallback
+  }
+
+  const consignee = (docOrFormData.consignee_name || docOrFormData.consignee || "").trim()
+  const quantity = (docOrFormData.number_of_packages || docOrFormData.quantity || "").trim()
+  const shipper = (docOrFormData.shipper_name || docOrFormData.shipperDescription || docOrFormData.shipper || "").trim()
+  const bolNumber = (docOrFormData.bol_number || docOrFormData.barnamehNo || docOrFormData.bolNo || fallbackBolNumber || "").trim()
+  const cargoDesc = (docOrFormData.cargo_description || "").trim()
+
+  // Parse Invoice No
+  let invNo = (docOrFormData.invoiceNo || "").trim()
+  if (!invNo && cargoDesc) {
+    const match = cargoDesc.match(/(?:Invoice\s*No|Invoice\s*#|INV\s*NO|IN\s*NO|Invoice)\s*[:#-]?\s*([A-Z0-9/_-]+)/i)
+    if (match && match[1]) {
+      const parsed = match[1].trim()
+      if (parsed.length < 25) {
+        invNo = /^INV|^IN/i.test(parsed) ? parsed.toUpperCase() : `INV-${parsed.toUpperCase()}`
+      }
+    }
+  }
+
+  // Construct components in exact order: Consignee -> Quantity -> Inv No -> Shipper -> BOL
+  const parts: string[] = []
+  if (consignee) parts.push(consignee)
+  if (quantity) parts.push(quantity)
+  if (invNo) parts.push(invNo)
+  if (shipper) parts.push(shipper)
+  if (bolNumber) parts.push(bolNumber)
+
+  if (parts.length === 0) {
+    const cleanFallback = (fallbackBolNumber || "BOL").trim()
+    return extension ? (cleanFallback.endsWith(extension) ? cleanFallback : `${cleanFallback}${extension}`) : cleanFallback
+  }
+
+  // Clean invalid file system characters: / \ : * ? " < > |
+  const rawFileName = parts.join(" - ").replace(/[/\\:*?"<>|]/g, "_").replace(/\s+/g, " ").trim()
+  return extension ? (rawFileName.endsWith(extension) ? rawFileName : `${rawFileName}${extension}`) : rawFileName
+}
+
+/**
  * Save a PDF blob as a file on the user's device
  */
 export async function savePDFToDevice(
