@@ -1,6 +1,11 @@
 packages:
   - '.'
   - 'bol-ledger'
+allowBuilds:
+  esbuild: true
+  core-js: true
+  sharp: true
+  better-sqlite3: true
 onlyBuiltDependencies:
   - core-js
   - esbuild
