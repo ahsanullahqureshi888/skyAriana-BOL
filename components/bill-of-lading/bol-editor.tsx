@@ -3820,12 +3820,11 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   Jump:
                 </span>
                 {[
-                  { id: "section-doc", label: "01 Doc", icon: Calendar },
+                  { id: "section-doc", label: "01 Doc & Truck", icon: Calendar },
                   { id: "section-shipper", label: "02 Shipper", icon: User },
                   { id: "section-consignee", label: "03 Consignee", icon: User },
                   { id: "section-notify", label: "04 Notify", icon: Bell },
                   { id: "section-cargo", label: "05 Cargo", icon: Package },
-                  { id: "section-truck", label: "06 Truck", icon: Truck },
                   { id: "section-routes", label: "07 Routes", icon: MapPin },
                   { id: "section-container", label: "08 Container", icon: Box },
                   { id: "section-shipping", label: "09 Shipping", icon: Ship },
@@ -4087,6 +4086,137 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   </div>
                 </div>
                 
+                {/* Truck & Driver Details Subsection */}
+                <div className="rounded-2xl border border-sky-200/90 bg-linear-to-br from-sky-50/70 via-blue-50/30 to-white p-4 sm:p-5 shadow-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 rounded-xl bg-blue-600 text-white shadow-xs">
+                        <Truck className="w-4 h-4" />
+                      </span>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+                          <span>Truck & Driver Details</span>
+                          <span className="text-[10px] font-extrabold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-md border border-blue-200 uppercase">
+                            Transport Vehicle
+                          </span>
+                        </h4>
+                        <span className="text-[11px] text-slate-500 font-medium font-[vazirmatn]">
+                          اطلاعات موتر، راننده، شماره تماس و کرایه توافقی
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {["AF-1234-KBL", "AF-5678-KDR", "IR-4421-THR", "IR-8890-BND"].map((plate) => (
+                        <button
+                          key={plate}
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev) => ({ ...prev, truck_number: plate }))
+                            toast.success(`Set Truck No: ${plate}`)
+                          }}
+                          className="hidden sm:inline-flex rounded-lg border border-sky-200 bg-white/90 px-2 py-0.5 text-[10px] font-mono font-bold text-slate-700 hover:bg-sky-600 hover:text-white transition cursor-pointer"
+                        >
+                          {plate}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+                    {/* 1. Truck No */}
+                    <div>
+                      <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
+                        <span className="flex items-center gap-1">
+                          <Truck className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Truck No.</span>
+                        </span>
+                        <span className="font-[vazirmatn] text-[11px] font-bold text-blue-800">شماره موتر/کامیون</span>
+                      </label>
+                      <Input
+                        name="truck_number"
+                        value={formData.truck_number}
+                        onChange={handleInputChange}
+                        placeholder="e.g. AF-1234-KBL"
+                        className="rounded-xl h-10 font-mono text-xs sm:text-sm font-black uppercase text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      />
+                    </div>
+
+                    {/* 2. Driver Name */}
+                    <div>
+                      <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
+                        <span className="flex items-center gap-1">
+                          <User className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Driver Name</span>
+                        </span>
+                        <span className="font-[vazirmatn] text-[11px] font-bold text-blue-800">نام راننده</span>
+                      </label>
+                      <Input
+                        name="driver_name"
+                        value={formData.driver_name}
+                        onChange={handleInputChange}
+                        placeholder="Enter driver name..."
+                        className="rounded-xl h-10 text-xs sm:text-sm font-extrabold text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      />
+                    </div>
+
+                    {/* 3. Father Name */}
+                    <div>
+                      <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
+                        <span className="flex items-center gap-1">
+                          <User className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Father Name</span>
+                        </span>
+                        <span className="font-[vazirmatn] text-[11px] font-bold text-blue-800">نام پدر</span>
+                      </label>
+                      <Input
+                        name="driver_father_name"
+                        value={formData.driver_father_name}
+                        onChange={handleInputChange}
+                        placeholder="Father's name..."
+                        className="rounded-xl h-10 text-xs sm:text-sm font-extrabold text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      />
+                    </div>
+
+                    {/* 4. Driver Contact */}
+                    <div>
+                      <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
+                        <span className="flex items-center gap-1">
+                          <Phone className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Driver Contact</span>
+                        </span>
+                        <span className="font-[vazirmatn] text-[11px] font-bold text-blue-800">شماره تماس راننده</span>
+                      </label>
+                      <Input
+                        name="driver_contact"
+                        value={formData.driver_contact}
+                        onChange={handleInputChange}
+                        placeholder="+93 700 123 456"
+                        type="tel"
+                        className="rounded-xl h-10 font-mono text-xs sm:text-sm font-extrabold text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      />
+                    </div>
+
+                    {/* 5. Driver Rent */}
+                    <div>
+                      <label className="mb-1.5 text-xs font-black text-red-700 flex items-center justify-between gap-1">
+                        <span className="flex items-center gap-1">
+                          <Receipt className="w-3.5 h-3.5 text-red-600" />
+                          <span>Driver Rent</span>
+                        </span>
+                        <span className="font-[vazirmatn] text-[11px] font-extrabold text-red-700">کرایه راننده</span>
+                      </label>
+                      <Input
+                        name="driver_rent"
+                        value={formData.driver_rent}
+                        onChange={handleInputChange}
+                        placeholder="e.g., $500"
+                        className="rounded-xl h-10 text-xs sm:text-sm font-black text-red-700 bg-red-50/80 border-red-200 focus:bg-white focus:border-red-500 focus:ring-2 focus:ring-red-500/20 shadow-2xs transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Notes Boxes Section */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
@@ -5758,132 +5888,6 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     rows={4}
                     className="rounded-2xl p-4 text-sm font-semibold leading-relaxed text-slate-950 bg-white border border-slate-200 shadow-inner focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all min-h-32 font-mono"
                   />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 06 Truck Information Card */}
-            <Card id="section-truck" className="bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden">
-              <CardHeader className="pb-4 border-b border-white/50 bg-white/40">
-                <CardTitle className="text-base flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-[11px] font-black shadow-xs">
-                      06
-                    </span>
-                    <div className="p-2 rounded-xl bg-blue-100 text-blue-700 border border-blue-200 shadow-2xs">
-                      <Truck className="h-4.5 w-4.5" />
-                    </div>
-                    <div>
-                      <span className="font-extrabold text-slate-950 text-base tracking-tight select-none">Truck Information</span>
-                      <span className="text-[11px] text-blue-700 font-medium block">Vehicle Registration, Driver Details & Freight Costs</span>
-                    </div>
-                  </div>
-                  <span className="text-xs font-extrabold text-blue-900 font-[vazirmatn] bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                    اطلاعات کامیون و راننده
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-5 pb-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-                  {/* Truck No */}
-                  <div>
-                    <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
-                      <span>Truck No.</span>
-                      <span className="font-[vazirmatn] text-[11px] font-bold text-blue-800">شماره کامیون</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <div className="absolute left-3 text-blue-600 pointer-events-none">
-                        <Truck className="w-4 h-4" />
-                      </div>
-                      <Input
-                        name="truck_number"
-                        value={formData.truck_number}
-                        onChange={handleInputChange}
-                        placeholder="e.g., AF-1234-KBL"
-                        className="pl-9 rounded-xl h-11 font-mono text-sm font-black uppercase text-slate-950 bg-white/60 backdrop-blur-md border-white shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Driver Name */}
-                  <div>
-                    <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
-                      <span>Driver Name</span>
-                      <span className="font-[vazirmatn] text-[11px] font-bold text-blue-800">نام راننده</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <div className="absolute left-3 text-blue-600 pointer-events-none">
-                        <User className="w-4 h-4" />
-                      </div>
-                      <Input
-                        name="driver_name"
-                        value={formData.driver_name}
-                        onChange={handleInputChange}
-                        placeholder="Enter driver name"
-                        className="pl-9 rounded-xl h-11 text-sm font-extrabold text-slate-950 bg-white/60 backdrop-blur-md border-white shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Father Name */}
-                  <div>
-                    <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
-                      <span>Father Name</span>
-                      <span className="font-[vazirmatn] text-[11px] font-bold text-blue-800">نام پدر</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <div className="absolute left-3 text-slate-500 pointer-events-none">
-                        <User className="w-4 h-4" />
-                      </div>
-                      <Input
-                        name="driver_father_name"
-                        value={formData.driver_father_name}
-                        onChange={handleInputChange}
-                        placeholder="Father's name"
-                        className="pl-9 rounded-xl h-11 text-sm font-extrabold text-slate-950 bg-white/60 backdrop-blur-md border-white shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Driver Contact */}
-                  <div>
-                    <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
-                      <span>Driver Contact</span>
-                      <span className="font-[vazirmatn] text-[11px] font-bold text-blue-800">تماس راننده</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <div className="absolute left-3 text-blue-600 pointer-events-none">
-                        <Phone className="w-4 h-4" />
-                      </div>
-                      <Input
-                        name="driver_contact"
-                        value={formData.driver_contact}
-                        onChange={handleInputChange}
-                        placeholder="Phone number"
-                        className="pl-9 rounded-xl h-11 font-mono text-sm font-extrabold text-slate-950 bg-white/60 backdrop-blur-md border-white shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Driver Rent */}
-                  <div>
-                    <label className="mb-1.5 text-xs font-black text-red-700 flex items-center justify-between gap-1">
-                      <span>Driver Rent</span>
-                      <span className="font-[vazirmatn] text-[11px] font-extrabold text-red-700">کرایه راننده</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <div className="absolute left-3 text-red-600 pointer-events-none">
-                        <Receipt className="w-4 h-4" />
-                      </div>
-                      <Input
-                        name="driver_rent"
-                        value={formData.driver_rent}
-                        onChange={handleInputChange}
-                        placeholder="e.g., $500"
-                        className="pl-9 rounded-xl h-11 text-sm font-black text-red-700 bg-red-50/70 border-red-300 focus:bg-white focus:border-red-500 focus:ring-2 focus:ring-red-500/20 shadow-2xs transition-all"
-                      />
-                    </div>
-                  </div>
                 </div>
               </CardContent>
             </Card>
