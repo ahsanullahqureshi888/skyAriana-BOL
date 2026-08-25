@@ -64,7 +64,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-2xl shadow-xs no-print transition-all">
-      <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-2.5">
+      <div className="max-w-[1780px] w-full mx-auto px-3 sm:px-4 py-2 sm:py-2.5">
         <div className="flex items-center justify-between gap-2 sm:gap-3">
           
           {/* Left: Back button, Logo & Title Area */}
