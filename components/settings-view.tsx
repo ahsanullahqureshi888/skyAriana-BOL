@@ -29,7 +29,9 @@ import {
   RotateCcw,
   ZoomIn,
   ShieldCheck,
+  Smartphone,
 } from "lucide-react"
+import { PWAInstallButton } from "@/components/pwa-install-prompt"
 import {
   COMPANY_STAMP_SIGNATURE_SRC,
   COMPANY_STAMP_SIGNATURE_DATA_URL,
@@ -880,6 +882,39 @@ export function SettingsView() {
                 <span>{CURRENT_SYSTEM_VERSION.updateChannel} Channel</span>
               </div>
               <span className="text-[11px] font-bold text-emerald-700">{CURRENT_SYSTEM_VERSION.companyName}</span>
+            </div>
+          </div>
+
+          {/* Mobile & Desktop App Installation */}
+          <div className="p-4 sm:p-5 rounded-2xl border border-emerald-200/90 bg-linear-to-br from-emerald-50/80 via-white to-sky-50/60 space-y-3 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-slate-900">Install Sky Ariana BOL App / نصب برنامه</h4>
+                  <p className="text-xs text-slate-600 font-medium mt-0.5">
+                    Install as a standalone native app on Android, iPhone, iPad, Windows PC, or Mac.
+                  </p>
+                </div>
+              </div>
+              <PWAInstallButton className="shrink-0" />
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-[11px] text-slate-600">
+              <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80">
+                <strong className="block text-slate-900 font-bold mb-0.5">📱 Android (Chrome / Edge)</strong>
+                Tap &ldquo;Install App&rdquo; or click browser menu (⋮) → &ldquo;Install App&rdquo;.
+              </div>
+              <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80">
+                <strong className="block text-slate-900 font-bold mb-0.5">🍏 iPhone & iPad (Safari)</strong>
+                Tap the Share button ⎕ at bottom, then select &ldquo;Add to Home Screen&rdquo; ➕.
+              </div>
+              <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80">
+                <strong className="block text-slate-900 font-bold mb-0.5">💻 PC & Mac (Chrome/Edge)</strong>
+                Click the Install icon ⊕ inside your browser address bar for desktop app.
+              </div>
             </div>
           </div>
 

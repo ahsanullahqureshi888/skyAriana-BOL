@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/lib/app-context'
+import { PWAInstallButton } from '@/components/pwa-install-prompt'
 
 interface HeaderProps {
   showBack?: boolean
@@ -155,6 +156,9 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               <SettingsIcon className="h-3.5 w-3.5" />
               <span className="hidden md:inline">Settings</span>
             </Button>
+
+            {/* PWA Install App Button */}
+            <PWAInstallButton />
 
             {/* User Profile & Logout */}
             {currentUser && (

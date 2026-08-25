@@ -1,0 +1,81 @@
+{
+  "name": "SKY ARIANA LIMITED - Logistics & BOL Management",
+  "short_name": "Sky Ariana",
+  "description": "International Transport, Logistics & Bill of Lading Management System",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#1e3a8a",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "BOL Editor (بارنامه)",
+      "short_name": "BOL",
+      "description": "Create and edit Bill of Lading documents",
+      "url": "/?view=bol",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Accounts & Companies",
+      "short_name": "Accounts",
+      "description": "View account ledgers and companies",
+      "url": "/?view=accounts",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "System Settings",
+      "short_name": "Settings",
+      "description": "Manage users, stamps, and system settings",
+      "url": "/?view=settings",
+      "icons": [
+        {
+          "src": "/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
