@@ -3,13 +3,14 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2, Trash2 } from "lucide-react"
-import { downloadPDFFromServer, deletePDFFromServer } from "@/lib/utils/pdf-upload"
+import { downloadPDFFromServer, deletePDFFromServer, buildBolSmartFileName } from "@/lib/utils/pdf-upload"
 import { toast } from "sonner"
 
 interface PDFDownloadButtonProps {
   bolId: string
   bolNumber: string
   pdfUrl?: string | null
+  documentData?: any
   onDeleted?: () => void
 }
 
@@ -17,6 +18,7 @@ export function PDFDownloadButton({
   bolId,
   bolNumber,
   pdfUrl,
+  documentData,
   onDeleted,
 }: PDFDownloadButtonProps) {
   const [isDownloading, setIsDownloading] = useState(false)
@@ -25,10 +27,11 @@ export function PDFDownloadButton({
   const handleDownload = async () => {
     setIsDownloading(true)
     try {
-      const success = await downloadPDFFromServer(bolId, `${bolNumber}.pdf`)
+      const fileName = buildBolSmartFileName(documentData, bolNumber, ".pdf")
+      const success = await downloadPDFFromServer(bolId, fileName)
       if (success) {
         toast.success("PDF download started", {
-          description: `Opening ${bolNumber}.pdf...`,
+          description: `Opening ${fileName}...`,
         })
       } else {
         toast.error("Failed to download PDF")

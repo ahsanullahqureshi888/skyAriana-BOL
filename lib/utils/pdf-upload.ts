@@ -472,9 +472,10 @@ export async function generateModernBOLPDFBlob(options: ModernBOLPDFOptions): Pr
   options.onProgress?.(8, "Loading embedded fonts...")
   await registerPDFFonts(doc)
   doc.setLanguage?.("en-US")
+  const smartPdfTitle = buildBolSmartFileName(options.formData, options.bolNumber, "").replace(/\.pdf$/i, "")
   doc.setProperties({
-    title: `${options.bolNumber || "BOL"} - Bill of Lading`,
-    subject: "Bill of Lading",
+    title: smartPdfTitle,
+    subject: smartPdfTitle,
     author: cleanPDFText(options.companyName) || "SKY ARIANA LIMITED",
     creator: "Sky Ariana BOL PDF Export",
     keywords: "bill of lading, logistics, cargo, shipment",
@@ -686,9 +687,10 @@ export async function generatePremiumBOLPDFBlob(options: ModernBOLPDFOptions): P
   options.onProgress?.(8, "Loading embedded fonts")
   await registerPDFFonts(doc)
   doc.setLanguage?.("en-US")
+  const smartPdfTitle = buildBolSmartFileName(options.formData, options.bolNumber, "").replace(/\.pdf$/i, "")
   doc.setProperties({
-    title: `${options.bolNumber || "BOL"} - Bill of Lading`,
-    subject: "Bill of Lading",
+    title: smartPdfTitle,
+    subject: smartPdfTitle,
     author: cleanPDFText(options.companyName) || "SKY ARIANA LIMITED",
     creator: "Sky Ariana BOL PDF Export",
     keywords: "bill of lading, logistics, cargo, shipment",
@@ -1221,6 +1223,14 @@ export async function generatePDFBlob(
       putOnlyUsedFonts: true,
     })
 
+    const cleanTitle = (fileName || "BOL").replace(/\.pdf$/i, "")
+    pdf.setProperties({
+      title: cleanTitle,
+      subject: cleanTitle,
+      author: "SKY ARIANA LIMITED",
+      creator: "Sky Ariana BOL PDF Export",
+    })
+
     const imageData = canvas.toDataURL("image/png", 1.0)
     pdf.addImage(imageData, "PNG", 0, 0, pageWidth, pageHeight, undefined, "FAST")
 
@@ -1332,6 +1342,14 @@ export async function generatePDFBlob(
       unit: "mm",
       format: "a4",
       compress: false,
+    })
+
+    const cleanTitle = (fileName || "BOL").replace(/\.pdf$/i, "")
+    pdf.setProperties({
+      title: cleanTitle,
+      subject: cleanTitle,
+      author: "SKY ARIANA LIMITED",
+      creator: "Sky Ariana BOL PDF Export",
     })
 
     const imageData = canvas.toDataURL("image/png")

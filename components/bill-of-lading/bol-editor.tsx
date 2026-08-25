@@ -721,7 +721,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           setPersianDate(dualDates.persian)
           setPersianDateNumeric(formatPersianDate(doc.issue_date) ?? dualDates.persianNumeric)
         }
-        setFormData({
+        const nextFormData = {
           truck_number: doc.truck_number || "",
           driver_name: doc.driver_name || "",
           driver_father_name: doc.driver_father_name || "",
@@ -767,7 +767,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           notes_2_theme: doc.notes_2_theme || initialFormData.notes_2_theme,
           afghanistan_documents: doc.afghanistan_documents || [],
           afghanistan_document_details: doc.afghanistan_document_details || {},
-        })
+        }
+        setFormData(nextFormData)
+        if (typeof document !== "undefined") {
+          const smartTitle = buildBolSmartFileName({ ...nextFormData, bol_number: doc.bol_number || "" }, doc.bol_number || id, "")
+          if (smartTitle) {
+            document.title = smartTitle
+          }
+        }
         onDocumentLoaded?.()
       } else {
         toast.error("Unable to load document data")
@@ -3176,7 +3183,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         description: "Please wait, this may take a moment...",
       })
 
-      const fileName = `${formData.bol_number || "BOL"}.pdf`
+      const fileName = buildBolSmartFileName({ ...formData, bol_number: bolNumber }, bolNumber, ".pdf")
       const previewElement = document.querySelector('[data-pdf-export="true"]') as HTMLElement | null
       const pdfBlob = await generateBOLPDFBlob({
         fileName,
@@ -3185,7 +3192,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           bolNumber: bolNumber || "BOL",
           issueDate,
           persianDateNumeric,
-          formData,
+          formData: { ...formData, bol_number: bolNumber },
           logoUrl,
           companyName,
           companyNamePersian,
@@ -3217,7 +3224,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       const uploadResult = await uploadPDFToServer(
         pdfBlob,
         formData.id || "",
-        formData.bol_number || "BOL"
+        fileName.replace(/\.pdf$/i, "")
       )
 
       if (uploadResult.success && uploadResult.url) {
@@ -3244,7 +3251,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
   const handleDirectPrint = () => {
     if (typeof window !== "undefined" && typeof window.print === "function") {
-      const smartTitle = buildBolSmartFileName(formData, bolNumber, "")
+      const smartTitle = buildBolSmartFileName({ ...formData, bol_number: bolNumber }, bolNumber, "")
       if (smartTitle) {
         document.title = smartTitle
       }
@@ -3263,9 +3270,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       setIsSaving(true)
       setActivePrintOptions(options)
 
-      const smartTitle = buildBolSmartFileName(formData, bolNumber, "")
-      const fileName = buildBolSmartFileName(formData, bolNumber, ".pdf")
-      if (smartTitle) {
+      const smartTitle = buildBolSmartFileName({ ...formData, bol_number: bolNumber }, bolNumber, "")
+      const fileName = buildBolSmartFileName({ ...formData, bol_number: bolNumber }, bolNumber, ".pdf")
+      if (smartTitle && typeof document !== "undefined") {
         document.title = smartTitle
       }
 
@@ -3297,7 +3304,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           bolNumber: bolNumber || "BOL",
           issueDate,
           persianDateNumeric,
-          formData,
+          formData: { ...formData, bol_number: bolNumber },
           logoUrl,
           companyName,
           companyNamePersian,
@@ -3327,7 +3334,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         description: "Please wait, this may take a moment...",
       })
 
-      const fileName = buildBolSmartFileName(formData, bolNumber, ".pdf")
+      const fileName = buildBolSmartFileName({ ...formData, bol_number: bolNumber }, bolNumber, ".pdf")
       const previewElement = document.querySelector('[data-pdf-export="true"]') as HTMLElement | null
       const pdfBlob = await generateBOLPDFBlob({
         fileName,
@@ -3336,7 +3343,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           bolNumber: bolNumber || "BOL",
           issueDate,
           persianDateNumeric,
-          formData,
+          formData: { ...formData, bol_number: bolNumber },
           logoUrl,
           companyName,
           companyNamePersian,

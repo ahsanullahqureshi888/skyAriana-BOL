@@ -1075,11 +1075,10 @@ function parseBolSeq(bolNum: string): number {
         })
       } catch (err) {
         console.error("Failed to download PDF:", err)
-        toast.error("Download failed, opening print dialog...", { id: "doc-pdf-download" })
-        const prevTitle = document.title
-        document.title = buildBolSmartFileName(doc, doc.bol_number || doc.id, "")
+        if (typeof document !== "undefined") {
+          document.title = buildBolSmartFileName(doc, doc.bol_number || doc.id, "")
+        }
         window.print()
-        setTimeout(() => { document.title = prevTitle }, 2000)
       } finally {
         setDownloadingPdfId(null)
       }
@@ -1087,6 +1086,9 @@ function parseBolSeq(bolNum: string): number {
   }, [onLoadDocument])
 
   const viewBOLPreview = useCallback((doc: SavedDocument) => {
+    if (typeof document !== "undefined") {
+      document.title = buildBolSmartFileName(doc, doc.bol_number || doc.id, "")
+    }
     startTransition(() => {
       onLoadDocument(doc.id, "preview")
       window.dispatchEvent(new CustomEvent("skybol:editor-action", { detail: { action: "preview", tab: "preview" } }))
@@ -1097,6 +1099,9 @@ function parseBolSeq(bolNum: string): number {
   }, [onLoadDocument])
 
   const editBOL = useCallback((doc: SavedDocument) => {
+    if (typeof document !== "undefined") {
+      document.title = buildBolSmartFileName(doc, doc.bol_number || doc.id, "")
+    }
     startTransition(() => {
       onLoadDocument(doc.id, "form")
       window.dispatchEvent(new CustomEvent("skybol:editor-action", { detail: { action: "form", tab: "form" } }))
