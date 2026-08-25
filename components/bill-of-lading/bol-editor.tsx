@@ -3245,8 +3245,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const handleDirectPrint = () => {
     if (typeof window !== "undefined" && typeof window.print === "function") {
       const smartTitle = buildBolSmartFileName(formData, bolNumber, "")
-      const prevTitle = document.title
-      document.title = smartTitle
+      if (smartTitle) {
+        document.title = smartTitle
+      }
       const previewEl = document.getElementById("bol-print-preview")
       if (previewEl) {
         previewEl.setAttribute("data-print-quality", "standard")
@@ -3254,7 +3255,6 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         previewEl.setAttribute("data-fit-to-page", "true")
       }
       window.print()
-      setTimeout(() => { document.title = prevTitle }, 2500)
     }
   }
 
@@ -3265,11 +3265,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
       const smartTitle = buildBolSmartFileName(formData, bolNumber, "")
       const fileName = buildBolSmartFileName(formData, bolNumber, ".pdf")
+      if (smartTitle) {
+        document.title = smartTitle
+      }
 
       if (options.quality !== "high-quality") {
         if (typeof window !== "undefined" && typeof window.print === "function") {
-          const prevTitle = document.title
-          document.title = smartTitle
           const previewEl = document.getElementById("bol-print-preview")
           if (previewEl) {
             previewEl.setAttribute("data-print-quality", options.quality)
@@ -3277,7 +3278,6 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             previewEl.setAttribute("data-fit-to-page", options.fitToPage ? "true" : "false")
           }
           window.print()
-          setTimeout(() => { document.title = prevTitle }, 2500)
           setIsSaving(false)
           return
         }
@@ -3429,6 +3429,28 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       window.removeEventListener("skybol:editor-action", handleShellAction)
     }
   }, [handleNewDocument, handleDownloadPDF, handleExportPDF])
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      const smartTitle = buildBolSmartFileName(formData, bolNumber, "")
+      if (smartTitle) {
+        document.title = smartTitle
+      }
+    }
+  }, [formData, bolNumber])
+
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      if (typeof document !== "undefined") {
+        const smartTitle = buildBolSmartFileName(formData, bolNumber, "")
+        if (smartTitle) {
+          document.title = smartTitle
+        }
+      }
+    }
+    window.addEventListener("beforeprint", handleBeforePrint)
+    return () => window.removeEventListener("beforeprint", handleBeforePrint)
+  }, [formData, bolNumber])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

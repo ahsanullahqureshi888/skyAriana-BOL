@@ -1433,7 +1433,7 @@ export async function downloadPDFFromServer(
 
 /**
  * Automatically builds a rich document and file name from the BOL data following the user's specification:
- * [Consignee Name] - [Quantity] - [Inv No] - [Shipper Name] - [BOL Number]
+ * [Consignee Name]-[Quantity]-[Inv No]-[Shipper Name] (e.g. VEER ENTERPRISES-1350-CTNS-INV-033-NAJIB AHMAD LTD.pdf)
  */
 export function buildBolSmartFileName(
   docOrFormData: any,
@@ -1445,39 +1445,59 @@ export function buildBolSmartFileName(
     return extension ? (cleanFallback.endsWith(extension) ? cleanFallback : `${cleanFallback}${extension}`) : cleanFallback
   }
 
-  const consignee = (docOrFormData.consignee_name || docOrFormData.consignee || "").trim()
-  const quantity = (docOrFormData.number_of_packages || docOrFormData.quantity || "").trim()
-  const shipper = (docOrFormData.shipper_name || docOrFormData.shipperDescription || docOrFormData.shipper || "").trim()
-  const bolNumber = (docOrFormData.bol_number || docOrFormData.barnamehNo || docOrFormData.bolNo || fallbackBolNumber || "").trim()
-  const cargoDesc = (docOrFormData.cargo_description || "").trim()
+  // 1. Extract Consignee Name (Take first line if multiline address)
+  const rawConsignee = (docOrFormData.consignee_name || docOrFormData.consignee || docOrFormData.consigneeName || "").trim()
+  let consignee = rawConsignee.split(/[\r\n]+/)[0].trim()
+  consignee = consignee.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, " ").trim()
 
-  // Parse Invoice No
-  let invNo = (docOrFormData.invoiceNo || "").trim()
-  if (!invNo && cargoDesc) {
-    const match = cargoDesc.match(/(?:Invoice\s*No|Invoice\s*#|INV\s*NO|IN\s*NO|Invoice)\s*[:#-]?\s*([A-Z0-9/_-]+)/i)
+  // 2. Extract Quantity (e.g. 1350 CTNS or 1407 CNTS)
+  let rawQty = (docOrFormData.number_of_packages || docOrFormData.numberOfPackages || docOrFormData.quantity || docOrFormData.packages || "").trim()
+  if (!rawQty) {
+    const cargo = (docOrFormData.cargo_description || "").trim()
+    const qtyMatch = cargo.match(/(\d+[\s\-]*(?:CTNS|CNTS|BAGS|PACKAGES|BOXES|PCS|KGS|MT|CARTONS|DRUMS))/i)
+    if (qtyMatch) {
+      rawQty = qtyMatch[1].trim()
+    }
+  }
+  let quantity = rawQty.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, "-").trim()
+
+  // 3. Extract Invoice Number
+  let invNo = (docOrFormData.invoiceNo || docOrFormData.invoice_number || docOrFormData.invoice_no || docOrFormData.invoiceNumber || "").trim()
+  if (!invNo) {
+    const combinedNotes = `${docOrFormData.cargo_description || ""} ${docOrFormData.notes_1 || ""} ${docOrFormData.notes_2 || ""} ${docOrFormData.notes_3 || ""}`
+    const match = combinedNotes.match(/(?:Invoice\s*No|Invoice\s*#|INV\s*NO|IN\s*NO|Invoice|INV)\s*[:#-]?\s*([A-Z0-9/_-]+)/i)
     if (match && match[1]) {
       const parsed = match[1].trim()
       if (parsed.length < 25) {
         invNo = /^INV|^IN/i.test(parsed) ? parsed.toUpperCase() : `INV-${parsed.toUpperCase()}`
       }
     }
+  } else if (!/^INV|^IN/i.test(invNo)) {
+    invNo = `INV-${invNo.toUpperCase()}`
   }
 
-  // Construct components in exact order: Consignee -> Quantity -> Inv No -> Shipper -> BOL
+  // 4. Extract Shipper Name (Take first line if multiline)
+  const rawShipper = (docOrFormData.shipper_name || docOrFormData.shipperDescription || docOrFormData.shipper || docOrFormData.shipperName || "").trim()
+  let shipper = rawShipper.split(/[\r\n]+/)[0].trim()
+  shipper = shipper.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, " ").trim()
+
+  // 5. BOL Number fallback
+  const bolNumber = (docOrFormData.bol_number || docOrFormData.barnamehNo || docOrFormData.bolNo || fallbackBolNumber || "").trim()
+
+  // Construct components in exact order: Consignee -> Quantity -> Inv No -> Shipper
   const parts: string[] = []
   if (consignee) parts.push(consignee)
   if (quantity) parts.push(quantity)
   if (invNo) parts.push(invNo)
   if (shipper) parts.push(shipper)
-  if (bolNumber) parts.push(bolNumber)
 
   if (parts.length === 0) {
-    const cleanFallback = (fallbackBolNumber || "BOL").trim()
+    const cleanFallback = (bolNumber || fallbackBolNumber || "BOL").trim().replace(/[/\\:*?"<>|]/g, "_")
     return extension ? (cleanFallback.endsWith(extension) ? cleanFallback : `${cleanFallback}${extension}`) : cleanFallback
   }
 
-  // Clean invalid file system characters: / \ : * ? " < > |
-  const rawFileName = parts.join(" - ").replace(/[/\\:*?"<>|]/g, "_").replace(/\s+/g, " ").trim()
+  // Join parts with hyphen, ensuring clean file name
+  const rawFileName = parts.join("-").replace(/[/\\:*?"<>|]/g, "_").replace(/-+/g, "-").replace(/\s+/g, " ").trim()
   return extension ? (rawFileName.endsWith(extension) ? rawFileName : `${rawFileName}${extension}`) : rawFileName
 }
 
