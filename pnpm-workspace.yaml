@@ -2,4 +2,7 @@ packages:
   - '.'
   - 'bol-ledger'
 onlyBuiltDependencies:
+  - core-js
   - esbuild
+  - sharp
+  - better-sqlite3
