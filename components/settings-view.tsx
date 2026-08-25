@@ -31,6 +31,20 @@ import {
   ShieldCheck,
   Smartphone,
   Cloud,
+  DownloadCloud,
+  UploadCloud,
+  Check,
+  Copy,
+  Info,
+  Server,
+  Layers,
+  FileText,
+  MapPin,
+  Landmark,
+  BadgePercent,
+  SlidersHorizontal,
+  ChevronRight,
+  ShieldAlert,
 } from "lucide-react"
 import { PWAInstallButton } from "@/components/pwa-install-prompt"
 import { CloudSyncModal } from "@/components/bill-of-lading/cloud-sync-modal"
@@ -42,17 +56,44 @@ import {
   saveStoredCompanyStamp,
   resetStoredCompanyStamp,
 } from "@/lib/company-stamp-data"
+import { toast } from "sonner"
 
-const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; icon: string }> = {
-  superadmin: { label: "Superadmin", bg: "bg-purple-100 border-purple-300", text: "text-purple-900 font-extrabold", icon: "👑" },
-  admin: { label: "Admin", bg: "bg-blue-100 border-blue-300", text: "text-blue-900 font-extrabold", icon: "🛡️" },
-  accountant: { label: "Accountant", bg: "bg-emerald-100 border-emerald-300", text: "text-emerald-900 font-extrabold", icon: "💼" },
-  viewer: { label: "Viewer", bg: "bg-slate-100 border-slate-300", text: "text-slate-700 font-bold", icon: "👁️" },
+export type SettingsTab = "users" | "stamp" | "company" | "cloud" | "security" | "updates"
+
+const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; icon: string; desc: string }> = {
+  superadmin: {
+    label: "Superadmin",
+    bg: "bg-purple-100 border-purple-300",
+    text: "text-purple-900 font-extrabold",
+    icon: "👑",
+    desc: "Full system administration, users, security, and financial ledgers",
+  },
+  admin: {
+    label: "Admin",
+    bg: "bg-blue-100 border-blue-300",
+    text: "text-blue-900 font-extrabold",
+    icon: "🛡️",
+    desc: "Create and edit Bills of Lading, manage client ledgers and company records",
+  },
+  accountant: {
+    label: "Accountant",
+    bg: "bg-emerald-100 border-emerald-300",
+    text: "text-emerald-900 font-extrabold",
+    icon: "💼",
+    desc: "Manage payments, invoices, balances, and financial transaction statements",
+  },
+  viewer: {
+    label: "Viewer",
+    bg: "bg-slate-100 border-slate-300",
+    text: "text-slate-700 font-bold",
+    icon: "👁️",
+    desc: "Read-only access to view and print Bills of Lading and reports",
+  },
 }
 
 export function SettingsView() {
-  const { users, addUser, updateUserRole, deleteUser, changePassword, currentUser } = useApp()
-  const [activeTab, setActiveTab] = useState<"users" | "password" | "stamp" | "general" | "update">("users")
+  const { users, addUser, updateUserRole, deleteUser, changePassword, currentUser, isSyncing, syncCloudData } = useApp()
+  const [activeTab, setActiveTab] = useState<SettingsTab>("users")
   const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false)
 
   // Add User Form State
@@ -76,6 +117,21 @@ export function SettingsView() {
   const [stampMsg, setStampMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Company Profile Settings State
+  const [companySettings, setCompanySettings] = useState({
+    companyNameEn: "SKY ARIANA LIMITED",
+    companyNameFa: "شرکت ترانسپورت بین‌المللی سکای آریانا لمیتد",
+    registrationNo: "90021-AFG / 48210-IR",
+    afgPhone1: "+93 700 939 365",
+    afgPhone2: "+93 711 435 529",
+    afgAddress: "Customs Street, Islam Qala Border, Herat, Afghanistan",
+    iranPhone: "+98 9172325086",
+    iranAddress: "Shahid Rajaee Port, Bandar Abbas / Mashhad, Iran",
+    email: "info@skyariana.com",
+    website: "www.skyariana.com",
+  })
+  const [isCompanySaved, setIsCompanySaved] = useState(false)
+
   // System Update Check State
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false)
   const [updateMsg, setUpdateMsg] = useState<string | null>(null)
@@ -83,6 +139,14 @@ export function SettingsView() {
   useEffect(() => {
     setCurrentStamp(getStoredCompanyStamp())
     setCurrentStampScale(getStoredCompanyStampScale())
+
+    // Load saved company settings if available
+    try {
+      const stored = window.localStorage.getItem("skybol:company-settings")
+      if (stored) {
+        setCompanySettings(prev => ({ ...prev, ...JSON.parse(stored) }))
+      }
+    } catch (e) {}
 
     const handleStampUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ dataUrl?: string; scale?: number }>
@@ -125,6 +189,7 @@ export function SettingsView() {
       email: newEmail,
     })
 
+    toast.success(`User '${newUsername}' created with role ${newRole.toUpperCase()}!`)
     setUserMsg({ type: "success", text: `User '${newUsername}' successfully created with role ${newRole.toUpperCase()}!` })
     setNewUsername("")
     setNewName("")
@@ -143,11 +208,13 @@ export function SettingsView() {
 
     const res = changePassword(oldPassword, newPassword)
     if (res.success) {
+      toast.success("Password changed successfully!")
       setPassMsg({ type: "success", text: res.message })
       setOldPassword("")
       setNewPassword("")
       setConfirmPassword("")
     } else {
+      toast.error(res.message || "Failed to change password")
       setPassMsg({ type: "error", text: res.message })
     }
   }
@@ -169,6 +236,7 @@ export function SettingsView() {
       if (dataUrl) {
         saveStoredCompanyStamp(dataUrl, currentStampScale)
         setCurrentStamp(dataUrl)
+        toast.success("Official Stamp & Signature updated across all Bills of Lading!")
         setStampMsg({ type: "success", text: "Official Stamp & Signature successfully updated across the system!" })
       }
     }
@@ -182,6 +250,7 @@ export function SettingsView() {
     resetStoredCompanyStamp()
     setCurrentStamp(COMPANY_STAMP_SIGNATURE_SRC)
     setCurrentStampScale(1.0)
+    toast.success("Restored to official Sky Ariana seal and signature.")
     setStampMsg({ type: "success", text: "Restored to official Sky Ariana Limited seal and signature." })
   }
 
@@ -191,6 +260,19 @@ export function SettingsView() {
     saveStoredCompanyStamp(currentStamp, newScale)
   }
 
+  const handleSaveCompanySettings = (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      window.localStorage.setItem("skybol:company-settings", JSON.stringify(companySettings))
+      window.localStorage.setItem("skybol:pdf-company-settings", JSON.stringify(companySettings))
+      setIsCompanySaved(true)
+      toast.success("Company profile & regional settings saved successfully!")
+      setTimeout(() => setIsCompanySaved(false), 3000)
+    } catch (e) {
+      toast.error("Failed to save company settings")
+    }
+  }
+
   const handleCheckForUpdates = () => {
     setIsCheckingUpdate(true)
     setUpdateMsg(null)
@@ -198,124 +280,341 @@ export function SettingsView() {
     setTimeout(() => {
       setIsCheckingUpdate(false)
       setUpdateMsg(`Your system is up to date! (${CURRENT_SYSTEM_VERSION.version} - ${CURRENT_SYSTEM_VERSION.buildNumber})`)
+      toast.success("System is up to date and fully synchronized!")
     }, 1200)
   }
 
+  // Password strength calculator
+  const getPasswordStrength = (pass: string) => {
+    if (!pass) return { score: 0, label: "None", color: "bg-slate-200" }
+    let score = 0
+    if (pass.length >= 6) score += 1
+    if (pass.length >= 8) score += 1
+    if (/[A-Z]/.test(pass)) score += 1
+    if (/[0-9]/.test(pass)) score += 1
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1
+
+    if (score <= 2) return { score: 25, label: "Weak", color: "bg-red-500 text-red-700" }
+    if (score <= 3) return { score: 50, label: "Medium", color: "bg-amber-500 text-amber-700" }
+    if (score <= 4) return { score: 75, label: "Strong", color: "bg-blue-600 text-blue-700" }
+    return { score: 100, label: "Very Secure", color: "bg-emerald-600 text-emerald-700" }
+  }
+
+  const passStrength = getPasswordStrength(newPassword)
+
   return (
-    <div className="w-full max-w-7xl mx-auto p-2.5 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-      {/* Header Banner - Premium Glassmorphism */}
-      <div className="rounded-2xl sm:rounded-[32px] border border-blue-200/60 bg-gradient-to-r from-blue-900 via-[#1e3a8a] to-slate-900 p-4 sm:p-6 md:p-8 text-white shadow-[0_20px_80px_-15px_rgba(30,58,138,0.4)] relative overflow-hidden">
-        <div className="absolute -top-20 -right-20 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-blue-100 shadow-inner">
-              <Sliders className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-              <span>SYSTEM CONTROL PANEL</span>
+    <div className="w-full max-w-7xl mx-auto p-2.5 sm:p-4 md:p-6 space-y-4 sm:space-y-6 font-sans">
+      {/* Top Banner - Luxury Glassmorphic Sapphire Theme */}
+      <div className="rounded-3xl border border-blue-200/70 bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-950 p-5 sm:p-7 md:p-8 text-white shadow-2xl shadow-blue-950/30 relative overflow-hidden">
+        {/* Subtle Ambient Background Glows */}
+        <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[10px] font-black uppercase tracking-widest text-amber-300 shadow-inner">
+                <Sliders className="w-3.5 h-3.5 text-amber-400" />
+                <span>SYSTEM CONTROL PANEL</span>
+              </div>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[10px] font-black text-emerald-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                <span>Cloud Connected</span>
+              </span>
             </div>
-            <h1 className="text-xl sm:text-2xl md:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-200">
-              System Settings
+
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-amber-200">
+              System Settings & Management
             </h1>
-            <p className="text-[11px] sm:text-xs md:text-sm text-blue-200/90 font-[vazirmatn] font-bold" dir="rtl">
-              تنظیمات سیستم، مهر و امضا، مدیریت کاربران و امنیت
+            <p className="text-xs sm:text-sm text-blue-200/90 font-[vazirmatn] font-bold" dir="rtl">
+              تنظیمات جامع سیستم، مهر و امضای رسمی، مدیریت کاربران، مشخصات شرکت و همگام‌سازی ابری
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 sm:gap-3 bg-white/10 backdrop-blur-xl p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-white/20 self-start sm:self-auto shadow-inner">
-            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 border border-amber-300 shadow-lg flex items-center justify-center font-black text-base sm:text-xl text-amber-950">
+          {/* Current User Card */}
+          <div className="flex items-center gap-3.5 bg-white/10 backdrop-blur-xl p-3.5 sm:p-4 rounded-2xl border border-white/20 self-start md:self-auto shadow-lg shadow-black/20">
+            <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 border border-amber-300 shadow-md flex items-center justify-center font-black text-lg sm:text-xl text-amber-950 shrink-0">
               {currentUser?.name?.charAt(0) || "A"}
             </div>
-            <div>
-              <div className="text-xs sm:text-sm font-black text-white">{currentUser?.name || "Administrator"}</div>
-              <div className="text-[9px] sm:text-[10px] text-amber-300 font-black tracking-widest uppercase">
+            <div className="min-w-0">
+              <div className="text-xs sm:text-sm font-black text-white truncate">{currentUser?.name || "Administrator"}</div>
+              <div className="text-[10px] text-amber-300 font-mono font-black tracking-wider uppercase mt-0.5">
                 {currentUser?.role || "superadmin"}
               </div>
+              <div className="text-[9px] text-slate-300 font-bold mt-0.5">@{currentUser?.username || "admin"}</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tabs Navigation Bar - Frosted Glass & Smooth Horizontal Swipe */}
-      <div className="flex items-center gap-1 sm:gap-2 p-1.5 rounded-xl sm:rounded-2xl bg-white/70 border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl overflow-x-auto scrollbar-none flex-nowrap shrink-0">
+      {/* Modern Navigation Tabs Bar */}
+      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white/80 border border-slate-200/80 shadow-md shadow-slate-200/40 backdrop-blur-xl overflow-x-auto scrollbar-none flex-nowrap shrink-0">
         <button
           type="button"
           onClick={() => setActiveTab("users")}
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
             activeTab === "users"
-              ? "bg-gradient-to-b from-white to-slate-50 text-blue-700 shadow-md border border-slate-100"
-              : "text-slate-600 hover:bg-white/50 hover:text-slate-800"
+              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
           }`}
         >
-          <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <Users className="w-4 h-4 text-amber-400" />
           <span>User Management</span>
-          <span className="ml-0.5 sm:ml-1 rounded-md bg-blue-100 px-1.5 py-0.5 text-[9px] sm:text-[10px] text-blue-800">{users.length}</span>
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${activeTab === "users" ? "bg-white/20 text-white" : "bg-blue-100 text-blue-900"}`}>
+            {users.length}
+          </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("stamp")}
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
             activeTab === "stamp"
-              ? "bg-gradient-to-b from-white to-slate-50 text-blue-700 shadow-md border border-slate-100"
-              : "text-slate-600 hover:bg-white/50 hover:text-slate-800"
+              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
           }`}
         >
-          <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
           <span>Stamp & Signature (مهر و امضا)</span>
         </button>
 
         <button
           type="button"
-          onClick={() => setActiveTab("password")}
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === "password"
-              ? "bg-gradient-to-b from-white to-slate-50 text-blue-700 shadow-md border border-slate-100"
-              : "text-slate-600 hover:bg-white/50 hover:text-slate-800"
+          onClick={() => setActiveTab("company")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+            activeTab === "company"
+              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
           }`}
         >
-          <Key className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span>Security</span>
+          <Building2 className="w-4 h-4 text-amber-400" />
+          <span>Company Profile (مشخصات شرکت)</span>
         </button>
 
         <button
           type="button"
-          onClick={() => setActiveTab("general")}
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === "general"
-              ? "bg-gradient-to-b from-white to-slate-50 text-blue-700 shadow-md border border-slate-100"
-              : "text-slate-600 hover:bg-white/50 hover:text-slate-800"
+          onClick={() => setActiveTab("cloud")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+            activeTab === "cloud"
+              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
           }`}
         >
-          <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span>Company Info</span>
+          <Cloud className="w-4 h-4 text-blue-400" />
+          <span>Cloud Sync & Backup</span>
         </button>
 
         <button
           type="button"
-          onClick={() => setActiveTab("update")}
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-3 rounded-lg sm:rounded-[14px] text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === "update"
-              ? "bg-gradient-to-b from-white to-slate-50 text-blue-700 shadow-md border border-slate-100"
-              : "text-slate-600 hover:bg-white/50 hover:text-slate-800"
+          onClick={() => setActiveTab("security")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+            activeTab === "security"
+              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
           }`}
         >
-          <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span>Updates & Build</span>
+          <Key className="w-4 h-4 text-amber-400" />
+          <span>Security & Passwords</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("updates")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+            activeTab === "updates"
+              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          }`}
+        >
+          <Smartphone className="w-4 h-4 text-emerald-400" />
+          <span>App & System Build</span>
         </button>
       </div>
 
-      {/* Tab: Official Stamp & Signature Management */}
+      {/* ========================================================================= */}
+      {/* TAB 1: USER MANAGEMENT                                                    */}
+      {/* ========================================================================= */}
+      {activeTab === "users" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in fade-in duration-300">
+          {/* Add User Card */}
+          <div className="lg:col-span-5 bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-7 space-y-5">
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 shadow-md shadow-blue-950/20">
+                <UserPlus className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Add System User</h3>
+                <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                  ایجاد کاربر جدید با سطوح دسترسی
+                </p>
+              </div>
+            </div>
+
+            {userMsg && (
+              <div
+                className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2.5 ${
+                  userMsg.type === "success"
+                    ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                    : "bg-red-50 text-red-900 border border-red-200"
+                }`}
+              >
+                {userMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
+                <span>{userMsg.text}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleAddUserSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                  Username / شناسه کاربر
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="e.g. jsmith"
+                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all placeholder:text-slate-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                  Full Name / نام مکمل
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="e.g. John Smith"
+                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all placeholder:text-slate-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                  System Role / نقش کاربر
+                </label>
+                <select
+                  value={newRole}
+                  onChange={(e) => setNewRole(e.target.value as UserRole)}
+                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer"
+                >
+                  <option value="superadmin">👑 Superadmin (Full System Access)</option>
+                  <option value="admin">🛡️ Admin (BOL & Accounting Access)</option>
+                  <option value="accountant">💼 Accountant (Ledgers & Invoices Only)</option>
+                  <option value="viewer">👁️ Viewer (Read-only Document Access)</option>
+                </select>
+                <p className="text-[11px] text-slate-500 mt-1 font-medium italic">
+                  {ROLE_BADGES[newRole]?.desc}
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                  Email (Optional) / ایمیل
+                </label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="user@skyariana.com"
+                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all placeholder:text-slate-400"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full h-12 bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 hover:from-blue-950 hover:to-indigo-950 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-xl shadow-blue-950/20 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                <UserPlus className="w-4 h-4 text-amber-400" />
+                <span>Create System Account / ایجاد حساب</span>
+              </button>
+            </form>
+          </div>
+
+          {/* Active Users Table Card */}
+          <div className="lg:col-span-7 bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-7 space-y-5">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-900 to-purple-900 text-amber-400 shadow-md shadow-indigo-950/20">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Active User Accounts</h3>
+                  <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                    کاربران فعال سیستم و سطوح دسترسی
+                  </p>
+                </div>
+              </div>
+              <span className="px-3 py-1 text-xs font-black rounded-full bg-blue-100 text-blue-900 border border-blue-200">
+                {users.length} Active Accounts
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {users.map((u) => {
+                const badge = ROLE_BADGES[u.role] || ROLE_BADGES.viewer
+                const isSuper = u.role === "superadmin"
+                return (
+                  <div
+                    key={u.id}
+                    className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-blue-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 font-black flex items-center justify-center text-base shadow-sm">
+                        {u.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-sm font-black text-slate-900">{u.name}</div>
+                        <div className="text-xs text-slate-500 font-mono font-bold">@{u.username}</div>
+                        {u.email && <div className="text-[11px] text-blue-700 font-medium">{u.email}</div>}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                      <span className={`px-3 py-1.5 rounded-xl text-xs font-black border ${badge.bg} ${badge.text}`}>
+                        {badge.icon} {badge.label}
+                      </span>
+                      {!isSuper && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`Delete user account '${u.username}'?`)) {
+                              deleteUser(u.id)
+                              toast.success(`User '${u.username}' removed.`)
+                            }
+                          }}
+                          className="p-2 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition cursor-pointer"
+                          title="Delete User"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2: STAMP & SIGNATURE (مهر و امضا)                                     */}
+      {/* ========================================================================= */}
       {activeTab === "stamp" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in fade-in duration-300">
           {/* Stamp Preview Card */}
-          <div className="lg:col-span-6 bg-white/80 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
-            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-              <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-lg shadow-blue-600/30">
-                <ShieldCheck className="w-5 h-5 sm:w-6 sm:h-6" />
+          <div className="lg:col-span-6 bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-7 space-y-5">
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 shadow-md shadow-blue-950/20">
+                <ShieldCheck className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Active Stamp & Signature</h3>
-                <p className="text-[11px] text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
                   پیش‌نمایش زنده مهر و امضای رسمی شرکت
                 </p>
               </div>
@@ -323,25 +622,25 @@ export function SettingsView() {
 
             {stampMsg && (
               <div
-                className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2.5 ${
                   stampMsg.type === "success"
-                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                    : "bg-red-50 text-red-800 border border-red-200"
+                    ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                    : "bg-red-50 text-red-900 border border-red-200"
                 }`}
               >
-                {stampMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+                {stampMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
                 <span>{stampMsg.text}</span>
               </div>
             )}
 
             {/* Document Signature Preview Box */}
-            <div className="relative rounded-2xl border-2 border-dashed border-blue-200 bg-linear-to-b from-blue-50/40 via-white to-slate-50 p-6 flex flex-col items-center justify-center min-h-[220px] overflow-hidden">
-              <div className="absolute top-2 left-2 text-[9px] font-black uppercase tracking-wider text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
-                Live Preview (پیش‌نمایش)
+            <div className="relative rounded-3xl border-2 border-dashed border-blue-200 bg-linear-to-b from-blue-50/40 via-white to-slate-50 p-6 flex flex-col items-center justify-center min-h-[240px] overflow-hidden">
+              <div className="absolute top-3 left-3 text-[10px] font-black uppercase tracking-wider text-blue-800 bg-blue-100 px-2.5 py-0.5 rounded-full">
+                Live BOL Footer Preview (پیش‌نمایش در بارنامه)
               </div>
 
-              {/* Signature Overlay - 2x Bigger Scale */}
-              <div className="relative flex items-center justify-center w-full h-[120px] my-2">
+              {/* Signature Overlay */}
+              <div className="relative flex items-center justify-center w-full h-[130px] my-3">
                 <div
                   className="flex items-center justify-center transition-transform duration-200"
                   style={{ transform: `scale(${currentStampScale})` }}
@@ -362,38 +661,37 @@ export function SettingsView() {
                 </div>
               </div>
 
-              <div className="w-48 border-b-2 border-slate-700 my-1" />
+              <div className="w-56 border-b-2 border-slate-800 my-1" />
               <p className="text-xs font-black text-blue-950 uppercase tracking-tight">For & On Behalf of: SKY ARIANA LIMITED</p>
-              <p className="font-[vazirmatn] text-[11px] font-extrabold text-blue-900 mt-0.5" dir="rtl">مهر و امضای مجاز شرکت</p>
+              <p className="font-[vazirmatn] text-xs font-extrabold text-blue-900 mt-0.5" dir="rtl">مهر و امضای مجاز شرکت</p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
               <div className="flex items-center gap-1.5 font-bold">
-                <Sparkles className="w-4 h-4 text-blue-600" />
-                <span>Synchronized with BOL Prints & PDF Exports</span>
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span>Applies automatically to all PDF Exports & A4 Prints</span>
               </div>
-              <span className="text-[11px] font-mono bg-white px-2 py-0.5 rounded border">
+              <span className="text-xs font-mono font-black bg-white px-2.5 py-1 rounded-xl border border-slate-200 text-blue-900">
                 Scale: {(currentStampScale * 100).toFixed(0)}%
               </span>
             </div>
           </div>
 
-          {/* Stamp Controls & Upload Card */}
-          <div className="lg:col-span-6 bg-white/80 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
-            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-              <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-lg shadow-indigo-600/30">
-                <Upload className="w-5 h-5 sm:w-6 sm:h-6" />
+          {/* Stamp Controls Card */}
+          <div className="lg:col-span-6 bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-7 space-y-5">
+            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-900 to-purple-900 text-amber-400 shadow-md shadow-indigo-950/20">
+                <Upload className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Upload & Scale Stamp</h3>
-                <p className="text-[11px] text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
-                  تغییر و بارگذاری تصویر مهر، تنظیم اندازه و مقیاس
+                <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                  بارگذاری تصویر مهر و تنظیم اندازه
                 </p>
               </div>
             </div>
 
             <div className="space-y-4">
-              {/* File Upload Trigger */}
               <div>
                 <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-2">
                   Upload Custom Stamp (PNG / SVG / JPG) / بارگذاری مهر
@@ -408,24 +706,24 @@ export function SettingsView() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs shadow-md shadow-blue-900/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  className="w-full h-12 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 hover:from-blue-950 hover:to-indigo-950 text-white font-black text-xs shadow-xl shadow-blue-950/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
-                  <Upload className="w-4 h-4" />
+                  <Upload className="w-4 h-4 text-amber-400" />
                   <span>Choose Image File / انتخاب فایل مهر و امضا</span>
                 </button>
-                <p className="text-[10px] text-slate-400 mt-1.5 ml-1">
+                <p className="text-[11px] text-slate-500 mt-1.5 ml-1">
                   Transparent PNG or SVG recommended for cleanest realistic print look.
                 </p>
               </div>
 
               {/* Stamp Scale Slider */}
-              <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200 space-y-2">
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold text-slate-800">
                   <div className="flex items-center gap-1.5">
                     <ZoomIn className="w-4 h-4 text-blue-600" />
                     <span>Stamp Size & Scaling (اندازه مهر):</span>
                   </div>
-                  <span className="font-mono text-blue-700 font-black">{(currentStampScale * 100).toFixed(0)}%</span>
+                  <span className="font-mono text-blue-900 font-black">{(currentStampScale * 100).toFixed(0)}%</span>
                 </div>
                 <input
                   type="range"
@@ -434,191 +732,286 @@ export function SettingsView() {
                   step="0.05"
                   value={currentStampScale}
                   onChange={handleScaleChange}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-700"
                 />
                 <div className="flex justify-between text-[10px] text-slate-400 font-bold">
                   <span>Small (60%)</span>
                   <span>Default (100%)</span>
-                  <span>Large 2X (200%)</span>
+                  <span>Large (200%)</span>
                 </div>
               </div>
 
               {/* Reset to Default */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleResetStamp}
-                  className="w-full h-11 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs shadow-2xs flex items-center justify-center gap-2 cursor-pointer transition-all"
-                >
-                  <RotateCcw className="w-4 h-4 text-slate-500" />
-                  <span>Reset to Official Sky Ariana Seal / بازنشانی به مهر اصلی</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleResetStamp}
+                className="w-full h-11 rounded-2xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-xs shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+              >
+                <RotateCcw className="w-4 h-4 text-slate-500" />
+                <span>Reset to Official Sky Ariana Seal / بازنشانی به مهر اصلی</span>
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tab 1: User Management */}
-      {activeTab === "users" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
-          {/* Add New User Panel */}
-          <div className="lg:col-span-5 bg-white/70 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
-            <div className="flex items-center gap-3 pb-3 border-b border-white/50">
-              <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-500/30">
-                <UserPlus className="w-5 h-5 sm:w-6 sm:h-6" />
+      {/* ========================================================================= */}
+      {/* TAB 3: COMPANY PROFILE & LETTERHEAD (مشخصات شرکت)                         */}
+      {/* ========================================================================= */}
+      {activeTab === "company" && (
+        <div className="bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-8 space-y-6 animate-in fade-in duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-teal-900 to-emerald-950 text-amber-400 shadow-md shadow-teal-950/20">
+                <Building2 className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Add System User</h3>
-                <p className="text-[11px] text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
-                  ایجاد کاربر جدید با سطوح دسترسی
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Official Company Profile & Letterhead</h3>
+                <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                  مشخصات رسمی شرکت، آدرس‌ها، شماره‌های تماس و سربرگ اسناد
                 </p>
               </div>
             </div>
 
-            {userMsg && (
-              <div
-                className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
-                  userMsg.type === "success"
-                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                    : "bg-red-50 text-red-800 border border-red-200"
-                }`}
-              >
-                {userMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
-                <span>{userMsg.text}</span>
-              </div>
+            {isCompanySaved && (
+              <span className="px-3.5 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-xs font-black text-emerald-900 flex items-center gap-1.5 animate-in zoom-in-95">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>Settings Saved!</span>
+              </span>
             )}
-
-            <form onSubmit={handleAddUserSubmit} className="space-y-3 sm:space-y-4">
-              <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1 ml-1">Username / شناسه کاربر</label>
-                <input
-                  type="text"
-                  required
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                  placeholder="e.g. jsmith"
-                  className="w-full h-11 sm:h-12 px-3.5 text-xs sm:text-sm font-bold text-slate-900 bg-white/60 backdrop-blur-md border border-white shadow-inner rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1 ml-1">Full Name / نام کامل</label>
-                <input
-                  type="text"
-                  required
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g. John Smith"
-                  className="w-full h-11 sm:h-12 px-3.5 text-xs sm:text-sm font-bold text-slate-900 bg-white/60 backdrop-blur-md border border-white shadow-inner rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1 ml-1">System Role / نقش کاربر</label>
-                <select
-                  value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as UserRole)}
-                  className="w-full h-11 sm:h-12 px-3.5 text-xs sm:text-sm font-bold text-slate-900 bg-white/60 backdrop-blur-md border border-white shadow-inner rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all appearance-none"
-                >
-                  <option value="superadmin">👑 Superadmin (Full System Access)</option>
-                  <option value="admin">🛡️ Admin (BOL & Accounting Access)</option>
-                  <option value="accountant">💼 Accountant (Ledgers & Invoices Only)</option>
-                  <option value="viewer">👁️ Viewer (Read-only Document Access)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-1 ml-1">Email (Optional)</label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="user@skybalam.com"
-                  className="w-full h-11 sm:h-12 px-3.5 text-xs sm:text-sm font-bold text-slate-900 bg-white/60 backdrop-blur-md border border-white shadow-inner rounded-xl focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="group relative w-full h-11 sm:h-12 mt-2 sm:mt-4 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white font-black uppercase tracking-wider text-[11px] rounded-xl shadow-lg shadow-blue-900/20 transition-all flex items-center justify-center gap-2 cursor-pointer overflow-hidden"
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  <UserPlus className="w-4 h-4" />
-                  Create System Account
-                </span>
-              </button>
-            </form>
           </div>
 
-          {/* Active Users Table Panel */}
-          <div className="lg:col-span-7 bg-white/70 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
-            <div className="flex items-center justify-between pb-3 border-b border-white/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/30">
-                  <Users className="w-5 h-5 sm:w-6 sm:h-6" />
-                </div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Active User Accounts</h3>
-                  <p className="text-[11px] text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
-                    کاربران فعال سیستم و سطوح دسترسی
-                  </p>
-                </div>
+          <form onSubmit={handleSaveCompanySettings} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                  Company Name (English) / نام شرکت انگلیسی
+                </label>
+                <input
+                  type="text"
+                  value={companySettings.companyNameEn}
+                  onChange={(e) => setCompanySettings({ ...companySettings, companyNameEn: e.target.value })}
+                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                  Company Name (Persian) / نام شرکت دری / فارسی
+                </label>
+                <input
+                  type="text"
+                  dir="rtl"
+                  value={companySettings.companyNameFa}
+                  onChange={(e) => setCompanySettings({ ...companySettings, companyNameFa: e.target.value })}
+                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500 font-[vazirmatn]"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                  Afghanistan Head Office Phone / شماره تماس افغانستان
+                </label>
+                <input
+                  type="text"
+                  value={companySettings.afgPhone1}
+                  onChange={(e) => setCompanySettings({ ...companySettings, afgPhone1: e.target.value })}
+                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                  Iran Office Phone / شماره تماس ایران
+                </label>
+                <input
+                  type="text"
+                  value={companySettings.iranPhone}
+                  onChange={(e) => setCompanySettings({ ...companySettings, iranPhone: e.target.value })}
+                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                  Official Email / ایمیل رسمی
+                </label>
+                <input
+                  type="email"
+                  value={companySettings.email}
+                  onChange={(e) => setCompanySettings({ ...companySettings, email: e.target.value })}
+                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500"
+                />
               </div>
             </div>
 
-            <div className="space-y-3">
-              {users.map((u) => {
-                const badge = ROLE_BADGES[u.role] || ROLE_BADGES.viewer
-                const isSuper = u.role === "superadmin"
-                return (
-                  <div
-                    key={u.id}
-                    className="p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-white/80 border border-slate-100 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-900 font-black flex items-center justify-center text-sm shadow-inner">
-                        {u.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="text-xs sm:text-sm font-black text-slate-900">{u.name}</div>
-                        <div className="text-[10px] sm:text-[11px] text-slate-500 font-mono font-bold">@{u.username}</div>
-                      </div>
-                    </div>
+            <button
+              type="submit"
+              className="px-6 h-12 rounded-2xl bg-gradient-to-r from-teal-800 to-emerald-900 hover:from-teal-900 hover:to-emerald-950 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-teal-950/20 flex items-center gap-2 cursor-pointer"
+            >
+              <Save className="w-4 h-4 text-amber-400" />
+              <span>Save Company Profile / ذخیره تغییرات</span>
+            </button>
+          </form>
+        </div>
+      )}
 
-                    <div className="flex items-center gap-2 self-end sm:self-auto">
-                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black border ${badge.bg} ${badge.text}`}>
-                        {badge.icon} {badge.label}
-                      </span>
-                      {!isSuper && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm(`Delete user '${u.username}'?`)) {
-                              deleteUser(u.id)
-                            }
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer"
-                          title="Delete User"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
+      {/* ========================================================================= */}
+      {/* TAB 4: CLOUD SYNC & BACKUP HUB                                            */}
+      {/* ========================================================================= */}
+      {activeTab === "cloud" && (
+        <div className="bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-8 space-y-6 animate-in fade-in duration-300">
+          <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 shadow-md shadow-blue-950/20">
+              <Cloud className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Multi-Device Cloud Sync & Backup Hub</h3>
+              <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                همگام‌سازی بارنامه‌ها و دفاتر حساب بین تمام کامپیوترها و موبایل‌ها
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+            {/* Card 1: Cloud Sync Action */}
+            <div className="p-5 rounded-3xl border border-blue-200/80 bg-blue-50/80 space-y-3 flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-blue-950 flex items-center gap-1.5">
+                  <Cloud className="w-4 h-4 text-blue-600" />
+                  Live Cloud Sync
+                </span>
+                <p className="text-xs text-slate-600 font-medium mt-1">
+                  Upload your 58 BOLs and ledgers to the cloud or sync them onto any new device.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCloudSyncOpen(true)}
+                className="w-full h-11 rounded-2xl bg-gradient-to-r from-blue-900 to-indigo-900 text-white font-black text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Cloud className="w-4 h-4 text-amber-400" />
+                <span>Open Cloud Sync Hub</span>
+              </button>
+            </div>
+
+            {/* Card 2: JSON Backup */}
+            <div className="p-5 rounded-3xl border border-emerald-200/80 bg-emerald-50/80 space-y-3 flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+                  <Download className="w-4 h-4 text-emerald-600" />
+                  Export File Backup
+                </span>
+                <p className="text-xs text-slate-600 font-medium mt-1">
+                  Download a complete single `.json` file backup containing all BOLs and ledgers.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    const raw1 = window.localStorage.getItem("skybol:saved-documents")
+                    const raw2 = window.localStorage.getItem("sky-bol-browser-documents")
+                    const docs1 = raw1 ? JSON.parse(raw1) : []
+                    const docs2 = raw2 ? JSON.parse(raw2) : []
+                    const map = new Map<string, any>()
+                    for (const d of [...docs1, ...docs2]) {
+                      const k = d.bol_number || d.id
+                      if (k) map.set(k, d)
+                    }
+                    const allDocs = Array.from(map.values())
+
+                    const backup = {
+                      app: "SKY_ARIANA_LOGISTICS",
+                      version: "3.2.0",
+                      exportedAt: new Date().toISOString(),
+                      totalDocuments: allDocs.length,
+                      savedDocuments: allDocs,
+                      customCompanies: JSON.parse(window.localStorage.getItem("skybol:account-custom-companies") || "[]"),
+                      accountLedgers: JSON.parse(window.localStorage.getItem("skybol:account-ledgers") || "{}"),
+                      companySettings: JSON.parse(window.localStorage.getItem("skybol:company-settings") || "{}"),
+                    }
+
+                    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement("a")
+                    a.href = url
+                    a.download = `sky_ariana_full_backup_${new Date().toISOString().split("T")[0]}.json`
+                    document.body.appendChild(a)
+                    a.click()
+                    document.body.removeChild(a)
+                    URL.revokeObjectURL(url)
+                    toast.success("Full Backup file downloaded! 💾")
+                  } catch (e) {
+                    toast.error("Failed to export backup")
+                  }
+                }}
+                className="w-full h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Download className="w-4 h-4" />
+                <span>Save Backup (.json)</span>
+              </button>
+            </div>
+
+            {/* Card 3: Restore File */}
+            <div className="p-5 rounded-3xl border border-purple-200/80 bg-purple-50/80 space-y-3 flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-purple-950 flex items-center gap-1.5">
+                  <Upload className="w-4 h-4 text-purple-600" />
+                  Restore from File
+                </span>
+                <p className="text-xs text-slate-600 font-medium mt-1">
+                  Select any previous `.json` backup file to restore all documents in 1 second.
+                </p>
+              </div>
+              <label className="w-full h-11 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5">
+                <Upload className="w-4 h-4" />
+                <span>Restore Backup File</span>
+                <input
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const reader = new FileReader()
+                    reader.onload = (event) => {
+                      try {
+                        const parsed = JSON.parse(event.target?.result as string)
+                        if (Array.isArray(parsed.savedDocuments)) {
+                          window.localStorage.setItem("sky-bol-browser-documents", JSON.stringify(parsed.savedDocuments))
+                          window.localStorage.setItem("skybol:saved-documents", JSON.stringify(parsed.savedDocuments))
+                        }
+                        if (Array.isArray(parsed.customCompanies)) {
+                          window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(parsed.customCompanies))
+                        }
+                        if (parsed.accountLedgers) {
+                          window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(parsed.accountLedgers))
+                        }
+                        window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: {} }))
+                        window.dispatchEvent(new CustomEvent("skybol:account-ledger-updated", { detail: {} }))
+                        toast.success("Database Backup Restored Successfully! 🎉")
+                      } catch (err) {
+                        toast.error("Invalid backup file format.")
+                      }
+                    }
+                    reader.readAsText(file)
+                  }}
+                />
+              </label>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tab 2: Change Password */}
-      {activeTab === "password" && (
-        <div className="max-w-xl mx-auto bg-white/70 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-10 space-y-4 sm:space-y-6">
-          <div className="flex items-center gap-3 pb-3 border-b border-white/50">
-            <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-lg shadow-amber-500/30">
-              <Key className="w-5 h-5 sm:w-6 sm:h-6" />
+      {/* ========================================================================= */}
+      {/* TAB 5: SECURITY & PASSWORDS                                               */}
+      {/* ========================================================================= */}
+      {activeTab === "security" && (
+        <div className="max-w-2xl mx-auto bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-8 space-y-6 animate-in fade-in duration-300">
+          <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-md shadow-amber-500/30">
+              <Key className="w-6 h-6" />
             </div>
             <div>
               <h3 className="text-lg sm:text-xl font-black tracking-tight text-slate-900">Change Account Password</h3>
@@ -630,20 +1023,22 @@ export function SettingsView() {
 
           {passMsg && (
             <div
-              className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+              className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2.5 ${
                 passMsg.type === "success"
-                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                  : "bg-red-50 text-red-800 border border-red-200"
+                  ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                  : "bg-red-50 text-red-900 border border-red-200"
               }`}
             >
-              {passMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 shrink-0" /> : <AlertCircle className="w-4 h-4 shrink-0" />}
+              {passMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
               <span>{passMsg.text}</span>
             </div>
           )}
 
-          <form onSubmit={handleChangePasswordSubmit} className="space-y-3 sm:space-y-4">
+          <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-extrabold text-slate-800 block mb-1">Current Password / رمز عبور فعلی</label>
+              <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                Current Password / رمز عبور فعلی
+              </label>
               <div className="relative">
                 <input
                   type={showOldPass ? "text" : "password"}
@@ -651,12 +1046,12 @@ export function SettingsView() {
                   value={oldPassword}
                   onChange={(e) => setOldPassword(e.target.value)}
                   placeholder="Enter current password"
-                  className="w-full h-11 px-3 text-xs font-bold text-slate-900 bg-white border border-slate-300 rounded-xl focus:border-amber-500"
+                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowOldPass(!showOldPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   {showOldPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -664,299 +1059,146 @@ export function SettingsView() {
             </div>
 
             <div>
-              <label className="text-xs font-extrabold text-slate-800 block mb-1">New Password / رمز عبور جدید</label>
+              <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                New Password / رمز عبور جدید
+              </label>
               <div className="relative">
                 <input
                   type={showNewPass ? "text" : "password"}
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password"
-                  className="w-full h-11 px-3 text-xs font-bold text-slate-900 bg-white border border-slate-300 rounded-xl focus:border-amber-500"
+                  placeholder="Enter new strong password"
+                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPass(!showNewPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+
+              {/* Password Strength Meter */}
+              {newPassword && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center justify-between text-[11px] font-black">
+                    <span className="text-slate-500">Password Strength:</span>
+                    <span className={passStrength.color.split(" ")[1] || "text-slate-700"}>{passStrength.label}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${passStrength.color.split(" ")[0]} transition-all duration-300`}
+                      style={{ width: `${passStrength.score}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
-              <label className="text-xs font-extrabold text-slate-800 block mb-1">Confirm New Password / تایید رمز عبور جدید</label>
+              <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                Confirm New Password / تایید رمز عبور جدید
+              </label>
               <input
                 type="password"
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm new password"
-                className="w-full h-11 px-3 text-xs font-bold text-slate-900 bg-white border border-slate-300 rounded-xl focus:border-amber-500"
+                className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full h-11 mt-2 sm:mt-3 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full h-12 mt-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-amber-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               <Lock className="w-4 h-4" />
-              <span>Update Password</span>
+              <span>Update Password / تغییر رمز عبور</span>
             </button>
           </form>
         </div>
       )}
 
-      {/* Tab 3: Company & Regional Info */}
-      {activeTab === "general" && (
-        <div className="bg-white/70 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
-          <div className="flex items-center gap-3 pb-3 border-b border-white/50">
-            <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 text-white shadow-lg shadow-teal-500/30">
-              <Building2 className="w-5 h-5 sm:w-6 sm:h-6" />
-            </div>
-            <div>
-              <h3 className="text-lg sm:text-xl font-black tracking-tight text-slate-900">Company & Regional Preferences</h3>
-              <p className="text-xs font-bold text-slate-500">Official contact information and database backup settings</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            <div className="space-y-4 p-4 rounded-2xl border border-slate-200 bg-slate-50/50">
-              <h4 className="text-xs font-black uppercase text-blue-900 flex items-center gap-1.5">
-                <Globe className="w-4 h-4" /> Regional Contact Info
-              </h4>
-
-              <div className="space-y-2 text-xs">
-                <div>
-                  <span className="font-bold text-slate-700 block">Afghanistan Head Office:</span>
-                  <span className="text-slate-900 font-bold">+93 700 939 365 | +93 711 435 529</span>
-                </div>
-                <div>
-                  <span className="font-bold text-slate-700 block">Iran Representative Office:</span>
-                  <span className="text-slate-900 font-bold">+98 9172325086</span>
-                </div>
-                <div>
-                  <span className="font-bold text-slate-700 block">Official Support Email:</span>
-                  <span className="text-blue-700 font-bold">info@skyariana.com</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4 p-4 rounded-2xl border border-slate-200 bg-slate-50/50">
-              <h4 className="text-xs font-black uppercase text-blue-900 flex items-center gap-1.5">
-                <Sliders className="w-4 h-4" /> System Defaults
-              </h4>
-
-              <div className="space-y-2 text-xs">
-                <div>
-                  <span className="font-bold text-slate-700 block">Default Document Currency:</span>
-                  <span className="text-slate-900 font-bold">$ USD (United States Dollar)</span>
-                </div>
-                <div>
-                  <span className="font-bold text-slate-700 block">Dual Calendar Engine:</span>
-                  <span className="text-slate-900 font-bold">Gregorian + Persian Solar (هجری شمسی)</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="md:col-span-2 space-y-4 p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50">
-              <h4 className="text-xs font-black uppercase text-emerald-900 flex items-center gap-1.5">
-                <Download className="w-4 h-4 text-emerald-700" /> Database Backup & Safety
-              </h4>
-              <p className="text-xs text-slate-600 font-medium">Export a complete snapshot of all BOLs, Ledgers, and Companies to JSON, or restore from a previous backup file.</p>
-              
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsCloudSyncOpen(true)}
-                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Cloud className="w-4 h-4" />
-                  <span>Open Multi-Device Cloud Sync Hub / همگام‌سازی ابری</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    const backupObj = {
-                      exportedAt: new Date().toISOString(),
-                      savedDocuments: JSON.parse(window.localStorage.getItem("sky-bol-browser-documents") || "[]"),
-                      customCompanies: JSON.parse(window.localStorage.getItem("sky-bol-company-custom-companies") || "[]"),
-                      accountLedgers: JSON.parse(window.localStorage.getItem("sky-bol-company-ledgers") || "{}"),
-                    }
-                    const blob = new Blob([JSON.stringify(backupObj, null, 2)], { type: "application/json" })
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement("a")
-                    a.href = url
-                    a.download = `SkyBalam_Backup_${new Date().toISOString().split("T")[0]}.json`
-                    document.body.appendChild(a)
-                    a.click()
-                    document.body.removeChild(a)
-                  }}
-                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download Backup (.json)</span>
-                </button>
-
-                <label className="px-3.5 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-800 font-extrabold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer">
-                  <Save className="w-4 h-4 text-blue-600" />
-                  <span>Restore Backup</span>
-                  <input
-                    type="file"
-                    accept=".json"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (!file) return
-                      const reader = new FileReader()
-                      reader.onload = (event) => {
-                        try {
-                          const data = JSON.parse(event.target?.result as string)
-                          if (data.savedDocuments) {
-                            window.localStorage.setItem("sky-bol-browser-documents", JSON.stringify(data.savedDocuments))
-                            window.localStorage.setItem("skybol:saved-documents", JSON.stringify(data.savedDocuments))
-                          }
-                          if (data.customCompanies) {
-                            window.localStorage.setItem("sky-bol-company-custom-companies", JSON.stringify(data.customCompanies))
-                            window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(data.customCompanies))
-                          }
-                          if (data.accountLedgers) {
-                            window.localStorage.setItem("sky-bol-company-ledgers", JSON.stringify(data.accountLedgers))
-                            window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(data.accountLedgers))
-                          }
-                          window.dispatchEvent(new CustomEvent("skybol:account-ledger-updated", { detail: {} }))
-                          alert("Database Backup successfully restored!")
-                        } catch (err) {
-                          alert("Invalid backup file format.")
-                        }
-                      }
-                      reader.readAsText(file)
-                    }}
-                  />
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 4: System Version & Updates (from system-version.ts) */}
-      {activeTab === "update" && (
-        <div className="bg-white/70 backdrop-blur-2xl rounded-2xl sm:rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-white/50">
+      {/* ========================================================================= */}
+      {/* TAB 6: APP & SYSTEM BUILD                                                 */}
+      {/* ========================================================================= */}
+      {activeTab === "updates" && (
+        <div className="bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-8 space-y-6 animate-in fade-in duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-lg shadow-indigo-500/30">
-                <Download className="w-5 h-5 sm:w-6 sm:h-6" />
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-900 to-purple-900 text-amber-400 shadow-md shadow-indigo-950/20">
+                <Smartphone className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl font-black tracking-tight text-slate-900">System Version & Software Updates</h3>
-                <p className="text-xs font-bold text-slate-500">Loaded directly from system configuration file (`system-version.ts`)</p>
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">App Installation & System Diagnostics</h3>
+                <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                  نصب برنامه روی گوشی و کامپیوتر، اطلاعات نسخه و سلامت سیستم
+                </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleCheckForUpdates}
-              disabled={isCheckingUpdate}
-              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-md transition-colors flex items-center gap-2 cursor-pointer self-start md:self-auto disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${isCheckingUpdate ? "animate-spin" : ""}`} />
-              <span>{isCheckingUpdate ? "Checking Update File..." : "Check for Updates"}</span>
-            </button>
+            <PWAInstallButton />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Version Card */}
+            <div className="p-5 rounded-3xl border border-blue-200/80 bg-blue-50/60 space-y-3">
+              <span className="text-xs font-black uppercase tracking-wider text-blue-950 flex items-center gap-1.5">
+                <Server className="w-4 h-4 text-blue-600" />
+                Software Version & Engine
+              </span>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between py-1 border-b border-blue-200/60 font-bold">
+                  <span className="text-slate-600">Release Version:</span>
+                  <span className="text-blue-950 font-black">{CURRENT_SYSTEM_VERSION.version}</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-blue-200/60 font-bold">
+                  <span className="text-slate-600">Build Number:</span>
+                  <span className="text-blue-950 font-mono">{CURRENT_SYSTEM_VERSION.buildNumber}</span>
+                </div>
+                <div className="flex justify-between py-1 font-bold">
+                  <span className="text-slate-600">Renderer:</span>
+                  <span className="text-emerald-700 font-black">Next.js Turbopack 16.2.6</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Check Updates */}
+            <div className="p-5 rounded-3xl border border-emerald-200/80 bg-emerald-50/60 space-y-3 flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+                  <RefreshCw className="w-4 h-4 text-emerald-600" />
+                  System Synchronizer
+                </span>
+                <p className="text-xs text-slate-600 font-medium mt-1">
+                  Ensure all cache, database schemas, and PDF generators are fully synchronized with the cloud.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCheckForUpdates}
+                disabled={isCheckingUpdate}
+                className="w-full h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md cursor-pointer flex items-center justify-center gap-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isCheckingUpdate ? "animate-spin" : ""}`} />
+                <span>{isCheckingUpdate ? "Checking Cloud Status..." : "Verify System Health"}</span>
+              </button>
+            </div>
           </div>
 
           {updateMsg && (
-            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-extrabold flex items-center gap-2 animate-in fade-in">
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs font-bold text-emerald-900 flex items-center gap-2 animate-in zoom-in-95">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{updateMsg}</span>
             </div>
           )}
-
-          {/* Current Version Box */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            <div className="p-4 rounded-2xl border border-blue-200 bg-blue-50/50 space-y-1">
-              <span className="text-[11px] font-bold text-slate-500 uppercase">Installed Version</span>
-              <div className="text-2xl font-black text-blue-900 font-mono">{CURRENT_SYSTEM_VERSION.version}</div>
-              <span className="text-[11px] font-bold text-blue-700">{CURRENT_SYSTEM_VERSION.edition}</span>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-purple-200 bg-purple-50/50 space-y-1">
-              <span className="text-[11px] font-bold text-slate-500 uppercase">Build Identifier</span>
-              <div className="text-sm font-black text-purple-900 font-mono">{CURRENT_SYSTEM_VERSION.buildNumber}</div>
-              <span className="text-[11px] font-bold text-purple-700">Released: {CURRENT_SYSTEM_VERSION.releaseDate}</span>
-            </div>
-
-            <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 space-y-1 sm:col-span-2 md:col-span-1">
-              <span className="text-[11px] font-bold text-slate-500 uppercase">Update Channel</span>
-              <div className="text-sm font-black text-emerald-900 capitalize flex items-center gap-1">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
-                <span>{CURRENT_SYSTEM_VERSION.updateChannel} Channel</span>
-              </div>
-              <span className="text-[11px] font-bold text-emerald-700">{CURRENT_SYSTEM_VERSION.companyName}</span>
-            </div>
-          </div>
-
-          {/* Mobile & Desktop App Installation */}
-          <div className="p-4 sm:p-5 rounded-2xl border border-emerald-200/90 bg-linear-to-br from-emerald-50/80 via-white to-sky-50/60 space-y-3 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 shrink-0">
-                  <Smartphone className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-black text-slate-900">Install Sky Ariana BOL App / نصب برنامه</h4>
-                  <p className="text-xs text-slate-600 font-medium mt-0.5">
-                    Install as a standalone native app on Android, iPhone, iPad, Windows PC, or Mac.
-                  </p>
-                </div>
-              </div>
-              <PWAInstallButton className="shrink-0" />
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-[11px] text-slate-600">
-              <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80">
-                <strong className="block text-slate-900 font-bold mb-0.5">📱 Android (Chrome / Edge)</strong>
-                Tap &ldquo;Install App&rdquo; or click browser menu (⋮) → &ldquo;Install App&rdquo;.
-              </div>
-              <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80">
-                <strong className="block text-slate-900 font-bold mb-0.5">🍏 iPhone & iPad (Safari)</strong>
-                Tap the Share button ⎕ at bottom, then select &ldquo;Add to Home Screen&rdquo; ➕.
-              </div>
-              <div className="p-2.5 rounded-xl bg-white/90 border border-slate-200/80">
-                <strong className="block text-slate-900 font-bold mb-0.5">💻 PC & Mac (Chrome/Edge)</strong>
-                Click the Install icon ⊕ inside your browser address bar for desktop app.
-              </div>
-            </div>
-          </div>
-
-          {/* System Release Changelog */}
-          <div className="space-y-3 sm:space-y-4 pt-2">
-            <h4 className="text-xs font-black uppercase text-slate-900 flex items-center gap-1.5">
-              <Terminal className="w-4 h-4 text-slate-700" /> System Release Log (`changelog`)
-            </h4>
-
-            <div className="space-y-3">
-              {CURRENT_SYSTEM_VERSION.changelog.map((log) => (
-                <div key={log.version} className="p-3.5 sm:p-4 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-slate-900 font-mono">
-                      {log.version} - {log.title}
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-500">{log.date}</span>
-                  </div>
-                  <ul className="list-disc list-inside text-xs text-slate-700 space-y-1 font-medium">
-                    {log.changes.map((c, i) => (
-                      <li key={i}>{c}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       )}
-      {/* Cloud Sync Modal */}
+
+      {/* Cloud Sync Hub Modal */}
       <CloudSyncModal open={isCloudSyncOpen} onOpenChange={setIsCloudSyncOpen} />
     </div>
   )
