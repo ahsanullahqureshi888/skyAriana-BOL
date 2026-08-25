@@ -37,8 +37,10 @@ import {
   User,
   Receipt,
   FileSpreadsheet,
+  Cloud,
 } from "lucide-react"
 import { generateBOLPDFBlob, savePDFToDevice } from "@/lib/utils/pdf-upload"
+import { CloudSyncModal } from "./cloud-sync-modal"
 
 type DocumentCategoryKey = "all" | "latest" | "account" | "export" | "import" | "with-pdf"
 type ViewMode = "grid" | "list" | "table"
@@ -435,6 +437,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   const [documentCategories, setDocumentCategories] = useState<Record<string, Exclude<DocumentCategoryKey, "all" | "latest" | "with-pdf">>>({})
   const [accountCompanyPdfs, setAccountCompanyPdfs] = useState<Record<string, AccountCompanyRecord>>({})
   const [customAccountCompanies, setCustomAccountCompanies] = useState<string[]>([])
+  const [isCloudSyncModalOpen, setIsCloudSyncModalOpen] = useState(false)
 
 function parseBolSeq(bolNum: string): number {
   if (!bolNum) return 0
@@ -1247,11 +1250,21 @@ function parseBolSeq(bolNum: string): number {
             <Button
               type="button"
               variant="outline"
+              onClick={() => setIsCloudSyncModalOpen(true)}
+              className="h-8.5 rounded-xl border-blue-300 bg-blue-50/90 px-2.5 text-xs font-black text-blue-900 hover:bg-blue-100 shadow-2xs cursor-pointer flex items-center gap-1"
+              title="Cloud Sync: Upload/Download all 58 BOLs and ledgers across all devices & browsers"
+            >
+              <Cloud className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+              <span>Cloud Sync / همگام‌سازی</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
               onClick={handleRecoverAllBOLs}
-              className="h-8.5 rounded-xl border-blue-300 bg-blue-50/80 px-2.5 text-xs font-black text-blue-800 hover:bg-blue-100 shadow-2xs cursor-pointer"
+              className="h-8.5 rounded-xl border-slate-300 bg-slate-50/80 px-2.5 text-xs font-bold text-slate-800 hover:bg-slate-100 shadow-2xs cursor-pointer"
               title="Sync & recover all saved BOL documents from server & disk"
             >
-              <RotateCcw className="h-3.5 w-3.5 mr-1 text-blue-600 shrink-0" />
+              <RotateCcw className="h-3.5 w-3.5 mr-1 text-slate-600 shrink-0" />
               <span>Recover Saved BOLs</span>
             </Button>
             {/* Sort Selector */}
@@ -1865,6 +1878,13 @@ function parseBolSeq(bolNum: string): number {
           </>
         )}
       </CardContent>
+
+      {/* Cloud Sync Modal */}
+      <CloudSyncModal
+        open={isCloudSyncModalOpen}
+        onOpenChange={setIsCloudSyncModalOpen}
+        onSyncComplete={fetchDocuments}
+      />
     </Card>
   )
 }

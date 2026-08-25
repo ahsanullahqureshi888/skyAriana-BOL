@@ -28,6 +28,7 @@ import {
 import { SavedDocuments } from "./saved-documents"
 import { LedgerView } from "@/components/ledger-view"
 import { PrintOptionsDialog, type PrintOptions } from "@/components/print-options-dialog"
+import { CloudSyncModal } from "./cloud-sync-modal"
 
 interface BOLEditorProps {
   onSave?: (data: BillOfLadingFormData) => void
@@ -372,6 +373,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [recoverableDraftTime, setRecoverableDraftTime] = useState<string | null>(null)
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false)
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false)
+  const [isCloudSyncModalOpen, setIsCloudSyncModalOpen] = useState(false)
   const [activePrintOptions, setActivePrintOptions] = useState<PrintOptions>({
     copies: 1,
     quality: "standard",
@@ -3563,9 +3565,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             <Button 
               size="sm" 
               variant="outline" 
-              onClick={() => setIsBackupModalOpen(true)}
+              onClick={() => setIsCloudSyncModalOpen(true)}
               className="h-8 rounded-2xl border-slate-200 bg-white px-2.5 text-xs text-slate-700 hover:bg-slate-50 md:h-9 md:px-2.5 shrink-0 cursor-pointer"
-              title="Backup & Restore Data Hub"
+              title="Backup & Multi-Device Cloud Sync Hub"
             >
               <DownloadCloud className="h-3.5 md:h-4 w-3.5 md:w-4 text-slate-600 mr-1" />
               <span>Backup</span>
@@ -3597,17 +3599,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             <Button 
               size="sm" 
               variant="outline" 
-              onClick={handleExportPDF} 
-              disabled={isSaving}
-              className="h-8 rounded-2xl border-white/60 bg-white/80 px-2.5 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm shrink-0 cursor-pointer"
-              title="Save PDF to cloud storage"
+              onClick={() => setIsCloudSyncModalOpen(true)}
+              className="h-8 rounded-2xl border-blue-200 bg-blue-50/90 px-2.5 text-xs text-blue-800 hover:border-blue-300 hover:bg-blue-100 md:h-9 md:px-3 md:text-sm shrink-0 cursor-pointer font-bold shadow-2xs"
+              title="Cloud Sync: Upload/Download all BOLs across all devices"
             >
-              {isSaving ? (
-                <Loader2 className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 animate-spin" />
-              ) : (
-                <Upload className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1" />
-              )}
-              <span>Cloud</span>
+              <Cloud className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 text-blue-600" />
+              <span>Cloud Sync</span>
             </Button>
           </div>
         </div>
@@ -8758,6 +8755,15 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Multi-Device Cloud Sync Hub */}
+      <CloudSyncModal
+        open={isCloudSyncModalOpen}
+        onOpenChange={setIsCloudSyncModalOpen}
+        onSyncComplete={() => {
+          if (onRefreshDocuments) onRefreshDocuments()
+        }}
+      />
     </div>
   )
 }

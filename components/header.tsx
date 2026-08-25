@@ -1,8 +1,10 @@
 "use client"
 
 import Image from 'next/image'
+import { useState } from 'react'
 import { 
-  ArrowLeft, 
+  ArrowLeft,
+  Cloud, 
   Plane, 
   Ship, 
   Truck, 
@@ -18,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/lib/app-context'
 import { PWAInstallButton } from '@/components/pwa-install-prompt'
+import { CloudSyncModal } from '@/components/bill-of-lading/cloud-sync-modal'
 
 interface HeaderProps {
   showBack?: boolean
@@ -27,6 +30,7 @@ interface HeaderProps {
 
 export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   const { goBack, currentAccount, currentCompany, view, setView, currentUser, logout } = useApp()
+  const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false)
 
   const getTitle = () => {
     if (title) return title
@@ -157,6 +161,18 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               <span className="hidden md:inline">Settings</span>
             </Button>
 
+            {/* Quick Cloud Sync Across Devices */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCloudSyncOpen(true)}
+              className="gap-1 sm:gap-1.5 h-8.5 sm:h-9 rounded-xl text-xs font-bold bg-blue-50/80 border-blue-200 text-blue-900 hover:bg-blue-100 transition-all cursor-pointer shadow-2xs"
+              title="Cloud Sync: Sync all BOLs & Ledgers with other devices"
+            >
+              <Cloud className="h-3.5 w-3.5 text-blue-600" />
+              <span className="hidden sm:inline">Sync</span>
+            </Button>
+
             {/* PWA Install App Button */}
             <PWAInstallButton />
 
@@ -196,6 +212,9 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
       {/* Glowing Golden & Blue Accent Bottom Edge */}
       <div className="w-full h-[2.5px] bg-gradient-to-r from-amber-400 via-blue-600 to-cyan-400 shadow-[0_1px_6px_rgba(37,99,235,0.35)]" />
+
+      {/* Cloud Sync Modal */}
+      <CloudSyncModal open={isCloudSyncOpen} onOpenChange={setIsCloudSyncOpen} />
     </header>
   )
 }

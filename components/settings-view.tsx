@@ -30,8 +30,10 @@ import {
   ZoomIn,
   ShieldCheck,
   Smartphone,
+  Cloud,
 } from "lucide-react"
 import { PWAInstallButton } from "@/components/pwa-install-prompt"
+import { CloudSyncModal } from "@/components/bill-of-lading/cloud-sync-modal"
 import {
   COMPANY_STAMP_SIGNATURE_SRC,
   COMPANY_STAMP_SIGNATURE_DATA_URL,
@@ -51,6 +53,7 @@ const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; i
 export function SettingsView() {
   const { users, addUser, updateUserRole, deleteUser, changePassword, currentUser } = useApp()
   const [activeTab, setActiveTab] = useState<"users" | "password" | "stamp" | "general" | "update">("users")
+  const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false)
 
   // Add User Form State
   const [newUsername, setNewUsername] = useState("")
@@ -765,6 +768,15 @@ export function SettingsView() {
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
+                  onClick={() => setIsCloudSyncOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Cloud className="w-4 h-4" />
+                  <span>Open Multi-Device Cloud Sync Hub / همگام‌سازی ابری</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => {
                     const backupObj = {
                       exportedAt: new Date().toISOString(),
@@ -944,6 +956,8 @@ export function SettingsView() {
           </div>
         </div>
       )}
+      {/* Cloud Sync Modal */}
+      <CloudSyncModal open={isCloudSyncOpen} onOpenChange={setIsCloudSyncOpen} />
     </div>
   )
 }
