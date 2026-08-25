@@ -16,7 +16,7 @@ import { BillOfLadingFormData, initialFormData, RouteStop, AFGHANISTAN_DOCUMENT_
 import consigneeSeedData from "@/lib/data/consignees-from-pdf.json"
 import shipperSeedData from "@/lib/data/shippers-from-pdf.json"
 import notifyPartySeedData from "@/lib/data/notify-parties-from-pdf.json"
-import { Printer, Save, FileText, Eye, Plus, Loader2, Calendar, Truck, MapPin, Trash2, ArrowRight, Package, Edit3, ImageIcon, Upload, RotateCcw, ScrollText, Check, Download, Building2, Phone, Mail, Ship, Plane, Train, AlertCircle, User, Bell, Globe, Shield, Leaf, Heart, Scale, Bookmark, BookmarkPlus, X, IdCard, Car, Landmark, ShieldCheck, Receipt, List, ChevronDown, ChevronUp, Info, CheckCircle2, Circle, Sparkles, Copy, Box, ArrowLeftRight, Zap, Calculator, SlidersHorizontal, Layers, Keyboard, Cloud, DownloadCloud, UploadCloud, RefreshCw, FileSpreadsheet, Coins } from "lucide-react"
+import { Printer, Save, FileText, Eye, Plus, Loader2, Calendar, Truck, MapPin, Trash2, ArrowRight, Package, Edit3, ImageIcon, Upload, RotateCcw, ScrollText, Check, Download, Building2, Phone, Mail, Ship, Plane, Train, AlertCircle, User, Bell, Globe, Shield, Leaf, Heart, Scale, Bookmark, BookmarkPlus, X, IdCard, Car, Landmark, ShieldCheck, Receipt, List, ChevronDown, ChevronUp, Info, CheckCircle2, Circle, Sparkles, Copy, Box, ArrowLeftRight, Zap, Calculator, SlidersHorizontal, Layers, Keyboard, Cloud, DownloadCloud, UploadCloud, RefreshCw, FileSpreadsheet, Coins, Hash } from "lucide-react"
 import { formatPersianDate, getDualDates } from "@/lib/utils/persian-date"
 import {
   generateBOLPDFBlob,
@@ -1655,43 +1655,43 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const getNoteThemeStyles = (theme: NoteTheme = 'red') => {
     const themes = {
       red: {
-        container: 'bg-linear-to-br from-red-50/90 to-white/70 border-red-200/50',
-        label: 'text-red-700',
-        input: 'border-red-200/60 bg-white/70 focus:border-red-400 focus:ring-red-400/30',
-        textarea: 'border-red-200/60 focus:border-red-400 focus:ring-red-400/30 bg-white/70 text-red-900',
+        container: 'bg-linear-to-br from-red-50/90 via-white to-red-50/40 border-red-200/80 shadow-red-100/50',
+        label: 'text-red-800',
+        input: 'border-red-200 bg-white/80 focus:border-red-500 focus:ring-2 focus:ring-red-400/20 text-red-950 font-bold',
+        textarea: 'border-red-200/80 focus:border-red-500 focus:ring-2 focus:ring-red-400/20 bg-white/90 text-slate-900',
       },
       blue: {
-        container: 'bg-linear-to-br from-blue-50/90 to-white/70 border-blue-200/50',
-        label: 'text-blue-700',
-        input: 'border-blue-200/60 bg-white/70 focus:border-blue-400 focus:ring-blue-400/30',
-        textarea: 'border-blue-200/60 focus:border-blue-400 focus:ring-blue-400/30 bg-white/70 text-blue-900',
+        container: 'bg-linear-to-br from-blue-50/90 via-white to-blue-50/40 border-blue-200/80 shadow-blue-100/50',
+        label: 'text-blue-800',
+        input: 'border-blue-200 bg-white/80 focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 text-blue-950 font-bold',
+        textarea: 'border-blue-200/80 focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 bg-white/90 text-slate-900',
       },
       green: {
-        container: 'bg-linear-to-br from-green-50/90 to-white/70 border-green-200/50',
-        label: 'text-green-700',
-        input: 'border-green-200/60 bg-white/70 focus:border-green-400 focus:ring-green-400/30',
-        textarea: 'border-green-200/60 focus:border-green-400 focus:ring-green-400/30 bg-white/70 text-green-900',
+        container: 'bg-linear-to-br from-emerald-50/90 via-white to-emerald-50/40 border-emerald-200/80 shadow-emerald-100/50',
+        label: 'text-emerald-800',
+        input: 'border-emerald-200 bg-white/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20 text-emerald-950 font-bold',
+        textarea: 'border-emerald-200/80 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20 bg-white/90 text-slate-900',
       },
       orange: {
-        container: 'bg-linear-to-br from-orange-50/90 to-white/70 border-orange-200/50',
-        label: 'text-orange-700',
-        input: 'border-orange-200/60 bg-white/70 focus:border-orange-400 focus:ring-orange-400/30',
-        textarea: 'border-orange-200/60 focus:border-orange-400 focus:ring-orange-400/30 bg-white/70 text-orange-900',
+        container: 'bg-linear-to-br from-amber-50/90 via-white to-amber-50/40 border-amber-200/80 shadow-amber-100/50',
+        label: 'text-amber-800',
+        input: 'border-amber-200 bg-white/80 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20 text-amber-950 font-bold',
+        textarea: 'border-amber-200/80 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20 bg-white/90 text-slate-900',
       },
       purple: {
-        container: 'bg-linear-to-br from-purple-50/90 to-white/70 border-purple-200/50',
-        label: 'text-purple-700',
-        input: 'border-purple-200/60 bg-white/70 focus:border-purple-400 focus:ring-purple-400/30',
-        textarea: 'border-purple-200/60 focus:border-purple-400 focus:ring-purple-400/30 bg-white/70 text-purple-900',
+        container: 'bg-linear-to-br from-purple-50/90 via-white to-purple-50/40 border-purple-200/80 shadow-purple-100/50',
+        label: 'text-purple-800',
+        input: 'border-purple-200 bg-white/80 focus:border-purple-500 focus:ring-2 focus:ring-purple-400/20 text-purple-950 font-bold',
+        textarea: 'border-purple-200/80 focus:border-purple-500 focus:ring-2 focus:ring-purple-400/20 bg-white/90 text-slate-900',
       },
       gray: {
-        container: 'bg-linear-to-br from-gray-50/90 to-white/70 border-gray-200/50',
-        label: 'text-gray-700',
-        input: 'border-gray-200/60 bg-white/70 focus:border-gray-400 focus:ring-gray-400/30',
-        textarea: 'border-gray-200/60 focus:border-gray-400 focus:ring-gray-400/30 bg-white/70 text-gray-900',
+        container: 'bg-linear-to-br from-slate-50/90 via-white to-slate-50/40 border-slate-200/80 shadow-slate-100/50',
+        label: 'text-slate-800',
+        input: 'border-slate-200 bg-white/80 focus:border-slate-500 focus:ring-2 focus:ring-slate-400/20 text-slate-950 font-bold',
+        textarea: 'border-slate-200/80 focus:border-slate-500 focus:ring-2 focus:ring-slate-400/20 bg-white/90 text-slate-900',
       },
     }
-    return themes[theme]
+    return themes[theme] || themes.red
   }
 
   const handleDateChange = (gregorianDate: string) => {
@@ -1701,6 +1701,60 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       setPersianDate(dualDates.persian)
       setPersianDateNumeric(formatPersianDate(gregorianDate) ?? dualDates.persianNumeric)
     }
+  }
+
+  const handleSetToday = () => {
+    const today = new Date().toISOString().split("T")[0]
+    handleDateChange(today)
+    toast.success("Date set to Today / تاریخ امروز تنظیم شد")
+  }
+
+  const handleSetYesterday = () => {
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    const yesterday = d.toISOString().split("T")[0]
+    handleDateChange(yesterday)
+    toast.info("Date set to Yesterday / تاریخ دیروز تنظیم شد")
+  }
+
+  const handleCopyBolNumber = async () => {
+    if (!bolNumber) return
+    try {
+      await navigator.clipboard.writeText(bolNumber)
+      toast.success("BOL # copied to clipboard!", { description: bolNumber })
+    } catch {
+      toast.info(bolNumber)
+    }
+  }
+
+  const handleIncrementBolNumber = () => {
+    if (!bolNumber) {
+      setBolNumber("BOL-2026-NSA501")
+      return
+    }
+    const match = bolNumber.match(/^(.*?)(\d+)$/)
+    if (match) {
+      const prefix = match[1]
+      const num = parseInt(match[2], 10) + 1
+      const paddedNum = String(num).padStart(match[2].length, "0")
+      const nextBol = `${prefix}${paddedNum}`
+      setBolNumber(nextBol)
+      toast.success("Next BOL # Generated", { description: nextBol })
+    } else {
+      const nextBol = `${bolNumber}-1`
+      setBolNumber(nextBol)
+      toast.success("Next BOL # Generated", { description: nextBol })
+    }
+  }
+
+  const handleClearNote1 = () => {
+    setFormData((prev) => ({ ...prev, notes_1: "" }))
+    toast.info("Note 1 cleared")
+  }
+
+  const handleClearNote2 = () => {
+    setFormData((prev) => ({ ...prev, notes_2: "" }))
+    toast.info("Note 2 cleared")
   }
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -3817,285 +3871,480 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             </div>
 
             {/* 01 Document Information Card */}
-            <Card id="section-doc" className="bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden">
-              <CardHeader className="pb-4 border-b border-white/50 bg-white/40">
-                <CardTitle className="text-base flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-blue-600 text-white text-[11px] font-black shadow-xs">
+            <Card id="section-doc" className="relative bg-white/80 backdrop-blur-2xl rounded-[32px] border border-white/90 shadow-[0_20px_50px_-15px_rgba(30,58,138,0.12)] overflow-hidden transition-all">
+              {/* Top Accent Strip */}
+              <div className="h-1.5 w-full bg-linear-to-r from-blue-600 via-indigo-600 to-cyan-500" />
+              
+              <CardHeader className="pb-4 pt-5 px-5 sm:px-7 border-b border-slate-100/80 bg-linear-to-r from-blue-50/80 via-indigo-50/40 to-white/70">
+                <CardTitle className="text-base flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center justify-center w-7 h-7 rounded-xl bg-linear-to-br from-blue-600 to-indigo-700 text-white text-xs font-black shadow-md shadow-blue-500/20">
                       01
                     </span>
-                    <div className="p-2 rounded-xl bg-blue-100 text-blue-700 border border-blue-200 shadow-2xs">
-                      <Calendar className="h-4.5 w-4.5" />
+                    <div className="p-2.5 rounded-2xl bg-linear-to-br from-blue-500/10 to-indigo-500/15 text-blue-700 border border-blue-200/70 shadow-2xs">
+                      <Calendar className="h-5 w-5" />
                     </div>
                     <div>
-                      <span className="font-extrabold text-slate-950 text-base tracking-tight select-none">Document Information</span>
-                      <span className="text-[11px] text-blue-700 font-medium block">BOL Reference & Issue Dates</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-slate-950 text-base sm:text-lg tracking-tight select-none">Document Information</span>
+                        <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
+                          BOL Header
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-500 font-medium block">
+                        BOL Reference, Serial & Issue Dates • <span className="font-[vazirmatn] text-blue-700">شماره و تاریخ‌های بارنامه</span>
+                      </span>
                     </div>
                   </div>
-                  <span className="text-xs font-extrabold text-blue-900 font-[vazirmatn] bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                    اطلاعات سند و تاریخ‌ها
-                  </span>
+
+                  {/* Header Actions & Badges */}
+                  <div className="flex items-center flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleSetToday}
+                      className="inline-flex items-center gap-1 h-7 px-2.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold transition shadow-2xs cursor-pointer"
+                      title="Set issue date to today / تنظیم به تاریخ امروز"
+                    >
+                      <Zap className="h-3 w-3 text-amber-500" />
+                      <span>Today / امروز</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleIncrementBolNumber}
+                      className="inline-flex items-center gap-1 h-7 px-2.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs font-bold transition shadow-2xs cursor-pointer"
+                      title="Generate next BOL sequence number / ایجاد شماره بارنامه بعدی"
+                    >
+                      <Plus className="h-3 w-3 text-indigo-600" />
+                      <span>Next BOL #</span>
+                    </button>
+
+                    <span className="hidden sm:inline-flex text-xs font-extrabold text-blue-900 font-[vazirmatn] bg-white/90 px-3 py-1 rounded-full border border-blue-200 shadow-2xs">
+                      اطلاعات سند و تاریخ‌ها
+                    </span>
+                  </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 pt-5 pb-6">
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-xs font-black text-slate-800 mb-1.5 flex items-center justify-between">
-                      <span>BOL Number</span>
-                      <span className="font-[vazirmatn] text-blue-800 font-bold text-[11px]">شماره بارنامه</span>
-                    </label>
-                    {isEditingBolNumber ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={bolNumber}
-                          onChange={(e) => setBolNumber(e.target.value)}
-                          className="font-mono font-black text-sm text-slate-950 bg-white/60 backdrop-blur-md border-white shadow-inner rounded-xl h-11"
-                          placeholder="BOL-XXX"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsEditingBolNumber(false)}
-                          className="rounded-xl h-11 px-4 font-bold text-xs bg-blue-600 text-white hover:bg-blue-500"
-                        >
-                          Done
-                        </Button>
+
+              <CardContent className="space-y-6 p-5 sm:p-7">
+                {/* 3-Column Grid for BOL Number & Issue Dates */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+                  {/* 1. BOL Number */}
+                  <div className="p-4 rounded-2xl bg-linear-to-br from-blue-50/80 via-white to-blue-50/30 border border-blue-200/80 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                          <span className="p-1 rounded-md bg-blue-600 text-white">
+                            <Hash className="w-3 h-3" />
+                          </span>
+                          <span>BOL Number</span>
+                        </label>
+                        <span className="font-[vazirmatn] text-blue-800 font-bold text-[11px]">شماره بارنامه</span>
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex-1 px-4 py-2.5 bg-blue-50/70 rounded-xl font-mono font-black text-sm text-blue-800 border border-blue-200/80 shadow-2xs">
-                          {isLoading ? <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> : bolNumber}
+
+                      {isEditingBolNumber ? (
+                        <div className="flex gap-1.5 mt-1">
+                          <Input
+                            value={bolNumber}
+                            onChange={(e) => setBolNumber(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") setIsEditingBolNumber(false)
+                            }}
+                            className="font-mono font-black text-sm text-slate-950 bg-white border-blue-300 shadow-inner rounded-xl h-11 focus:ring-2 focus:ring-blue-500/20 uppercase"
+                            placeholder="BOL-2026-NSA501"
+                            autoFocus
+                          />
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => setIsEditingBolNumber(false)}
+                            className="rounded-xl h-11 px-3.5 font-bold text-xs bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-500/20 shrink-0 cursor-pointer"
+                          >
+                            <Check className="h-3.5 w-3.5 mr-1" />
+                            Done
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setIsEditingBolNumber(true)}
-                          className="h-11 w-11 rounded-xl hover:bg-blue-50 border border-blue-200/60"
-                        >
-                          <Edit3 className="h-4 w-4 text-blue-700" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-xs font-black text-slate-800 mb-1.5 flex items-center justify-between">
-                      <span>Issue Date (Gregorian)</span>
-                      <span className="font-[vazirmatn] text-blue-800 font-bold text-[11px]">تاریخ میلادی</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <div className="absolute left-3 text-blue-600 pointer-events-none">
-                        <Calendar className="w-4 h-4" />
-                      </div>
-                      <Input
-                        type="date"
-                        value={issueDate}
-                        onChange={(e) => handleDateChange(e.target.value)}
-                        className="pl-9 font-mono font-black text-sm text-slate-950 bg-white/60 backdrop-blur-md border-white shadow-inner rounded-xl h-11 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                      />
+                      ) : (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <div className="flex-1 px-3.5 py-2 bg-white rounded-xl font-mono font-black text-sm text-blue-900 border border-blue-200 shadow-xs flex items-center justify-between overflow-hidden">
+                            <span className="truncate tracking-wide">{isLoading ? <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> : bolNumber || "BOL-000"}</span>
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100 uppercase">Live</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setIsEditingBolNumber(true)}
+                            className="h-10 w-10 rounded-xl bg-white hover:bg-blue-50 border-blue-200 text-blue-700 shadow-2xs shrink-0 cursor-pointer"
+                            title="Edit BOL Number manually"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={handleCopyBolNumber}
+                            className="h-10 w-10 rounded-xl bg-white hover:bg-blue-50 border-blue-200 text-slate-700 shadow-2xs shrink-0 cursor-pointer"
+                            title="Copy BOL Number to clipboard"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="mt-2.5 pt-2 border-t border-blue-100 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>Unique Document ID</span>
+                      <button
+                        type="button"
+                        onClick={handleIncrementBolNumber}
+                        className="text-blue-600 font-bold hover:underline inline-flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <Plus className="h-3 w-3" /> Auto +1
+                      </button>
                     </div>
                   </div>
-                  <div>
-                    <label className="text-xs font-black text-slate-800 mb-1.5 flex items-center justify-between">
-                      <span>Issue Date (Persian)</span>
-                      <span className="font-[vazirmatn] text-blue-800 font-bold text-[11px]">تاریخ شمسی</span>
-                    </label>
-                    <div className="px-4 py-1.5 bg-blue-50/70 rounded-xl border border-blue-200/80 flex flex-col items-start justify-center h-11">
-                      <p className="font-[vazirmatn] text-xs font-black text-slate-900 leading-tight" dir="ltr" style={{ unicodeBidi: "isolate" }}>{persianDate}</p>
-                      <p className="font-[vazirmatn] text-[11px] font-extrabold text-blue-800 leading-tight" dir="ltr" style={{ unicodeBidi: "isolate" }}>{persianDateNumeric}</p>
+
+                  {/* 2. Issue Date (Gregorian) */}
+                  <div className="p-4 rounded-2xl bg-linear-to-br from-indigo-50/80 via-white to-indigo-50/30 border border-indigo-200/80 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                          <span className="p-1 rounded-md bg-indigo-600 text-white">
+                            <Calendar className="w-3 h-3" />
+                          </span>
+                          <span>Issue Date (Gregorian)</span>
+                        </label>
+                        <span className="font-[vazirmatn] text-indigo-800 font-bold text-[11px]">تاریخ میلادی</span>
+                      </div>
+
+                      <div className="relative flex items-center mt-1">
+                        <div className="absolute left-3 text-indigo-600 pointer-events-none">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <Input
+                          type="date"
+                          value={issueDate}
+                          onChange={(e) => handleDateChange(e.target.value)}
+                          className="pl-9 font-mono font-black text-sm text-slate-950 bg-white border-indigo-200 shadow-xs rounded-xl h-11 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-2.5 pt-2 border-t border-indigo-100 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-500 truncate">
+                        {issueDate ? new Date(issueDate).toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" }) : "Select date"}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={handleSetToday}
+                          className="text-indigo-600 font-bold hover:underline cursor-pointer"
+                        >
+                          Today
+                        </button>
+                        <span className="text-slate-300">•</span>
+                        <button
+                          type="button"
+                          onClick={handleSetYesterday}
+                          className="text-slate-500 font-bold hover:underline cursor-pointer"
+                        >
+                          -1d
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Issue Date (Persian Solar) */}
+                  <div className="p-4 rounded-2xl bg-linear-to-br from-emerald-50/80 via-white to-emerald-50/30 border border-emerald-200/80 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                          <span className="p-1 rounded-md bg-emerald-600 text-white">
+                            <Globe className="w-3 h-3" />
+                          </span>
+                          <span>Issue Date (Persian)</span>
+                        </label>
+                        <span className="font-[vazirmatn] text-emerald-800 font-bold text-[11px]">تاریخ هجری شمسی</span>
+                      </div>
+
+                      <div className="px-3.5 py-2 bg-white rounded-xl border border-emerald-200/90 shadow-xs flex flex-col items-start justify-center h-11">
+                        <p className="font-[vazirmatn] text-xs font-black text-slate-900 leading-tight truncate w-full" dir="ltr" style={{ unicodeBidi: "isolate" }}>
+                          {persianDate || "محاسبه خودکار..."}
+                        </p>
+                        <p className="font-[vazirmatn] text-[11px] font-extrabold text-emerald-700 leading-tight font-mono" dir="ltr" style={{ unicodeBidi: "isolate" }}>
+                          {persianDateNumeric || "--/--/----"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-2.5 pt-2 border-t border-emerald-100 flex items-center justify-between text-[11px]">
+                      <span className="text-emerald-700 font-bold flex items-center gap-1 font-[vazirmatn]">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        محاسبه خودکار خورشیدی
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono">Solar Hijri</span>
                     </div>
                   </div>
                 </div>
                 
-                {/* Notes Boxes */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  {/* Note 1 */}
-                  <div className={`p-4 rounded-2xl backdrop-blur-xl border shadow-sm ${getNoteThemeStyles(formData.notes_1_theme).container}`}>
-                    <div className="flex items-center justify-between mb-2 gap-2">
-                      <label className={`text-sm font-medium flex-1 ${getNoteThemeStyles(formData.notes_1_theme).label}`}>
-                        <Input
-                          type="text"
-                          value={formData.notes_1_label || ""}
-                          onChange={(e) => setFormData({ ...formData, notes_1_label: e.target.value })}
-                          className={`h-7 p-2 text-xs font-medium backdrop-blur-sm rounded-lg ${getNoteThemeStyles(formData.notes_1_theme).input}`}
-                        />
-                      </label>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {NOTE_THEMES.map((theme) => (
-                          <button
-                            key={theme.value}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, notes_1_theme: theme.value })}
-                            className={`w-5 h-5 rounded-full border-2 transition-all hover:scale-110 ${
-                              NOTE_THEME_BUTTON_CLASSES[theme.value] ?? ''
-                            } ${
-                              formData.notes_1_theme === theme.value 
-                                ? 'border-gray-800 ring-2 ring-offset-1 ring-gray-400' 
-                                : 'border-white/60'
-                            }`}
-                            title={theme.label}
-                          />
-                        ))}
-                      </div>
+                {/* Notes Boxes Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1 rounded-lg bg-slate-100 text-slate-700">
+                        <Bookmark className="w-3.5 h-3.5" />
+                      </span>
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                        Document Notes & Contacts • <span className="font-[vazirmatn] font-bold text-blue-800">یادداشت‌ها و نمایندگان</span>
+                      </h4>
                     </div>
-
-                    {/* Saved Options Selector for Note 1 */}
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <div className="flex-1">
-                        <Select
-                          value={selectedNote1Id || "none"}
-                          onValueChange={(value) => {
-                            if (value === "none") {
-                              setSelectedNote1Id("")
-                              return
-                            }
-                            applySavedNote1(value)
-                          }}
-                        >
-                          <SelectTrigger className="h-7 text-xs border-white/60 bg-white/70 backdrop-blur-sm rounded-lg">
-                            <SelectValue placeholder="Saved options / گزینه‌های ذخیره شده" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Saved Note 1 Options...</SelectItem>
-                            {savedNotes1.map((opt) => (
-                              <SelectItem key={opt.id} value={opt.id} className="text-xs py-1.5">
-                                <div className="flex flex-col gap-0.5 text-left max-w-[280px]">
-                                  <span className="font-bold text-slate-900 truncate">{opt.label}</span>
-                                  <span className="text-[10px] text-slate-500 font-mono truncate">
-                                    {opt.content.replace(/\s+/g, ' ')}
-                                  </span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={saveCurrentNote1}
-                        className="h-7 px-2 text-xs border-white/60 bg-white/70 hover:bg-white/90 text-blue-700 rounded-lg shrink-0"
-                        title="Save current text as option"
-                      >
-                        <Save className="h-3.5 w-3.5 mr-1" />
-                        Save
-                      </Button>
-                      {selectedNote1Id && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={deleteSavedNote1}
-                          className="h-7 px-2 text-xs border-red-200 bg-white/70 hover:bg-red-50 text-red-600 rounded-lg shrink-0"
-                          title="Delete saved option"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-
-                    <Textarea
-                      value={formData.notes_1 || ""}
-                      onChange={(e) => setFormData({ ...formData, notes_1: e.target.value })}
-                      placeholder="Add important notes here..."
-                      className={`backdrop-blur-sm rounded-xl ${getNoteThemeStyles(formData.notes_1_theme).textarea}`}
-                      rows={4}
-                    />
+                    <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                      Custom print notes with theme colors & saved presets
+                    </span>
                   </div>
 
-                  {/* Note 2 */}
-                  <div className={`p-4 rounded-2xl backdrop-blur-xl border shadow-sm ${getNoteThemeStyles(formData.notes_2_theme).container}`}>
-                    <div className="flex items-center justify-between mb-2 gap-2">
-                      <label className={`text-sm font-medium flex-1 ${getNoteThemeStyles(formData.notes_2_theme).label}`}>
-                        <Input
-                          type="text"
-                          value={formData.notes_2_label || ""}
-                          onChange={(e) => setFormData({ ...formData, notes_2_label: e.target.value })}
-                          className={`h-7 p-2 text-xs font-medium backdrop-blur-sm rounded-lg ${getNoteThemeStyles(formData.notes_2_theme).input}`}
-                        />
-                      </label>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {NOTE_THEMES.map((theme) => (
-                          <button
-                            key={theme.value}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, notes_2_theme: theme.value })}
-                            className={`w-5 h-5 rounded-full border-2 transition-all hover:scale-110 ${
-                              NOTE_THEME_BUTTON_CLASSES[theme.value] ?? ''
-                            } ${
-                              formData.notes_2_theme === theme.value 
-                                ? 'border-gray-800 ring-2 ring-offset-1 ring-gray-400' 
-                                : 'border-white/60'
-                            }`}
-                            title={theme.label}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Note 1 */}
+                    <div className={`p-4 sm:p-5 rounded-2xl backdrop-blur-xl border shadow-sm transition-all ${getNoteThemeStyles(formData.notes_1_theme).container}`}>
+                      {/* Note 1 Header */}
+                      <div className="flex items-center justify-between mb-3 gap-2">
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                          <BookmarkPlus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                          <Input
+                            type="text"
+                            value={formData.notes_1_label || ""}
+                            onChange={(e) => setFormData({ ...formData, notes_1_label: e.target.value })}
+                            placeholder="Note 1 Title..."
+                            className={`h-8 px-2.5 text-xs font-black backdrop-blur-sm rounded-xl transition ${getNoteThemeStyles(formData.notes_1_theme).input}`}
                           />
-                        ))}
-                      </div>
-                    </div>
+                        </div>
 
-                    {/* Saved Options Selector for Note 2 */}
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <div className="flex-1">
-                        <Select
-                          value={selectedNote2Id || "none"}
-                          onValueChange={(value) => {
-                            if (value === "none") {
-                              setSelectedNote2Id("")
-                              return
-                            }
-                            applySavedNote2(value)
-                          }}
-                        >
-                          <SelectTrigger className="h-7 text-xs border-white/60 bg-white/70 backdrop-blur-sm rounded-lg">
-                            <SelectValue placeholder="Saved options / گزینه‌های ذخیره شده" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Saved Note 2 Options...</SelectItem>
-                            {savedNotes2.map((opt) => (
-                              <SelectItem key={opt.id} value={opt.id} className="text-xs py-1.5">
-                                <div className="flex flex-col gap-0.5 text-left max-w-[280px]">
-                                  <span className="font-bold text-slate-900 truncate">{opt.label}</span>
-                                  <span className="text-[10px] text-slate-500 font-mono truncate">
-                                    {opt.content.replace(/\s+/g, ' ')}
-                                  </span>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {/* Theme Color Dots */}
+                        <div className="flex items-center gap-1.5 shrink-0 bg-white/80 p-1 rounded-xl border border-slate-200/60 shadow-2xs">
+                          {NOTE_THEMES.map((theme) => (
+                            <button
+                              key={theme.value}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, notes_1_theme: theme.value })}
+                              className={`w-5 h-5 rounded-full border-2 transition-all hover:scale-115 cursor-pointer ${
+                                NOTE_THEME_BUTTON_CLASSES[theme.value] ?? ''
+                              } ${
+                                formData.notes_1_theme === theme.value 
+                                  ? 'border-slate-900 ring-2 ring-blue-400 ring-offset-1 scale-110' 
+                                  : 'border-white/80 opacity-80 hover:opacity-100'
+                              }`}
+                              title={theme.label}
+                            />
+                          ))}
+                        </div>
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={saveCurrentNote2}
-                        className="h-7 px-2 text-xs border-white/60 bg-white/70 hover:bg-white/90 text-blue-700 rounded-lg shrink-0"
-                        title="Save current text as option"
-                      >
-                        <Save className="h-3.5 w-3.5 mr-1" />
-                        Save
-                      </Button>
-                      {selectedNote2Id && (
+
+                      {/* Saved Options Selector for Note 1 */}
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <div className="flex-1 min-w-0">
+                          <Select
+                            value={selectedNote1Id || "none"}
+                            onValueChange={(value) => {
+                              if (value === "none") {
+                                setSelectedNote1Id("")
+                                return
+                              }
+                              applySavedNote1(value)
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs border-slate-200/80 bg-white/90 backdrop-blur-sm rounded-xl font-medium">
+                              <SelectValue placeholder="Saved options / گزینه‌های ذخیره شده" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-64">
+                              <SelectItem value="none" className="text-xs font-bold text-slate-500">
+                                📋 Select saved note option... ({savedNotes1.length} available)
+                              </SelectItem>
+                              {savedNotes1.map((opt) => (
+                                <SelectItem key={opt.id} value={opt.id} className="text-xs py-2">
+                                  <div className="flex flex-col gap-0.5 text-left max-w-[280px]">
+                                    <span className="font-bold text-slate-900 truncate">{opt.label}</span>
+                                    <span className="text-[10px] text-slate-500 font-mono truncate">
+                                      {opt.content.replace(/\s+/g, ' ')}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={deleteSavedNote2}
-                          className="h-7 px-2 text-xs border-red-200 bg-white/70 hover:bg-red-50 text-red-600 rounded-lg shrink-0"
-                          title="Delete saved option"
+                          onClick={saveCurrentNote1}
+                          className="h-8 px-2.5 text-xs font-bold border-blue-200 bg-white/90 hover:bg-blue-50 text-blue-700 rounded-xl shrink-0 shadow-2xs cursor-pointer"
+                          title="Save current note text as reusable preset"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Save className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                          Save
                         </Button>
-                      )}
+                        {selectedNote1Id && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={deleteSavedNote1}
+                            className="h-8 px-2 text-xs border-red-200 bg-white/90 hover:bg-red-50 text-red-600 rounded-xl shrink-0 cursor-pointer"
+                            title="Delete this saved preset"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {formData.notes_1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearNote1}
+                            className="h-8 px-2 text-xs text-slate-500 hover:text-slate-700 rounded-xl shrink-0 cursor-pointer"
+                            title="Clear Note 1 content"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Note 1 Textarea */}
+                      <div className="relative">
+                        <Textarea
+                          value={formData.notes_1 || ""}
+                          onChange={(e) => setFormData({ ...formData, notes_1: e.target.value })}
+                          placeholder="Add custom contact / loading notes here (e.g. (+93) 0 700 203 307)..."
+                          className={`backdrop-blur-sm rounded-xl text-xs sm:text-sm font-medium leading-relaxed resize-y ${getNoteThemeStyles(formData.notes_1_theme).textarea}`}
+                          rows={4}
+                        />
+                        <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400 px-1">
+                          <span className="font-[vazirmatn]">یادداشت شماره یک بارنامه</span>
+                          <span>{(formData.notes_1 || "").length} characters</span>
+                        </div>
+                      </div>
                     </div>
 
-                    <Textarea
-                      value={formData.notes_2 || ""}
-                      onChange={(e) => setFormData({ ...formData, notes_2: e.target.value })}
-                      placeholder="Add important notes here..."
-                      className={`backdrop-blur-sm rounded-xl ${getNoteThemeStyles(formData.notes_2_theme).textarea}`}
-                      rows={4}
-                    />
+                    {/* Note 2 */}
+                    <div className={`p-4 sm:p-5 rounded-2xl backdrop-blur-xl border shadow-sm transition-all ${getNoteThemeStyles(formData.notes_2_theme).container}`}>
+                      {/* Note 2 Header */}
+                      <div className="flex items-center justify-between mb-3 gap-2">
+                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                          <BookmarkPlus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                          <Input
+                            type="text"
+                            value={formData.notes_2_label || ""}
+                            onChange={(e) => setFormData({ ...formData, notes_2_label: e.target.value })}
+                            placeholder="Note 2 Title..."
+                            className={`h-8 px-2.5 text-xs font-black backdrop-blur-sm rounded-xl transition ${getNoteThemeStyles(formData.notes_2_theme).input}`}
+                          />
+                        </div>
+
+                        {/* Theme Color Dots */}
+                        <div className="flex items-center gap-1.5 shrink-0 bg-white/80 p-1 rounded-xl border border-slate-200/60 shadow-2xs">
+                          {NOTE_THEMES.map((theme) => (
+                            <button
+                              key={theme.value}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, notes_2_theme: theme.value })}
+                              className={`w-5 h-5 rounded-full border-2 transition-all hover:scale-115 cursor-pointer ${
+                                NOTE_THEME_BUTTON_CLASSES[theme.value] ?? ''
+                              } ${
+                                formData.notes_2_theme === theme.value 
+                                  ? 'border-slate-900 ring-2 ring-blue-400 ring-offset-1 scale-110' 
+                                  : 'border-white/80 opacity-80 hover:opacity-100'
+                              }`}
+                              title={theme.label}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Saved Options Selector for Note 2 */}
+                      <div className="flex items-center gap-1.5 mb-2.5">
+                        <div className="flex-1 min-w-0">
+                          <Select
+                            value={selectedNote2Id || "none"}
+                            onValueChange={(value) => {
+                              if (value === "none") {
+                                setSelectedNote2Id("")
+                                return
+                              }
+                              applySavedNote2(value)
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs border-slate-200/80 bg-white/90 backdrop-blur-sm rounded-xl font-medium">
+                              <SelectValue placeholder="Saved options / گزینه‌های ذخیره شده" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-64">
+                              <SelectItem value="none" className="text-xs font-bold text-slate-500">
+                                📋 Select saved note option... ({savedNotes2.length} available)
+                              </SelectItem>
+                              {savedNotes2.map((opt) => (
+                                <SelectItem key={opt.id} value={opt.id} className="text-xs py-2">
+                                  <div className="flex flex-col gap-0.5 text-left max-w-[280px]">
+                                    <span className="font-bold text-slate-900 truncate">{opt.label}</span>
+                                    <span className="text-[10px] text-slate-500 font-mono truncate">
+                                      {opt.content.replace(/\s+/g, ' ')}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={saveCurrentNote2}
+                          className="h-8 px-2.5 text-xs font-bold border-blue-200 bg-white/90 hover:bg-blue-50 text-blue-700 rounded-xl shrink-0 shadow-2xs cursor-pointer"
+                          title="Save current note text as reusable preset"
+                        >
+                          <Save className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                          Save
+                        </Button>
+                        {selectedNote2Id && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={deleteSavedNote2}
+                            className="h-8 px-2 text-xs border-red-200 bg-white/90 hover:bg-red-50 text-red-600 rounded-xl shrink-0 cursor-pointer"
+                            title="Delete this saved preset"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {formData.notes_2 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearNote2}
+                            className="h-8 px-2 text-xs text-slate-500 hover:text-slate-700 rounded-xl shrink-0 cursor-pointer"
+                            title="Clear Note 2 content"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Note 2 Textarea */}
+                      <div className="relative">
+                        <Textarea
+                          value={formData.notes_2 || ""}
+                          onChange={(e) => setFormData({ ...formData, notes_2: e.target.value })}
+                          placeholder="Add border representative contact info, customs notes, etc..."
+                          className={`backdrop-blur-sm rounded-xl text-xs sm:text-sm font-medium leading-relaxed resize-y ${getNoteThemeStyles(formData.notes_2_theme).textarea}`}
+                          rows={4}
+                        />
+                        <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400 px-1">
+                          <span className="font-[vazirmatn]">یادداشت شماره دو بارنامه</span>
+                          <span>{(formData.notes_2 || "").length} characters</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </CardContent>
