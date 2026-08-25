@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from 'react'
-import { Plus, Trash2, Building2, ChevronRight, Sparkles, FileText, Search, X, CheckCircle2, ArrowUpRight, BarChart3, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, Building2, ChevronRight, Sparkles, FileText, Search, X, CheckCircle2, ArrowUpRight, BarChart3, AlertTriangle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts'
 import { Input } from '@/components/ui/input'
@@ -17,7 +17,7 @@ import {
 import { useApp } from '@/lib/app-context'
 
 export function AccountsView() {
-  const { accounts, addAccount, deleteAccount, selectAccount, selectCompany } = useApp()
+  const { accounts, addAccount, deleteAccount, selectAccount, selectCompany, isSyncing, syncCloudData } = useApp()
   const [newAccountName, setNewAccountName] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -86,95 +86,67 @@ export function AccountsView() {
           </p>
         </div>
 
-        <Button 
-          type="button"
-          onClick={openDialog} 
-          className="relative z-10 gap-2 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 hover:from-blue-950 hover:to-indigo-950 text-white font-black shadow-xl shadow-blue-950/20 hover:scale-[1.02] active:scale-[0.98] transition-all h-12 px-6 text-sm cursor-pointer"
-        >
-          <Plus className="h-5 w-5 text-amber-400" />
-          <span>Add New Account / حساب جدید</span>
-        </Button>
+        <div className="relative z-10 flex items-center gap-2.5 flex-wrap w-full md:w-auto">
+          <Button 
+            type="button"
+            variant="outline"
+            onClick={() => syncCloudData()}
+            disabled={isSyncing}
+            className="gap-2 rounded-2xl border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-blue-950 font-black shadow-sm h-11 px-4 text-xs cursor-pointer transition-all"
+            title="Refresh and sync data from server across all devices"
+          >
+            <RefreshCw className={`h-4 w-4 text-blue-700 ${isSyncing ? "animate-spin" : ""}`} />
+            <span>{isSyncing ? "Syncing..." : "Sync Cloud Data"}</span>
+            <span className="hidden sm:inline font-[vazirmatn] text-[10px] opacity-80">/ همگام‌سازی</span>
+          </Button>
+
+          <Button 
+            type="button"
+            onClick={openDialog} 
+            className="gap-2 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 hover:from-blue-950 hover:to-indigo-950 text-white font-black shadow-xl shadow-blue-950/20 hover:scale-[1.02] active:scale-[0.98] transition-all h-11 sm:h-12 px-5 text-xs sm:text-sm cursor-pointer"
+          >
+            <Plus className="h-4.5 w-4.5 text-amber-400" />
+            <span>Add New Account / حساب جدید</span>
+          </Button>
+        </div>
       </div>
 
-      {/* KPI Stats Overview Bar */}
+      {/* KPI Stats Overview Bar (Mobile Responsive Compact Grid) */}
       {accounts.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div className="lg:col-span-1 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
-              {/* Card 1 */}
-              <div className="flex items-center gap-4 rounded-3xl border border-amber-200/60 bg-white/90 p-5 backdrop-blur-xl shadow-lg shadow-amber-900/5 relative overflow-hidden group hover:border-amber-400 transition-all">
-                <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 shadow-md shadow-blue-950/20">
-                  <Building2 className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">Business Accounts</p>
-                  <p className="text-3xl font-black text-slate-900 mt-0.5">{accounts.length}</p>
-                </div>
-              </div>
-
-              {/* Card 2 */}
-              <div className="flex items-center gap-4 rounded-3xl border border-amber-200/60 bg-white/90 p-5 backdrop-blur-xl shadow-lg shadow-amber-900/5 relative overflow-hidden group hover:border-amber-400 transition-all">
-                <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-900 to-purple-900 text-amber-400 shadow-md shadow-indigo-950/20">
-                  <FileText className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="text-xs font-black text-slate-500 uppercase tracking-wider">Shipper Companies</p>
-                  <p className="text-3xl font-black text-slate-900 mt-0.5">{totalCompanies}</p>
-                </div>
-              </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* Card 1 */}
+          <div className="flex items-center gap-3 rounded-2xl border border-blue-200/70 bg-white/95 p-3.5 sm:p-4 backdrop-blur-xl shadow-md shadow-blue-900/5 group hover:border-blue-400 transition-all">
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 shadow-sm">
+              <Building2 className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-
-            {/* Card 3 */}
-            <div className="flex items-center gap-4 rounded-3xl border border-amber-200/60 bg-white/90 p-5 backdrop-blur-xl shadow-lg shadow-amber-900/5 relative overflow-hidden group hover:border-amber-400 transition-all">
-              <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 shadow-sm">
-                <CheckCircle2 className="h-6 w-6" />
-              </div>
-              <div>
-                <p className="text-xs font-black text-slate-500 uppercase tracking-wider">Active System Status</p>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                  <p className="text-sm font-black text-emerald-700">Ready & Connected</p>
-                </div>
-              </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-wider truncate">Business Accounts</p>
+              <p className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">{accounts.length}</p>
             </div>
           </div>
 
-          {/* Analytics Chart */}
-          <div className="lg:col-span-2 rounded-3xl border border-blue-100 bg-white/80 p-6 backdrop-blur-xl shadow-lg shadow-blue-900/5 flex flex-col">
-            <h3 className="text-sm font-black text-slate-800 mb-6 flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-amber-500" />
-              Top Accounts by Shippers
-            </h3>
-            <div className="flex-1 min-h-[220px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} 
-                    dy={10}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
-                    allowDecimals={false}
-                  />
-                  <Tooltip 
-                    cursor={{ fill: '#f1f5f9' }}
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', fontWeight: 'bold' }}
-                    formatter={(value: number) => [<span className="font-black text-blue-900">{value} Shippers</span>, '']}
-                    labelStyle={{ color: '#64748b', marginBottom: '4px' }}
-                  />
-                  <Bar dataKey="shippers" radius={[6, 6, 0, 0]}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={index === 0 ? '#1e3a8a' : '#3b82f6'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+          {/* Card 2 */}
+          <div className="flex items-center gap-3 rounded-2xl border border-indigo-200/70 bg-white/95 p-3.5 sm:p-4 backdrop-blur-xl shadow-md shadow-indigo-900/5 group hover:border-indigo-400 transition-all">
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-900 to-purple-900 text-amber-400 shadow-sm">
+              <FileText className="h-5 w-5 sm:h-6 sm:w-6" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-wider truncate">Shippers / شرکت‌ها</p>
+              <p className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">{totalCompanies}</p>
+            </div>
+          </div>
+
+          {/* Card 3 */}
+          <div className="col-span-2 sm:col-span-1 flex items-center gap-3 rounded-2xl border border-emerald-200/80 bg-emerald-50/90 p-3.5 sm:p-4 backdrop-blur-xl shadow-sm">
+            <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-sm">
+              <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-wider truncate">System Cloud Status</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
+                <p className="text-xs sm:text-sm font-black text-emerald-800 truncate">Synced & Connected</p>
+              </div>
             </div>
           </div>
         </div>
@@ -463,6 +435,47 @@ export function AccountsView() {
                     </Card>
                   )
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Analytics Chart at Bottom */}
+          {chartData.length > 0 && (
+            <div className="rounded-3xl border border-blue-100 bg-white/90 p-5 sm:p-6 backdrop-blur-xl shadow-md shadow-blue-900/5">
+              <h3 className="text-xs sm:text-sm font-black text-slate-800 mb-4 flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
+                <span>Top Accounts by Shippers Overview</span>
+              </h3>
+              <div className="h-[180px] sm:h-[220px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} 
+                      dy={8}
+                    />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
+                      allowDecimals={false}
+                    />
+                    <Tooltip 
+                      cursor={{ fill: '#f1f5f9' }}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)', fontWeight: 'bold' }}
+                      formatter={(value: number) => [<span className="font-black text-blue-900">{value} Shippers</span>, '']}
+                      labelStyle={{ color: '#64748b', marginBottom: '4px' }}
+                    />
+                    <Bar dataKey="shippers" radius={[6, 6, 0, 0]}>
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={index === 0 ? '#1e3a8a' : '#3b82f6'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </div>
           )}

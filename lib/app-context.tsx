@@ -107,6 +107,8 @@ interface AppContextType extends AppState {
   setView: (view: AppState['view']) => void
   goBack: () => void
   getLedgerSettings: () => LedgerSettings
+  isSyncing: boolean
+  syncCloudData: () => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -342,215 +344,262 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }))
   }, [])
 
-  // Auto-sync ledgers for every shipper that has created a BOL
-  useEffect(() => {
-    async function syncShippersAndBols() {
-      let apiDocs: any[] = []
-      try {
-        const res = await fetch("/api/bol")
-        if (res.ok) {
-          const body = await res.json()
-          apiDocs = Array.isArray(body) ? body : (Array.isArray(body?.data) ? body.data : [])
-        }
-      } catch (e) {
-        console.warn("Could not fetch /api/bol:", e)
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  // Full Bidirectional Auto-sync for All Shippers, Accounts & Ledgers across Browsers/Devices
+  const syncShippersAndBols = useCallback(async () => {
+    setIsSyncing(true)
+    let apiDocs: any[] = []
+    let serverLedgerRecords: Record<string, any[]> = {}
+    let serverCustomCompanies: string[] = []
+
+    try {
+      const [bolRes, accountLedgerRes, bolLedgerRes] = await Promise.allSettled([
+        fetch("/api/bol"),
+        fetch("/api/account-ledgers"),
+        fetch("/api/bol-account-ledgers"),
+      ])
+
+      if (bolRes.status === "fulfilled" && bolRes.value.ok) {
+        const body = await bolRes.value.json()
+        apiDocs = Array.isArray(body) ? body : (Array.isArray(body?.data) ? body.data : [])
       }
 
-      let localDocs: any[] = []
-      try {
-        const raw1 = window.localStorage.getItem("skybol:saved-documents")
-        const raw2 = window.localStorage.getItem("sky-bol-browser-documents")
-        const docs1 = raw1 ? JSON.parse(raw1) : []
-        const docs2 = raw2 ? JSON.parse(raw2) : []
-        localDocs = [...docs1, ...docs2]
-      } catch (e) {}
-
-      let customCompanies: string[] = []
-      try {
-        const raw1 = window.localStorage.getItem("skybol:account-custom-companies")
-        const raw2 = window.localStorage.getItem("sky-bol-company-custom-companies")
-        const comp1 = raw1 ? JSON.parse(raw1) : []
-        const comp2 = raw2 ? JSON.parse(raw2) : []
-        customCompanies = Array.from(new Set([...comp1, ...comp2]))
-      } catch (e) {}
-
-      let storedLedgerRecords: Record<string, any[]> = {}
-      try {
-        const raw1 = window.localStorage.getItem("skybol:account-ledgers")
-        const raw2 = window.localStorage.getItem("sky-bol-company-ledgers")
-        const rec1 = raw1 ? JSON.parse(raw1) : {}
-        const rec2 = raw2 ? JSON.parse(raw2) : {}
-        storedLedgerRecords = { ...rec1, ...rec2 }
-      } catch (e) {}
-
-      // Combine all documents by id or bol_number
-      const allDocsMap = new Map<string, any>()
-      for (const d of [...apiDocs, ...localDocs]) {
-        const key = d.id || d.bol_number
-        if (key && !allDocsMap.has(key)) {
-          allDocsMap.set(key, d)
+      if (accountLedgerRes.status === "fulfilled" && accountLedgerRes.value.ok) {
+        const body = await accountLedgerRes.value.json()
+        const data = body?.data || body
+        if (data?.ledgerEntries && typeof data.ledgerEntries === "object") {
+          Object.assign(serverLedgerRecords, data.ledgerEntries)
         }
-      }
-      const allDocs = Array.from(allDocsMap.values())
-
-      const shipperMap = new Map<string, any[]>()
-
-      // Add all shippers from all documents
-      for (const doc of allDocs) {
-        const name = (doc.shipper_name || "").trim()
-        if (name) {
-          if (!shipperMap.has(name)) {
-            shipperMap.set(name, [])
-          }
-          shipperMap.get(name)!.push(doc)
+        if (Array.isArray(data?.accounts)) {
+          serverCustomCompanies.push(...data.accounts.map((a: any) => typeof a === "string" ? a : (a.name || "")))
         }
       }
 
-      // Add custom companies from localStorage even if no doc yet
-      for (const compName of customCompanies) {
-        const cleanName = compName.trim()
-        if (cleanName && !shipperMap.has(cleanName)) {
-          shipperMap.set(cleanName, [])
+      if (bolLedgerRes.status === "fulfilled" && bolLedgerRes.value.ok) {
+        const body = await bolLedgerRes.value.json()
+        const data = body?.data || body
+        if (data?.ledgerRecords && typeof data.ledgerRecords === "object") {
+          Object.assign(serverLedgerRecords, data.ledgerRecords)
+        }
+        if (Array.isArray(data?.customCompanies)) {
+          serverCustomCompanies.push(...data.customCompanies)
         }
       }
+    } catch (e) {
+      console.warn("Could not fetch server data:", e)
+    }
 
-      // Add company keys from storedLedgerRecords
-      Object.keys(storedLedgerRecords).forEach((compKey) => {
-        const rows = storedLedgerRecords[compKey]
-        if (Array.isArray(rows) && rows.length > 0) {
-          const sampleDesc = rows[0]?.description || compKey
-          if (!shipperMap.has(sampleDesc)) {
-            shipperMap.set(sampleDesc, [])
-          }
+    let localDocs: any[] = []
+    try {
+      const raw1 = window.localStorage.getItem("skybol:saved-documents")
+      const raw2 = window.localStorage.getItem("sky-bol-browser-documents")
+      const docs1 = raw1 ? JSON.parse(raw1) : []
+      const docs2 = raw2 ? JSON.parse(raw2) : []
+      localDocs = [...docs1, ...docs2]
+    } catch (e) {}
+
+    let localCustomCompanies: string[] = []
+    try {
+      const raw1 = window.localStorage.getItem("skybol:account-custom-companies")
+      const raw2 = window.localStorage.getItem("sky-bol-company-custom-companies")
+      const comp1 = raw1 ? JSON.parse(raw1) : []
+      const comp2 = raw2 ? JSON.parse(raw2) : []
+      localCustomCompanies = [...comp1, ...comp2]
+    } catch (e) {}
+
+    const customCompanies = Array.from(new Set([...serverCustomCompanies, ...localCustomCompanies].filter(Boolean)))
+
+    let localLedgerRecords: Record<string, any[]> = {}
+    try {
+      const raw1 = window.localStorage.getItem("skybol:account-ledgers")
+      const raw2 = window.localStorage.getItem("sky-bol-company-ledgers")
+      const rec1 = raw1 ? JSON.parse(raw1) : {}
+      const rec2 = raw2 ? JSON.parse(raw2) : {}
+      localLedgerRecords = { ...rec1, ...rec2 }
+    } catch (e) {}
+
+    const storedLedgerRecords: Record<string, any[]> = { ...serverLedgerRecords, ...localLedgerRecords }
+
+    // Combine all documents by id or bol_number
+    const allDocsMap = new Map<string, any>()
+    for (const d of [...apiDocs, ...localDocs]) {
+      const key = d.id || d.bol_number
+      if (key && !allDocsMap.has(key)) {
+        allDocsMap.set(key, d)
+      }
+    }
+    const allDocs = Array.from(allDocsMap.values())
+
+    const shipperMap = new Map<string, any[]>()
+
+    // Add all shippers from all documents
+    for (const doc of allDocs) {
+      const name = (doc.shipper_name || "").trim()
+      if (name) {
+        if (!shipperMap.has(name)) {
+          shipperMap.set(name, [])
         }
-      })
+        shipperMap.get(name)!.push(doc)
+      }
+    }
 
-      setState((prev) => {
-        const existingAccounts = [...prev.accounts]
-        let updated = false
+    // Add custom companies from server & localStorage even if no doc yet
+    for (const compName of customCompanies) {
+      const cleanName = compName.trim()
+      if (cleanName && !shipperMap.has(cleanName)) {
+        shipperMap.set(cleanName, [])
+      }
+    }
 
-        shipperMap.forEach((bolList, shipperName) => {
-          const accountKey = shipperName.toLowerCase()
-          const companyKey = accountKey.replace(/[^a-z0-9]/g, "-")
-          const storedRows = storedLedgerRecords[companyKey] || storedLedgerRecords[shipperName] || []
+    // Add company keys from storedLedgerRecords
+    Object.keys(storedLedgerRecords).forEach((compKey) => {
+      const rows = storedLedgerRecords[compKey]
+      if (Array.isArray(rows) && rows.length > 0) {
+        const sampleDesc = rows[0]?.description || rows[0]?.shipperDescription || compKey
+        if (sampleDesc && !shipperMap.has(sampleDesc)) {
+          shipperMap.set(sampleDesc, [])
+        }
+      }
+    })
 
-          const existingAccIndex = existingAccounts.findIndex(
-            (a) => a.name.toLowerCase() === accountKey
+    setState((prev) => {
+      const hasRealAccounts = Array.from(shipperMap.keys()).length > 0 || customCompanies.length > 0
+      const existingAccounts: Account[] = hasRealAccounts
+        ? prev.accounts.filter(a => a.id !== 'account-1' || a.companies.some(c => c.ledgerEntries.length > 0 && c.name !== 'SKY ARIANA TRANSPORT'))
+        : [...prev.accounts]
+
+      let updated = false
+
+      shipperMap.forEach((bolList, shipperName) => {
+        const accountKey = shipperName.toLowerCase()
+        const companyKey = accountKey.replace(/[^a-z0-9]/g, "-")
+        const storedRows = storedLedgerRecords[companyKey] || storedLedgerRecords[accountKey] || storedLedgerRecords[shipperName] || []
+
+        const existingAccIndex = existingAccounts.findIndex(
+          (a) => a.name.toLowerCase() === accountKey
+        )
+
+        let runningBalance = 0
+        const ledgerEntries: LedgerEntry[] = []
+
+        // 1. Process BOL documents
+        bolList.forEach((doc, idx) => {
+          const bolNo = (doc.bol_number || "").trim()
+          const existingRow = storedRows.find(
+            (r: any) => (r.barnamehNo && r.barnamehNo.trim() === bolNo) || (r.bolNo && r.bolNo.trim() === bolNo)
           )
 
-          let runningBalance = 0
-          const ledgerEntries: LedgerEntry[] = []
+          const parsedInvoice = parseInvoiceNo(doc.cargo_description, doc.bol_number)
+          const debitVal = existingRow?.debit !== undefined && existingRow?.debit !== "" ? Number(existingRow.debit) || 0 : (doc.debit ? Number(doc.debit) || 0 : 0)
+          const creditVal = existingRow?.credit !== undefined && existingRow?.credit !== "" ? Number(existingRow.credit) || 0 : (doc.credit ? Number(doc.credit) || 0 : 0)
 
-          // 1. Process BOL documents
-          bolList.forEach((doc, idx) => {
-            const bolNo = (doc.bol_number || "").trim()
-            const existingRow = storedRows.find(
-              (r: any) => (r.barnamehNo && r.barnamehNo.trim() === bolNo) || (r.bolNo && r.bolNo.trim() === bolNo)
-            )
+          runningBalance += (debitVal - creditVal)
 
-            const parsedInvoice = parseInvoiceNo(doc.cargo_description, doc.bol_number)
-            const debitVal = existingRow?.debit !== undefined && existingRow?.debit !== "" ? Number(existingRow.debit) || 0 : (doc.debit ? Number(doc.debit) || 0 : 0)
-            const creditVal = existingRow?.credit !== undefined && existingRow?.credit !== "" ? Number(existingRow.credit) || 0 : (doc.credit ? Number(doc.credit) || 0 : 0)
+          ledgerEntries.push({
+            id: existingRow?.id || doc.id || `bol-${idx}`,
+            sNo: idx + 1,
+            date: existingRow?.date || doc.issue_date || new Date().toISOString().split("T")[0],
+            shipperDescription: doc.shipper_name || shipperName,
+            invoiceNo: parsedInvoice,
+            dateOfShip: existingRow?.shipDate || doc.issue_date || "",
+            barnamehNo: bolNo,
+            driverFreight: doc.driver_rent || existingRow?.driverFreight || "",
+            billOfLanding: existingRow?.billOfLanding || "",
+            surrenderedBL: existingRow?.surrenderedBL || false,
+            containerNo: doc.container_numbers || existingRow?.containerNo || "N/A",
+            consignee: doc.consignee_name || existingRow?.consignee || "N/A",
+            quantity: doc.number_of_packages || existingRow?.quantity || "N/A",
+            debit: debitVal,
+            credit: creditVal,
+            balance: runningBalance,
+            pdfPathname: existingRow?.pdfFile || existingRow?.pdfPathname || undefined,
+          })
+        })
 
+        // 2. Include non-BOL stored rows (e.g. manual payment / receipt rows)
+        storedRows.forEach((row: any) => {
+          const rBol = (row.barnamehNo || row.bolNo || "").trim()
+          if (!rBol || !bolList.some((doc) => (doc.bol_number || "").trim() === rBol)) {
+            const debitVal = Number(row.debit) || 0
+            const creditVal = Number(row.credit) || 0
             runningBalance += (debitVal - creditVal)
-
             ledgerEntries.push({
-              id: existingRow?.id || doc.id || `bol-${idx}`,
-              sNo: idx + 1,
-              date: existingRow?.date || doc.issue_date || new Date().toISOString().split("T")[0],
-              shipperDescription: doc.shipper_name || shipperName,
-              invoiceNo: parsedInvoice,
-              dateOfShip: existingRow?.shipDate || doc.issue_date || "",
-              barnamehNo: bolNo,
-              driverFreight: doc.driver_rent || existingRow?.driverFreight || "",
-              billOfLanding: existingRow?.billOfLanding || "",
-              surrenderedBL: existingRow?.surrenderedBL || false,
-              containerNo: doc.container_numbers || existingRow?.containerNo || "N/A",
-              consignee: doc.consignee_name || existingRow?.consignee || "N/A",
-              quantity: doc.number_of_packages || existingRow?.quantity || "N/A",
+              id: row.id || crypto.randomUUID(),
+              sNo: ledgerEntries.length + 1,
+              date: row.date || "",
+              shipperDescription: row.description || row.shipperDescription || shipperName,
+              invoiceNo: row.invoiceNo || "",
+              dateOfShip: row.shipDate || row.dateOfShip || "",
+              barnamehNo: rBol,
+              driverFreight: row.driverFreight || row.driverRent || "",
+              billOfLanding: row.billOfLanding || "",
+              surrenderedBL: Boolean(row.surrenderedBL),
+              containerNo: row.containerNo || "",
+              consignee: row.consignee || "",
+              quantity: row.quantity || "",
               debit: debitVal,
               credit: creditVal,
               balance: runningBalance,
-              pdfPathname: existingRow?.pdfFile || existingRow?.pdfPathname || undefined,
+              pdfPathname: row.pdfFile || row.pdfPathname || undefined,
             })
-          })
-
-          // 2. Include non-BOL stored rows (e.g. manual payment / receipt rows)
-          storedRows.forEach((row: any) => {
-            const rBol = (row.barnamehNo || row.bolNo || "").trim()
-            if (!rBol || !bolList.some((doc) => (doc.bol_number || "").trim() === rBol)) {
-              const debitVal = Number(row.debit) || 0
-              const creditVal = Number(row.credit) || 0
-              runningBalance += (debitVal - creditVal)
-              ledgerEntries.push({
-                id: row.id || crypto.randomUUID(),
-                sNo: ledgerEntries.length + 1,
-                date: row.date || "",
-                shipperDescription: row.description || row.shipperDescription || shipperName,
-                invoiceNo: row.invoiceNo || "",
-                dateOfShip: row.shipDate || row.dateOfShip || "",
-                barnamehNo: rBol,
-                driverFreight: row.driverFreight || row.driverRent || "",
-                billOfLanding: row.billOfLanding || "",
-                surrenderedBL: Boolean(row.surrenderedBL),
-                containerNo: row.containerNo || "",
-                consignee: row.consignee || "",
-                quantity: row.quantity || "",
-                debit: debitVal,
-                credit: creditVal,
-                balance: runningBalance,
-                pdfPathname: row.pdfFile || row.pdfPathname || undefined,
-              })
-            }
-          })
-
-          const companyForShipper: Company = {
-            id: `company-${companyKey}`,
-            name: shipperName,
-            ledgerEntries: ledgerEntries.length > 0 ? ledgerEntries : SAMPLE_LEDGER_ENTRIES,
-          }
-
-          if (existingAccIndex >= 0) {
-            const acc = existingAccounts[existingAccIndex]
-            const compIndex = acc.companies.findIndex((c) => c.name.toLowerCase() === accountKey)
-            if (compIndex >= 0) {
-              const newCompanies = [...acc.companies]
-              newCompanies[compIndex] = companyForShipper
-              existingAccounts[existingAccIndex] = { ...acc, companies: newCompanies }
-              updated = true
-            } else {
-              existingAccounts[existingAccIndex] = {
-                ...acc,
-                companies: [...acc.companies, companyForShipper],
-              }
-              updated = true
-            }
-          } else {
-            existingAccounts.push({
-              id: `account-${companyKey}`,
-              name: shipperName,
-              companies: [companyForShipper],
-            })
-            updated = true
           }
         })
 
-        if (!updated) return prev
+        const companyForShipper: Company = {
+          id: `company-${companyKey}`,
+          name: shipperName,
+          ledgerEntries: ledgerEntries.length > 0 ? ledgerEntries : (hasRealAccounts ? [] : SAMPLE_LEDGER_ENTRIES),
+        }
 
-        const currentAccName = prev.currentAccount?.name
-        const updatedCurrentAcc = existingAccounts.find((a) => a.name.toLowerCase() === currentAccName?.toLowerCase()) || prev.currentAccount || existingAccounts[0]
-        const currentCompName = prev.currentCompany?.name
-        const updatedCurrentComp = updatedCurrentAcc?.companies.find((c) => c.name.toLowerCase() === currentCompName?.toLowerCase()) || updatedCurrentAcc?.companies[0] || prev.currentCompany
-
-        return {
-          ...prev,
-          accounts: existingAccounts,
-          currentAccount: updatedCurrentAcc,
-          currentCompany: updatedCurrentComp,
+        if (existingAccIndex >= 0) {
+          const acc = existingAccounts[existingAccIndex]
+          const compIndex = acc.companies.findIndex((c) => c.name.toLowerCase() === accountKey)
+          if (compIndex >= 0) {
+            const newCompanies = [...acc.companies]
+            newCompanies[compIndex] = companyForShipper
+            existingAccounts[existingAccIndex] = { ...acc, companies: newCompanies }
+            updated = true
+          } else {
+            existingAccounts[existingAccIndex] = {
+              ...acc,
+              companies: [...acc.companies, companyForShipper],
+            }
+            updated = true
+          }
+        } else {
+          existingAccounts.push({
+            id: `account-${companyKey}`,
+            name: shipperName,
+            companies: [companyForShipper],
+          })
+          updated = true
         }
       })
-    }
 
+      // Sync updated cache back to localStorage for instant offline access
+      try {
+        window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(customCompanies))
+        window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(storedLedgerRecords))
+      } catch (e) {}
+
+      const currentAccName = prev.currentAccount?.name
+      const updatedCurrentAcc = existingAccounts.find((a) => a.name.toLowerCase() === currentAccName?.toLowerCase()) || existingAccounts[0] || null
+      const currentCompName = prev.currentCompany?.name
+      const updatedCurrentComp = updatedCurrentAcc?.companies.find((c) => c.name.toLowerCase() === currentCompName?.toLowerCase()) || updatedCurrentAcc?.companies[0] || null
+
+      return {
+        ...prev,
+        accounts: existingAccounts.length > 0 ? existingAccounts : prev.accounts,
+        currentAccount: updatedCurrentAcc,
+        currentCompany: updatedCurrentComp,
+      }
+    })
+
+    setIsSyncing(false)
+  }, [])
+
+  useEffect(() => {
     void syncShippersAndBols()
 
     const handleUpdate = () => {
@@ -564,7 +613,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("skybol:account-ledger-updated", handleUpdate)
       window.removeEventListener("skybol:documents-updated", handleUpdate)
     }
-  }, [])
+  }, [syncShippersAndBols])
+
+  const syncCloudData = useCallback(async () => {
+    await syncShippersAndBols()
+  }, [syncShippersAndBols])
 
   const addAccount = useCallback((name: string) => {
     const newAccount: Account = {
@@ -677,24 +730,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  // Auto-sync ledgers back to localStorage whenever they are modified in the UI
+  // Auto-sync ledgers back to BOTH localStorage AND server APIs whenever modified
   useEffect(() => {
     if (!state.accounts || state.accounts === SAMPLE_ACCOUNTS) return;
     
-    // Use a small timeout to avoid blocking the main thread during heavy renders
     const timeoutId = setTimeout(() => {
       try {
         const raw = window.localStorage.getItem("skybol:account-ledgers") || "{}"
         const records = JSON.parse(raw)
+        const companyNames: string[] = []
         
         state.accounts.forEach(account => {
           account.companies.forEach(company => {
+            companyNames.push(company.name)
             if (company.ledgerEntries && company.ledgerEntries.length > 0) {
                const companyKey = company.id.replace('company-', '')
                
-               // Avoid saving sample placeholders
                if (company.name !== 'Acme Corp' && company.name !== 'Global Logistics') {
-                   records[companyKey] = company.ledgerEntries.map(entry => ({
+                   const rows = company.ledgerEntries.map(entry => ({
                       id: entry.id,
                       date: entry.date,
                       description: entry.shipperDescription,
@@ -716,12 +769,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
                       pdfFile: entry.pdfPathname,
                       pdfPathname: entry.pdfPathname,
                    }))
+                   records[companyKey] = rows
+                   records[company.name.toLowerCase()] = rows
                }
             }
           })
         })
 
         window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(records))
+        window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(companyNames))
+
+        // Background server persistence for multi-device sync
+        fetch("/api/account-ledgers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accounts: companyNames,
+            ledgerEntries: records,
+          }),
+        }).catch(() => {})
+
+        fetch("/api/bol-account-ledgers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customCompanies: companyNames,
+            ledgerRecords: records,
+          }),
+        }).catch(() => {})
       } catch (e) {
         console.warn("Failed to auto-sync ledgers to storage", e)
       }
@@ -1203,6 +1278,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setView,
         goBack,
         getLedgerSettings,
+        isSyncing,
+        syncCloudData,
       }}
     >
       {children}
