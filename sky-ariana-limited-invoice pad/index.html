@@ -624,7 +624,58 @@
     }
 
     /* PREVIEW CONTAINER */
+
+    /* Responsive A4 Live Scaling & No-Overlap Layout */
     .preview-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      flex: 1;
+      min-width: 0;
+      position: sticky;
+      top: 10px;
+    }
+
+    .preview-zoom-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--card-shadow);
+      z-index: 10;
+    }
+
+    .zoom-btn {
+      background: var(--btn-dark-bg);
+      color: var(--text-main);
+      border: 1px solid var(--btn-dark-border);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .zoom-btn:hover, .zoom-btn.active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #0284c7;
+    }
+
+    .invoice-container {
+      position: relative;
+      margin: 0 auto;
+      transform-origin: top center;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .preview-panel-orig {
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1412,7 +1463,17 @@
            RIGHT PANE: LIVE A4 INVOICE PREVIEW / DIRECT PAD
            ==================================================================== -->
       <section class="preview-panel" id="preview-panel">
-        <div class="invoice-container">
+  
+      <!-- A4 Live Zoom Scaling Toolbar -->
+      <div class="preview-zoom-controls no-print">
+        <span style="font-size: 10.5px; font-weight: 700; color: var(--text-muted);">A4 Preview Scale:</span>
+        <button class="zoom-btn" onclick="setA4Zoom(0.70)">70%</button>
+        <button class="zoom-btn" onclick="setA4Zoom(0.80)">80%</button>
+        <button class="zoom-btn active" id="zoom-default-btn" onclick="setA4Zoom(0.88)">88% (Fit)</button>
+        <button class="zoom-btn" onclick="setA4Zoom(1.0)">100%</button>
+      </div>
+
+      <div class="invoice-container" id="a4-scalable-container" style="transform: scale(0.88); margin-bottom: -130px;">
           <div class="invoice-page" id="printable-invoice">
             <div class="border-frame">
               <div class="border-inner">
@@ -2570,6 +2631,21 @@
       }
 
       recalculate();
+    }
+
+
+    function setA4Zoom(scale) {
+      const container = document.getElementById("a4-scalable-container");
+      if (!container) return;
+      container.style.transform = `scale(${scale})`;
+      if (scale < 1.0) {
+        const offset = Math.round((1.0 - scale) * 1120);
+        container.style.marginBottom = `-${offset}px`;
+      } else {
+        container.style.marginBottom = "20px";
+      }
+      document.querySelectorAll(".zoom-btn").forEach(b => b.classList.remove("active"));
+      if (event && event.target) event.target.classList.add("active");
     }
 
     function updateItem(index, field, value) {
