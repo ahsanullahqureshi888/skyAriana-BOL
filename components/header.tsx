@@ -120,13 +120,13 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
           </div>
           
           {/* Right: Quick Navigation Tabs & User Profile */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 overflow-x-auto no-scrollbar py-0.5 max-w-full">
             {/* Accounts Navigation */}
             <Button
               variant={view === 'accounts' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setView('accounts')}
-              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 view === 'accounts' 
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 border-transparent' 
                   : 'bg-white/90 border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200'
@@ -141,7 +141,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant={view === 'bol' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setView('bol')}
-              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 view === 'bol' 
                   ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-transparent shadow-md shadow-amber-500/25' 
                   : 'bg-white/90 border-amber-200/90 text-amber-800 hover:bg-amber-50 hover:border-amber-300'
@@ -157,7 +157,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant={view === 'invoice-pad' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setView('invoice-pad')}
-              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 view === 'invoice-pad' 
                   ? 'bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 text-white border-transparent shadow-md shadow-indigo-500/25' 
                   : 'bg-white/90 border-indigo-200/90 text-indigo-800 hover:bg-indigo-50 hover:border-indigo-300'
@@ -174,7 +174,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant={view === 'bank' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setView('bank')}
-              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 view === 'bank' 
                   ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white border-transparent shadow-md shadow-emerald-500/25' 
                   : 'bg-white/90 border-emerald-200/90 text-emerald-800 hover:bg-emerald-50 hover:border-emerald-300'
@@ -191,7 +191,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant={view === 'settings' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setView('settings')}
-              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 view === 'settings' 
                   ? 'bg-gradient-to-r from-purple-700 to-indigo-800 text-white border-transparent shadow-md shadow-purple-500/25' 
                   : 'bg-white/90 border-purple-200 text-purple-800 hover:bg-purple-50 hover:border-purple-300'
