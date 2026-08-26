@@ -509,22 +509,22 @@ export async function generateModernBOLPDFBlob(options: ModernBOLPDFOptions): Pr
   if (logoDataUrl) {
     doc.addImage(logoDataUrl, "PNG", PAGE_MARGIN + 5, y + 5, 25, 20, undefined, "FAST")
   }
-  drawText(doc, companyTitle, PAGE_WIDTH / 2, y + 7, {
-    size: 15,
+  drawText(doc, companyTitle, PAGE_WIDTH / 2, y + 6.5, {
+    size: 16.5,
     weight: "bold",
     color: TEXT_DARK,
     align: "center",
-    maxWidth: 100,
-    lineHeight: 5.5,
+    maxWidth: 105,
+    lineHeight: 6.0,
   })
-  drawText(doc, companyTagline, PAGE_WIDTH / 2, y + 18, {
-    size: 7,
+  drawText(doc, companyTagline, PAGE_WIDTH / 2, y + 17.5, {
+    size: 8.5,
     weight: "bold",
     color: TEXT_DARK,
     align: "center",
   })
-  drawText(doc, companyPersian, PAGE_WIDTH / 2, y + 23, {
-    size: 8,
+  drawText(doc, companyPersian, PAGE_WIDTH / 2, y + 22.8, {
+    size: 10.5,
     weight: "bold",
     color: BLUE_DARK,
     align: "center",
@@ -711,22 +711,22 @@ export async function generatePremiumBOLPDFBlob(options: ModernBOLPDFOptions): P
   if (logoDataUrl) {
     doc.addImage(logoDataUrl, "PNG", PAGE_MARGIN + 3, y + 3.5, 22, 17, undefined, "FAST")
   }
-  drawText(doc, companyTitle, PAGE_WIDTH / 2, y + 5.5, {
-    size: 13.5,
+  drawText(doc, companyTitle, PAGE_WIDTH / 2, y + 5.0, {
+    size: 15.5,
     weight: "bold",
     color: TEXT_DARK,
     align: "center",
-    maxWidth: 105,
-    lineHeight: 4.8,
+    maxWidth: 110,
+    lineHeight: 5.5,
   })
-  drawText(doc, companyTagline, PAGE_WIDTH / 2, y + 15.2, {
-    size: 6.5,
+  drawText(doc, companyTagline, PAGE_WIDTH / 2, y + 14.8, {
+    size: 8.0,
     weight: "bold",
     color: TEXT_MUTED,
     align: "center",
   })
-  drawText(doc, companyPersian, PAGE_WIDTH / 2, y + 20.0, {
-    size: 7.6,
+  drawText(doc, companyPersian, PAGE_WIDTH / 2, y + 19.8, {
+    size: 9.8,
     weight: "bold",
     color: BLUE_DARK,
     align: "center",

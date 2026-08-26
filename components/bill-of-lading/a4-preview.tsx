@@ -109,9 +109,9 @@ const darkHeaderStyle = {
 
 const headerGridStyle = {
   display: "grid",
-  gridTemplateColumns: "32mm 1fr 48mm",
+  gridTemplateColumns: "30mm 1fr 45mm",
   alignItems: "center",
-  columnGap: "2.5mm",
+  columnGap: "2mm",
 } satisfies CSSProperties
 
 const logoFrameStyle = {
@@ -1927,14 +1927,14 @@ export function A4Preview({
             </div>
 
             {/* 2. Center: Company Brand Title & Subtitle */}
-            <div className="bol-company-block min-w-0 px-1 text-center flex flex-col items-center justify-center">
-              <h1 className="bol-company-name english-text text-[13.5pt] font-black uppercase tracking-tight text-blue-950 leading-tight">
+            <div className="bol-company-block min-w-0 px-2 text-center flex flex-col items-center justify-center">
+              <h1 className="bol-company-name english-text text-[16.5pt] sm:text-[18pt] font-black uppercase tracking-tight text-blue-950 leading-tight">
                 {companyTitle}
               </h1>
-              <p className="english-text text-[6.2pt] mt-0.2 font-extrabold uppercase tracking-[0.18em] text-slate-500 leading-tight">
+              <p className="english-text text-[7.8pt] sm:text-[8.5pt] mt-0.5 font-black uppercase tracking-[0.22em] text-slate-600 leading-tight">
                 {companyTagline}
               </p>
-              <p className="persian-text bol-persian-text text-[8.8pt] mt-0.2 font-[vazirmatn] font-black leading-tight text-blue-800" dir="rtl">
+              <p className="persian-text bol-persian-text text-[11pt] sm:text-[12.5pt] mt-0.5 font-[vazirmatn] font-black leading-snug text-blue-900" dir="rtl">
                 {companyPersian}
               </p>
             </div>
