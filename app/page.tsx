@@ -11,6 +11,7 @@ import { LoginScreen } from '@/components/login-screen'
 import { SettingsView } from '@/components/settings-view'
 import { SkyBankView } from '@/components/sky-bank-view'
 import { InvoicePadView } from '@/components/invoice-pad-view'
+import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 
 import { useEffect } from 'react'
 import { toast } from 'sonner'
@@ -124,7 +125,7 @@ function MainContent() {
   return (
     <div className={view === "bank" || view === "invoice-pad" ? "h-screen w-full flex flex-col overflow-hidden bg-slate-950" : "min-h-screen flex flex-col"}>
       <Header showBack={view !== 'accounts' && view !== 'settings' && view !== 'bank' && view !== 'invoice-pad'} />
-      <main className={view === "bank" || view === "invoice-pad" ? "flex-1 w-full h-[calc(100vh-58px)] overflow-hidden flex flex-col min-h-0" : "flex-1"}>
+      <main className={view === "bank" || view === "invoice-pad" ? "flex-1 w-full h-[calc(100vh-58px)] overflow-hidden flex flex-col min-h-0" : "flex-1 pb-16 sm:pb-0"}>
         {view === 'accounts' && <AccountsView />}
         {view === 'companies' && <CompaniesView />}
         {view === 'ledger' && <LedgerView />}
@@ -134,6 +135,7 @@ function MainContent() {
         {view === 'bank' && <SkyBankView />}
         {view === 'invoice-pad' && <InvoicePadView />}
       </main>
+      <MobileBottomNav />
       {view !== "bank" && view !== "invoice-pad" && (
       <footer className="glass-strong border-t border-amber-200/80 bg-white/95 backdrop-blur-xl py-3.5 px-6 no-print shadow-xs mt-auto">
         <div className="container mx-auto text-center text-xs font-bold text-slate-700 flex flex-col sm:flex-row items-center justify-between gap-2">

@@ -1,0 +1,85 @@
+[stderr] INFO:     Started server process [32188]
+[stderr] INFO:     Waiting for application startup.
+[stderr] INFO:     Application startup complete.
+[stderr] INFO:     Uvicorn running on http://127.0.0.1:8770 (Press CTRL+C to quit)
+INFO:     127.0.0.1:9289 - "GET /health HTTP/1.1" 200 OK
+[stderr] INFO:     ('127.0.0.1', 9356) - "WebSocket /ws" [accepted]
+[stderr] 2026-08-26 13:32:48 INFO     [codeboarding_pro.ws.server:258] WebSocket connected: session fe6f6e30-d55f-41f8-a792-a864f83e6602
+[stderr] INFO:     connection open
+[stderr] 2026-08-26 13:32:59 INFO     [tool_registry.manifest:320] has_required_tools: csharp missing or stale at C:\Users\HomePC\.codeboarding\servers\bin\win\pm-tools\csharp-ls\csharp-ls.exe
+[stderr] 2026-08-26 13:33:10 INFO     [tool_registry.manifest:320] has_required_tools: csharp missing or stale at C:\Users\HomePC\.codeboarding\servers\bin\win\pm-tools\csharp-ls\csharp-ls.exe
+[stderr] 2026-08-26 13:33:15 INFO     [tool_registry.installers:451] Installing Node.js packages: ['pyright@1.1.400', 'typescript-language-server@4.3.4', 'typescript@5.7', 'intelephense@1.16.5']
+[stderr] 2026-08-26 13:34:02 INFO     [tool_registry.installers:465] Node.js packages installed successfully
+[stderr] 2026-08-26 13:34:02 INFO     [tool_registry.installers:225]   tokei: already installed, skipping
+[stderr] 2026-08-26 13:34:02 INFO     [tool_registry.installers:225]   gopls: already installed, skipping
+[stderr] 2026-08-26 13:34:02 INFO     [tool_registry.installers:225]   rust-analyzer: already installed, skipping
+[stderr] INFO:     connection closed
+[stderr] 2026-08-26 13:34:27 INFO     [tool_registry.installers:489] java already installed
+[stderr] 2026-08-26 13:34:28 WARNING  [tool_registry.installers:397]   csharp-ls: dotnet install failed (exit 2147516561): The command could not be loaded, possibly because:
+[stderr]   * You intended to execute a .NET application:
+[stderr]       The application 'tool' does not exist.
+[stderr]   * You intended to execute a .NET SDK command:
+[stderr]       No .NET SDKs were found.
+[stderr] 
+[stderr] Download a .NET SDK:
+[stderr] https://aka.ms/dotnet/download
+[stderr] 
+[stderr] Learn about SDK resolution:
+[stderr] https://aka.ms/dotnet/sdk-not-found
+[stderr] 
+[stderr] 2026-08-26 13:34:29 INFO     [static_analyzer.java_utils:115] Using JAVA_HOME Java 25 at C:\Program Files\Eclipse Adoptium\jdk-25.0.2.10-hotspot
+[stderr] 2026-08-26 13:34:30 INFO     [codeboarding_pro.lsp.bootstrap:56] LSP startup attempt 1/3
+[stderr] 2026-08-26 13:34:30 INFO     [codeboarding_pro.session:183] Session fe6f6e30-d55f-41f8-a792-a864f83e6602 initialized: repo=D:\skybalam-26-bol-V3.2\skybalam-26-bol-V3.2, project=skybalam-26-bol-V3.2, output=D:\skybalam-26-bol-V3.2\skybalam-26-bol-V3.2\.codeboarding
+[stderr] 2026-08-26 13:34:30 ERROR    [codeboarding_pro.ws.server:387] WebSocket error: session fe6f6e30-d55f-41f8-a792-a864f83e6602
+[stderr] Traceback (most recent call last):
+[stderr]   File "websockets\legacy\protocol.py", line 1279, in close_connection
+[stderr]   File "websockets\legacy\protocol.py", line 945, in transfer_data
+[stderr]   File "websockets\legacy\protocol.py", line 1015, in read_message
+[stderr]   File "websockets\legacy\protocol.py", line 1090, in read_data_frame
+[stderr]   File "websockets\legacy\protocol.py", line 1147, in read_frame
+[stderr]   File "websockets\legacy\framing.py", line 71, in read
+[stderr]   File "asyncio\streams.py", line 752, in readexactly
+[stderr]   File "asyncio\streams.py", line 545, in _wait_for_data
+[stderr] asyncio.exceptions.CancelledError
+[stderr] 
+[stderr] The above exception was the direct cause of the following exception:
+[stderr] 
+[stderr] Traceback (most recent call last):
+[stderr]   File "codeboarding_pro\ws\server.py", line 339, in websocket_endpoint
+[stderr]   File "starlette\websockets.py", line 165, in send_text
+[stderr]   File "starlette\websockets.py", line 85, in send
+[stderr]   File "starlette\_exception_handler.py", line 39, in sender
+[stderr]   File "uvicorn\protocols\websockets\websockets_impl.py", line 320, in asgi_send
+[stderr]   File "websockets\legacy\protocol.py", line 620, in send
+[stderr]   File "websockets\legacy\protocol.py", line 921, in ensure_open
+[stderr] websockets.exceptions.ConnectionClosedError: sent 1011 (internal error) keepalive ping timeout; no close frame received
+[stderr] 2026-08-26 13:34:33 INFO     [codeboarding_pro.session:298] Session fe6f6e30-d55f-41f8-a792-a864f83e6602 destroyed
+[stderr] 2026-08-26 13:35:11 INFO     [codeboarding_pro.ws.server:118] No active connections for 41s (threshold 30s). Shutting down.
+Step: npm check started
+Step: npm check finished: success (version 11.12.1)
+Step: Node.js servers installation started
+Step: TypeScript Language Server installation finished: success
+Step: Pyright Language Server installation finished: success
+Step: Intelephense installation finished: success
+Step: Binary download started
+  tokei: verification passed
+  gopls: verification passed
+  rust-analyzer: verification passed
+Step: Binary download finished
+Step: JDTLS download started
+Step: JDTLS download finished
+Step: Package-manager tool installation started
+  csharp-ls: not installed (dotnet unavailable or install failed)
+Step: Package-manager tool installation finished
+Step: Language support summary
+  - go: yes
+  - python: yes
+  - typescript: yes
+  - javascript: yes
+  - php: yes
+  - csharp: no
+    reason: csharp-ls not installed (dotnet unavailable or install failed)
+  - java: yes
+  - rust: no
+    reason: cargo not found; Rust call-graph analysis requires a working Cargo toolchain
+Server exited (code=0, signal=null)
