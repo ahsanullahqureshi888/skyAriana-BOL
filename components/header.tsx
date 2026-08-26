@@ -35,6 +35,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
   const getTitle = () => {
     if (title) return title
+    if (view === 'invoice-pad') return 'Commercial Invoice Pad'
     if (view === 'bank') return 'Sky Ariana Bank & Transactions'
     if (view === 'settings') return 'System Settings & Management'
     if (view === 'bol') return 'Bill of Lading Editor'
@@ -46,6 +47,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
   const getSubtitle = () => {
     if (subtitle) return subtitle
+    if (view === 'invoice-pad') return 'Print-Ready A4 Commercial Invoices, Customs Valuations & Signatures • سیستم صدور فاکتور'
     if (view === 'bank') return 'Live Online Banking, Financial Ledgers & Transactions • پورتال معاملات بانکی'
     if (view === 'settings') return 'Users, Security Roles & Software Version'
     if (view === 'bol') return 'Create & Edit Bill of Lading Documents'
@@ -56,6 +58,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   }
 
   const getViewBadge = () => {
+    if (view === 'invoice-pad') return { label: 'Invoice Pad', color: 'bg-indigo-100 text-indigo-900 border-indigo-300' }
     if (view === 'bank') return { label: 'Bank Portal', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' }
     if (view === 'bol') return { label: 'BOL System', color: 'bg-amber-100 text-amber-900 border-amber-300' }
     if (view === 'settings') return { label: 'Settings', color: 'bg-purple-100 text-purple-900 border-purple-300' }
@@ -147,6 +150,23 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               <FileText className="h-3.5 w-3.5 text-amber-500 group-hover:text-amber-600" />
               <span className="font-extrabold">BOL Editor</span>
               <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ بارنامه</span>
+            </Button>
+
+            {/* Commercial Invoice Pad Navigation */}
+            <Button
+              variant={view === 'invoice-pad' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('invoice-pad')}
+              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                view === 'invoice-pad' 
+                  ? 'bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 text-white border-transparent shadow-md shadow-indigo-500/25' 
+                  : 'bg-white/90 border-indigo-200/90 text-indigo-800 hover:bg-indigo-50 hover:border-indigo-300'
+              }`}
+              title="Sky Ariana Commercial Invoice Pad"
+            >
+              <FileText className="h-3.5 w-3.5 text-indigo-600 group-hover:text-indigo-700" />
+              <span className="font-extrabold">Invoice Pad</span>
+              <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ فاکتور</span>
             </Button>
 
             {/* Sky Bank Module Navigation */}

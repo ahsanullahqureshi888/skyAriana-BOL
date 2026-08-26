@@ -1,0 +1,2871 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sky Ariana &amp; Balam Bar Baran - Commercial Logistics Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400;1,700&display=swap" rel="stylesheet">
+  <style>
+    /* ==========================================================================
+       1. GLOBAL THEME SYSTEM & LIQUID GLASS TOKENS
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    :root {
+      --primary-crimson: #c81d25;
+      --primary-crimson-hover: #ad151c;
+      --accent-blue: #0284c7;
+      --accent-green: #10b981;
+      --accent-gold: #f59e0b;
+      --accent-purple: #8b5cf6;
+    }
+
+    /* Dark Cosmic Glass */
+    html[data-theme="dark"] {
+      --bg-gradient: radial-gradient(circle at 50% 0%, #1e293b 0%, #090d16 100%);
+      --app-bg: #090d16;
+      --sidebar-bg: rgba(15, 23, 42, 0.85);
+      --glass-bg: rgba(15, 23, 42, 0.75);
+      --glass-bg-subtle: rgba(30, 41, 59, 0.65);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --glass-border-hover: rgba(255, 255, 255, 0.24);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --card-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+      --btn-dark-bg: #1e293b;
+      --btn-dark-text: #f1f5f9;
+      --btn-dark-border: #334155;
+      --modal-bg: #0f172a;
+      --modal-inner-bg: #1e293b;
+      --sheet-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Light Frosted Pearl */
+    html[data-theme="light"] {
+      --bg-gradient: radial-gradient(circle at 50% 0%, #e2e8f0 0%, #cbd5e1 100%);
+      --app-bg: #f1f5f9;
+      --sidebar-bg: rgba(255, 255, 255, 0.88);
+      --glass-bg: rgba(255, 255, 255, 0.82);
+      --glass-bg-subtle: rgba(255, 255, 255, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.85);
+      --glass-border-hover: rgba(15, 23, 42, 0.18);
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --card-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.12);
+      --btn-dark-bg: #ffffff;
+      --btn-dark-text: #0f172a;
+      --btn-dark-border: #cbd5e1;
+      --modal-bg: #ffffff;
+      --modal-inner-bg: #f8fafc;
+      --sheet-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.25);
+    }
+
+    body {
+      background: var(--bg-gradient);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
+      overflow-x: hidden;
+    }
+
+    /* ==========================================================================
+       2. TOP DASHBAR HEADER
+       ========================================================================== */
+    .dashbar-header {
+      width: 100%;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 10px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--card-shadow);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .dashbar-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .dashbar-logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--primary-crimson);
+      background: #ffffff;
+      box-shadow: 0 0 12px rgba(200, 29, 37, 0.45);
+      transition: transform 0.2s ease;
+    }
+
+    .dashbar-logo:hover { transform: scale(1.06); }
+
+    .dashbar-titles h1 {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7.5px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.16);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background: #10b981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    .autosave-tag {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(2, 132, 199, 0.12);
+      border: 1px solid rgba(2, 132, 199, 0.25);
+    }
+
+    .autosave-tag.saving {
+      color: #38bdf8;
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+
+    .dashbar-titles p {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .view-mode-tabs {
+      display: flex;
+      background: var(--glass-bg-subtle);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--glass-border);
+      gap: 3px;
+    }
+
+    .mode-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .mode-tab-btn:hover { color: var(--text-main); }
+    .mode-tab-btn.active {
+      background: var(--primary-crimson);
+      color: #ffffff;
+      box-shadow: 0 3px 10px rgba(200, 29, 37, 0.4);
+    }
+
+    .dashbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6.5px 12px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      text-decoration: none;
+      user-select: none;
+    }
+
+    .btn-dark {
+      background: var(--btn-dark-bg);
+      color: var(--btn-dark-text);
+      border-color: var(--btn-dark-border);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .btn-dark:hover {
+      border-color: var(--glass-border-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-blue {
+      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      color: #ffffff;
+      box-shadow: 0 3px 12px rgba(2, 132, 199, 0.35);
+    }
+
+    .btn-blue:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(2, 132, 199, 0.45); }
+
+    .btn-settings {
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 3px 12px rgba(59, 130, 246, 0.35);
+    }
+
+    .btn-settings:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(59, 130, 246, 0.45); }
+
+    .btn-primary-print {
+      background: linear-gradient(135deg, #c81d25 0%, #991b1b 100%);
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 4px 14px rgba(200, 29, 37, 0.4);
+    }
+
+    .btn-primary-print:hover { transform: translateY(-1.5px); box-shadow: 0 6px 20px rgba(200, 29, 37, 0.55); }
+
+    .kbd {
+      background: rgba(255, 255, 255, 0.2);
+      font-size: 9.5px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      margin-left: 2px;
+      color: #ffffff;
+    }
+
+    /* ==========================================================================
+       3. WORKSPACE & KPI METRICS
+       ========================================================================== */
+    .app-workspace {
+      width: 100%;
+      max-width: 1720px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 2px;
+    }
+
+    .kpi-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: var(--card-shadow);
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .kpi-card:hover { transform: translateY(-2px); }
+
+    .kpi-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .kpi-icon.blue { background: rgba(2, 132, 199, 0.18); color: #38bdf8; }
+    .kpi-icon.green { background: rgba(16, 185, 129, 0.18); color: #34d399; }
+    .kpi-icon.gold { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+    .kpi-icon.crimson { background: rgba(200, 29, 37, 0.18); color: #f87171; }
+
+    .kpi-content h4 {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .kpi-content .kpi-value {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .kpi-content .kpi-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .view-content-wrapper {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      justify-content: center;
+      width: 100%;
+    }
+
+    /* ==========================================================================
+       4. EDIT FORUM PANEL (WITH GOODS, NW, GW, RATE * NW ENGINE)
+       ========================================================================== */
+    .edit-forum-panel {
+      flex: 1.1;
+      max-width: 680px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--glass-border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .forum-section-card {
+      background: var(--glass-bg-subtle);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .forum-card-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: 8px;
+    }
+
+    .calc-mode-badge {
+      font-size: 10.5px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(14, 116, 215, 0.18);
+      color: #38bdf8;
+      border: 1px solid rgba(14, 116, 215, 0.35);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+    }
+
+    .calc-mode-badge:hover {
+      background: rgba(14, 116, 215, 0.28);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .form-input {
+      background: var(--modal-inner-bg);
+      border: 1px solid var(--btn-dark-border);
+      color: var(--text-main);
+      padding: 7px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.15s;
+    }
+
+    .form-input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+
+    /* Polished Goods Item Card & Grid Layout */
+    .forum-goods-item-card {
+      background: var(--modal-inner-bg);
+      border: 1px solid var(--btn-dark-border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .forum-goods-item-card:hover {
+      border-color: var(--glass-border-hover);
+    }
+
+    .goods-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--glass-border);
+      gap: 10px;
+    }
+
+    .goods-card-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .goods-item-num-badge {
+      font-size: 10.5px;
+      font-weight: 700;
+      background: rgba(2, 132, 199, 0.16);
+      color: #38bdf8;
+      border: 1px solid rgba(2, 132, 199, 0.35);
+      padding: 2px 7px;
+      border-radius: 5px;
+    }
+
+    .goods-card-header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .goods-calc-preview {
+      font-size: 11px;
+      font-weight: 700;
+      color: #10b981;
+      background: rgba(16, 185, 129, 0.14);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 3px 9px;
+      border-radius: 6px;
+      white-space: nowrap;
+      letter-spacing: 0.2px;
+    }
+
+    .goods-delete-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.12);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      transition: all 0.18s ease;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .goods-delete-btn:hover {
+      background: #ef4444;
+      color: #ffffff;
+      transform: scale(1.08);
+    }
+
+    .goods-grid-row-1 {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .goods-grid-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1.2fr;
+      gap: 10px;
+    }
+
+    .goods-input-col {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .goods-input-col label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .goods-input-col label .badge-tag {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    .badge-tag.blue { background: rgba(2, 132, 199, 0.2); color: #38bdf8; }
+    .badge-tag.green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .badge-tag.purple { background: rgba(139, 92, 246, 0.2); color: #c084fc; }
+
+    .goods-input-col input {
+      background: var(--modal-bg);
+      border: 1px solid var(--btn-dark-border);
+      color: var(--text-main);
+      height: 34px;
+      padding: 6px 10px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+      width: 100%;
+      transition: all 0.15s ease;
+    }
+
+    .goods-input-col input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+
+    .goods-input-col.highlight-nw input {
+      border-color: rgba(2, 132, 199, 0.55);
+      font-weight: 700;
+    }
+
+    .goods-input-col.highlight-nw input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.35);
+    }
+
+    .goods-input-col.highlight-rate input {
+      border-color: rgba(16, 185, 129, 0.55);
+      font-weight: 700;
+    }
+
+    .goods-input-col.highlight-rate input:focus {
+      border-color: #10b981;
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.35);
+    }
+
+    .goods-input-col.amount-preview input {
+      background: var(--glass-bg-subtle);
+      border-color: var(--glass-border);
+      color: #10b981;
+      font-weight: 800;
+      cursor: default;
+    }
+
+    /* PREVIEW CONTAINER */
+    .preview-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    /* ==========================================================================
+       5. EXACT 1:1 A4 INVOICE SHEET (CANVAS & LAYOUT)
+       ========================================================================== */
+    .invoice-container {
+      position: relative;
+      margin: 0 auto;
+    }
+
+    .invoice-page {
+      width: 210mm;
+      height: 297mm;
+      max-height: 297mm;
+      min-height: 297mm;
+      background: #ffffff !important;
+      color: #000000 !important;
+      padding: 8mm 10mm;
+      position: relative;
+      box-shadow: var(--sheet-shadow);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-family: 'Roboto', Arial, sans-serif;
+      transition: box-shadow 0.3s ease;
+    }
+
+    /* Outer Double Border Frame (Exact Reference) */
+    .border-frame {
+      border: 2px solid #000000;
+      padding: 3px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .border-inner {
+      border: 0.8px solid #000000;
+      height: 100%;
+      padding: 6mm 7mm 4.5mm 7mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    /* Enlarged Centered Watermark */
+    .watermark-bg {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 540px;
+      height: 540px;
+      opacity: 0.055;
+      pointer-events: none;
+      z-index: 0;
+      object-fit: contain;
+      transition: opacity 0.25s ease, width 0.25s ease;
+    }
+
+    .content-layer {
+      position: relative;
+      z-index: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Header */
+    .header-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      margin-bottom: 3px;
+    }
+
+    .header-logo-box {
+      width: 88px;
+      height: 88px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .header-logo-box img {
+      width: 84px;
+      height: 84px;
+      object-fit: contain;
+      filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.08));
+    }
+
+    .header-center {
+      text-align: center;
+      flex-grow: 1;
+      padding: 0 8px;
+    }
+
+    .country-title {
+      font-size: 14px;
+      font-style: italic;
+      font-family: Georgia, 'Times New Roman', serif;
+      color: #000000;
+      margin-bottom: 2px;
+    }
+
+    .company-name-main {
+      font-size: 26px;
+      font-weight: 900;
+      color: #000000;
+      letter-spacing: 0.2px;
+      line-height: 1.15;
+      margin-bottom: 2px;
+    }
+
+    .company-meta-line {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: #000000;
+      line-height: 1.3;
+    }
+
+    .company-email-line {
+      font-size: 10.5px;
+      color: #000000;
+      font-style: italic;
+      line-height: 1.3;
+    }
+
+    /* Crimson Phone Bar */
+    .crimson-bar {
+      background-color: var(--primary-crimson);
+      color: #ffffff;
+      padding: 4.5px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12.5px;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      margin-top: 5px;
+      margin-bottom: 8px;
+      border-radius: 1px;
+    }
+
+    /* Metadata Section */
+    .meta-section {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      margin-bottom: 6px;
+      font-size: 10px;
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      min-height: 18px;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .meta-label {
+      font-size: 10px;
+      color: #000000;
+      white-space: nowrap;
+    }
+
+    .meta-input {
+      border: none;
+      border-bottom: 1px solid #94a3b8;
+      font-size: 10px;
+      font-family: inherit;
+      color: #000000;
+      padding: 0 2px;
+      background: transparent;
+      outline: none;
+      transition: all 0.15s;
+    }
+
+    .meta-input:focus {
+      border-bottom-color: var(--primary-crimson);
+      background: #fffbeb;
+    }
+
+    .meta-input.bold { font-weight: 700; }
+    .meta-input.bill-bold { font-size: 14px; font-weight: 900; color: #000000; letter-spacing: 0.5px; }
+    .meta-input.sender-bold { font-size: 12.5px; font-weight: 900; color: #000000; letter-spacing: 0.3px; }
+
+    .section-divider {
+      border-top: 0.8px solid #cbd5e1;
+      margin: 4px 0 6px 0;
+    }
+
+    /* Importer Section */
+    .importer-container {
+      margin-bottom: 8px;
+      font-size: 9.5px;
+      line-height: 1.35;
+    }
+
+    .importer-title {
+      font-size: 10.5px;
+      color: #000000;
+      margin-bottom: 2px;
+    }
+
+    .importer-name-input {
+      font-size: 13px;
+      font-weight: 900;
+      color: #000000;
+      width: 100%;
+      border: none;
+      border-bottom: 1px solid transparent;
+      outline: none;
+      background: transparent;
+      font-family: inherit;
+      margin-bottom: 2px;
+    }
+
+    .importer-name-input:focus {
+      border-bottom-color: var(--primary-crimson);
+      background: #fffbeb;
+    }
+
+    .importer-field-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 1.5px;
+    }
+
+    .importer-label {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: #000000;
+      white-space: nowrap;
+    }
+
+    .importer-input {
+      flex: 1;
+      border: none;
+      border-bottom: 1px solid transparent;
+      font-size: 9.5px;
+      font-family: inherit;
+      color: #000000;
+      background: transparent;
+      outline: none;
+      padding: 0 2px;
+    }
+
+    .importer-input:hover { border-bottom-color: #cbd5e1; }
+    .importer-input:focus { border-bottom-color: var(--primary-crimson); background: #fffbeb; }
+
+    /* Table */
+    .table-container { margin-bottom: 4px; }
+    .invoice-table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+    .invoice-table th {
+      background-color: #f1f5f9;
+      color: #000000;
+      font-weight: 700;
+      text-align: center;
+      padding: 4px 2px;
+      border-top: 1px solid #000000;
+      border-bottom: 1px solid #000000;
+      font-size: 9px;
+      letter-spacing: 0.2px;
+    }
+
+    .invoice-table td {
+      padding: 4px 2px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+      font-size: 9.5px;
+    }
+
+    .invoice-table tr:hover td { background-color: #fafbfc; }
+    .invoice-table input {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 9.5px;
+      font-family: inherit;
+      background: transparent;
+      padding: 1px 2px;
+      color: #000000;
+    }
+
+    .invoice-table input:focus { background-color: #fffbeb; }
+    .invoice-table .col-qty { width: 42px; text-align: center; font-weight: 700; }
+    .invoice-table .col-unit { width: 42px; text-align: center; }
+    .invoice-table .col-desc { width: 175px; text-align: left; font-weight: 700; }
+    .invoice-table .col-qual { width: 65px; text-align: center; }
+    .invoice-table .col-gw { width: 75px; text-align: right; }
+    .invoice-table .col-nw { width: 75px; text-align: right; }
+    .invoice-table .col-rate { width: 50px; text-align: right; }
+    .invoice-table .col-amount { width: 80px; text-align: right; font-weight: 700; }
+    .invoice-table .col-action { width: 16px; text-align: center; }
+
+    .text-center { text-align: center !important; }
+    .text-right { text-align: right !important; }
+    .text-left { text-align: left !important; }
+
+    .del-row-btn {
+      color: #ef4444;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 11px;
+      line-height: 1;
+      padding: 0 2px;
+      opacity: 0.35;
+      transition: opacity 0.2s;
+    }
+
+    .del-row-btn:hover { opacity: 1; }
+
+    .subtotal-line {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 12px;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #000000;
+      padding: 4px 6px;
+      border-top: 1px solid #000000;
+    }
+
+    .grand-total-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #000000;
+      padding: 3px 6px;
+      background: #f1f5f9;
+      border-top: 1px solid #e2e8f0;
+      border-bottom: 1px solid #000000;
+      margin-bottom: 8px;
+    }
+
+    .summary-text-line {
+      font-size: 10px;
+      font-weight: 700;
+      color: #000000;
+      padding: 2px 2px;
+      margin-bottom: 4px;
+    }
+
+    .truck-line {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .truck-input {
+      flex: 1;
+      border: none;
+      border-bottom: 1px solid transparent;
+      outline: none;
+      font-size: 10px;
+      font-family: inherit;
+      background: transparent;
+      padding: 0 2px;
+    }
+
+    .truck-input:hover { border-bottom-color: #cbd5e1; }
+    .truck-input:focus { border-bottom-color: var(--primary-crimson); background: #fffbeb; }
+
+    .big-total-box {
+      border-top: 2.2px solid #000000;
+      border-bottom: 2.2px solid #000000;
+      padding: 5px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .big-total-title { font-size: 13.5px; font-weight: 700; color: #000000; }
+    .big-total-value { font-size: 17px; font-weight: 900; color: #000000; letter-spacing: 0.5px; }
+
+    .signatures-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 10px 24px 6px 24px;
+      margin-bottom: 10px;
+    }
+
+    .signature-slot { text-align: center; width: 190px; }
+    .signature-line { border-top: 1px solid #94a3b8; margin-bottom: 4px; }
+    .signature-text { font-size: 9.5px; color: #475569; }
+
+    .invoice-footer {
+      border-top: 0.8px solid #cbd5e1;
+      padding-top: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 8px;
+      color: #64748b;
+    }
+
+    /* ==========================================================================
+       6. SETTINGS MODAL
+       ========================================================================== */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(11, 15, 25, 0.78);
+      backdrop-filter: blur(12px) saturate(180%);
+      -webkit-backdrop-filter: blur(12px) saturate(180%);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.25s ease-in-out;
+    }
+
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+    .settings-modal {
+      background: var(--modal-bg);
+      color: var(--text-main);
+      width: 760px;
+      max-width: 100%;
+      max-height: 90vh;
+      border-radius: 18px;
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transform: scale(0.96);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .modal-overlay.open .settings-modal { transform: scale(1); }
+
+    .settings-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--modal-inner-bg);
+    }
+
+    .settings-header h2 { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--text-main); }
+    .close-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 20px; padding: 4px 8px; border-radius: 6px; line-height: 1; transition: all 0.15s; }
+    .close-btn:hover { background: var(--btn-dark-bg); color: var(--text-main); }
+
+    .settings-tabs { display: flex; background: var(--modal-bg); border-bottom: 1px solid var(--glass-border); padding: 0 16px; gap: 4px; overflow-x: auto; }
+    .tab-btn { background: transparent; border: none; color: var(--text-muted); padding: 12px 16px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; display: flex; align-items: center; gap: 6px; transition: all 0.15s; white-space: nowrap; }
+    .tab-btn:hover { color: var(--text-main); }
+    .tab-btn.active { color: #38bdf8; border-bottom-color: #38bdf8; }
+
+    .settings-body { padding: 20px 24px; overflow-y: auto; flex: 1; background: var(--modal-bg); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    .settings-form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; row-gap: 14px; }
+    .settings-form-grid .full-col { grid-column: span 2; }
+    .setting-field { display: flex; flex-direction: column; gap: 5px; }
+    .setting-label { font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
+    .setting-input { background: var(--modal-inner-bg); border: 1px solid var(--btn-dark-border); color: var(--text-main); padding: 8px 12px; border-radius: 8px; font-size: 12.5px; font-family: inherit; outline: none; transition: border-color 0.15s; width: 100%; }
+    .setting-input:focus { border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2); }
+
+    .logo-upload-card { background: var(--modal-inner-bg); border: 1px solid var(--btn-dark-border); border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 16px; }
+    .logo-preview-box { width: 68px; height: 68px; border-radius: 50%; background: #ffffff; border: 2px dashed #94a3b8; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .logo-preview-box img { width: 100%; height: 100%; object-fit: contain; }
+    .logo-upload-info { flex: 1; }
+    .logo-upload-info h4 { font-size: 13px; font-weight: 700; color: var(--text-main); margin-bottom: 2px; }
+    .logo-upload-info p { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
+    .upload-btn-label { background: var(--btn-dark-bg); border: 1px solid var(--btn-dark-border); color: var(--text-main); padding: 5px 12px; border-radius: 6px; font-size: 11.5px; font-weight: 600; cursor: pointer; display: inline-block; transition: all 0.15s; }
+    .upload-btn-label:hover { background: #0284c7; color: #ffffff; border-color: #0284c7; }
+
+    .settings-footer { padding: 14px 24px; border-top: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: var(--modal-inner-bg); }
+
+    .toast-msg {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--modal-bg); color: var(--text-main);
+      padding: 11px 18px; border-radius: 10px; font-size: 13px; font-weight: 600;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 8px;
+      z-index: 10000; opacity: 0; transform: translateY(12px);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); pointer-events: none;
+      border: 1px solid var(--glass-border); border-left: 4px solid var(--primary-crimson);
+    }
+    .toast-msg.show { opacity: 1; transform: translateY(0); }
+
+    /* ==========================================================================
+       7. STRICT A4 PRINT MEDIA
+       ========================================================================== */
+    @media print {
+      @page { size: A4 portrait; margin: 0; }
+      html, body { width: 210mm; height: 297mm; background: #ffffff !important; padding: 0 !important; margin: 0 !important; }
+      .no-print, .dashbar-header, .kpi-grid, .edit-forum-panel, .modal-overlay, .toast-msg { display: none !important; }
+      .app-workspace { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+      .view-content-wrapper { display: block !important; }
+      .invoice-container { margin: 0 !important; padding: 0 !important; }
+      .invoice-page {
+        box-shadow: none !important; margin: 0 !important; width: 210mm !important;
+        height: 297mm !important; min-height: 297mm !important; max-height: 297mm !important;
+        padding: 8mm 10mm !important; page-break-after: avoid !important; page-break-inside: avoid !important;
+      }
+      .del-row-btn { display: none !important; }
+      .meta-input, .importer-input, .importer-name-input, .truck-input { border-bottom-color: transparent !important; }
+      .invoice-table input { border: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       1. TOP DASHBAR HEADER
+       ========================================================================== -->
+  <header class="dashbar-header no-print">
+    <!-- Brand Info -->
+    <div class="dashbar-left">
+      <img id="nav-brand-logo" src="sky_ariana_logo.png" alt="Sky Ariana Logo" class="dashbar-logo" />
+      <div class="dashbar-titles">
+        <h1>
+          <span id="app-company-name-tag">Sky Ariana &amp; Balam Bar Baran</span>
+          <span class="status-badge"><span class="status-dot"></span> Active Pad</span>
+          <span id="autosave-status" class="autosave-tag">⚡ Auto-Saved</span>
+        </h1>
+        <p>Commercial Logistics &amp; Invoicing Management Dashbar</p>
+      </div>
+    </div>
+
+    <!-- Dashbar View Switcher -->
+    <div class="view-mode-tabs">
+      <button class="mode-tab-btn active" id="btn-mode-split" onclick="setViewMode('split')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+        Edit Forum &amp; Preview
+      </button>
+      <button class="mode-tab-btn" id="btn-mode-pad" onclick="setViewMode('pad')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+        Direct A4 Pad
+      </button>
+      <button class="mode-tab-btn" id="btn-mode-forum" onclick="setViewMode('forum')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Full Edit Forum
+      </button>
+    </div>
+
+    <!-- Actions & Tools -->
+    <div class="dashbar-actions">
+      <!-- Theme Switcher -->
+      <button class="btn btn-dark" onclick="toggleTheme()" title="Toggle Dark / Light Theme" id="theme-toggle-btn">
+        🌓 <span id="theme-btn-label">Light Mode</span>
+      </button>
+      <!-- Settings Button -->
+      <button class="btn btn-settings" onclick="openSettingsModal()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        ⚙ Settings
+      </button>
+      <!-- Print Button -->
+      <button class="btn btn-primary-print" onclick="window.print()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        Print / PDF <span class="kbd">Ctrl+P</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       2. WORKSPACE & DASHBOARD
+       ========================================================================== -->
+  <main class="app-workspace">
+    <!-- Executive KPI Metrics Row -->
+    <div class="kpi-grid no-print">
+      <div class="kpi-card">
+        <div class="kpi-icon blue">💰</div>
+        <div class="kpi-content">
+          <h4>Total Billed Amount</h4>
+          <div class="kpi-value" id="kpi-total-val">52,950 USD</div>
+          <div class="kpi-sub" id="kpi-formula-info">Calculated: Net Weight × Rate</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon green">📦</div>
+        <div class="kpi-content">
+          <h4>Total Packages / Qty</h4>
+          <div class="kpi-value" id="kpi-qty-val">2,118 CTNS</div>
+          <div class="kpi-sub">Total Dispatched Units</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon gold">⚖️</div>
+        <div class="kpi-content">
+          <h4>Net Weight (Billed)</h4>
+          <div class="kpi-value" id="kpi-nw-val">21,180 KGS</div>
+          <div class="kpi-sub" id="kpi-gw-sub">Gross Weight: 22,239 KGS</div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon crimson">🚚</div>
+        <div class="kpi-content">
+          <h4>Active Bill #</h4>
+          <div class="kpi-value" id="kpi-bill-val">SKY-001</div>
+          <div class="kpi-sub">Date: 10/08/2026</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Action Ribbon -->
+    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; background: var(--glass-bg-subtle); backdrop-filter: blur(14px); padding: 8px 14px; border-radius: 12px; border: 1px solid var(--glass-border); flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <button class="btn btn-dark" onclick="addNewRow()">+ Add Goods Item</button>
+        <button class="btn btn-blue" onclick="loadSampleData()">Load Reference (SKY-001)</button>
+        <button class="btn btn-dark" onclick="exportDataJSON()">Export JSON</button>
+        <button class="btn btn-dark" onclick="importDataJSON()">Import JSON</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">Calc Formula:</span>
+        <span class="calc-mode-badge" id="btn-toggle-formula" onclick="toggleCalculationMode()" title="Click to toggle formula: Rate × Net Weight vs Rate × Qty">
+          ⚡ Rate × Net Weight (KGS)
+        </span>
+        <button class="btn btn-dark" style="color: #ef4444; margin-left: 6px;" onclick="clearForm()">Clear Invoice</button>
+      </div>
+    </div>
+
+    <!-- SPLIT CONTENT WRAPPER -->
+    <div class="view-content-wrapper" id="main-content-layout">
+      <!-- ====================================================================
+           LEFT PANE: DEDICATED EDIT FORUM (WITH GOODS, NET WT, GROSS WT, RATE)
+           ==================================================================== -->
+      <section class="edit-forum-panel no-print" id="forum-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px;">
+          <h3 style="font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+            ✍️ Commercial Invoice Edit Forum
+          </h3>
+          <span style="font-size: 11px; color: var(--text-muted);">Real-time synchronized with preview</span>
+        </div>
+
+        <!-- 1. Goods, Weights & Rate Calculation Forum Card -->
+        <div class="forum-section-card" style="border-color: rgba(14, 116, 215, 0.35);">
+          <div class="forum-card-title">
+            <span style="display: flex; align-items: center; gap: 6px;">
+              📦 1. Goods, Weights &amp; Rate Calculation
+            </span>
+            <button class="btn btn-blue" style="padding: 3px 8px; font-size: 11px;" onclick="addNewRow()">+ Add Item</button>
+          </div>
+
+          <!-- Goods Calculation Summary Info Bar -->
+          <div style="background: var(--modal-bg); padding: 8px 12px; border-radius: 8px; font-size: 11.5px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--btn-dark-border);">
+            <span>Active Formula: <strong id="formula-desc-tag" style="color: #38bdf8;">Amount = Net Weight (KGS) × Rate</strong></span>
+            <span style="font-weight: 700; color: #10b981;" id="forum-grand-total-tag">Total: 52,950 USD</span>
+          </div>
+
+          <!-- Dynamic Goods List in Forum -->
+          <div id="forum-goods-list" style="display: flex; flex-direction: column; gap: 10px;">
+            <!-- Populated via renderTable() -->
+          </div>
+        </div>
+
+        <!-- 2. Invoice & Transit Details Forum Card -->
+        <div class="forum-section-card">
+          <div class="forum-card-title">📄 2. Invoice &amp; Transit Details</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Invoice Date</label>
+              <input type="text" id="f-inv-date" class="form-input" value="10/08/2026" oninput="syncForumToPad('date', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Bill Number</label>
+              <input type="text" id="f-inv-bill" class="form-input" value="SKY-001" oninput="syncForumToPad('bill', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Invoice No.</label>
+              <input type="text" id="f-inv-no" class="form-input" value="013" oninput="syncForumToPad('invno', this.value)" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="grid-column: span 2;">
+              <label class="form-label">Sender Name</label>
+              <input type="text" id="f-inv-sender" class="form-input" value="NASIB OBID AKBARI LTD" oninput="syncForumToPad('sender', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sender Lic No.</label>
+              <input type="text" id="f-inv-sender-lic" class="form-input" value="33215" oninput="syncForumToPad('senderlic', this.value)" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Transit No.</label>
+              <input type="text" id="f-inv-transit" class="form-input" value="A00004750" oninput="syncForumToPad('transit', this.value)" />
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+              <label class="form-label">Rasta Bazaar / Origin</label>
+              <input type="text" id="f-inv-origin" class="form-input" value="RASTA BAZAAR, NIMROZ CENTER ZARANJ - NIMROZ" oninput="syncForumToPad('origin', this.value)" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Certificate of Origin No.</label>
+              <input type="text" id="f-inv-coo" class="form-input" value="132169" oninput="syncForumToPad('coo', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phytosanitary No.</label>
+              <input type="text" id="f-inv-phyto" class="form-input" value="548172" oninput="syncForumToPad('phyto', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">VIA (Transit Route)</label>
+              <input type="text" id="f-inv-via" class="form-input" value="" placeholder="e.g. VIA: CHABAHAR / IRAN" oninput="syncForumToPad('via', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">TL Number</label>
+              <input type="text" id="f-inv-tl" class="form-input" value="" oninput="syncForumToPad('tl', this.value)" />
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Importer / Consignee Forum Card -->
+        <div class="forum-section-card">
+          <div class="forum-card-title">🏢 3. Importer / Consignee Details</div>
+          <div class="form-group">
+            <label class="form-label">Name of Importer</label>
+            <input type="text" id="f-imp-name" class="form-input" value="JDM ENTERPRISES" oninput="syncForumToPad('impname', this.value)" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Address Line 1</label>
+            <input type="text" id="f-imp-addr1" class="form-input" value="132/B, BEHIND GEETA V1HAR HOTEL," oninput="syncForumToPad('impaddr1', this.value)" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Address Line 2</label>
+              <input type="text" id="f-imp-addr2" class="form-input" value="NEAR SPENCER'S GYM, SANTACRUZ (EAST)," oninput="syncForumToPad('impaddr2', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">City, Postal &amp; Country</label>
+              <input type="text" id="f-imp-addr3" class="form-input" value="MUMBAI -400029,INDIA" oninput="syncForumToPad('impaddr3', this.value)" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">FSSAI No.</label>
+              <input type="text" id="f-imp-fssai" class="form-input" value="10018022007908" oninput="syncForumToPad('impfssai', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">GSTIN</label>
+              <input type="text" id="f-imp-gstin" class="form-input" value="27BAAPA6587K1ZH" oninput="syncForumToPad('impgstin', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">IEC Code</label>
+              <input type="text" id="f-imp-iec" class="form-input" value="BAAPA6587K" oninput="syncForumToPad('impiec', this.value)" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="grid-column: span 2;">
+              <label class="form-label">Email ID</label>
+              <input type="text" id="f-imp-email" class="form-input" value="JDMENTERPRISES89@GMAIL.COM" oninput="syncForumToPad('impemail', this.value)" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Truck No.</label>
+              <input type="text" id="f-ship-truck" class="form-input" value="" placeholder="Enter Truck No" oninput="syncForumToPad('truck', this.value)" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================================
+           RIGHT PANE: LIVE A4 INVOICE PREVIEW / DIRECT PAD
+           ==================================================================== -->
+      <section class="preview-panel" id="preview-panel">
+        <div class="invoice-container">
+          <div class="invoice-page" id="printable-invoice">
+            <div class="border-frame">
+              <div class="border-inner">
+
+                <!-- Enlarged Background Watermark (Centered, 540px) -->
+                <img id="invoice-watermark" src="sky_ariana_logo.png" alt="Watermark" class="watermark-bg" />
+
+                <div class="content-layer">
+                  <!-- TOP & MAIN BODY -->
+                  <div>
+                    <!-- Header Container -->
+                    <div class="header-container">
+                      <!-- Left Updatable Logo -->
+                      <div class="header-logo-box">
+                        <img id="display-logo-left" src="sky_ariana_logo.png" alt="Company Logo Left" />
+                      </div>
+
+                      <!-- Center Corporate Header (Dynamic via Settings) -->
+                      <div class="header-center">
+                        <div class="country-title" id="display-country-title">Islamic Republic of Afghanistan</div>
+                        <div class="company-name-main" id="display-company-name">Sky Ariana &amp; Balam Bar Baran</div>
+                        <div class="company-meta-line" id="display-company-lic">Lic No: 2401-2198</div>
+                        <div class="company-meta-line" id="display-company-city" style="font-style: italic;">Kandahar Afghanistan</div>
+                        <div class="company-email-line" id="display-company-email">transport@skyariana.com/ info@skyariana.com</div>
+                      </div>
+
+                      <!-- Right Updatable Logo -->
+                      <div class="header-logo-box">
+                        <img id="display-logo-right" src="globe_flags.png" alt="Company Logo Right" />
+                      </div>
+                    </div>
+
+                    <!-- Crimson Contact Bar -->
+                    <div class="crimson-bar">
+                      <span id="display-phone-left">+93 700 9393 65</span>
+                      <span id="display-phone-right">+93 711 4355 29</span>
+                    </div>
+
+                    <!-- Invoice Details Metadata Section (Exact Reference Layout) -->
+                    <div class="meta-section">
+                      <!-- Row 1: Date | Bill No | Sender -->
+                      <div class="meta-row" style="justify-content: space-between;">
+                        <div class="meta-item" style="width: 170px;">
+                          <span class="meta-label">Date:</span>
+                          <input type="text" id="inv-date" class="meta-input bold" style="width: 110px;" value="10/08/2026" oninput="syncPadToForum('date', this.value)" />
+                        </div>
+                        <div class="meta-item" style="width: 220px;">
+                          <span class="meta-label">Bill No:</span>
+                          <input type="text" id="inv-bill" class="meta-input bill-bold" style="width: 140px;" value="SKY-001" oninput="syncPadToForum('bill', this.value)" />
+                        </div>
+                        <div class="meta-item" style="flex: 1; justify-content: flex-end;">
+                          <span class="meta-label">Sender:</span>
+                          <input type="text" id="inv-sender" class="meta-input sender-bold" style="width: 180px; text-align: right;" value="NASIB OBID AKBARI LTD" oninput="syncPadToForum('sender', this.value)" />
+                        </div>
+                      </div>
+
+                      <!-- Row 2: Invoice No | Lic No -->
+                      <div class="meta-row" style="justify-content: space-between;">
+                        <div class="meta-item" style="width: 170px;">
+                          <span class="meta-label">Invoice No:</span>
+                          <input type="text" id="inv-no" class="meta-input bold" style="width: 90px;" value="013" oninput="syncPadToForum('invno', this.value)" />
+                        </div>
+                        <div class="meta-item" style="flex: 1; justify-content: flex-end;">
+                          <span class="meta-label">Lic No:</span>
+                          <input type="text" id="inv-sender-lic" class="meta-input bold" style="width: 110px; text-align: right;" value="33215" oninput="syncPadToForum('senderlic', this.value)" />
+                        </div>
+                      </div>
+
+                      <!-- Row 3: Transit No | Rasta Bazaar -->
+                      <div class="meta-row" style="justify-content: space-between;">
+                        <div class="meta-item" style="width: 200px;">
+                          <span class="meta-label">Transit No:</span>
+                          <input type="text" id="inv-transit" class="meta-input bold" style="width: 120px;" value="A00004750" oninput="syncPadToForum('transit', this.value)" />
+                        </div>
+                        <div class="meta-item" style="flex: 1; justify-content: flex-end;">
+                          <input type="text" id="inv-origin" class="meta-input bold" style="width: 320px; text-align: right;" value="RASTA BAZAAR, NIMROZ CENTER ZARANJ - NIMROZ" oninput="syncPadToForum('origin', this.value)" />
+                        </div>
+                      </div>
+
+                      <!-- Row 4: Certificate of Origin No | VIA | TL NO -->
+                      <div class="meta-row" style="justify-content: space-between;">
+                        <div class="meta-item" style="width: 220px;">
+                          <span class="meta-label">Certificate of Origin No:</span>
+                          <input type="text" id="inv-coo" class="meta-input bold" style="width: 80px;" value="132169" oninput="syncPadToForum('coo', this.value)" />
+                        </div>
+                        <div class="meta-item" style="flex: 1; justify-content: center;">
+                          <span class="meta-label">VIA:</span>
+                          <input type="text" id="inv-via" class="meta-input bold" style="width: 130px; text-align: center;" value="" placeholder="VIA Route" oninput="syncPadToForum('via', this.value)" />
+                        </div>
+                        <div class="meta-item" style="flex: 1; justify-content: flex-end;">
+                          <span class="meta-label">TL NO:</span>
+                          <input type="text" id="inv-tl" class="meta-input bold" style="width: 90px; text-align: right;" value="" oninput="syncPadToForum('tl', this.value)" />
+                        </div>
+                      </div>
+
+                      <!-- Row 5: Phytosanitary Certificate No -->
+                      <div class="meta-row">
+                        <div class="meta-item">
+                          <span class="meta-label">Phytosanitary Certificate No:</span>
+                          <input type="text" id="inv-phyto" class="meta-input bold" style="width: 110px;" value="548172" oninput="syncPadToForum('phyto', this.value)" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Section Divider -->
+                    <div class="section-divider"></div>
+
+                    <!-- Importer / Consignee Section (Exact Reference) -->
+                    <div class="importer-container">
+                      <div class="importer-title">Name of Importer:</div>
+                      <input type="text" id="imp-name" class="importer-name-input" value="JDM ENTERPRISES" oninput="syncPadToForum('impname', this.value)" />
+                      
+                      <div class="importer-field-row">
+                        <span class="importer-label">ADDRESS:</span>
+                        <input type="text" id="imp-addr1" class="importer-input bold" value="132/B, BEHIND GEETA V1HAR HOTEL," oninput="syncPadToForum('impaddr1', this.value)" />
+                      </div>
+                      <div class="importer-field-row" style="padding-left: 56px;">
+                        <input type="text" id="imp-addr2" class="importer-input bold" value="NEAR SPENCER'S GYM, SANTACRUZ (EAST)," oninput="syncPadToForum('impaddr2', this.value)" />
+                      </div>
+                      <div class="importer-field-row" style="padding-left: 56px;">
+                        <input type="text" id="imp-addr3" class="importer-input bold" value="MUMBAI -400029,INDIA" oninput="syncPadToForum('impaddr3', this.value)" />
+                      </div>
+                      <div class="importer-field-row">
+                        <span class="importer-label">FSSAINO:</span>
+                        <input type="text" id="imp-fssai" class="importer-input bold" value="10018022007908" oninput="syncPadToForum('impfssai', this.value)" />
+                      </div>
+                      <div class="importer-field-row">
+                        <span class="importer-label">GST1N:</span>
+                        <input type="text" id="imp-gstin" class="importer-input bold" value="27BAAPA6587K1ZH" oninput="syncPadToForum('impgstin', this.value)" />
+                      </div>
+                      <div class="importer-field-row">
+                        <span class="importer-label">IEC CODE:</span>
+                        <input type="text" id="imp-iec" class="importer-input bold" value="BAAPA6587K" oninput="syncPadToForum('impiec', this.value)" />
+                      </div>
+                      <div class="importer-field-row">
+                        <span class="importer-label">EMAIL ID :</span>
+                        <input type="text" id="imp-email" class="importer-input bold" value="JDMENTERPRISES89@GMAIL.COM" oninput="syncPadToForum('impemail', this.value)" />
+                      </div>
+                    </div>
+
+                    <!-- Main Items Table (Calculated as NW * Rate) -->
+                    <div class="table-container">
+                      <table class="invoice-table" id="items-table">
+                        <thead>
+                          <tr>
+                            <th class="col-qty">QTY</th>
+                            <th class="col-unit">UNIT</th>
+                            <th class="col-desc">DESCRIPTION</th>
+                            <th class="col-qual">QUALITY</th>
+                            <th class="col-gw">GROSS WT</th>
+                            <th class="col-nw">NET WT</th>
+                            <th class="col-rate">RATE</th>
+                            <th class="col-amount">AMOUNT</th>
+                            <th class="col-action no-print"></th>
+                          </tr>
+                        </thead>
+                        <tbody id="items-tbody">
+                          <!-- Dynamically populated -->
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <!-- Subtotal Line -->
+                    <div class="subtotal-line" id="subtotal-line-block">
+                      <span id="commodity-subtotal-tag">BLACK RAISINS:</span>
+                      <span id="subtotal-val">52,950 USD</span>
+                    </div>
+
+                    <!-- Grand Total Bar -->
+                    <div class="grand-total-bar">
+                      <span>Grand Total:</span>
+                      <span id="grand-total-val">52,950 USD</span>
+                    </div>
+
+                    <!-- Package & Weight Summary Line -->
+                    <div class="summary-text-line" id="summary-line-text">
+                      2118 CTNS: BLACK RAISINS, GW 22,239 KGS, NW 21,180 KGS
+                    </div>
+
+                    <!-- Truck No Line -->
+                    <div class="truck-line">
+                      <span>Truck No:</span>
+                      <input type="text" id="ship-truck" class="truck-input" value="" placeholder="Enter Truck No" oninput="syncPadToForum('truck', this.value)" />
+                    </div>
+
+                    <!-- Big Highlight Total Box -->
+                    <div class="big-total-box">
+                      <span class="big-total-title">Total:</span>
+                      <span class="big-total-value" id="big-total-val">52,950 USD</span>
+                    </div>
+                  </div>
+
+                  <!-- BOTTOM FIXED: SIGNATURES & FOOTER -->
+                  <div>
+                    <!-- Signatures Section -->
+                    <div class="signatures-container">
+                      <div class="signature-slot">
+                        <div class="signature-line"></div>
+                        <div class="signature-text" id="display-sig-left">Authorized Signature</div>
+                      </div>
+                      <div class="signature-slot">
+                        <div class="signature-line"></div>
+                        <div class="signature-text" id="display-sig-right">Company Stamp</div>
+                      </div>
+                    </div>
+
+                    <!-- Footer Line -->
+                    <div class="invoice-footer">
+                      <div class="invoice-footer-left" id="display-footer-company">
+                        Sky Ariana &amp; Balam Bar Baran | Kandahar Afghanistan
+                      </div>
+                      <div class="invoice-footer-right" id="footer-bill-date">
+                        Bill #SKY-001 | 10/08/2026
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ==========================================================================
+       SETTINGS & PROFILE MANAGER MODAL
+       ========================================================================== -->
+  <div class="modal-overlay no-print" id="settings-modal-overlay">
+    <div class="settings-modal">
+      <div class="settings-header">
+        <h2>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          System Settings &amp; Profile Manager
+        </h2>
+        <button class="close-btn" onclick="closeSettingsModal()">✕</button>
+      </div>
+
+      <div class="settings-tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-company')">🏢 Company Profile</button>
+        <button class="tab-btn" onclick="switchTab('tab-logos')">🖼️ Dual Logos &amp; Watermark</button>
+        <button class="tab-btn" onclick="switchTab('tab-defaults')">⚙️ Defaults &amp; Calculation</button>
+        <button class="tab-btn" onclick="switchTab('tab-autosave')">💾 Auto-Save &amp; Backups</button>
+        <button class="tab-btn" onclick="switchTab('tab-updates')">🚀 Software Updates</button>
+      </div>
+
+      <div class="settings-body">
+        <!-- TAB 1: COMPANY PROFILE -->
+        <div class="tab-pane active" id="tab-company">
+          <div class="settings-form-grid">
+            <div class="setting-field full-col">
+              <label class="setting-label">Country / Jurisdiction Header</label>
+              <input type="text" id="set-country-title" class="setting-input" value="Islamic Republic of Afghanistan" />
+            </div>
+            <div class="setting-field full-col">
+              <label class="setting-label">Primary Company Name</label>
+              <input type="text" id="set-company-name" class="setting-input" value="Sky Ariana &amp; Balam Bar Baran" />
+            </div>
+            <div class="setting-field">
+              <label class="setting-label">Company License No.</label>
+              <input type="text" id="set-company-lic" class="setting-input" value="Lic No: 2401-2198" />
+            </div>
+            <div class="setting-field">
+              <label class="setting-label">City &amp; Country</label>
+              <input type="text" id="set-company-city" class="setting-input" value="Kandahar Afghanistan" />
+            </div>
+            <div class="setting-field full-col">
+              <label class="setting-label">Official Emails</label>
+              <input type="text" id="set-company-email" class="setting-input" value="transport@skyariana.com/ info@skyariana.com" />
+            </div>
+            <div class="setting-field">
+              <label class="setting-label">Contact Phone 1 (Left Banner)</label>
+              <input type="text" id="set-phone-left" class="setting-input" value="+93 700 9393 65" />
+            </div>
+            <div class="setting-field">
+              <label class="setting-label">Contact Phone 2 (Right Banner)</label>
+              <input type="text" id="set-phone-right" class="setting-input" value="+93 711 4355 29" />
+            </div>
+            <div class="setting-field full-col">
+              <label class="setting-label">Bottom Footer Company Text</label>
+              <input type="text" id="set-footer-company" class="setting-input" value="Sky Ariana &amp; Balam Bar Baran | Kandahar Afghanistan" />
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: DUAL LOGOS & BIG WATERMARK CONTROLS -->
+        <div class="tab-pane" id="tab-logos">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="logo-upload-card">
+              <div class="logo-preview-box">
+                <img id="preview-set-logo-left" src="sky_ariana_logo.png" alt="Left Logo Preview" />
+              </div>
+              <div class="logo-upload-info">
+                <h4>Logo 1 (Header Left)</h4>
+                <p>Upload a custom PNG/JPG logo to appear on the top-left of the invoice.</p>
+                <input type="file" id="file-logo-left" accept="image/*" style="display:none" onchange="handleLogoUpload(event, 'left')" />
+                <label for="file-logo-left" class="upload-btn-label">📁 Choose New Logo</label>
+                <button class="btn btn-dark" style="padding: 4px 10px; font-size: 11px; margin-left: 6px;" onclick="resetLogo('left')">Reset Default</button>
+              </div>
+            </div>
+
+            <div class="logo-upload-card">
+              <div class="logo-preview-box">
+                <img id="preview-set-logo-right" src="globe_flags.png" alt="Right Logo Preview" />
+              </div>
+              <div class="logo-upload-info">
+                <h4>Logo 2 (Header Right)</h4>
+                <p>Upload a secondary emblem, seal, or logo to appear on the top-right.</p>
+                <input type="file" id="file-logo-right" accept="image/*" style="display:none" onchange="handleLogoUpload(event, 'right')" />
+                <label for="file-logo-right" class="upload-btn-label">📁 Choose New Logo</label>
+                <button class="btn btn-dark" style="padding: 4px 10px; font-size: 11px; margin-left: 6px;" onclick="resetLogo('right')">Reset Default</button>
+              </div>
+            </div>
+
+            <div class="logo-upload-card" style="align-items: flex-start;">
+              <div class="logo-upload-info" style="width: 100%;">
+                <h4>Background Watermark (Big Size &amp; Opacity)</h4>
+                <p>Configure the central background watermark scaling and visibility on the printed invoice pad.</p>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px;">
+                  <label style="font-size: 12px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="checkbox" id="set-watermark-enabled" checked onchange="toggleWatermark(this.checked)" />
+                    Enable Background Watermark
+                  </label>
+                  <label style="font-size: 12px; display: flex; align-items: center; gap: 8px;">
+                    Opacity:
+                    <input type="range" id="set-watermark-opacity" min="1" max="25" value="6" oninput="updateWatermarkOpacity(this.value)" />
+                    <span id="opacity-val-label">5.5%</span>
+                  </label>
+                  <label style="font-size: 12px; display: flex; align-items: center; gap: 8px; grid-column: span 2;">
+                    Watermark Size:
+                    <input type="range" id="set-watermark-size" min="300" max="620" value="540" oninput="updateWatermarkSize(this.value)" style="flex:1" />
+                    <span id="size-val-label">540px (Large)</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: DEFAULTS & CALCULATION MODE -->
+        <div class="tab-pane" id="tab-defaults">
+          <div class="settings-form-grid">
+            <div class="setting-field">
+              <label class="setting-label">Default Currency Symbol / Tag</label>
+              <input type="text" id="set-currency" class="setting-input" value="USD" />
+            </div>
+            <div class="setting-field">
+              <label class="setting-label">Calculation Mode</label>
+              <select id="set-calc-mode" class="setting-input" onchange="updateCalcModeFromSettings(this.value)">
+                <option value="net_weight" selected>Rate × Net Weight (KGS) — Produce &amp; Freight Standard</option>
+                <option value="quantity">Rate × Quantity (CTNS / Units)</option>
+              </select>
+            </div>
+            <div class="setting-field full-col">
+              <label class="setting-label">Default Origin / Rasta Bazaar</label>
+              <input type="text" id="set-default-origin" class="setting-input" value="RASTA BAZAAR, NIMROZ CENTER ZARANJ - NIMROZ" />
+            </div>
+            <div class="setting-field">
+              <label class="setting-label">Left Signature Title</label>
+              <input type="text" id="set-sig-left" class="setting-input" value="Authorized Signature" />
+            </div>
+            <div class="setting-field">
+              <label class="setting-label">Right Signature Title</label>
+              <input type="text" id="set-sig-right" class="setting-input" value="Company Stamp" />
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: AUTO-SAVE & REVISION SNAPSHOTS -->
+        <div class="tab-pane" id="tab-autosave">
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <!-- Auto Save Status Banner -->
+            <div style="background: var(--modal-inner-bg); border: 1px solid var(--btn-dark-border); border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div>
+                <h4 style="font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                  ⚡ Real-Time Auto-Save Engine
+                  <span class="status-badge" style="background: rgba(16,185,129,0.15); color: #10b981;">Active &amp; Guarded</span>
+                </h4>
+                <p style="font-size: 11.5px; color: var(--text-muted);">
+                  Every keystroke, number, rate, and metadata change is continuously auto-saved.
+                </p>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-blue" onclick="createManualSnapshot()">📸 Create Snapshot Now</button>
+                <button class="btn btn-dark" onclick="exportFullBackupJSON()">📥 Full Backup (.JSON)</button>
+              </div>
+            </div>
+
+            <!-- Auto-Saved Snapshots List -->
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <h5 style="font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                  🕒 Recent Auto-Save Revisions (Last 5 Snapshots)
+                </h5>
+                <button class="btn btn-dark" style="font-size: 10px; padding: 2px 8px;" onclick="clearSnapshotsHistory()">Clear History</button>
+              </div>
+              <div id="snapshots-history-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto;">
+                <!-- Populated via renderSnapshotsList() -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 5: SOFTWARE UPDATES -->
+        <div class="tab-pane" id="tab-updates">
+          <div class="update-card">
+            <div class="update-header">
+              <div class="update-version">
+                <span>Sky Ariana Logistics Pad Enterprise</span>
+                <span class="update-badge">v2.9.0 Rate-Multiplier Pro</span>
+              </div>
+              <button class="btn btn-blue" id="btn-check-updates" onclick="checkForUpdates()">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                Check for Updates
+              </button>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;" id="update-status-msg">
+              ✓ Software is up-to-date. Commercial rate-by-net-weight engine, edit forum, and A4 print engine live.
+            </p>
+
+            <div class="changelog-box">
+              <strong>Latest Version Highlights (v2.9.0):</strong>
+              <ul>
+                <li>Added full Goods, Net Weight, Gross Weight &amp; Rate Editor in Commercial Edit Forum.</li>
+                <li>Added `Amount = Net Weight (KGS) × Rate` commercial calculation multiplier.</li>
+                <li>Added live item calculation badges and two-way forum &amp; pad table synchronization.</li>
+                <li>Top Dashbar with KPI statistics overview and split view modes.</li>
+                <li>Liquid Glass theme with Dark / Light switcher &amp; Auto-Save engine.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Footer -->
+      <div class="settings-footer">
+        <button class="btn btn-dark" onclick="resetToFactoryDefaults()">Reset All to Factory Defaults</button>
+        <div class="btn-group">
+          <button class="btn btn-dark" onclick="closeSettingsModal()">Cancel</button>
+          <button class="btn btn-settings" onclick="saveSettings()">💾 Save &amp; Apply Profile</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-msg" id="toast-el">
+    <span id="toast-text">Settings saved successfully</span>
+  </div>
+
+  <!-- Hidden File Input for JSON Import -->
+  <input type="file" id="json-file-input" accept=".json" style="display:none" onchange="handleJSONFileImport(event)" />
+
+  <script>
+    // ==========================================================================
+    // 1. DATA STATE & SETTINGS DEFAULTS
+    // ==========================================================================
+    const DEFAULT_PROFILE = {
+      countryTitle: "Islamic Republic of Afghanistan",
+      companyName: "Sky Ariana & Balam Bar Baran",
+      companyLic: "Lic No: 2401-2198",
+      companyCity: "Kandahar Afghanistan",
+      companyEmail: "transport@skyariana.com/ info@skyariana.com",
+      phoneLeft: "+93 700 9393 65",
+      phoneRight: "+93 711 4355 29",
+      footerCompany: "Sky Ariana & Balam Bar Baran | Kandahar Afghanistan",
+      logoLeft: "sky_ariana_logo.png",
+      logoRight: "globe_flags.png",
+      watermarkEnabled: true,
+      watermarkOpacity: "5.5",
+      watermarkSize: "540",
+      currency: "USD",
+      calcMode: "net_weight", // "net_weight" (Amount = NW * Rate) or "quantity" (Amount = QTY * Rate)
+      defaultOrigin: "RASTA BAZAAR, NIMROZ CENTER ZARANJ - NIMROZ",
+      sigLeft: "Authorized Signature",
+      sigRight: "Company Stamp",
+      theme: "dark",
+      viewMode: "split"
+    };
+
+    let profile = { ...DEFAULT_PROFILE };
+
+    // Standard Sample: 2118 CTNS, GW 22239, NW 21180, Rate 2.50 USD -> Amount = 21180 * 2.50 = 52,950 USD!
+    let items = [
+      { qty: 2118, unit: "CTNS", desc: "BLACK RAISINS", quality: "", gw: 22239, nw: 21180, rate: 2.50 }
+    ];
+
+    let autoSaveTimer = null;
+
+    // ==========================================================================
+    // 2. CALCULATION MODE (RATE × NET WEIGHT / RATE × QTY)
+    // ==========================================================================
+    function toggleCalculationMode() {
+      profile.calcMode = profile.calcMode === "net_weight" ? "quantity" : "net_weight";
+      updateCalculationModeUI();
+      recalculate();
+      scheduleAutoSave();
+      showToast(`Calculation mode: ${profile.calcMode === "net_weight" ? "Amount = Net Weight (KGS) × Rate" : "Amount = Quantity (CTNS) × Rate"}`);
+    }
+
+    function updateCalcModeFromSettings(val) {
+      profile.calcMode = val;
+      updateCalculationModeUI();
+      recalculate();
+    }
+
+    function updateCalculationModeUI() {
+      const isNW = profile.calcMode === "net_weight";
+      const btn = document.getElementById("btn-toggle-formula");
+      const desc = document.getElementById("formula-desc-tag");
+      const kpiFormula = document.getElementById("kpi-formula-info");
+      const setSelect = document.getElementById("set-calc-mode");
+
+      if (btn) btn.textContent = isNW ? "⚡ Rate × Net Weight (KGS)" : "📦 Rate × Quantity (CTNS)";
+      if (desc) desc.textContent = isNW ? "Amount = Net Weight (KGS) × Rate" : "Amount = Quantity (CTNS) × Rate";
+      if (kpiFormula) kpiFormula.textContent = isNW ? "Calculated: Net Weight × Rate" : "Calculated: Quantity × Rate";
+      if (setSelect) setSelect.value = profile.calcMode;
+    }
+
+    // ==========================================================================
+    // 3. DASHBAR VIEW MODES & TWO-WAY SYNC
+    // ==========================================================================
+    function setViewMode(mode) {
+      profile.viewMode = mode;
+      document.querySelectorAll(".mode-tab-btn").forEach(btn => btn.classList.remove("active"));
+      
+      const forumPanel = document.getElementById("forum-panel");
+      const previewPanel = document.getElementById("preview-panel");
+      const layoutWrapper = document.getElementById("main-content-layout");
+
+      if (mode === "split") {
+        document.getElementById("btn-mode-split").classList.add("active");
+        forumPanel.style.display = "flex";
+        previewPanel.style.display = "flex";
+        layoutWrapper.style.flexDirection = "row";
+      } else if (mode === "pad") {
+        document.getElementById("btn-mode-pad").classList.add("active");
+        forumPanel.style.display = "none";
+        previewPanel.style.display = "flex";
+        layoutWrapper.style.flexDirection = "column";
+      } else if (mode === "forum") {
+        document.getElementById("btn-mode-forum").classList.add("active");
+        forumPanel.style.display = "flex";
+        previewPanel.style.display = "none";
+        layoutWrapper.style.flexDirection = "column";
+        forumPanel.style.maxWidth = "800px";
+        forumPanel.style.margin = "0 auto";
+      }
+    }
+
+    function syncForumToPad(field, val) {
+      if (field === 'date') document.getElementById("inv-date").value = val;
+      if (field === 'bill') document.getElementById("inv-bill").value = val;
+      if (field === 'invno') document.getElementById("inv-no").value = val;
+      if (field === 'sender') document.getElementById("inv-sender").value = val;
+      if (field === 'senderlic') document.getElementById("inv-sender-lic").value = val;
+      if (field === 'transit') document.getElementById("inv-transit").value = val;
+      if (field === 'origin') document.getElementById("inv-origin").value = val;
+      if (field === 'coo') document.getElementById("inv-coo").value = val;
+      if (field === 'phyto') document.getElementById("inv-phyto").value = val;
+      if (field === 'via') document.getElementById("inv-via").value = val;
+      if (field === 'tl') document.getElementById("inv-tl").value = val;
+      if (field === 'truck') document.getElementById("ship-truck").value = val;
+
+      if (field === 'impname') document.getElementById("imp-name").value = val;
+      if (field === 'impaddr1') document.getElementById("imp-addr1").value = val;
+      if (field === 'impaddr2') document.getElementById("imp-addr2").value = val;
+      if (field === 'impaddr3') document.getElementById("imp-addr3").value = val;
+      if (field === 'impfssai') document.getElementById("imp-fssai").value = val;
+      if (field === 'impgstin') document.getElementById("imp-gstin").value = val;
+      if (field === 'impiec') document.getElementById("imp-iec").value = val;
+      if (field === 'impemail') document.getElementById("imp-email").value = val;
+
+      syncFooter();
+      scheduleAutoSave();
+    }
+
+    function syncPadToForum(field, val) {
+      if (field === 'date') document.getElementById("f-inv-date").value = val;
+      if (field === 'bill') document.getElementById("f-inv-bill").value = val;
+      if (field === 'invno') document.getElementById("f-inv-no").value = val;
+      if (field === 'sender') document.getElementById("f-inv-sender").value = val;
+      if (field === 'senderlic') document.getElementById("f-inv-sender-lic").value = val;
+      if (field === 'transit') document.getElementById("f-inv-transit").value = val;
+      if (field === 'origin') document.getElementById("f-inv-origin").value = val;
+      if (field === 'coo') document.getElementById("f-inv-coo").value = val;
+      if (field === 'phyto') document.getElementById("f-inv-phyto").value = val;
+      if (field === 'via') document.getElementById("f-inv-via").value = val;
+      if (field === 'tl') document.getElementById("f-inv-tl").value = val;
+      if (field === 'truck') document.getElementById("f-ship-truck").value = val;
+
+      if (field === 'impname') document.getElementById("f-imp-name").value = val;
+      if (field === 'impaddr1') document.getElementById("f-imp-addr1").value = val;
+      if (field === 'impaddr2') document.getElementById("f-imp-addr2").value = val;
+      if (field === 'impaddr3') document.getElementById("f-imp-addr3").value = val;
+      if (field === 'impfssai') document.getElementById("f-imp-fssai").value = val;
+      if (field === 'impgstin') document.getElementById("f-imp-gstin").value = val;
+      if (field === 'impiec') document.getElementById("f-imp-iec").value = val;
+      if (field === 'impemail') document.getElementById("f-imp-email").value = val;
+
+      syncFooter();
+      scheduleAutoSave();
+    }
+
+    function syncAllPadValuesToForum() {
+      const getVal = id => document.getElementById(id) ? document.getElementById(id).value : "";
+      document.getElementById("f-inv-date").value = getVal("inv-date");
+      document.getElementById("f-inv-bill").value = getVal("inv-bill");
+      document.getElementById("f-inv-no").value = getVal("inv-no");
+      document.getElementById("f-inv-sender").value = getVal("inv-sender");
+      document.getElementById("f-inv-sender-lic").value = getVal("inv-sender-lic");
+      document.getElementById("f-inv-transit").value = getVal("inv-transit");
+      document.getElementById("f-inv-origin").value = getVal("inv-origin");
+      document.getElementById("f-inv-coo").value = getVal("inv-coo");
+      document.getElementById("f-inv-phyto").value = getVal("inv-phyto");
+      document.getElementById("f-inv-via").value = getVal("inv-via");
+      document.getElementById("f-inv-tl").value = getVal("inv-tl");
+      document.getElementById("f-ship-truck").value = getVal("ship-truck");
+
+      document.getElementById("f-imp-name").value = getVal("imp-name");
+      document.getElementById("f-imp-addr1").value = getVal("imp-addr1");
+      document.getElementById("f-imp-addr2").value = getVal("imp-addr2");
+      document.getElementById("f-imp-addr3").value = getVal("imp-addr3");
+      document.getElementById("f-imp-fssai").value = getVal("imp-fssai");
+      document.getElementById("f-imp-gstin").value = getVal("imp-gstin");
+      document.getElementById("f-imp-iec").value = getVal("imp-iec");
+      document.getElementById("f-imp-email").value = getVal("imp-email");
+    }
+
+    // ==========================================================================
+    // 4. THEME & AUTO-SAVE
+    // ==========================================================================
+    // ==========================================================================
+    // 4. ENTERPRISE AUTO-SAVE & REVISION SNAPSHOT ENGINE
+    // ==========================================================================
+    function initTheme() {
+      const savedTheme = localStorage.getItem("sky_ariana_theme") || "dark";
+      applyTheme(savedTheme);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute("data-theme") || "dark";
+      const nextTheme = current === "dark" ? "light" : "dark";
+      applyTheme(nextTheme);
+      showToast(`Switched to ${nextTheme === "dark" ? "Dark Cosmic" : "Light Pearl"} theme`);
+      scheduleAutoSave();
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("sky_ariana_theme", theme);
+      profile.theme = theme;
+      const btnLabel = document.getElementById("theme-btn-label");
+      if (btnLabel) btnLabel.textContent = theme === "dark" ? "Light Mode" : "Dark Mode";
+    }
+
+    function scheduleAutoSave() {
+      const tag = document.getElementById("autosave-status");
+      if (tag) {
+        tag.classList.add("saving");
+        tag.textContent = "⏳ Saving...";
+      }
+
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(() => {
+        performAutoSave();
+      }, 350);
+    }
+
+    function getInvoiceStateObject() {
+      return {
+        timestamp: new Date().toISOString(),
+        formattedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        date: document.getElementById("inv-date") ? document.getElementById("inv-date").value : "",
+        billNo: document.getElementById("inv-bill") ? document.getElementById("inv-bill").value : "",
+        sender: document.getElementById("inv-sender") ? document.getElementById("inv-sender").value : "",
+        invoiceNo: document.getElementById("inv-no") ? document.getElementById("inv-no").value : "",
+        senderLic: document.getElementById("inv-sender-lic") ? document.getElementById("inv-sender-lic").value : "",
+        transitNo: document.getElementById("inv-transit") ? document.getElementById("inv-transit").value : "",
+        origin: document.getElementById("inv-origin") ? document.getElementById("inv-origin").value : "",
+        coo: document.getElementById("inv-coo") ? document.getElementById("inv-coo").value : "",
+        via: document.getElementById("inv-via") ? document.getElementById("inv-via").value : "",
+        tl: document.getElementById("inv-tl") ? document.getElementById("inv-tl").value : "",
+        phyto: document.getElementById("inv-phyto") ? document.getElementById("inv-phyto").value : "",
+        truck: document.getElementById("ship-truck") ? document.getElementById("ship-truck").value : "",
+        importer: {
+          name: document.getElementById("imp-name") ? document.getElementById("imp-name").value : "",
+          addr1: document.getElementById("imp-addr1") ? document.getElementById("imp-addr1").value : "",
+          addr2: document.getElementById("imp-addr2") ? document.getElementById("imp-addr2").value : "",
+          addr3: document.getElementById("imp-addr3") ? document.getElementById("imp-addr3").value : "",
+          fssai: document.getElementById("imp-fssai") ? document.getElementById("imp-fssai").value : "",
+          gstin: document.getElementById("imp-gstin") ? document.getElementById("imp-gstin").value : "",
+          iec: document.getElementById("imp-iec") ? document.getElementById("imp-iec").value : "",
+          email: document.getElementById("imp-email") ? document.getElementById("imp-email").value : ""
+        },
+        items: JSON.parse(JSON.stringify(items)),
+        calcMode: profile.calcMode
+      };
+    }
+
+    function performAutoSave(isSync = false) {
+      const invoiceDraft = getInvoiceStateObject();
+      localStorage.setItem("sky_ariana_invoice_draft", JSON.stringify(invoiceDraft));
+
+      // Append to rolling revision history (up to 5 snapshots)
+      recordSnapshotToHistory(invoiceDraft);
+
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const tag = document.getElementById("autosave-status");
+      if (tag) {
+        tag.classList.remove("saving");
+        tag.textContent = `⚡ Auto-Saved at ${timeStr}`;
+        tag.title = "Click to create a manual save checkpoint";
+        tag.style.cursor = "pointer";
+        tag.onclick = () => createManualSnapshot();
+      }
+    }
+
+    function recordSnapshotToHistory(draft) {
+      try {
+        let history = JSON.parse(localStorage.getItem("sky_ariana_invoice_history") || "[]");
+        // Only keep distinct updates separated by at least 15 seconds or with distinct bill numbers
+        const last = history[0];
+        if (!last || last.billNo !== draft.billNo || (new Date() - new Date(last.timestamp)) > 15000) {
+          history.unshift(draft);
+          if (history.length > 5) history = history.slice(0, 5);
+          localStorage.setItem("sky_ariana_invoice_history", JSON.stringify(history));
+          renderSnapshotsList();
+        }
+      } catch (e) {
+        console.error("Error saving history snapshot:", e);
+      }
+    }
+
+    function createManualSnapshot() {
+      const draft = getInvoiceStateObject();
+      draft.isManual = true;
+      try {
+        let history = JSON.parse(localStorage.getItem("sky_ariana_invoice_history") || "[]");
+        history.unshift(draft);
+        if (history.length > 5) history = history.slice(0, 5);
+        localStorage.setItem("sky_ariana_invoice_history", JSON.stringify(history));
+        renderSnapshotsList();
+        showToast(`📸 Manual snapshot saved at ${draft.formattedTime}`);
+      } catch (e) {
+        console.error("Error saving manual snapshot:", e);
+      }
+    }
+
+    function renderSnapshotsList() {
+      const listEl = document.getElementById("snapshots-history-list");
+      if (!listEl) return;
+      try {
+        const history = JSON.parse(localStorage.getItem("sky_ariana_invoice_history") || "[]");
+        if (history.length === 0) {
+          listEl.innerHTML = `<div style="font-size: 11.5px; color: var(--text-muted); padding: 8px; text-align: center; background: var(--modal-bg); border-radius: 8px;">No snapshots recorded yet. Changes will appear here automatically.</div>`;
+          return;
+        }
+        listEl.innerHTML = "";
+        history.forEach((snap, idx) => {
+          const itemDiv = document.createElement("div");
+          itemDiv.style.cssText = "background: var(--modal-bg); border: 1px solid var(--btn-dark-border); padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 11.5px;";
+          const timeLabel = snap.formattedTime || new Date(snap.timestamp).toLocaleTimeString();
+          const itemsCount = snap.items ? snap.items.length : 1;
+          const isManualBadge = snap.isManual ? `<span style="background: rgba(2,132,199,0.2); color: #38bdf8; font-size: 9.5px; padding: 1px 5px; border-radius: 4px; font-weight: bold; margin-left: 4px;">Manual Checkpoint</span>` : "";
+
+          itemDiv.innerHTML = `
+            <div>
+              <strong>${snap.billNo || 'Draft'}</strong> - <span style="color: var(--text-muted);">${timeLabel} (${itemsCount} Item${itemsCount > 1 ? 's' : ''})</span> ${isManualBadge}
+            </div>
+            <button class="btn btn-blue" style="font-size: 10.5px; padding: 3px 8px;" onclick="restoreSnapshotByIndex(${idx})">↺ Restore</button>
+          `;
+          listEl.appendChild(itemDiv);
+        });
+      } catch (e) {
+        console.error("Error rendering snapshots:", e);
+      }
+    }
+
+    function restoreSnapshotByIndex(index) {
+      try {
+        const history = JSON.parse(localStorage.getItem("sky_ariana_invoice_history") || "[]");
+        if (history[index]) {
+          applyDraftState(history[index]);
+          showToast(`✓ Reverted to snapshot from ${history[index].formattedTime || 'History'}`);
+          closeSettingsModal();
+        }
+      } catch (e) {
+        console.error("Error restoring snapshot:", e);
+      }
+    }
+
+    function clearSnapshotsHistory() {
+      if (!confirm("Clear all recent auto-save revision snapshots?")) return;
+      localStorage.removeItem("sky_ariana_invoice_history");
+      renderSnapshotsList();
+      showToast("Auto-save snapshot history cleared");
+    }
+
+    function applyDraftState(draft) {
+      if (draft.date) document.getElementById("inv-date").value = draft.date;
+      if (draft.billNo) document.getElementById("inv-bill").value = draft.billNo;
+      if (draft.sender) document.getElementById("inv-sender").value = draft.sender;
+      if (draft.invoiceNo) document.getElementById("inv-no").value = draft.invoiceNo;
+      if (draft.senderLic) document.getElementById("inv-sender-lic").value = draft.senderLic;
+      if (draft.transitNo) document.getElementById("inv-transit").value = draft.transitNo;
+      if (draft.origin) document.getElementById("inv-origin").value = draft.origin;
+      if (draft.coo) document.getElementById("inv-coo").value = draft.coo;
+      if (draft.via !== undefined) document.getElementById("inv-via").value = draft.via;
+      if (draft.tl !== undefined) document.getElementById("inv-tl").value = draft.tl;
+      if (draft.phyto) document.getElementById("inv-phyto").value = draft.phyto;
+      if (draft.truck !== undefined) document.getElementById("ship-truck").value = draft.truck;
+      if (draft.calcMode) profile.calcMode = draft.calcMode;
+
+      if (draft.importer) {
+        if (draft.importer.name) document.getElementById("imp-name").value = draft.importer.name;
+        if (draft.importer.addr1) document.getElementById("imp-addr1").value = draft.importer.addr1;
+        if (draft.importer.addr2) document.getElementById("imp-addr2").value = draft.importer.addr2;
+        if (draft.importer.addr3) document.getElementById("imp-addr3").value = draft.importer.addr3;
+        if (draft.importer.fssai) document.getElementById("imp-fssai").value = draft.importer.fssai;
+        if (draft.importer.gstin) document.getElementById("imp-gstin").value = draft.importer.gstin;
+        if (draft.importer.iec) document.getElementById("imp-iec").value = draft.importer.iec;
+        if (draft.importer.email) document.getElementById("imp-email").value = draft.importer.email;
+      }
+
+      if (draft.items && Array.isArray(draft.items) && draft.items.length > 0) {
+        items = draft.items;
+      }
+
+      syncAllPadValuesToForum();
+      updateCalculationModeUI();
+      renderTable();
+    }
+
+    function restoreAutoSavedDraft() {
+      const savedDraft = localStorage.getItem("sky_ariana_invoice_draft");
+      if (savedDraft) {
+        try {
+          const draft = JSON.parse(savedDraft);
+          applyDraftState(draft);
+        } catch (e) {
+          console.error("Error restoring auto-save:", e);
+        }
+      }
+      syncAllPadValuesToForum();
+      updateCalculationModeUI();
+      renderSnapshotsList();
+    }
+
+    function exportFullBackupJSON() {
+      const fullBackup = {
+        exportedAt: new Date().toISOString(),
+        profile: profile,
+        currentInvoice: getInvoiceStateObject(),
+        historySnapshots: JSON.parse(localStorage.getItem("sky_ariana_invoice_history") || "[]")
+      };
+
+      const jsonStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullBackup, null, 2));
+      const a = document.createElement('a');
+      a.setAttribute("href", jsonStr);
+      a.setAttribute("download", `SkyAriana_FullBackup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast("📥 Full enterprise backup exported!");
+    }
+
+    // ==========================================================================
+    // 5. PROFILE & SETTINGS PERSISTENCE
+    // ==========================================================================
+    function loadSavedProfile() {
+      const saved = localStorage.getItem("sky_ariana_profile");
+      if (saved) {
+        try {
+          profile = { ...DEFAULT_PROFILE, ...JSON.parse(saved) };
+        } catch (e) {
+          console.error("Error loading saved profile:", e);
+        }
+      }
+      applyProfileToUI();
+    }
+
+    function applyProfileToUI() {
+      document.getElementById("display-country-title").textContent = profile.countryTitle;
+      document.getElementById("display-company-name").textContent = profile.companyName;
+      document.getElementById("display-company-lic").textContent = profile.companyLic;
+      document.getElementById("display-company-city").textContent = profile.companyCity;
+      document.getElementById("display-company-email").textContent = profile.companyEmail;
+      document.getElementById("display-phone-left").textContent = profile.phoneLeft;
+      document.getElementById("display-phone-right").textContent = profile.phoneRight;
+      document.getElementById("display-footer-company").textContent = profile.footerCompany;
+      document.getElementById("display-sig-left").textContent = profile.sigLeft;
+      document.getElementById("display-sig-right").textContent = profile.sigRight;
+
+      document.getElementById("app-company-name-tag").textContent = profile.companyName;
+
+      document.getElementById("display-logo-left").src = profile.logoLeft;
+      document.getElementById("display-logo-right").src = profile.logoRight;
+      document.getElementById("nav-brand-logo").src = profile.logoLeft;
+      document.getElementById("invoice-watermark").src = profile.logoLeft;
+
+      const wm = document.getElementById("invoice-watermark");
+      wm.style.display = profile.watermarkEnabled ? "block" : "none";
+      wm.style.opacity = (parseFloat(profile.watermarkOpacity) / 100).toString();
+      const wmSize = profile.watermarkSize || "540";
+      wm.style.width = `${wmSize}px`;
+      wm.style.height = `${wmSize}px`;
+
+      document.getElementById("set-country-title").value = profile.countryTitle;
+      document.getElementById("set-company-name").value = profile.companyName;
+      document.getElementById("set-company-lic").value = profile.companyLic;
+      document.getElementById("set-company-city").value = profile.companyCity;
+      document.getElementById("set-company-email").value = profile.companyEmail;
+      document.getElementById("set-phone-left").value = profile.phoneLeft;
+      document.getElementById("set-phone-right").value = profile.phoneRight;
+      document.getElementById("set-footer-company").value = profile.footerCompany;
+      document.getElementById("set-currency").value = profile.currency;
+      document.getElementById("set-default-origin").value = profile.defaultOrigin;
+      document.getElementById("set-sig-left").value = profile.sigLeft;
+      document.getElementById("set-sig-right").value = profile.sigRight;
+      document.getElementById("set-calc-mode").value = profile.calcMode;
+
+      document.getElementById("preview-set-logo-left").src = profile.logoLeft;
+      document.getElementById("preview-set-logo-right").src = profile.logoRight;
+      document.getElementById("set-watermark-enabled").checked = profile.watermarkEnabled;
+      document.getElementById("set-watermark-opacity").value = Math.round(parseFloat(profile.watermarkOpacity));
+      document.getElementById("opacity-val-label").textContent = `${profile.watermarkOpacity}%`;
+
+      const sizeInput = document.getElementById("set-watermark-size");
+      if (sizeInput) sizeInput.value = wmSize;
+      const sizeLabel = document.getElementById("size-val-label");
+      if (sizeLabel) sizeLabel.textContent = `${wmSize}px (${parseInt(wmSize) > 450 ? 'Large' : 'Medium'})`;
+
+      updateCalculationModeUI();
+      recalculate();
+    }
+
+    function openSettingsModal() { document.getElementById("settings-modal-overlay").classList.add("open"); }
+    function closeSettingsModal() { document.getElementById("settings-modal-overlay").classList.remove("open"); }
+
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+      document.querySelectorAll(".tab-pane").forEach(pane => pane.classList.remove("active"));
+      const targetPane = document.getElementById(tabId);
+      if (targetPane) targetPane.classList.add("active");
+      if (event && event.target) event.target.classList.add("active");
+    }
+
+    function saveSettings() {
+      profile.countryTitle = document.getElementById("set-country-title").value;
+      profile.companyName = document.getElementById("set-company-name").value;
+      profile.companyLic = document.getElementById("set-company-lic").value;
+      profile.companyCity = document.getElementById("set-company-city").value;
+      profile.companyEmail = document.getElementById("set-company-email").value;
+      profile.phoneLeft = document.getElementById("set-phone-left").value;
+      profile.phoneRight = document.getElementById("set-phone-right").value;
+      profile.footerCompany = document.getElementById("set-footer-company").value;
+      profile.currency = document.getElementById("set-currency").value;
+      profile.defaultOrigin = document.getElementById("set-default-origin").value;
+      profile.sigLeft = document.getElementById("set-sig-left").value;
+      profile.sigRight = document.getElementById("set-sig-right").value;
+      profile.calcMode = document.getElementById("set-calc-mode").value;
+      profile.watermarkSize = document.getElementById("set-watermark-size").value || "540";
+
+      localStorage.setItem("sky_ariana_profile", JSON.stringify(profile));
+      applyProfileToUI();
+      closeSettingsModal();
+      showToast("Company profile & calculation settings saved!");
+    }
+
+    function resetToFactoryDefaults() {
+      if (!confirm("Reset all company settings and logos to factory defaults?")) return;
+      profile = { ...DEFAULT_PROFILE };
+      localStorage.removeItem("sky_ariana_profile");
+      applyProfileToUI();
+      closeSettingsModal();
+      showToast("Settings reset to factory defaults");
+    }
+
+    function handleLogoUpload(event, side) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const base64Data = e.target.result;
+        if (side === 'left') {
+          profile.logoLeft = base64Data;
+          document.getElementById("preview-set-logo-left").src = base64Data;
+        } else {
+          profile.logoRight = base64Data;
+          document.getElementById("preview-set-logo-right").src = base64Data;
+        }
+        showToast(`${side === 'left' ? 'Left' : 'Right'} logo uploaded! Click Save to apply.`);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resetLogo(side) {
+      if (side === 'left') {
+        profile.logoLeft = DEFAULT_PROFILE.logoLeft;
+        document.getElementById("preview-set-logo-left").src = DEFAULT_PROFILE.logoLeft;
+      } else {
+        profile.logoRight = DEFAULT_PROFILE.logoRight;
+        document.getElementById("preview-set-logo-right").src = DEFAULT_PROFILE.logoRight;
+      }
+      showToast(`${side === 'left' ? 'Left' : 'Right'} logo reset to default`);
+    }
+
+    function toggleWatermark(enabled) {
+      profile.watermarkEnabled = enabled;
+      const wm = document.getElementById("invoice-watermark");
+      wm.style.display = enabled ? "block" : "none";
+    }
+
+    function updateWatermarkOpacity(val) {
+      profile.watermarkOpacity = val;
+      document.getElementById("opacity-val-label").textContent = `${val}%`;
+      const wm = document.getElementById("invoice-watermark");
+      wm.style.opacity = (parseFloat(val) / 100).toString();
+    }
+
+    function updateWatermarkSize(sizePx) {
+      profile.watermarkSize = sizePx;
+      document.getElementById("size-val-label").textContent = `${sizePx}px (${parseInt(sizePx) > 450 ? 'Large' : 'Medium'})`;
+      const wm = document.getElementById("invoice-watermark");
+      wm.style.width = `${sizePx}px`;
+      wm.style.height = `${sizePx}px`;
+    }
+
+    function checkForUpdates() {
+      const btn = document.getElementById("btn-check-updates");
+      const msg = document.getElementById("update-status-msg");
+      btn.textContent = "Checking...";
+      setTimeout(() => {
+        btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Up to date`;
+        msg.textContent = "✓ Latest Version v2.9.0 Rate-Multiplier Pro live.";
+        showToast("System checked: Latest version running!");
+      }, 500);
+    }
+
+    // ==========================================================================
+    // 6. GOODS, NET WEIGHT & RATE MULTIPLIER ENGINE
+    // ==========================================================================
+    function calculateItemAmount(item) {
+      const rate = parseFloat(item.rate) || 0;
+      if (profile.calcMode === "net_weight") {
+        // AMOUNT = NET WEIGHT * RATE (Produce / Dry Fruit Standard)
+        const nw = parseFloat(item.nw) || 0;
+        return nw * rate;
+      } else {
+        // AMOUNT = QTY * RATE
+        const qty = parseFloat(item.qty) || 0;
+        return qty * rate;
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("items-tbody");
+      const forumGoodsList = document.getElementById("forum-goods-list");
+      tbody.innerHTML = "";
+      forumGoodsList.innerHTML = "";
+
+      items.forEach((item, index) => {
+        const lineAmt = calculateItemAmount(item);
+        const formattedLineAmt = formatCurrency(lineAmt);
+        const curr = profile.currency || "USD";
+
+        // 1. Render Document Table Row
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="col-qty"><input type="number" class="text-center bold" value="${item.qty}" oninput="updateItem(${index}, 'qty', this.value)" /></td>
+          <td class="col-unit"><input type="text" class="text-center bold" value="${item.unit}" oninput="updateItem(${index}, 'unit', this.value)" /></td>
+          <td class="col-desc"><input type="text" class="text-left bold" value="${item.desc}" oninput="updateItem(${index}, 'desc', this.value)" /></td>
+          <td class="col-qual"><input type="text" class="text-center" value="${item.quality}" oninput="updateItem(${index}, 'quality', this.value)" /></td>
+          <td class="col-gw text-right">
+            GW <input type="number" step="any" style="display:inline-block; width: 50px; text-align:right; font-weight:bold;" value="${item.gw}" oninput="updateItem(${index}, 'gw', this.value)" /><br/><span style="font-size: 8.5px; font-weight: 500;">KGS</span>
+          </td>
+          <td class="col-nw text-right">
+            NW <input type="number" step="any" style="display:inline-block; width: 50px; text-align:right; font-weight:bold;" value="${item.nw}" oninput="updateItem(${index}, 'nw', this.value)" /><br/><span style="font-size: 8.5px; font-weight: 500;">KGS</span>
+          </td>
+          <td class="col-rate"><input type="number" step="any" class="text-right bold" value="${item.rate}" oninput="updateItem(${index}, 'rate', this.value)" /></td>
+          <td class="col-amount text-right">${formattedLineAmt}</td>
+          <td class="col-action no-print"><button class="del-row-btn" onclick="deleteRow(${index})" title="Remove item">✕</button></td>
+        `;
+        tbody.appendChild(tr);
+
+        // 2. Render Edit Forum Goods Card with Fit Layout
+        const card = document.createElement("div");
+        card.className = "forum-goods-item-card";
+        const isNW = profile.calcMode === "net_weight";
+        const calcFormulaLabel = isNW
+          ? `${(parseFloat(item.nw) || 0).toLocaleString('en-US')} KGS × $${item.rate} = ${formattedLineAmt} ${curr}`
+          : `${(parseFloat(item.qty) || 0).toLocaleString('en-US')} CTNS × $${item.rate} = ${formattedLineAmt} ${curr}`;
+
+        card.innerHTML = `
+          <div class="goods-card-header">
+            <div class="goods-card-header-left">
+              <span class="goods-item-num-badge">#${index + 1}</span>
+              <span>${item.desc ? item.desc : 'New Cargo Item'}</span>
+            </div>
+            <div class="goods-card-header-right">
+              <span class="goods-calc-preview">${calcFormulaLabel}</span>
+              <button class="goods-delete-btn" onclick="deleteRow(${index})" title="Delete item">✕</button>
+            </div>
+          </div>
+
+          <!-- Row 1: Commodity Description, Quality & Packaging -->
+          <div class="goods-grid-row-1">
+            <div class="goods-input-col">
+              <label>Goods Description</label>
+              <input type="text" value="${item.desc || ''}" placeholder="e.g. BLACK RAISINS" oninput="updateItem(${index}, 'desc', this.value)" />
+            </div>
+            <div class="goods-input-col">
+              <label>Quality / Grade</label>
+              <input type="text" value="${item.quality || ''}" placeholder="e.g. Fresh / A-Grade" oninput="updateItem(${index}, 'quality', this.value)" />
+            </div>
+            <div class="goods-input-col">
+              <label>Quantity &amp; Unit</label>
+              <div style="display: flex; gap: 4px;">
+                <input type="number" style="flex: 1.2;" value="${item.qty || ''}" placeholder="Qty" oninput="updateItem(${index}, 'qty', this.value)" />
+                <input type="text" style="flex: 1;" value="${item.unit || 'CTNS'}" placeholder="Unit" oninput="updateItem(${index}, 'unit', this.value)" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 2: Gross WT, Net WT, Rate & Amount -->
+          <div class="goods-grid-row-2">
+            <div class="goods-input-col">
+              <label>Gross WT (GW) <span class="badge-tag" style="background: rgba(148,163,184,0.2); color: var(--text-muted);">KGS</span></label>
+              <input type="number" step="any" value="${item.gw || ''}" placeholder="0" oninput="updateItem(${index}, 'gw', this.value)" />
+            </div>
+            <div class="goods-input-col highlight-nw">
+              <label>Net WT (NW) <span class="badge-tag blue">Multiplier</span></label>
+              <input type="number" step="any" value="${item.nw || ''}" placeholder="0" oninput="updateItem(${index}, 'nw', this.value)" />
+            </div>
+            <div class="goods-input-col highlight-rate">
+              <label>Rate ($) <span class="badge-tag green">Per Unit</span></label>
+              <input type="number" step="any" value="${item.rate || ''}" placeholder="0.00" oninput="updateItem(${index}, 'rate', this.value)" />
+            </div>
+            <div class="goods-input-col amount-preview">
+              <label>Line Amount <span class="badge-tag purple">Total</span></label>
+              <input type="text" value="${formattedLineAmt} ${curr}" readonly />
+            </div>
+          </div>
+        `;
+        forumGoodsList.appendChild(card);
+      });
+
+      if (items.length === 0) {
+        addNewRow();
+      }
+
+      recalculate();
+    }
+
+    function updateItem(index, field, value) {
+      if (field === 'qty' || field === 'gw' || field === 'nw' || field === 'rate') {
+        items[index][field] = parseFloat(value) || 0;
+      } else {
+        items[index][field] = value;
+      }
+      renderTable();
+      scheduleAutoSave();
+    }
+
+    function addNewRow() {
+      if (items.length >= 6) {
+        alert("Maximum 6 item rows recommended to fit strictly on 1 print page.");
+        return;
+      }
+      items.push({ qty: 0, unit: "CTNS", desc: "", quality: "", gw: 0, nw: 0, rate: 0 });
+      renderTable();
+      scheduleAutoSave();
+      showToast("Goods item added");
+    }
+
+    function deleteRow(index) {
+      if (items.length > 1) {
+        items.splice(index, 1);
+        renderTable();
+        scheduleAutoSave();
+        showToast("Goods item removed");
+      } else {
+        items[0] = { qty: 0, unit: "CTNS", desc: "", quality: "", gw: 0, nw: 0, rate: 0 };
+        renderTable();
+        scheduleAutoSave();
+      }
+    }
+
+    function formatCurrency(num) {
+      const parsed = parseFloat(num) || 0;
+      if (parsed % 1 === 0) {
+        return parsed.toLocaleString('en-US');
+      }
+      return parsed.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function recalculate() {
+      const curr = profile.currency || "USD";
+      let totalQty = 0;
+      let totalGW = 0;
+      let totalNW = 0;
+      let grandTotal = 0;
+      let commodityNames = [];
+
+      items.forEach((item, idx) => {
+        const lineAmt = calculateItemAmount(item);
+        totalQty += (parseFloat(item.qty) || 0);
+        totalGW += (parseFloat(item.gw) || 0);
+        totalNW += (parseFloat(item.nw) || 0);
+        grandTotal += lineAmt;
+        if (item.desc && !commodityNames.includes(item.desc.trim())) {
+          commodityNames.push(item.desc.trim());
+        }
+
+        const tbody = document.getElementById("items-tbody");
+        if (tbody.children[idx]) {
+          const amtCell = tbody.children[idx].querySelector(".col-amount");
+          if (amtCell) amtCell.textContent = formatCurrency(lineAmt);
+        }
+      });
+
+      const formattedTotal = `${formatCurrency(grandTotal)} ${curr}`;
+      const mainCommodity = commodityNames.join(", ") || "COMMODITY";
+
+      document.getElementById("commodity-subtotal-tag").textContent = `${mainCommodity}:`;
+      document.getElementById("subtotal-val").textContent = formattedTotal;
+      document.getElementById("grand-total-val").textContent = formattedTotal;
+      document.getElementById("big-total-val").textContent = formattedTotal;
+
+      const forumTotalTag = document.getElementById("forum-grand-total-tag");
+      if (forumTotalTag) forumTotalTag.textContent = `Total: ${formattedTotal}`;
+
+      const gwFormatted = totalGW.toLocaleString('en-US');
+      const nwFormatted = totalNW.toLocaleString('en-US');
+      const qtyFormatted = totalQty.toLocaleString('en-US');
+
+      document.getElementById("summary-line-text").textContent = `${qtyFormatted} CTNS: ${mainCommodity}, GW ${gwFormatted} KGS, NW ${nwFormatted} KGS`;
+
+      // Update Top KPI Metrics Cards
+      const kpiTotal = document.getElementById("kpi-total-val");
+      const kpiQty = document.getElementById("kpi-qty-val");
+      const kpiNW = document.getElementById("kpi-nw-val");
+      const kpiGWSub = document.getElementById("kpi-gw-sub");
+      const kpiBill = document.getElementById("kpi-bill-val");
+
+      if (kpiTotal) kpiTotal.textContent = formattedTotal;
+      if (kpiQty) kpiQty.textContent = `${qtyFormatted} CTNS`;
+      if (kpiNW) kpiNW.textContent = `${nwFormatted} KGS`;
+      if (kpiGWSub) kpiGWSub.textContent = `Gross Weight: ${gwFormatted} KGS`;
+      if (kpiBill) kpiBill.textContent = document.getElementById("inv-bill") ? document.getElementById("inv-bill").value : "SKY-001";
+
+      syncFooter();
+    }
+
+    function syncFooter() {
+      const billNo = document.getElementById("inv-bill").value || "N/A";
+      const dateVal = document.getElementById("inv-date").value || "N/A";
+      document.getElementById("footer-bill-date").textContent = `Bill #${billNo} | ${dateVal}`;
+      const kpiBill = document.getElementById("kpi-bill-val");
+      if (kpiBill) kpiBill.textContent = billNo;
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById("toast-el");
+      const toastText = document.getElementById("toast-text");
+      toastText.textContent = text;
+      toast.classList.add("show");
+      setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2500);
+    }
+
+    function loadSampleData() {
+      // 2118 CTNS, GW 22239, NW 21180, Rate 2.50 USD -> Amount = 21180 * 2.50 = 52,950 USD!
+      items = [
+        { qty: 2118, unit: "CTNS", desc: "BLACK RAISINS", quality: "", gw: 22239, nw: 21180, rate: 2.50 }
+      ];
+      profile.calcMode = "net_weight";
+      document.getElementById("inv-date").value = "10/08/2026";
+      document.getElementById("inv-bill").value = "SKY-001";
+      document.getElementById("inv-sender").value = "NASIB OBID AKBARI LTD";
+      document.getElementById("inv-no").value = "013";
+      document.getElementById("inv-sender-lic").value = "33215";
+      document.getElementById("inv-transit").value = "A00004750";
+      document.getElementById("inv-origin").value = profile.defaultOrigin || "RASTA BAZAAR, NIMROZ CENTER ZARANJ - NIMROZ";
+      document.getElementById("inv-coo").value = "132169";
+      document.getElementById("inv-tl").value = "";
+      document.getElementById("inv-phyto").value = "548172";
+
+      document.getElementById("imp-name").value = "JDM ENTERPRISES";
+      document.getElementById("imp-addr1").value = "132/B, BEHIND GEETA V1HAR HOTEL,";
+      document.getElementById("imp-addr2").value = "NEAR SPENCER'S GYM, SANTACRUZ (EAST),";
+      document.getElementById("imp-addr3").value = "MUMBAI -400029,INDIA";
+      document.getElementById("imp-fssai").value = "10018022007908";
+      document.getElementById("imp-gstin").value = "27BAAPA6587K1ZH";
+      document.getElementById("imp-iec").value = "BAAPA6587K";
+      document.getElementById("imp-email").value = "JDMENTERPRISES89@GMAIL.COM";
+      document.getElementById("ship-truck").value = "";
+
+      updateCalculationModeUI();
+      syncAllPadValuesToForum();
+      renderTable();
+      scheduleAutoSave();
+      showToast("Sample data loaded (21,180 KGS × $2.50 = 52,950 USD)");
+    }
+
+    function clearForm() {
+      if (!confirm("Are you sure you want to clear the invoice pad?")) return;
+      items = [
+        { qty: 0, unit: "CTNS", desc: "", quality: "", gw: 0, nw: 0, rate: 0 }
+      ];
+      document.getElementById("inv-date").value = new Date().toLocaleDateString('en-GB');
+      document.getElementById("inv-bill").value = "";
+      document.getElementById("inv-sender").value = "";
+      document.getElementById("inv-no").value = "";
+      document.getElementById("inv-sender-lic").value = "";
+      document.getElementById("inv-transit").value = "";
+      document.getElementById("inv-origin").value = "";
+      document.getElementById("inv-coo").value = "";
+      document.getElementById("inv-via").value = "";
+      document.getElementById("inv-tl").value = "";
+      document.getElementById("inv-phyto").value = "";
+      document.getElementById("imp-name").value = "";
+      document.getElementById("imp-addr1").value = "";
+      document.getElementById("imp-addr2").value = "";
+      document.getElementById("imp-addr3").value = "";
+      document.getElementById("imp-fssai").value = "";
+      document.getElementById("imp-gstin").value = "";
+      document.getElementById("imp-iec").value = "";
+      document.getElementById("imp-email").value = "";
+      document.getElementById("ship-truck").value = "";
+      syncAllPadValuesToForum();
+      renderTable();
+      scheduleAutoSave();
+      showToast("Invoice pad cleared");
+    }
+
+    function exportDataJSON() {
+      const data = {
+        profile: profile,
+        invoiceInfo: {
+          date: document.getElementById("inv-date").value,
+          billNo: document.getElementById("inv-bill").value,
+          sender: document.getElementById("inv-sender").value,
+          invoiceNo: document.getElementById("inv-no").value,
+          senderLic: document.getElementById("inv-sender-lic").value,
+          transitNo: document.getElementById("inv-transit").value,
+          origin: document.getElementById("inv-origin").value,
+          coo: document.getElementById("inv-coo").value,
+          via: document.getElementById("inv-via").value,
+          tl: document.getElementById("inv-tl").value,
+          phyto: document.getElementById("inv-phyto").value,
+          truck: document.getElementById("ship-truck").value
+        },
+        importer: {
+          name: document.getElementById("imp-name").value,
+          addr1: document.getElementById("imp-addr1").value,
+          addr2: document.getElementById("imp-addr2").value,
+          addr3: document.getElementById("imp-addr3").value,
+          fssai: document.getElementById("imp-fssai").value,
+          gstin: document.getElementById("imp-gstin").value,
+          iec: document.getElementById("imp-iec").value,
+          email: document.getElementById("imp-email").value
+        },
+        items: items
+      };
+
+      const jsonStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+      const a = document.createElement('a');
+      a.setAttribute("href", jsonStr);
+      a.setAttribute("download", `Invoice_${data.invoiceInfo.billNo || 'Export'}.json`);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast("Invoice JSON exported");
+    }
+
+    function importDataJSON() { document.getElementById("json-file-input").click(); }
+
+    function handleJSONFileImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.profile) {
+            profile = { ...profile, ...data.profile };
+            applyProfileToUI();
+          }
+          if (data.invoiceInfo) {
+            document.getElementById("inv-date").value = data.invoiceInfo.date || "";
+            document.getElementById("inv-bill").value = data.invoiceInfo.billNo || "";
+            document.getElementById("inv-sender").value = data.invoiceInfo.sender || "";
+            document.getElementById("inv-no").value = data.invoiceInfo.invoiceNo || "";
+            document.getElementById("inv-sender-lic").value = data.invoiceInfo.senderLic || "";
+            document.getElementById("inv-transit").value = data.invoiceInfo.transitNo || "";
+            document.getElementById("inv-origin").value = data.invoiceInfo.origin || "";
+            document.getElementById("inv-coo").value = data.invoiceInfo.coo || "";
+            document.getElementById("inv-via").value = data.invoiceInfo.via || "";
+            document.getElementById("inv-tl").value = data.invoiceInfo.tl || "";
+            document.getElementById("inv-phyto").value = data.invoiceInfo.phyto || "";
+            document.getElementById("ship-truck").value = data.invoiceInfo.truck || "";
+          }
+          if (data.importer) {
+            document.getElementById("imp-name").value = data.importer.name || "";
+            document.getElementById("imp-addr1").value = data.importer.addr1 || "";
+            document.getElementById("imp-addr2").value = data.importer.addr2 || "";
+            document.getElementById("imp-addr3").value = data.importer.addr3 || "";
+            document.getElementById("imp-fssai").value = data.importer.fssai || "";
+            document.getElementById("imp-gstin").value = data.importer.gstin || "";
+            document.getElementById("imp-iec").value = data.importer.iec || "";
+            document.getElementById("imp-email").value = data.importer.email || "";
+          }
+          if (data.items && Array.isArray(data.items)) {
+            items = data.items;
+          }
+          syncAllPadValuesToForum();
+          renderTable();
+          scheduleAutoSave();
+          showToast("Invoice JSON imported successfully!");
+        } catch (err) {
+          alert("Invalid JSON file format.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeSettingsModal();
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        createManualSnapshot();
+      }
+    });
+
+    window.addEventListener("beforeunload", () => {
+      performAutoSave(true);
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      initTheme();
+      loadSavedProfile();
+      restoreAutoSavedDraft();
+      renderTable();
+      syncFooter();
+      setViewMode("split");
+    });
+  </script>
+</body>
+</html>

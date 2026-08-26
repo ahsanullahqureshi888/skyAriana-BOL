@@ -10,6 +10,7 @@ import { BOLEditor } from '@/components/bill-of-lading/bol-editor'
 import { LoginScreen } from '@/components/login-screen'
 import { SettingsView } from '@/components/settings-view'
 import { SkyBankView } from '@/components/sky-bank-view'
+import { InvoicePadView } from '@/components/invoice-pad-view'
 
 import { useEffect } from 'react'
 import { toast } from 'sonner'
@@ -122,7 +123,7 @@ function MainContent() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header showBack={view !== 'accounts' && view !== 'settings' && view !== 'bank'} />
+      <Header showBack={view !== 'accounts' && view !== 'settings' && view !== 'bank' && view !== 'invoice-pad'} />
       <main className="flex-1">
         {view === 'accounts' && <AccountsView />}
         {view === 'companies' && <CompaniesView />}
@@ -131,6 +132,7 @@ function MainContent() {
         {view === 'bol' && <BOLEditor />}
         {view === 'settings' && <SettingsView />}
         {view === 'bank' && <SkyBankView />}
+        {view === 'invoice-pad' && <InvoicePadView />}
       </main>
       <footer className="glass-strong border-t border-amber-200/80 bg-white/95 backdrop-blur-xl py-3.5 px-6 no-print shadow-xs mt-auto">
         <div className="container mx-auto text-center text-xs font-bold text-slate-700 flex flex-col sm:flex-row items-center justify-between gap-2">
