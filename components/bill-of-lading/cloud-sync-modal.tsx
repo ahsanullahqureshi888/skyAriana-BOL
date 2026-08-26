@@ -32,6 +32,10 @@ import {
   ShieldCheck,
   ArrowRight,
   Zap,
+  Clock,
+  Database,
+  Layers,
+  HardDrive,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -51,9 +55,16 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
   const [copiedLink, setCopiedLink] = useState(false)
   const [localDocCount, setLocalDocCount] = useState<number>(0)
   const [localLedgerCount, setLocalLedgerCount] = useState<number>(0)
+  const [localAccountsCount, setLocalAccountsCount] = useState<number>(0)
   const [lastSyncTime, setLastSyncTime] = useState<string>("")
-  const [showQrCode, setShowQrCode] = useState<boolean>(true)
+  
+  // Cloud server state
+  const [cloudDocCount, setCloudDocCount] = useState<number | null>(null)
+  const [cloudLastUpdated, setCloudLastUpdated] = useState<string | null>(null)
+  const [isCheckingCloud, setIsCheckingCloud] = useState(false)
+  const [transferStep, setTransferStep] = useState<string>("")
 
+  // Load local counts and check cloud snapshot on open
   useEffect(() => {
     if (open && typeof window !== "undefined") {
       try {
@@ -71,12 +82,42 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
         const lRaw = window.localStorage.getItem("skybol:account-ledgers")
         const ledgers = lRaw ? JSON.parse(lRaw) : {}
         setLocalLedgerCount(Object.keys(ledgers).length)
+
+        const cRaw = window.localStorage.getItem("skybol:account-custom-companies")
+        const accounts = cRaw ? JSON.parse(cRaw) : []
+        setLocalAccountsCount(accounts.length)
       } catch (e) {
         setLocalDocCount(0)
         setLocalLedgerCount(0)
+        setLocalAccountsCount(0)
       }
+
+      // Check cloud snapshot
+      checkCloudStatus()
     }
   }, [open])
+
+  const checkCloudStatus = async () => {
+    setIsCheckingCloud(true)
+    try {
+      const res = await fetch("/api/sync", { cache: "no-store" })
+      if (res.ok) {
+        const body = await res.json()
+        const data = body.data || body
+        if (Array.isArray(data.documents)) {
+          setCloudDocCount(data.documents.length)
+        }
+        if (data.updated_at) {
+          const d = new Date(data.updated_at)
+          setCloudLastUpdated(d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+        }
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      setIsCheckingCloud(false)
+    }
+  }
 
   // Get dynamic sync URL for QR and sharing
   const getSyncUrl = () => {
@@ -87,7 +128,8 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
   // 1. Upload all local BOLs, accounts, and ledgers to cloud
   const handleUploadAllToCloud = async () => {
     setIsUploading(true)
-    const toastId = toast.loading("Uploading all BOL documents to Cloud...")
+    setTransferStep("Packaging all local BOLs and ledgers...")
+    const toastId = toast.loading("Uploading database to Sky Ariana Cloud Relay...")
 
     try {
       let localDocs: any[] = []
@@ -133,6 +175,8 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
         savedNotifyParties = noRaw ? JSON.parse(noRaw) : []
       } catch (e) {}
 
+      setTransferStep("Encrypting & transferring snapshot to server...")
+
       const res = await fetch("/api/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -154,11 +198,17 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
 
       const result = await res.json()
       if (result.success) {
-        setSyncCode(result.syncCode || "SKY-DONE")
-        setLastSyncTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+        const genCode = result.syncCode || "SKY-DONE"
+        setSyncCode(genCode)
+        const timeNow = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        setLastSyncTime(timeNow)
+        setCloudDocCount(localDocs.length)
+        setCloudLastUpdated(timeNow)
+        setTransferStep("Upload completed successfully! 🎉")
+
         toast.success(`Successfully uploaded ${localDocs.length} BOL documents to Cloud! 🚀`, {
           id: toastId,
-          description: `Transfer Code: ${result.syncCode}. Scan QR code or enter code on your other devices.`,
+          description: `Transfer Code: ${genCode}. Use QR code or direct link to sync across any device.`,
         })
       } else {
         throw new Error(result.error || "Upload failed")
@@ -168,6 +218,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
         id: toastId,
         description: error instanceof Error ? error.message : "Please check internet connection",
       })
+      setTransferStep("Upload failed. Please retry.")
     } finally {
       setIsUploading(false)
     }
@@ -177,17 +228,19 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
   const handleDownloadAllFromCloud = async (codeToUse?: string) => {
     setIsDownloading(true)
     const targetCode = codeToUse || inputCode.trim()
+    setTransferStep(targetCode ? `Locating snapshot for code ${targetCode}...` : "Pulling master cloud database...")
     const toastId = toast.loading(targetCode ? `Fetching data for code ${targetCode}...` : "Downloading all BOL documents from Cloud...")
 
     try {
       const url = targetCode ? `/api/sync?code=${encodeURIComponent(targetCode)}` : "/api/sync"
-      const res = await fetch(url)
+      const res = await fetch(url, { cache: "no-store" })
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}))
         throw new Error(errJson.error || `Server responded with status ${res.status}`)
       }
 
+      setTransferStep("Merging BOL documents, accounts, and ledgers...")
       const body = await res.json()
       const data = body.data || body
 
@@ -224,6 +277,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
         const currentComp = rawComp ? JSON.parse(rawComp) : []
         const nextComp = Array.from(new Set([...currentComp, ...incomingComps]))
         window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(nextComp))
+        setLocalAccountsCount(nextComp.length)
       }
 
       // Merge ledger records
@@ -232,6 +286,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
         const currentLedger = rawLedger ? JSON.parse(rawLedger) : {}
         const nextLedger = { ...currentLedger, ...data.ledgerRecords }
         window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(nextLedger))
+        setLocalLedgerCount(Object.keys(nextLedger).length)
       }
 
       // Restore presets and settings if present
@@ -256,9 +311,10 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
       window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: {} }))
       window.dispatchEvent(new CustomEvent("skybol:account-ledger-updated", { detail: {} }))
 
+      setTransferStep("Synchronization completed successfully! 🎉")
       toast.success(`Successfully synchronized ${restoredDocsCount || data.documents?.length || 0} BOLs on this device! 🎉`, {
         id: toastId,
-        description: "All client accounts, ledgers, and document files are now up to date.",
+        description: "All client accounts, ledgers, and document files are now synchronized.",
       })
 
       if (onSyncComplete) onSyncComplete()
@@ -267,6 +323,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
         id: toastId,
         description: error instanceof Error ? error.message : "Could not fetch documents",
       })
+      setTransferStep("Sync failed. Check code or internet connection.")
     } finally {
       setIsDownloading(false)
     }
@@ -394,7 +451,6 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
     try {
       const text = await navigator.clipboard.readText()
       if (text) {
-        // Extract code if a full URL was pasted
         const match = text.match(/[?&]sync=([^&]+)/) || text.match(/(SKY-?\d{4,6})/i) || text.match(/(\d{4,6})/)
         if (match) {
           setInputCode(match[1].toUpperCase())
@@ -410,16 +466,16 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong sm:max-w-xl rounded-[32px] border border-blue-200/80 shadow-2xl p-5 sm:p-7 max-h-[90vh] overflow-y-auto no-scrollbar">
+      <DialogContent className="glass-strong sm:max-w-xl rounded-[32px] border border-blue-200/90 shadow-2xl p-5 sm:p-7 max-h-[92vh] overflow-y-auto no-scrollbar">
         <DialogHeader className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-linear-to-br from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25">
               <Cloud className="h-6 w-6" />
             </div>
             <div>
-              <DialogTitle className="text-lg sm:text-xl font-black text-slate-900 flex flex-wrap items-center gap-2">
+              <DialogTitle className="text-lg sm:text-xl font-black text-slate-950 flex flex-wrap items-center gap-2">
                 <span>Multi-Device Cloud Sync Hub</span>
-                <span className="text-xs font-black text-blue-700 font-[vazirmatn] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                <span className="text-xs font-black text-blue-700 font-[vazirmatn] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
                   همگام‌سازی ابری
                 </span>
               </DialogTitle>
@@ -437,7 +493,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
             onClick={() => setActiveTab("upload")}
             className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === "upload"
-                ? "bg-white text-blue-900 shadow-sm border border-slate-200/80"
+                ? "bg-white text-blue-950 shadow-sm border border-slate-200/80"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
@@ -449,7 +505,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
             onClick={() => setActiveTab("download")}
             className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === "download"
-                ? "bg-white text-blue-900 shadow-sm border border-slate-200/80"
+                ? "bg-white text-blue-950 shadow-sm border border-slate-200/80"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
@@ -461,7 +517,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
             onClick={() => setActiveTab("code")}
             className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === "code"
-                ? "bg-white text-blue-900 shadow-sm border border-slate-200/80"
+                ? "bg-white text-blue-950 shadow-sm border border-slate-200/80"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
@@ -472,28 +528,28 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
 
         {/* Tab 1: Upload */}
         {activeTab === "upload" && (
-          <div className="space-y-4 py-2 animate-in fade-in">
-            {/* Status Card */}
-            <div className="p-4 rounded-2xl bg-linear-to-br from-blue-50/90 via-indigo-50/50 to-white border border-blue-200/80 space-y-2.5 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-blue-950 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Local Documents Found</span>
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-600 text-white shadow-2xs">
-                    {localDocCount} BOLs
-                  </span>
-                  {localLedgerCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-600 text-white shadow-2xs">
-                      {localLedgerCount} Ledgers
-                    </span>
-                  )}
-                </div>
+          <div className="space-y-3.5 py-2 animate-in fade-in">
+            {/* Database Metrics Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="p-2.5 rounded-2xl bg-blue-50/80 border border-blue-200/80 text-center">
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-900 block">BOLs Found</span>
+                <span className="text-base font-black text-blue-950">{localDocCount}</span>
               </div>
-              <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                Push all your currently saved <strong className="text-blue-950 font-black">{localDocCount} Bills of Lading</strong>, client ledgers, and company settings to the cloud so all your other devices can access them.
-              </p>
+              <div className="p-2.5 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 text-center">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-900 block">Ledgers</span>
+                <span className="text-base font-black text-emerald-950">{localLedgerCount}</span>
+              </div>
+              <div className="p-2.5 rounded-2xl bg-purple-50/80 border border-purple-200/80 text-center">
+                <span className="text-[10px] font-black uppercase tracking-wider text-purple-900 block">Companies</span>
+                <span className="text-base font-black text-purple-950">{localAccountsCount}</span>
+              </div>
+              <div className="p-2.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-center">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">Relay Status</span>
+                <span className="text-xs font-black text-amber-950 flex items-center justify-center gap-1 mt-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Online
+                </span>
+              </div>
             </div>
 
             {/* Primary Upload Button */}
@@ -503,20 +559,26 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
               className="w-full h-12 rounded-2xl bg-linear-to-r from-blue-700 via-indigo-700 to-blue-800 hover:from-blue-800 hover:to-indigo-800 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-700/20 cursor-pointer gap-2 transition-all active:scale-[0.99]"
             >
               {isUploading ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
+                <RefreshCw className="h-4.5 w-4.5 animate-spin" />
               ) : (
                 <UploadCloud className="h-4.5 w-4.5 text-amber-400" />
               )}
               <span>{isUploading ? "Uploading to Cloud..." : `Upload All (${localDocCount}) BOLs to Cloud / آپلود به سرور`}</span>
             </Button>
 
+            {transferStep && (
+              <div className="text-center text-[11px] font-bold text-blue-700">
+                {transferStep}
+              </div>
+            )}
+
             {/* Uploaded Success Result Block */}
             {syncCode && (
-              <div className="p-4 rounded-2xl bg-linear-to-br from-emerald-50/90 via-teal-50/40 to-white border border-emerald-300 text-emerald-950 space-y-3.5 animate-in zoom-in-95 shadow-sm">
+              <div className="p-4 rounded-2xl bg-linear-to-br from-emerald-50/90 via-teal-50/40 to-white border border-emerald-300 text-emerald-950 space-y-3 animate-in zoom-in-95 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-black">
                     <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600" />
-                    <span>Upload Successful! Your Transfer Code:</span>
+                    <span>Upload Successful! Transfer Code:</span>
                   </div>
                   <span className="text-[11px] font-bold text-slate-500 bg-white/80 px-2 py-0.5 rounded-md border border-slate-200">{lastSyncTime}</span>
                 </div>
@@ -533,7 +595,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
                     className="h-11 px-3.5 rounded-xl border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-900 font-black text-xs gap-1.5 cursor-pointer shadow-2xs"
                   >
                     {copiedCode ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-                    <span>{copiedCode ? "Copied!" : "Copy"}</span>
+                    <span>{copiedCode ? "Copied!" : "Copy Code"}</span>
                   </Button>
                 </div>
 
@@ -549,10 +611,10 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
                   <div className="space-y-1.5 text-center sm:text-left flex-1 min-w-0">
                     <div className="flex items-center justify-center sm:justify-start gap-1 text-xs font-black text-slate-900">
                       <Smartphone className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Scan with Phone Camera</span>
+                      <span>Point Phone Camera at QR Code</span>
                     </div>
                     <p className="text-[11px] text-slate-500 font-medium leading-tight">
-                      Point your phone camera at this QR code to automatically sync and load all {localDocCount} BOLs instantly!
+                      Instantly opens the app on your mobile and automatically synchronizes all {localDocCount} BOLs without typing!
                     </p>
                     <div className="pt-1 flex flex-wrap gap-1.5 justify-center sm:justify-start">
                       <Button
@@ -571,10 +633,10 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
 
                 <div className="text-[11px] text-emerald-900 font-medium bg-emerald-100/60 p-2.5 rounded-xl border border-emerald-200 space-y-1">
                   <p>
-                    💡 <strong>On your other device:</strong> Open <strong>skyarianabol.vercel.app</strong>, click <strong>Sync</strong>, go to <strong>Sync Code</strong>, and enter <strong>{syncCode}</strong>.
+                    💡 <strong>On your phone/laptop:</strong> Open <strong>skyarianabol.vercel.app</strong>, click <strong>Sync</strong>, go to <strong>Sync Code</strong>, and enter <strong>{syncCode}</strong>.
                   </p>
                   <p className="font-[vazirmatn] text-[10.5px] text-emerald-950 font-bold">
-                    در موبایل یا لپ‌تاپ دیگر، وارد بخش کد همگام‌سازی شوید و کد <strong>{syncCode}</strong> را وارد کنید.
+                    در موبایل یا دستگاه دیگر، کد <strong>{syncCode}</strong> را در تب «کد همگام‌سازی» وارد کنید.
                   </p>
                 </div>
               </div>
@@ -584,15 +646,27 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
 
         {/* Tab 2: Download */}
         {activeTab === "download" && (
-          <div className="space-y-4 py-2 animate-in fade-in">
+          <div className="space-y-3.5 py-2 animate-in fade-in">
+            {/* Live Cloud Status Card */}
             <div className="p-4 rounded-2xl bg-linear-to-br from-emerald-50/90 via-teal-50/40 to-white border border-emerald-200/80 space-y-2 shadow-2xs">
-              <span className="text-xs font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
-                <DownloadCloud className="w-4 h-4 text-emerald-600" />
-                <span>Receive Cloud Documents</span>
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+                  <Database className="w-4 h-4 text-emerald-600" />
+                  <span>Cloud Database Status</span>
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-600 text-white shadow-2xs">
+                  {cloudDocCount !== null ? `${cloudDocCount} BOLs Available` : "Checking..."}
+                </span>
+              </div>
               <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                Fetch and merge all latest BOLs, ledgers, and accounts from the cloud server into this device.
+                Fetch and merge all latest BOLs, ledgers, customer accounts, and company settings from the cloud server into this device.
               </p>
+              {cloudLastUpdated && (
+                <div className="flex items-center gap-1 text-[11px] text-slate-500 font-bold">
+                  <Clock className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Last Cloud Snapshot: {cloudLastUpdated}</span>
+                </div>
+              )}
             </div>
 
             <Button
@@ -601,12 +675,18 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
               className="w-full h-12 rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 cursor-pointer gap-2 transition-all active:scale-[0.99]"
             >
               {isDownloading ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
+                <RefreshCw className="h-4.5 w-4.5 animate-spin" />
               ) : (
                 <DownloadCloud className="h-4.5 w-4.5 text-white" />
               )}
               <span>{isDownloading ? "Downloading & Merging..." : "Download & Sync All Documents on This Device"}</span>
             </Button>
+
+            {transferStep && (
+              <div className="text-center text-[11px] font-bold text-emerald-700">
+                {transferStep}
+              </div>
+            )}
 
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-600 text-xs space-y-1.5">
               <span className="font-black text-slate-800 text-xs block">✨ What gets synchronized:</span>
@@ -622,14 +702,19 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
 
         {/* Tab 3: Code Transfer */}
         {activeTab === "code" && (
-          <div className="space-y-4 py-2 animate-in fade-in">
+          <div className="space-y-3.5 py-2 animate-in fade-in">
             <div className="p-4 rounded-2xl bg-linear-to-br from-purple-50/90 via-indigo-50/40 to-white border border-purple-200/80 space-y-2 shadow-2xs">
-              <span className="text-xs font-black uppercase tracking-wider text-purple-950 flex items-center gap-1.5">
-                <QrCode className="w-4 h-4 text-purple-600" />
-                <span>Transfer via Transfer Code</span>
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black uppercase tracking-wider text-purple-950 flex items-center gap-1.5">
+                  <QrCode className="w-4 h-4 text-purple-600" />
+                  <span>Transfer via Sync Code</span>
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-purple-600 text-white shadow-2xs">
+                  Instant Relay
+                </span>
+              </div>
               <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                Enter the transfer code (e.g. <strong>SKY-5837</strong> or <strong>5837</strong>) generated from your other computer to instantly pull all documents here.
+                Enter the transfer code (e.g. <strong>SKY-8204</strong> or <strong>8204</strong>) generated from your other device to pull all BOLs and ledgers here immediately.
               </p>
             </div>
 
@@ -641,9 +726,10 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
                 <button
                   type="button"
                   onClick={handlePasteCode}
-                  className="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-lg border border-purple-200 transition cursor-pointer"
+                  className="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2.5 py-0.5 rounded-lg border border-purple-200 transition cursor-pointer flex items-center gap-1"
                 >
-                  📋 Paste from Clipboard
+                  <Copy className="w-3 h-3 text-purple-600" />
+                  <span>Paste from Clipboard</span>
                 </button>
               </div>
 
@@ -651,8 +737,8 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
                 <Input
                   value={inputCode}
                   onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                  placeholder="e.g. SKY-5837 or 5837"
-                  className="font-mono text-center font-black tracking-widest text-base sm:text-lg uppercase bg-white border-slate-300 rounded-xl h-12 shadow-inner focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+                  placeholder="e.g. SKY-8204 or 8204"
+                  className="font-mono text-center font-black tracking-widest text-lg sm:text-xl uppercase bg-white border-slate-300 rounded-xl h-12 shadow-inner focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
                   maxLength={15}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && inputCode.trim() && !isDownloading) {
@@ -663,15 +749,23 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
                 <Button
                   onClick={() => handleDownloadAllFromCloud(inputCode)}
                   disabled={isDownloading || !inputCode.trim()}
-                  className="h-12 px-6 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs sm:text-sm shadow-md shadow-purple-600/20 shrink-0 cursor-pointer transition-all active:scale-95"
+                  className="h-12 px-6 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs sm:text-sm shadow-md shadow-purple-600/20 shrink-0 cursor-pointer transition-all active:scale-95 gap-1.5"
                 >
-                  {isDownloading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Transfer Now"}
+                  {isDownloading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4 text-amber-300" />}
+                  <span>{isDownloading ? "Syncing..." : "Transfer Now"}</span>
                 </Button>
               </div>
             </div>
 
-            <div className="rounded-xl border border-purple-100 bg-purple-50/50 p-3 text-[11px] text-purple-900 font-medium">
-              💡 Tip: You can type just the 4 numbers (e.g. <strong>5837</strong>) or the full code (<strong>SKY-5837</strong>).
+            {transferStep && (
+              <div className="text-center text-[11px] font-bold text-purple-700">
+                {transferStep}
+              </div>
+            )}
+
+            <div className="rounded-xl border border-purple-100 bg-purple-50/50 p-3 text-[11px] text-purple-900 font-medium space-y-1">
+              <p>💡 <strong>Quick Tip:</strong> You can type just the 4 numbers (e.g. <strong>8204</strong>) or the full code (<strong>SKY-8204</strong>).</p>
+              <p className="font-[vazirmatn] text-[10.5px] text-purple-950 font-bold">می‌توانید تنها ۴ رقم کد را بنویسید، سیستم به شکل خودکار اسناد را دریافت و همگام خواهد کرد.</p>
             </div>
           </div>
         )}

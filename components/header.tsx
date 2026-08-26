@@ -166,11 +166,17 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant="outline"
               size="sm"
               onClick={() => setIsCloudSyncOpen(true)}
-              className="gap-1 sm:gap-1.5 h-8.5 sm:h-9 rounded-xl text-xs font-bold bg-blue-50/80 border-blue-200 text-blue-900 hover:bg-blue-100 transition-all cursor-pointer shadow-2xs"
-              title="Cloud Sync: Sync all BOLs & Ledgers with other devices"
+              className="gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-black bg-gradient-to-r from-blue-50 to-indigo-50/90 border-blue-200 text-blue-900 hover:bg-blue-100/90 transition-all cursor-pointer shadow-2xs group active:scale-95"
+              title="Cloud Sync: Sync all BOLs, accounts, and ledgers between PC, Phone, and other devices"
             >
-              <Cloud className="h-3.5 w-3.5 text-blue-600" />
-              <span className="hidden sm:inline">Sync</span>
+              <div className="relative">
+                <Cloud className="h-3.5 w-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
+                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              </div>
+              <span className="font-extrabold text-blue-950">Cloud Sync</span>
+              <span className="hidden xl:inline text-[9.5px] font-black bg-blue-200/80 text-blue-900 px-1.5 py-0.2 rounded-md">
+                همگام‌سازی
+              </span>
             </Button>
 
             {/* PWA Install App Button */}
