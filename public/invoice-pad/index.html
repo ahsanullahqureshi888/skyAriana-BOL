@@ -1479,13 +1479,17 @@
       <section class="preview-panel" id="preview-panel">
   
       <!-- A4 Live Zoom Scaling Toolbar -->
+      
+      <!-- A4 Live Zoom & Auto-Fit Toolbar -->
       <div class="preview-zoom-controls no-print">
-        <span style="font-size: 10.5px; font-weight: 700; color: var(--text-muted);">A4 Preview Scale:</span>
+        <span style="font-size: 10.5px; font-weight: 700; color: var(--text-muted);">A4 Preview:</span>
+        <button class="zoom-btn active" id="zoom-autofit-btn" onclick="applyAutoFitZoom()">🎯 Fit Screen</button>
         <button class="zoom-btn" onclick="setA4Zoom(0.70)">70%</button>
         <button class="zoom-btn" onclick="setA4Zoom(0.80)">80%</button>
-        <button class="zoom-btn active" id="zoom-default-btn" onclick="setA4Zoom(0.74)">74% (Fit)</button>
+        <button class="zoom-btn" onclick="setA4Zoom(0.90)">90%</button>
         <button class="zoom-btn" onclick="setA4Zoom(1.0)">100%</button>
       </div>
+
 
       <div class="invoice-container" id="a4-scalable-container" style="transform: scale(0.74); margin-bottom: 20px;">
           <div class="invoice-page" id="printable-invoice">
@@ -2648,7 +2652,54 @@
     }
 
 
+
+    let isAutoFitEnabled = true;
+
+    function applyAutoFitZoom() {
+      isAutoFitEnabled = true;
+      const previewPanel = document.querySelector(".preview-panel");
+      const container = document.getElementById("a4-scalable-container");
+      if (!previewPanel || !container) return;
+
+      const availHeight = previewPanel.clientHeight - 48;
+      const availWidth = previewPanel.clientWidth - 30;
+
+      if (availHeight <= 0 || availWidth <= 0) return;
+
+      const scaleH = availHeight / 1130;
+      const scaleW = availWidth / 800;
+      const fitScale = Math.max(0.45, Math.min(scaleH, scaleW, 0.95));
+
+      container.style.transform = `scale(${fitScale.toFixed(2)})`;
+      container.style.transformOrigin = "top center";
+
+      document.querySelectorAll(".zoom-btn").forEach(b => b.classList.remove("active"));
+      const autoBtn = document.getElementById("zoom-autofit-btn");
+      if (autoBtn) autoBtn.classList.add("active");
+    }
+
     function setA4Zoom(scale) {
+      isAutoFitEnabled = false;
+      const container = document.getElementById("a4-scalable-container");
+      if (!container) return;
+      container.style.transform = `scale(${scale})`;
+      container.style.transformOrigin = "top center";
+      document.querySelectorAll(".zoom-btn").forEach(b => b.classList.remove("active"));
+      if (event && event.target) event.target.classList.add("active");
+    }
+
+    // Auto recalculate fit scale on window resize
+    window.addEventListener("resize", () => {
+      if (isAutoFitEnabled) {
+        applyAutoFitZoom();
+      }
+    });
+
+    // Auto-fit on initial load
+    setTimeout(applyAutoFitZoom, 100);
+    setTimeout(applyAutoFitZoom, 500);
+
+    function _old_setA4Zoom(scale) {
       const container = document.getElementById("a4-scalable-container");
       if (!container) return;
       container.style.transform = `scale(${scale})`;
