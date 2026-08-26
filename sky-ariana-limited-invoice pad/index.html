@@ -68,37 +68,12 @@
       --sheet-shadow: 0 25px 60px -12px rgba(15, 23, 42, 0.25);
     }
 
-    body {
-      background: var(--bg-gradient);
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      color: var(--text-main);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      transition: background 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease;
-      overflow-x: hidden;
-    }
+    
 
     /* ==========================================================================
        2. TOP DASHBAR HEADER
        ========================================================================== */
-    .dashbar-header {
-      width: 100%;
-      background: var(--glass-bg);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
-      border-bottom: 1px solid var(--glass-border);
-      padding: 10px 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: var(--card-shadow);
-      flex-wrap: wrap;
-      gap: 12px;
-    }
+    
 
     .dashbar-left {
       display: flex;
@@ -276,16 +251,7 @@
     /* ==========================================================================
        3. WORKSPACE & KPI METRICS
        ========================================================================== */
-    .app-workspace {
-      width: 100%;
-      max-width: 1720px;
-      margin: 0 auto;
-      padding: 16px 24px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
+    
 
     .kpi-grid {
       display: grid;
@@ -347,31 +313,12 @@
       margin-top: 1px;
     }
 
-    .view-content-wrapper {
-      display: flex;
-      gap: 20px;
-      align-items: flex-start;
-      justify-content: center;
-      width: 100%;
-    }
+    
 
     /* ==========================================================================
        4. EDIT FORUM PANEL (WITH GOODS, NW, GW, RATE * NW ENGINE)
        ========================================================================== */
-    .edit-forum-panel {
-      flex: 1.1;
-      max-width: 680px;
-      background: var(--glass-bg);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid var(--glass-border);
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: var(--card-shadow);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
+    
 
     .forum-section-card {
       background: var(--glass-bg-subtle);
@@ -1207,120 +1154,187 @@
       .meta-input, .importer-input, .importer-name-input, .truck-input { border-bottom-color: transparent !important; }
       .invoice-table input { border: none !important; }
     }
-  </style>
+  
+    /* ==========================================================================
+       COMPACT ULTRA-RESPONSIVE VIEWPORT STYLING
+       ========================================================================== */
+    body {
+      background: var(--bg-gradient);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: var(--text-main);
+      height: 100vh;
+      max-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .dashbar-header {
+      width: 100%;
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 6px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      z-index: 100;
+      box-shadow: var(--card-shadow);
+      gap: 8px;
+    }
+
+    .app-workspace {
+      width: 100%;
+      max-width: 100%;
+      padding: 6px 12px;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow: hidden;
+    }
+
+    .view-content-wrapper {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      justify-content: center;
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .edit-forum-panel {
+      flex: 1;
+      max-width: 580px;
+      height: 100%;
+      background: var(--glass-bg);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+    }
+
+    .edit-forum-panel::-webkit-scrollbar, .preview-panel::-webkit-scrollbar {
+      width: 5px;
+    }
+    .edit-forum-panel::-webkit-scrollbar-thumb, .preview-panel::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.35);
+      border-radius: 10px;
+    }
+
+    .preview-panel {
+      flex: 1.2;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-bottom: 20px;
+    }
+
+    .preview-zoom-controls {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 6px;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      padding: 3px 8px;
+      border-radius: 20px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--card-shadow);
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .invoice-container {
+      position: relative;
+      margin: 0 auto;
+      transform-origin: top center;
+      transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+</style>
 </head>
 <body>
 
   <!-- ==========================================================================
        1. TOP DASHBAR HEADER
        ========================================================================== -->
+  
+  <!-- ==========================================================================
+       1. STREAMLINED EXECUTIVE TOP COMMAND BAR
+       ========================================================================== -->
   <header class="dashbar-header no-print">
-    <!-- Brand Info -->
-    <div class="dashbar-left">
-      <img id="nav-brand-logo" src="sky_ariana_logo.png" alt="Sky Ariana Logo" class="dashbar-logo" />
-      <div class="dashbar-titles">
-        <h1>
-          <span id="app-company-name-tag">Sky Ariana &amp; Balam Bar Baran</span>
-          <span class="status-badge"><span class="status-dot"></span> Active Pad</span>
-          <span id="autosave-status" class="autosave-tag">⚡ Auto-Saved</span>
-        </h1>
-        <p>Commercial Logistics &amp; Invoicing Management Dashbar</p>
+    <!-- Brand Info & Mode Switcher -->
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <img id="nav-brand-logo" src="sky_ariana_logo.png" alt="Sky Ariana Logo" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" />
+      <span style="font-size: 13px; font-weight: 800; color: var(--text-main); white-space: nowrap;">Invoice Pad</span>
+
+      <div class="view-mode-tabs" style="margin-left: 6px;">
+        <button class="mode-tab-btn active" id="btn-mode-split" onclick="setViewMode('split')" style="padding: 4px 10px; font-size: 11px;">
+          Split View
+        </button>
+        <button class="mode-tab-btn" id="btn-mode-pad" onclick="setViewMode('pad')" style="padding: 4px 10px; font-size: 11px;">
+          A4 Sheet
+        </button>
+        <button class="mode-tab-btn" id="btn-mode-forum" onclick="setViewMode('forum')" style="padding: 4px 10px; font-size: 11px;">
+          Edit Form
+        </button>
       </div>
     </div>
 
-    <!-- Dashbar View Switcher -->
-    <div class="view-mode-tabs">
-      <button class="mode-tab-btn active" id="btn-mode-split" onclick="setViewMode('split')">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
-        Edit Forum &amp; Preview
-      </button>
-      <button class="mode-tab-btn" id="btn-mode-pad" onclick="setViewMode('pad')">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-        Direct A4 Pad
-      </button>
-      <button class="mode-tab-btn" id="btn-mode-forum" onclick="setViewMode('forum')">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        Full Edit Forum
-      </button>
+    <!-- Live KPI Summary Pills -->
+    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;" class="no-print">
+      <div style="display: flex; align-items: center; gap: 4px; background: rgba(2, 132, 199, 0.15); border: 1px solid rgba(2, 132, 199, 0.35); padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; color: #38bdf8;">
+        <span>💰 Total:</span>
+        <span id="kpi-total-val">52,950 USD</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; color: #34d399;">
+        <span>📦 Qty:</span>
+        <span id="kpi-qty-val">2,118 CTNS</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 4px; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.35); padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; color: #fbbf24;">
+        <span>⚖️ Net:</span>
+        <span id="kpi-nw-val">21,180 KGS</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 4px; background: rgba(148, 163, 184, 0.15); border: 1px solid rgba(148, 163, 184, 0.35); padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; color: var(--text-main);">
+        <span id="kpi-bill-val">SKY-001</span>
+      </div>
     </div>
 
     <!-- Actions & Tools -->
-    <div class="dashbar-actions">
-      <!-- Theme Switcher -->
-      <button class="btn btn-dark" onclick="toggleTheme()" title="Toggle Dark / Light Theme" id="theme-toggle-btn">
-        🌓 <span id="theme-btn-label">Light Mode</span>
-      </button>
-      <!-- Settings Button -->
-      <button class="btn btn-settings" onclick="openSettingsModal()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-        ⚙ Settings
-      </button>
-      <!-- Print Button -->
-      <button class="btn btn-primary-print" onclick="window.print()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-        Print / PDF <span class="kbd">Ctrl+P</span>
+    <div style="display: flex; align-items: center; gap: 6px;">
+      <button class="btn btn-dark" onclick="addNewRow()" style="padding: 4px 8px; font-size: 11px;">+ Item</button>
+      <button class="btn btn-blue" onclick="loadSampleData()" style="padding: 4px 8px; font-size: 11px;">Load SKY-001</button>
+      <span class="calc-mode-badge" id="btn-toggle-formula" onclick="toggleCalculationMode()" style="padding: 3px 6px; font-size: 10px;" title="Toggle formula">
+        ⚡ NW × Rate
+      </span>
+      <button class="btn btn-dark" onclick="toggleTheme()" title="Toggle Theme" id="theme-toggle-btn" style="padding: 4px 8px; font-size: 11px;">🌓</button>
+      <button class="btn btn-primary-print" onclick="window.print()" style="padding: 4px 10px; font-size: 11px;">
+        🖨 Print A4
       </button>
     </div>
   </header>
 
   <!-- ==========================================================================
-       2. WORKSPACE & DASHBOARD
+       2. WORKSPACE
        ========================================================================== -->
   <main class="app-workspace">
-    <!-- Executive KPI Metrics Row -->
-    <div class="kpi-grid no-print">
-      <div class="kpi-card">
-        <div class="kpi-icon blue">💰</div>
-        <div class="kpi-content">
-          <h4>Total Billed Amount</h4>
-          <div class="kpi-value" id="kpi-total-val">52,950 USD</div>
-          <div class="kpi-sub" id="kpi-formula-info">Calculated: Net Weight × Rate</div>
-        </div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon green">📦</div>
-        <div class="kpi-content">
-          <h4>Total Packages / Qty</h4>
-          <div class="kpi-value" id="kpi-qty-val">2,118 CTNS</div>
-          <div class="kpi-sub">Total Dispatched Units</div>
-        </div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon gold">⚖️</div>
-        <div class="kpi-content">
-          <h4>Net Weight (Billed)</h4>
-          <div class="kpi-value" id="kpi-nw-val">21,180 KGS</div>
-          <div class="kpi-sub" id="kpi-gw-sub">Gross Weight: 22,239 KGS</div>
-        </div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-icon crimson">🚚</div>
-        <div class="kpi-content">
-          <h4>Active Bill #</h4>
-          <div class="kpi-value" id="kpi-bill-val">SKY-001</div>
-          <div class="kpi-sub">Date: 10/08/2026</div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Quick Action Ribbon -->
-    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; background: var(--glass-bg-subtle); backdrop-filter: blur(14px); padding: 8px 14px; border-radius: 12px; border: 1px solid var(--glass-border); flex-wrap: wrap; gap: 8px;">
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-        <button class="btn btn-dark" onclick="addNewRow()">+ Add Goods Item</button>
-        <button class="btn btn-blue" onclick="loadSampleData()">Load Reference (SKY-001)</button>
-        <button class="btn btn-dark" onclick="exportDataJSON()">Export JSON</button>
-        <button class="btn btn-dark" onclick="importDataJSON()">Import JSON</button>
-      </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">Calc Formula:</span>
-        <span class="calc-mode-badge" id="btn-toggle-formula" onclick="toggleCalculationMode()" title="Click to toggle formula: Rate × Net Weight vs Rate × Qty">
-          ⚡ Rate × Net Weight (KGS)
-        </span>
-        <button class="btn btn-dark" style="color: #ef4444; margin-left: 6px;" onclick="clearForm()">Clear Invoice</button>
-      </div>
-    </div>
-
-    <!-- SPLIT CONTENT WRAPPER -->
     <div class="view-content-wrapper" id="main-content-layout">
       <!-- ====================================================================
            LEFT PANE: DEDICATED EDIT FORUM (WITH GOODS, NET WT, GROSS WT, RATE)
@@ -1469,11 +1483,11 @@
         <span style="font-size: 10.5px; font-weight: 700; color: var(--text-muted);">A4 Preview Scale:</span>
         <button class="zoom-btn" onclick="setA4Zoom(0.70)">70%</button>
         <button class="zoom-btn" onclick="setA4Zoom(0.80)">80%</button>
-        <button class="zoom-btn active" id="zoom-default-btn" onclick="setA4Zoom(0.88)">88% (Fit)</button>
+        <button class="zoom-btn active" id="zoom-default-btn" onclick="setA4Zoom(0.74)">74% (Fit)</button>
         <button class="zoom-btn" onclick="setA4Zoom(1.0)">100%</button>
       </div>
 
-      <div class="invoice-container" id="a4-scalable-container" style="transform: scale(0.88); margin-bottom: -130px;">
+      <div class="invoice-container" id="a4-scalable-container" style="transform: scale(0.74); margin-bottom: -280px;">
           <div class="invoice-page" id="printable-invoice">
             <div class="border-frame">
               <div class="border-inner">
