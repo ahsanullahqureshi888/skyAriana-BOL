@@ -72,7 +72,7 @@ interface AppState {
   invoices: Invoice[]
   currentAccount: Account | null
   currentCompany: Company | null
-  view: 'accounts' | 'companies' | 'ledger' | 'invoice' | 'bol' | 'settings'
+  view: 'accounts' | 'companies' | 'ledger' | 'invoice' | 'bol' | 'settings' | 'bank'
   isAuthenticated: boolean
   currentUser: User | null
   users: User[]

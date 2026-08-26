@@ -15,7 +15,8 @@ import {
   Settings as SettingsIcon,
   ShieldCheck,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Landmark
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/lib/app-context'
@@ -34,6 +35,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
   const getTitle = () => {
     if (title) return title
+    if (view === 'bank') return 'Sky Ariana Bank & Transactions'
     if (view === 'settings') return 'System Settings & Management'
     if (view === 'bol') return 'Bill of Lading Editor'
     if (view === 'ledger' && currentCompany) return currentCompany.name
@@ -44,6 +46,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
   const getSubtitle = () => {
     if (subtitle) return subtitle
+    if (view === 'bank') return 'Live Online Banking, Financial Ledgers & Transactions • پورتال معاملات بانکی'
     if (view === 'settings') return 'Users, Security Roles & Software Version'
     if (view === 'bol') return 'Create & Edit Bill of Lading Documents'
     if (view === 'ledger') return 'Company Ledger & Balance Statement'
@@ -53,6 +56,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   }
 
   const getViewBadge = () => {
+    if (view === 'bank') return { label: 'Bank Portal', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' }
     if (view === 'bol') return { label: 'BOL System', color: 'bg-amber-100 text-amber-900 border-amber-300' }
     if (view === 'settings') return { label: 'Settings', color: 'bg-purple-100 text-purple-900 border-purple-300' }
     if (view === 'ledger') return { label: 'Ledger', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' }
@@ -143,6 +147,23 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               <FileText className="h-3.5 w-3.5 text-amber-500 group-hover:text-amber-600" />
               <span className="font-extrabold">BOL Editor</span>
               <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ بارنامه</span>
+            </Button>
+
+            {/* Sky Bank Module Navigation */}
+            <Button
+              variant={view === 'bank' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('bank')}
+              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                view === 'bank' 
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white border-transparent shadow-md shadow-emerald-500/25' 
+                  : 'bg-white/90 border-emerald-200/90 text-emerald-800 hover:bg-emerald-50 hover:border-emerald-300'
+              }`}
+              title="Sky Ariana Bank & Transactions Portal"
+            >
+              <Landmark className="h-3.5 w-3.5 text-emerald-600 group-hover:text-emerald-700" />
+              <span className="font-extrabold">Sky Bank</span>
+              <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ بانک</span>
             </Button>
 
             {/* Settings Navigation */}
