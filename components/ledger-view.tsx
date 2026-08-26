@@ -217,13 +217,68 @@ export const LedgerView = memo(function LedgerView() {
       landscapeStyle = document.createElement("style")
       landscapeStyle.id = "sky-ledger-landscape-print-style"
       landscapeStyle.innerHTML = `
+        @page {
+          size: A4 landscape !important;
+          margin: 4mm 5mm !important;
+        }
         @media print {
           @page {
             size: A4 landscape !important;
-            margin: 4mm !important;
+            margin: 4mm 5mm !important;
           }
           html, body {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
             background: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          body > *:not(.ledger-print-root, #sky-ledger-print-root, [data-print-root="true"]) {
+            display: none !important;
+            height: 0 !important;
+            max-height: 0 !important;
+            overflow: hidden !important;
+          }
+          .ledger-print-root,
+          #sky-ledger-print-root {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            height: auto !important;
+            max-height: none !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            position: static !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+            box-shadow: none !important;
+          }
+          .ledger-print-root * {
+            visibility: visible !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            box-sizing: border-box !important;
+          }
+          .ledger-print-root table.ledger-print-table {
+            display: table !important;
+            width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+          }
+          .ledger-print-root table.ledger-print-table th,
+          .ledger-print-root table.ledger-print-table td {
+            border: 1px solid #1e3a8a !important;
+            padding: 3px 2px !important;
+            font-size: 7.5pt !important;
+            line-height: 1.15 !important;
+            word-break: normal !important;
+            overflow-wrap: normal !important;
           }
         }
       `
@@ -231,9 +286,11 @@ export const LedgerView = memo(function LedgerView() {
     }
 
     document.body.classList.add("ledger-landscape-active")
+    document.documentElement.classList.add("ledger-landscape-active")
 
     const cleanup = () => {
       document.body.classList.remove("ledger-landscape-active")
+      document.documentElement.classList.remove("ledger-landscape-active")
       const styleEl = document.getElementById("sky-ledger-landscape-print-style")
       if (styleEl && styleEl.parentElement) {
         styleEl.parentElement.removeChild(styleEl)
@@ -253,7 +310,7 @@ export const LedgerView = memo(function LedgerView() {
         setTimeout(() => setPrintError(null), 5000)
         cleanup()
       }
-    }, 100)
+    }, 150)
   }, [currentCompany])
 
   const formatCurrency = (amount: number) => {
@@ -1783,27 +1840,27 @@ export const LedgerView = memo(function LedgerView() {
 
         {/* Print Table - Rendered via React Portal directly on document.body */}
         <LedgerPrintPortal>
-          <div data-print-root="true" className="print-container print-wrapper ledger-print-root" style={{ position: 'relative', background: '#ffffff' }}>
+          <div data-print-root="true" className="print-container print-wrapper ledger-print-root" style={{ position: 'relative', background: '#ffffff', width: '100%' }}>
             {/* Content Container */}
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              {/* Print Header with Logo, Company Info, and Account Info - Clean Blue Style */}
+            <div style={{ position: 'relative', zIndex: 1, width: '100%' }}>
+              {/* Print Header with Logo, Company Info, and Account Info - Clean Blue Executive Style */}
               <div className="print-header" style={{ 
                 display: 'flex', 
                 justifyContent: 'space-between', 
-                alignItems: 'flex-start', 
-                marginBottom: '6px',
-                padding: '6px 12px',
+                alignItems: 'center', 
+                marginBottom: '4px',
+                padding: '4px 10px',
                 borderBottom: '2px solid #1e40af',
                 background: '#eff6ff',
-                borderRadius: '6px 6px 0 0'
+                borderRadius: '5px 5px 0 0'
               }}>
                 {/* Left Side - Account/Shipper Info */}
-                <div style={{ flex: '1', textAlign: 'left' }}>
-                  <p style={{ fontSize: '10px', color: '#3b82f6', fontWeight: '600', marginBottom: '1px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Account Ledger</p>
-                  <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#1e3a8a', marginBottom: '2px' }}>{currentCompany.name}</p>
-                  <p style={{ fontSize: '8.5px', color: '#60a5fa' }}>Account Holder / Shipper</p>
-                  <p style={{ fontSize: '9px', color: '#1e40af', marginTop: '3px', fontWeight: '500' }}>
-                    {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                <div style={{ flex: '1.2', textAlign: 'left' }}>
+                  <p style={{ fontSize: '8.5pt', color: '#1e40af', fontWeight: '800', marginBottom: '1px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>ACCOUNT LEDGER</p>
+                  <p style={{ fontSize: '11.5pt', fontWeight: '900', color: '#1e3a8a', marginBottom: '1px', lineHeight: '1.15' }}>{currentCompany.name}</p>
+                  <p style={{ fontSize: '7.5pt', color: '#3b82f6', fontWeight: '600' }}>Account Holder / Shipper</p>
+                  <p style={{ fontSize: '7.5pt', color: '#1e40af', marginTop: '2px', fontWeight: '600' }}>
+                    {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                   </p>
                 </div>
                 
@@ -1815,77 +1872,75 @@ export const LedgerView = memo(function LedgerView() {
                     alt="SKY ARIANA Logo" 
                     className="print-logo"
                     style={{ 
-                      height: '46px', 
-                      maxWidth: '130px', 
+                      height: '40px', 
+                      maxWidth: '120px', 
                       objectFit: 'contain',
-                      marginBottom: '2px',
+                      marginBottom: '1px',
                       display: 'inline-block'
                     }} 
                   />
-                  <p style={{ fontSize: '15px', fontWeight: 'bold', color: '#1e40af', marginBottom: '1px' }}>SKY ARIANA</p>
-                  <p style={{ fontSize: '9px', color: '#3b82f6', letterSpacing: '2px', textTransform: 'uppercase' }}>Transport & Logistics</p>
+                  <p style={{ fontSize: '13pt', fontWeight: '900', color: '#1e40af', marginBottom: '0px', letterSpacing: '0.5px', lineHeight: '1.1' }}>SKY ARIANA</p>
+                  <p style={{ fontSize: '7.5pt', color: '#2563eb', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>Transport & Logistics</p>
                 </div>
                 
                 {/* Right Side - Company Address */}
-                <div style={{ flex: '1', textAlign: 'right' }}>
-                  <p style={{ fontSize: '10px', fontWeight: '600', color: '#1e40af', marginBottom: '2px' }}>AFGHANISTAN OFFICE</p>
-                  <p style={{ fontSize: '7.5px', color: '#3b82f6', lineHeight: '1.4' }}>
-                    2nd Floor, 16 No. Office,<br />
-                    Shahidano Chowk, Etimad Rahmi Market,<br />
-                    Kandahar, Afghanistan
+                <div style={{ flex: '1.2', textAlign: 'right' }}>
+                  <p style={{ fontSize: '8.5pt', fontWeight: '800', color: '#1e40af', marginBottom: '1px' }}>AFGHANISTAN OFFICE</p>
+                  <p style={{ fontSize: '6.5pt', color: '#2563eb', lineHeight: '1.25' }}>
+                    2nd Floor, 16 No. Office, Shahidano Chowk<br />
+                    Etimad Rahmi Market, Kandahar, Afghanistan
                   </p>
-                  <p style={{ fontSize: '7.5px', color: '#60a5fa', marginTop: '2px' }}>
-                    Tel: +93 700 939 365<br />
-                    info@skyariana.com
+                  <p style={{ fontSize: '6.5pt', color: '#1d4ed8', marginTop: '1px', fontWeight: '600' }}>
+                    Tel: +93 700 939 365 | info@skyariana.com
                   </p>
-                  <p style={{ fontSize: '7px', color: '#93c5fd', marginTop: '1px' }}>Licence: 2401-2198</p>
+                  <p style={{ fontSize: '6.5pt', color: '#3b82f6', marginTop: '0.5px' }}>Licence: 2401-2198</p>
                 </div>
               </div>
               
-              <table className="ledger-print-table">
+              <table className="ledger-print-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={{ width: '3%' }}>
+                    <th style={{ width: '3.5%' }}>
                       <div className="header-en">S.NO</div>
-                      <div className="header-ps">مسلسل شمېره</div>
+                      <div className="header-ps">مسلسل</div>
                     </th>
-                    <th style={{ width: '7%' }}>
+                    <th style={{ width: '7.5%' }}>
                       <div className="header-en">DATE / تاریخ</div>
                       <div className="header-ps">نېټه</div>
                     </th>
-                    <th style={{ width: '14%' }}>
+                    <th style={{ width: '14.5%' }}>
                       <div className="header-en">SHIPPER/Description</div>
                       <div className="header-ps">لیږدونکی / تفصیل</div>
                     </th>
-                    <th style={{ width: '6%' }}>
+                    <th style={{ width: '6.5%' }}>
                       <div className="header-en">INVOICE.NO</div>
                       <div className="header-ps">انوایس</div>
                     </th>
-                    <th style={{ width: '7%' }}>
+                    <th style={{ width: '7.5%' }}>
                       <div className="header-en">DATE-OF-SHIP</div>
                       <div className="header-ps">د بار نېټه</div>
                     </th>
-                    <th style={{ width: '8%' }}>
+                    <th style={{ width: '8.5%' }}>
                       <div className="header-en">BARNAMEH NO</div>
                       <div className="header-ps">بارنامه</div>
                     </th>
-                    <th style={{ width: '8%' }}>
+                    <th style={{ width: '8.5%' }}>
                       <div className="header-en">BILL OF LADING</div>
                       <div className="header-ps">B/L NO / بی ال</div>
                     </th>
-                    <th style={{ width: '7%' }}>
+                    <th style={{ width: '7.5%' }}>
                       <div className="header-en">CONTAINER NO</div>
                       <div className="header-ps">د کانټینر شمېره</div>
                     </th>
-                    <th style={{ width: '9%' }}>
+                    <th style={{ width: '10.5%' }}>
                       <div className="header-en">CONSIGNEE</div>
                       <div className="header-ps">د مال وصول کوونکی</div>
                     </th>
                     <th style={{ width: '6%' }}>
-                      <div className="header-en">QUANTITY / تعداد</div>
-                      <div className="header-ps">د توکو بسته بندي</div>
+                      <div className="header-en">QUANTITY</div>
+                      <div className="header-ps">تعداد / بسته</div>
                     </th>
-                    <th style={{ width: '7%' }}>
+                    <th style={{ width: '7.5%' }}>
                       <div className="header-en">DRIVER FREIGHT</div>
                       <div className="header-ps">کرایه موتر / دریور</div>
                     </th>
@@ -1897,7 +1952,7 @@ export const LedgerView = memo(function LedgerView() {
                       <div className="header-en">CREDIT</div>
                       <div className="header-ps">ترلاسه شوی مبلغ</div>
                     </th>
-                    <th style={{ width: '6%' }}>
+                    <th style={{ width: '6.5%' }}>
                       <div className="header-en">BALANCE USD</div>
                       <div className="header-ps">(USD) بیلانس</div>
                     </th>
@@ -1910,57 +1965,65 @@ export const LedgerView = memo(function LedgerView() {
                     <tr 
                       key={entry.id}
                       className={isCredit ? 'credit-row' : ''}
+                      style={{ height: '22px' }}
                     >
-                      <td style={{ fontWeight: 500 }}>{entry.sNo}</td>
-                      <td>{entry.date}</td>
-                      <td className="text-left" style={{ fontWeight: isCredit ? 600 : 'normal' }}>
+                      <td style={{ fontWeight: 600, color: '#1e3a8a', textAlign: 'center' }}>{entry.sNo}</td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '7pt' }}>{entry.date}</td>
+                      <td style={{ textAlign: 'left', paddingLeft: '4px', fontWeight: isCredit ? 700 : 500 }}>
                         {isCredit ? (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
-                            {entry.shipperDescription || 'RECEIVING MONEY'}
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981', flexShrink: 0 }}></span>
+                            <span>{entry.shipperDescription || 'RECEIVING MONEY'}</span>
                           </span>
                         ) : entry.shipperDescription}
                       </td>
-                      <td>{entry.invoiceNo}</td>
-                      <td>{entry.dateOfShip}</td>
-                      <td style={{ fontWeight: 'bold' }}>{entry.barnamehNo || ''}</td>
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 600, fontSize: '7pt' }}>{entry.invoiceNo}</td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '7pt' }}>{entry.dateOfShip}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold', fontFamily: 'monospace', color: '#1e3a8a', fontSize: '7.5pt' }}>{entry.barnamehNo || ''}</td>
+                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '7pt' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
                           <span>{entry.billOfLanding}</span>
                           {entry.surrenderedBL && (
                             <span style={{ 
                               border: '1px solid #059669',
                               color: '#059669',
-                              padding: '1px 4px',
-                              fontSize: '6px',
+                              padding: '0.5px 3px',
+                              fontSize: '5.5pt',
                               fontWeight: 'bold',
                               textTransform: 'uppercase',
-                              letterSpacing: '0.05em',
+                              letterSpacing: '0.04em',
                               backgroundColor: '#ecfdf5',
                               borderRadius: '2px',
-                              whiteSpace: 'nowrap'
+                              whiteSpace: 'nowrap',
+                              lineHeight: '1'
                             }}>Surrender</span>
                           )}
                         </div>
                       </td>
-                      <td>{entry.containerNo}</td>
-                      <td>{entry.consignee}</td>
-                      <td>{entry.quantity}</td>
-                      <td style={{ fontWeight: '600', color: '#78350f' }}>
+                      <td style={{ textAlign: 'center', fontSize: '7pt' }}>{entry.containerNo}</td>
+                      <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '7.5pt' }}>{entry.consignee}</td>
+                      <td style={{ textAlign: 'center', fontSize: '7pt' }}>{entry.quantity}</td>
+                      <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '7.5pt', backgroundColor: '#fffdf5' }}>
                         {entry.driverFreight && entry.driverFreight.trim() !== ''
                           ? entry.driverFreight
                           : ''}
                       </td>
-                      <td className="text-right debit-cell">{entry.debit > 0 ? `$${entry.debit.toLocaleString()}` : ''}</td>
-                      <td className="text-right credit-cell">{entry.credit > 0 ? `$${entry.credit.toLocaleString()}` : ''}</td>
-                      <td className="text-right balance-cell">${entry.balance.toLocaleString()}</td>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 600, color: '#dc2626', fontFamily: 'monospace', fontSize: '7.5pt' }}>
+                        {entry.debit > 0 ? `$${entry.debit.toLocaleString()}` : ''}
+                      </td>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 600, color: '#059669', fontFamily: 'monospace', fontSize: '7.5pt' }}>
+                        {entry.credit > 0 ? `$${entry.credit.toLocaleString()}` : ''}
+                      </td>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7.5pt' }}>
+                        ${entry.balance.toLocaleString()}
+                      </td>
                     </tr>
                   );
                   })}
                   {/* Empty rows to fill page cleanly without overflow */}
-                  {Array.from({ length: Math.max(0, 12 - currentCompany.ledgerEntries.length) }).map((_, idx) => (
-                    <tr key={`empty-${idx}`}>
-                      <td>{currentCompany.ledgerEntries.length + idx + 1}</td>
+                  {Array.from({ length: Math.max(0, 11 - filteredEntries.length) }).map((_, idx) => (
+                    <tr key={`empty-${idx}`} style={{ height: '20px' }}>
+                      <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '7pt' }}>{filteredEntries.length + idx + 1}</td>
                       <td></td>
                       <td></td>
                       <td></td>
@@ -1973,87 +2036,87 @@ export const LedgerView = memo(function LedgerView() {
                       <td></td>
                       <td></td>
                       <td></td>
-                      <td className="balance-cell">$0</td>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', color: '#94a3b8', fontFamily: 'monospace', fontSize: '7pt' }}>$0</td>
                     </tr>
                   ))}
                   {/* Totals row */}
-                  <tr className="totals-row">
-                    <td colSpan={10} style={{ textAlign: 'right', fontWeight: 'bold' }}>TOTAL:</td>
-                    <td className="text-center driver-cell" style={{ fontWeight: 700, color: '#b45309', backgroundColor: '#fef3c7' }}>{formatAFN(totalDriverRentAFN)}</td>
-                    <td className="text-right debit-cell" style={{ fontWeight: 600 }}>${totalDebit.toLocaleString()}</td>
-                    <td className="text-right credit-cell" style={{ fontWeight: 600 }}>${totalCredit.toLocaleString()}</td>
-                    <td className="text-right balance-cell">${finalBalance.toLocaleString()}</td>
+                  <tr className="totals-row" style={{ height: '24px' }}>
+                    <td colSpan={10} style={{ textAlign: 'right', fontWeight: 900, color: '#1e3a8a', fontSize: '8pt', paddingRight: '6px' }}>TOTAL:</td>
+                    <td style={{ textAlign: 'center', fontWeight: 800, color: '#92400e', backgroundColor: '#fef3c7', fontSize: '7.5pt' }}>{formatAFN(totalDriverRentAFN)}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', fontSize: '7.5pt' }}>${totalDebit.toLocaleString()}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#059669', fontFamily: 'monospace', fontSize: '7.5pt' }}>${totalCredit.toLocaleString()}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7.5pt' }}>${finalBalance.toLocaleString()}</td>
                   </tr>
                 </tbody>
               </table>
 
               {/* Driver Total AFN Print Banner */}
               <div style={{ 
-                marginTop: '8px', 
-                marginBottom: '8px', 
-                padding: '6px 12px', 
+                marginTop: '4px', 
+                marginBottom: '4px', 
+                padding: '4px 10px', 
                 backgroundColor: '#fffbeb', 
                 border: '1px solid #fde68a', 
-                borderRadius: '6px',
+                borderRadius: '5px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#78350f' }}>
+                <span style={{ fontSize: '8pt', fontWeight: '800', color: '#78350f' }}>
                   DRIVER RENT TOTAL (مجموع کرایه درایوران در افغانی):
                 </span>
-                <span style={{ fontSize: '11px', fontWeight: '900', color: '#92400e', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: '9.5pt', fontWeight: '900', color: '#92400e', fontFamily: 'monospace' }}>
                   {formatAFN(totalDriverRentAFN)} (افغانی)
                 </span>
               </div>
               
               {/* Official Signature & Stamp Section */}
               <div className="print-signatures" style={{ 
-                marginTop: '10px', 
-                marginBottom: '6px',
+                marginTop: '6px', 
+                marginBottom: '4px',
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'flex-end',
-                padding: '0 12px'
+                padding: '0 10px'
               }}>
                 <div style={{ textAlign: 'center', width: '28%' }}>
-                  <div style={{ borderBottom: '1px border #94a3b8', height: '24px', marginBottom: '3px' }}></div>
-                  <p style={{ fontSize: '7.5px', fontWeight: 'bold', color: '#1e3a8a' }}>PREPARED BY / ترتیب کوونکی</p>
-                  <p style={{ fontSize: '6.5px', color: '#64748b' }}>Accountant Signature</p>
+                  <div style={{ borderBottom: '1px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
+                  <p style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e3a8a' }}>PREPARED BY / ترتیب کوونکی</p>
+                  <p style={{ fontSize: '6pt', color: '#64748b' }}>Accountant Signature</p>
                 </div>
                 <div style={{ textAlign: 'center', width: '28%' }}>
-                  <div style={{ borderBottom: '1px border #94a3b8', height: '24px', marginBottom: '3px' }}></div>
-                  <p style={{ fontSize: '7.5px', fontWeight: 'bold', color: '#1e3a8a' }}>CHECKED BY / کتونکی</p>
-                  <p style={{ fontSize: '6.5px', color: '#64748b' }}>Auditor Approval</p>
+                  <div style={{ borderBottom: '1px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
+                  <p style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e3a8a' }}>CHECKED BY / کتونکی</p>
+                  <p style={{ fontSize: '6pt', color: '#64748b' }}>Auditor Approval</p>
                 </div>
                 <div style={{ textAlign: 'center', width: '32%' }}>
-                  <div style={{ border: '1px dashed #cbd5e1', borderRadius: '6px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', marginBottom: '3px' }}>
-                    <span style={{ fontSize: '7px', color: '#94a3b8', fontStyle: 'italic' }}>[ OFFICIAL COMPANY STAMP ]</span>
+                  <div style={{ border: '1px dashed #cbd5e1', borderRadius: '5px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', marginBottom: '2px' }}>
+                    <span style={{ fontSize: '6.5pt', color: '#94a3b8', fontStyle: 'italic' }}>[ OFFICIAL COMPANY STAMP ]</span>
                   </div>
-                  <p style={{ fontSize: '7.5px', fontWeight: 'bold', color: '#1e3a8a' }}>AUTHORIZED STAMP & SIGNATURE</p>
-                  <p style={{ fontSize: '6.5px', color: '#64748b' }}>د منلو امضا او ټاپه</p>
+                  <p style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e3a8a' }}>AUTHORIZED STAMP & SIGNATURE</p>
+                  <p style={{ fontSize: '6pt', color: '#64748b' }}>د منلو امضا او ټاپه</p>
                 </div>
               </div>
 
               {/* Print Footer - Premium Blue Executive Style */}
               <div className="print-footer" style={{ 
-                padding: '5px 12px', 
+                padding: '4px 10px', 
                 borderTop: '2px solid #1e3a8a',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 background: '#eff6ff',
-                borderRadius: '0 0 6px 6px'
+                borderRadius: '0 0 5px 5px'
               }}>
-                <div style={{ fontSize: '7px', textAlign: 'left' }}>
-                  <p style={{ fontWeight: 'bold', color: '#1e40af', marginBottom: '1px' }}>SKY ARIANA TRANSPORT & LOGISTICS</p>
+                <div style={{ fontSize: '6.5pt', textAlign: 'left' }}>
+                  <p style={{ fontWeight: 'bold', color: '#1e40af', marginBottom: '0.5px' }}>SKY ARIANA TRANSPORT & LOGISTICS</p>
                   <p style={{ color: '#3b82f6' }}>Licence: 2401-2198 | Cloud ERP Verified</p>
                 </div>
-                <div style={{ fontSize: '7px', textAlign: 'center' }}>
+                <div style={{ fontSize: '6.5pt', textAlign: 'center' }}>
                   <p style={{ color: '#1e40af', fontWeight: '600' }}>info@skyariana.com | transport@skyariana.com</p>
                   <p style={{ color: '#3b82f6' }}>+93 700 939 365 | +93 711 435 529</p>
                 </div>
-                <div style={{ fontSize: '7px', textAlign: 'right' }}>
+                <div style={{ fontSize: '6.5pt', textAlign: 'right' }}>
                   <p style={{ color: '#1e40af' }}>2nd Floor, 16 No. Office, Shahidano Chowk</p>
                   <p style={{ color: '#3b82f6' }}>Etimad Rahmi Market, Kandahar, Afghanistan</p>
                 </div>

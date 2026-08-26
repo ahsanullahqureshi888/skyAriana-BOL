@@ -4378,16 +4378,16 @@
 }
 
 @page {
-  size: A4 portrait !important;
-  margin: 0 !important;
+  size: A4 portrait;
+  margin: 0;
 }
 
 /* Print styles for Bill of Lading, Invoices, and Ledgers */
 @media print {
-  /* 1. Standard A4 Portrait setup for Bill of Lading & Invoices - Margin 0 for 100% 1-page guarantee */
+  /* 1. Default A4 Portrait setup for Bill of Lading & Invoices */
   @page {
-    size: A4 portrait !important;
-    margin: 0 !important;
+    size: A4 portrait;
+    margin: 0;
   }
 
   /* 1b. Dedicated A4 Landscape setup for Account Ledger printing */
@@ -4397,18 +4397,17 @@
 
   @page ledger-landscape-page {
     size: A4 landscape !important;
-    margin: 4mm !important;
+    margin: 4mm 5mm !important;
   }
 
   /* Reset heights & position on global containers to prevent blank page spillover */
   html, body {
-    height: 100% !important;
-    min-height: 100% !important;
-    max-height: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
     position: static !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     background: #ffffff !important;
   }
 
@@ -4437,13 +4436,10 @@
     padding: 0 !important;
   }
 
-  /* 5. Printable Portal positioning starting AT THE VERY TOP of Page 1 */
+  /* 5. Portrait Printable Portal positioning for BOL & Invoice */
   #bol-print-preview-root,
   #bol-print-preview,
-  [data-print-root="true"],
   .invoice-print-root,
-  .ledger-print-root,
-  #sky-ledger-print-root,
   #sky-invoice-print-root {
     display: block !important;
     visibility: visible !important;
@@ -4465,6 +4461,31 @@
     break-inside: avoid !important;
     break-before: avoid !important;
     break-after: avoid !important;
+  }
+
+  /* 5b. Landscape Printable Portal for Account Ledger */
+  .ledger-print-root,
+  #sky-ledger-print-root,
+  .print-wrapper.ledger-print-root,
+  [data-print-root="true"].ledger-print-root {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
   [data-bol-a4="true"] {
@@ -4598,47 +4619,43 @@
   }
 
   /* 6. Force table to stretch across 100% space */
-  .ledger-print-table,
-  [data-print-root="true"] table {
+  .ledger-print-table {
     display: table !important;
     width: 100% !important;
     max-width: 100% !important;
-    table-layout: auto !important;
+    table-layout: fixed !important;
     border-collapse: collapse !important;
-    margin-top: 6px !important;
-    margin-bottom: 6px !important;
+    margin-top: 4px !important;
+    margin-bottom: 4px !important;
   }
 
-  .ledger-print-table thead,
-  [data-print-root="true"] thead {
+  .ledger-print-table thead {
     display: table-header-group !important;
   }
 
-  .ledger-print-table tbody,
-  [data-print-root="true"] tbody {
+  .ledger-print-table tbody {
     display: table-row-group !important;
   }
 
-  .ledger-print-table tr,
-  [data-print-root="true"] tr {
+  .ledger-print-table tr {
     display: table-row !important;
     page-break-inside: avoid !important;
-    page-break-after: auto !important;
+    break-inside: avoid !important;
   }
 
-  /* 7. Compact & readable cell typography */
+  /* 7. Compact & readable cell typography for Ledger */
   .ledger-print-table th,
-  .ledger-print-table td,
-  [data-print-root="true"] th,
-  [data-print-root="true"] td {
+  .ledger-print-table td {
     display: table-cell !important;
     border: 1px solid #1e3a8a !important;
-    padding: 4px 5px !important;
-    font-size: 8.5pt !important;
-    line-height: 1.2 !important;
+    padding: 3px 2px !important;
+    font-size: 7.5pt !important;
+    line-height: 1.15 !important;
     color: #0f172a !important;
     text-align: center !important;
-    word-break: break-word !important;
+    vertical-align: middle !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
   }
 
   .ledger-print-table th {
@@ -4647,6 +4664,7 @@
     font-weight: 800 !important;
     text-transform: uppercase !important;
     font-size: 7.5pt !important;
+    padding: 3px 2px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -4662,7 +4680,7 @@
   .ledger-print-table tr.totals-row td {
     background-color: #eff6ff !important;
     font-weight: 900 !important;
-    font-size: 8.5pt !important;
+    font-size: 8pt !important;
     border-top: 2px solid #1e3a8a !important;
     border-bottom: 2px solid #1e3a8a !important;
     -webkit-print-color-adjust: exact !important;
@@ -4673,15 +4691,19 @@
     font-weight: 800 !important;
     font-size: 7.5pt !important;
     color: #1e3a8a !important;
+    line-height: 1.1 !important;
   }
 
   .ledger-print-table .header-ps {
     font-weight: 700 !important;
     font-size: 6.5pt !important;
     color: #2563eb !important;
+    line-height: 1.1 !important;
+    margin-top: 1px !important;
+    direction: rtl !important;
   }
 
-  [data-print-root="true"] {
+  [data-print-root="true"]:not(.ledger-print-root) {
     display: block !important;
     position: relative !important;
     left: auto !important;
@@ -4705,7 +4727,7 @@
     break-inside: avoid !important;
   }
 
-  .print-wrapper {
+  .print-wrapper:not(.ledger-print-root) {
     display: block !important;
     position: relative !important;
     left: auto !important;
@@ -4747,10 +4769,10 @@
     break-inside: avoid !important;
   }
 
-  [data-print-root="true"] [data-bol-a4="true"],
+  [data-print-root="true"]:not(.ledger-print-root) [data-bol-a4="true"],
   .print-page [data-bol-a4="true"],
   [data-bol-a4="true"],
-  [data-print-root="true"] > div,
+  [data-print-root="true"]:not(.ledger-print-root) > div,
   [data-pdf-export="true"],
   [data-bol-page="true"] {
     display: flex !important;
@@ -4772,6 +4794,20 @@
     page-break-before: avoid !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+  }
+
+  .ledger-print-root > div,
+  #sky-ledger-print-root > div {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
   }
 
   [data-bol-content="true"] {

@@ -122,9 +122,9 @@ function MainContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className={view === "bank" || view === "invoice-pad" ? "h-screen flex flex-col overflow-hidden" : "min-h-screen flex flex-col"}>
       <Header showBack={view !== 'accounts' && view !== 'settings' && view !== 'bank' && view !== 'invoice-pad'} />
-      <main className={view === "bank" || view === "invoice-pad" ? "flex-1 flex flex-col h-[calc(100dvh-60px)] overflow-hidden" : "flex-1"}>
+      <main className={view === "bank" || view === "invoice-pad" ? "flex-1 flex flex-col h-[calc(100vh-56px)] overflow-hidden" : "flex-1"}>
         {view === 'accounts' && <AccountsView />}
         {view === 'companies' && <CompaniesView />}
         {view === 'ledger' && <LedgerView />}
