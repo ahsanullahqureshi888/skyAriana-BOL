@@ -1209,22 +1209,29 @@ function parseDriverRentInfo(rent?: string | null): { amount: string; note: stri
   if (!text) return { amount: "", note: "" }
 
   if (text.includes("\n")) {
-    const lines = text.split("\n").map(l => l.trim()).filter(Boolean)
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean)
     return { amount: lines[0] || "", note: lines.slice(1).join(" - ") }
   }
 
-  const match = text.match(/^([\d,.]+\s*(?:AFN|USD|\$|دالر|افغانی|تومان|IRR|PKR)?)(?:\s*[-:]\s*|\s+)(.*)$/i)
+  // Handle formats like "45,000 - AFN - کرایه واپسی" or "45,000 AFN - کرایه واپسی"
+  const parts = text.split(/\s*[-–—:]\s*/).map((p) => p.trim()).filter(Boolean)
+  const currencies = new Set(["AFN", "USD", "EUR", "IRR", "PKR", "تومان", "افغانی", "دالر", "$"])
+
+  if (parts.length >= 3 && currencies.has(parts[1].toUpperCase())) {
+    return { amount: `${parts[0]} ${parts[1]}`, note: parts.slice(2).join(" - ") }
+  }
+
+  if (parts.length === 2 && currencies.has(parts[1].toUpperCase())) {
+    return { amount: `${parts[0]} ${parts[1]}`, note: "" }
+  }
+
+  const match = text.match(/^([\d,.]+\s*(?:AFN|USD|\$|دالر|افغانی|تومان|IRR|PKR)?)(?:\s*[-–—:]\s*|\s+)(.*)$/i)
   if (match && match[1] && match[2]) {
     return { amount: match[1].trim(), note: match[2].trim() }
   }
 
-  if (text.includes("کرایه") || text.includes("واپسی") || text.includes("-")) {
-    const parts = text.split(/\s*-\s*|\s*:\s*/)
-    if (parts.length >= 2) {
-      const amountPart = parts[0].trim()
-      const notePart = parts.slice(1).join(" - ").trim()
-      return { amount: amountPart, note: notePart }
-    }
+  if (parts.length >= 2) {
+    return { amount: parts[0], note: parts.slice(1).join(" - ") }
   }
 
   return { amount: text, note: "" }
