@@ -22,32 +22,66 @@ function MainContent() {
       const syncCode = searchParams.get("sync") || searchParams.get("sync_code")
       if (syncCode) {
         const toastId = toast.loading(`Connecting & syncing documents for ${syncCode}...`)
-        fetch(`/api/sync?code=${encodeURIComponent(syncCode)}`)
-          .then((res) => res.json())
-          .then((body) => {
-            const data = body.data || body
-            if (Array.isArray(data.documents) && data.documents.length > 0) {
+        const performSync = async () => {
+          try {
+            let data: any = null
+            try {
+              const res = await fetch(`/api/sync?code=${encodeURIComponent(syncCode)}`)
+              if (res.ok) {
+                const body = await res.json()
+                data = body.data || body
+              }
+            } catch (e) {}
+
+            // Direct Global Relay Fallback
+            if (!data || !Array.isArray(data.documents) || data.documents.length === 0) {
+              const clean = syncCode.replace(/^SKY-?/, "").replace(/[\s-_]+/g, "")
+              const rKeys = clean ? [`sky-relay-v3-${clean}`, `sky-relay-v3-${syncCode.toLowerCase()}`, "sky-relay-v3-master"] : ["sky-relay-v3-master"]
+              for (const rk of rKeys) {
+                try {
+                  const rRes = await fetch(`https://cl1p.net/${encodeURIComponent(rk)}`)
+                  if (rRes.ok) {
+                    const html = await rRes.text()
+                    const match = html.match(/<textarea[^>]*name=["']content["'][^>]*>([\s\S]*?)<\/textarea>/i) || html.match(/<textarea[^>]*id=["']content["'][^>]*>([\s\S]*?)<\/textarea>/i)
+                    if (match && match[1]) {
+                      const raw = match[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").trim()
+                      const parsed = JSON.parse(raw)
+                      if (parsed && (Array.isArray(parsed.documents) || parsed.documents)) {
+                        data = parsed
+                        break
+                      }
+                    }
+                  }
+                } catch (err) {}
+              }
+            }
+
+            if (data && Array.isArray(data.documents) && data.documents.length > 0) {
               const storedLocal1 = window.localStorage.getItem("sky-bol-browser-documents")
               const storedLocal2 = window.localStorage.getItem("skybol:saved-documents")
-              const list1 = storedLocal1 ? JSON.parse(storedLocal1) : []
-              const list2 = storedLocal2 ? JSON.parse(storedLocal2) : []
+              const storedLocal3 = window.localStorage.getItem("skybol:backup-documents")
+              const list1: any[] = storedLocal1 ? JSON.parse(storedLocal1) : []
+              const list2: any[] = storedLocal2 ? JSON.parse(storedLocal2) : []
+              const list3: any[] = storedLocal3 ? JSON.parse(storedLocal3) : []
 
               const mergedMap = new Map<string, any>()
               for (const d of data.documents) {
                 const k = d.bol_number || d.id
                 if (k) mergedMap.set(k, d)
               }
-              for (const d of [...list1, ...list2]) {
+              for (const d of [...list1, ...list2, ...list3]) {
                 const k = d.bol_number || d.id
                 if (k && !mergedMap.has(k)) mergedMap.set(k, d)
               }
 
               const allMerged = Array.from(mergedMap.values())
-              window.localStorage.setItem("sky-bol-browser-documents", JSON.stringify(allMerged))
-              window.localStorage.setItem("skybol:saved-documents", JSON.stringify(allMerged))
+              const jsonStr = JSON.stringify(allMerged)
+              window.localStorage.setItem("sky-bol-browser-documents", jsonStr)
+              window.localStorage.setItem("skybol:saved-documents", jsonStr)
+              window.localStorage.setItem("skybol:backup-documents", jsonStr)
 
               if (Array.isArray(data.customCompanies || data.accounts)) {
-                const incoming = data.customCompanies || data.accounts
+                const incoming = (data.customCompanies || data.accounts) as string[]
                 const raw = window.localStorage.getItem("skybol:account-custom-companies")
                 const cur = raw ? JSON.parse(raw) : []
                 window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(Array.from(new Set([...cur, ...incoming]))))
@@ -67,16 +101,16 @@ function MainContent() {
 
               toast.success(`🎉 Synced ${allMerged.length} BOLs successfully to this device!`, { id: toastId })
               
-              // Clean URL parameter
               const cleanUrl = window.location.pathname
               window.history.replaceState({}, document.title, cleanUrl)
             } else {
-              toast.info("No documents found in cloud snapshot", { id: toastId })
+              toast.error("Could not locate documents for this sync link.", { id: toastId })
             }
-          })
-          .catch(() => {
-            toast.error("Cloud sync failed. Please check internet connection.", { id: toastId })
-          })
+          } catch (e) {
+            toast.error("Cloud sync connection error.", { id: toastId })
+          }
+        }
+        performSync()
       }
     }
   }, [])

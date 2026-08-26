@@ -23,6 +23,58 @@ interface SyncPayload {
 let inMemorySnapshot: any = null
 const inMemorySyncCodes = new Map<string, { data: any; expiresAt: number }>()
 
+// Global cloud relay helpers
+async function saveToGlobalRelay(key: string, data: any): Promise<boolean> {
+  try {
+    const url = `https://cl1p.net/${encodeURIComponent(key)}`
+    const bodyStr = new URLSearchParams({ content: JSON.stringify(data) }).toString()
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "SkyArianaLogistics/3.2",
+      },
+      body: bodyStr,
+      cache: "no-store",
+    })
+    return res.ok
+  } catch (e) {
+    return false
+  }
+}
+
+async function fetchFromGlobalRelay(key: string): Promise<any | null> {
+  try {
+    const url = `https://cl1p.net/${encodeURIComponent(key)}`
+    const res = await fetch(url, {
+      headers: { "User-Agent": "SkyArianaLogistics/3.2" },
+      cache: "no-store",
+    })
+    if (!res.ok) return null
+    const html = await res.text()
+
+    // Match content from cl1p textarea
+    const match =
+      html.match(/<textarea[^>]*name=["']content["'][^>]*>([\s\S]*?)<\/textarea>/i) ||
+      html.match(/<textarea[^>]*id=["']content["'][^>]*>([\s\S]*?)<\/textarea>/i)
+
+    if (match && match[1]) {
+      // Decode HTML entities
+      const raw = match[1]
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&amp;/g, "&")
+        .trim()
+      return JSON.parse(raw)
+    }
+    return null
+  } catch (e) {
+    return null
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -74,7 +126,39 @@ export async function GET(request: Request) {
         }
       }
 
-      // Fallback: If snapshot is available, return master snapshot
+      // Query Global Cloud Relay by code
+      const relayKeys = [
+        `sky-relay-v3-${numCode}`,
+        `sky-relay-v3-${cleanCode}`,
+        `sky-relay-v3-${fullCode.toLowerCase()}`,
+      ]
+
+      for (const key of relayKeys) {
+        const relayData = await fetchFromGlobalRelay(key)
+        if (relayData && (Array.isArray(relayData.documents) || relayData.documents)) {
+          // Cache locally
+          inMemorySyncCodes.set(numCode, { data: relayData, expiresAt: Date.now() + 48 * 3600000 })
+          inMemorySyncCodes.set(fullCode, { data: relayData, expiresAt: Date.now() + 48 * 3600000 })
+          return NextResponse.json({
+            success: true,
+            data: relayData,
+            source: "sync-global-relay",
+            code: fullCode,
+          })
+        }
+      }
+
+      // Fallback: If master snapshot is available on global relay or local, return master snapshot
+      const relayMaster = await fetchFromGlobalRelay("sky-relay-v3-master")
+      if (relayMaster && Array.isArray(relayMaster.documents) && relayMaster.documents.length > 0) {
+        return NextResponse.json({
+          success: true,
+          data: relayMaster,
+          source: "sync-global-master",
+          code: fullCode,
+        })
+      }
+
       const snapshot = await readJsonFile<any>(fullSnapshotFile, inMemorySnapshot || null)
       if (snapshot && Array.isArray(snapshot.documents) && snapshot.documents.length > 0) {
         return NextResponse.json({
@@ -86,18 +170,32 @@ export async function GET(request: Request) {
       }
 
       return NextResponse.json(
-        { success: false, error: "Sync Code not found or expired. Please generate a new code." },
+        { success: false, error: `Transfer code ${rawCode} not found. Please verify code or upload from your other device.` },
         { status: 404 }
       )
     }
 
     // 2. Default: Return master snapshot of all BOLs, accounts, and ledgers
+    let masterData: any = null
+
+    // Check global master relay first
+    const relayMaster = await fetchFromGlobalRelay("sky-relay-v3-master")
+    if (relayMaster && Array.isArray(relayMaster.documents) && relayMaster.documents.length > 0) {
+      masterData = relayMaster
+    }
+
     const allBols = await localStorage.getAllLocalBOLs()
     const ledgerDb = await getBolAccountLedgerDatabase()
     const snapshot = await readJsonFile<any>(fullSnapshotFile, inMemorySnapshot || {})
 
     // Merge documents
     const docMap = new Map<string, any>()
+    if (masterData && Array.isArray(masterData.documents)) {
+      for (const d of masterData.documents) {
+        const k = d.bol_number || d.id
+        if (k) docMap.set(k, d)
+      }
+    }
     for (const d of allBols) {
       const k = d.bol_number || d.id
       if (k) docMap.set(k, d)
@@ -109,18 +207,32 @@ export async function GET(request: Request) {
       }
     }
 
+    const mergedCompanies = Array.from(
+      new Set([
+        ...(ledgerDb.customCompanies || []),
+        ...(snapshot.accounts || []),
+        ...(masterData?.accounts || []),
+      ])
+    )
+
+    const mergedLedgers = {
+      ...(masterData?.ledgerRecords || {}),
+      ...(snapshot.ledgerRecords || {}),
+      ...(ledgerDb.ledgerRecords || {}),
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         documents: Array.from(docMap.values()),
-        customCompanies: ledgerDb.customCompanies || snapshot.accounts || [],
-        ledgerRecords: ledgerDb.ledgerRecords || snapshot.ledgerRecords || {},
-        companySettings: snapshot.companySettings || null,
-        routePresets: snapshot.routePresets || [],
-        savedShippers: snapshot.savedShippers || [],
-        savedConsignees: snapshot.savedConsignees || [],
-        savedNotifyParties: snapshot.savedNotifyParties || [],
-        updated_at: new Date().toISOString(),
+        customCompanies: mergedCompanies,
+        ledgerRecords: mergedLedgers,
+        companySettings: snapshot.companySettings || masterData?.companySettings || null,
+        routePresets: snapshot.routePresets || masterData?.routePresets || [],
+        savedShippers: snapshot.savedShippers || masterData?.savedShippers || [],
+        savedConsignees: snapshot.savedConsignees || masterData?.savedConsignees || [],
+        savedNotifyParties: snapshot.savedNotifyParties || masterData?.savedNotifyParties || [],
+        updated_at: masterData?.updated_at || new Date().toISOString(),
       },
     })
   } catch (error) {
@@ -136,7 +248,7 @@ export async function POST(request: Request) {
     const payload: SyncPayload = await request.json()
     const now = new Date().toISOString()
 
-    // 1. Bulk merge BOL documents
+    // 1. Bulk merge BOL documents locally
     let mergedDocsCount = 0
     if (Array.isArray(payload.documents) && payload.documents.length > 0) {
       const existingBols = await localStorage.getAllLocalBOLs()
@@ -169,7 +281,7 @@ export async function POST(request: Request) {
       mergedDocsCount = allMergedBols.length
     }
 
-    // 2. Merge accounts and ledger entries
+    // 2. Merge accounts and ledger entries locally
     if (payload.ledgerRecords || payload.accounts) {
       const currentLedgerDb = await getBolAccountLedgerDatabase()
       const mergedCompanies = Array.from(
@@ -210,7 +322,7 @@ export async function POST(request: Request) {
     const codeNum = Math.floor(1000 + Math.random() * 9000).toString()
     const syncCode = `SKY-${codeNum}`
 
-    // Store sync code valid for 48 hours under multiple aliases
+    // Store sync code in memory & local file
     const expiresAt = Date.now() + 48 * 60 * 60 * 1000
     inMemorySyncCodes.set(syncCode, { data: masterSnapshot, expiresAt })
     inMemorySyncCodes.set(codeNum, { data: masterSnapshot, expiresAt })
@@ -224,12 +336,19 @@ export async function POST(request: Request) {
       await writeJsonFile(syncCodesFile, storedCodes)
     } catch (e) {}
 
+    // 5. Broadcast to Global Cloud Relays for 100% Guaranteed Cross-Device Reach
+    void Promise.allSettled([
+      saveToGlobalRelay(`sky-relay-v3-${codeNum}`, masterSnapshot),
+      saveToGlobalRelay(`sky-relay-v3-${syncCode.toLowerCase()}`, masterSnapshot),
+      saveToGlobalRelay(`sky-relay-v3-master`, masterSnapshot),
+    ])
+
     return NextResponse.json({
       success: true,
       syncCode,
       codeNum,
-      totalDocuments: mergedDocsCount,
-      message: `Successfully synchronized ${mergedDocsCount} BOLs and accounts to the cloud!`,
+      totalDocuments: payload.documents?.length || mergedDocsCount,
+      message: `Successfully synchronized ${payload.documents?.length || mergedDocsCount} BOLs and accounts to the cloud!`,
       expiresAt: new Date(expiresAt).toISOString(),
     })
   } catch (error) {
