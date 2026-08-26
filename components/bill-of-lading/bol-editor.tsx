@@ -341,6 +341,56 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [bgOpacity, setBgOpacity] = useState<number>(0.11)
   const [isEditMode, setIsEditMode] = useState(false)
   const [editDocumentId, setEditDocumentId] = useState<string | null>(null)
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "idle">("idle")
+  const [lastAutoSaveTime, setLastAutoSaveTime] = useState<string>("")
+  const isInitialMount = useRef(true)
+
+  // Real-Time Debounced Continuous Auto-Saving Engine
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+
+    setAutoSaveStatus("saving")
+    const timer = setTimeout(() => {
+      try {
+        const currentDocData = {
+          ...formData,
+          bol_number: bolNumber,
+          issue_date: issueDate,
+          persian_date: persianDate,
+          persian_date_numeric: persianDateNumeric,
+          updated_at: new Date().toISOString(),
+        }
+
+        // 1. Save active draft
+        window.localStorage.setItem("skybol:active-form-draft", JSON.stringify(currentDocData))
+
+        // 2. If it has a valid BOL number, continuously update in local documents & backup
+        if (bolNumber && bolNumber.trim().length >= 2) {
+          const storedLocal = window.localStorage.getItem("sky-bol-browser-documents")
+          const currentList: any[] = storedLocal ? JSON.parse(storedLocal) : []
+          const updatedList = [
+            currentDocData,
+            ...currentList.filter((d: any) => (d.bol_number || d.id) !== (currentDocData.bol_number || currentDocData.id)),
+          ]
+          const jsonStr = JSON.stringify(updatedList)
+          window.localStorage.setItem("sky-bol-browser-documents", jsonStr)
+          window.localStorage.setItem("skybol:saved-documents", jsonStr)
+          window.localStorage.setItem("skybol:backup-documents", jsonStr)
+        }
+
+        setAutoSaveStatus("saved")
+        setLastAutoSaveTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+      } catch (e) {
+        setAutoSaveStatus("idle")
+      }
+    }, 600)
+
+    return () => clearTimeout(timer)
+  }, [formData, bolNumber, issueDate, persianDate, persianDateNumeric])
   const [activeRouteIndex, setActiveRouteIndex] = useState<number | null>(null)
   const [showLocationDropdown, setShowLocationDropdown] = useState<number | null>(null)
   const [selectedCountryFilter, setSelectedCountryFilter] = useState("ALL")
@@ -3757,6 +3807,20 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             <div className="sticky top-2 z-30 rounded-2xl border border-white/90 bg-white/95 p-3 shadow-lg shadow-blue-500/10 backdrop-blur-2xl transition-all space-y-2.5">
               {/* Row 1: Smart Utility Buttons + Quick Actions */}
               <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  {autoSaveStatus === "saving" && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-50 text-blue-900 border border-blue-200 text-[11px] font-black shadow-2xs animate-pulse">
+                      <RefreshCw className="h-3 w-3 text-blue-600 animate-spin" />
+                      <span>Saving draft...</span>
+                    </span>
+                  )}
+                  {autoSaveStatus === "saved" && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-950 border border-emerald-200 text-[11px] font-black shadow-2xs">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>Auto-Saved {lastAutoSaveTime}</span>
+                    </span>
+                  )}
+                </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Button
                     type="button"
