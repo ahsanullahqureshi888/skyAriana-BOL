@@ -135,7 +135,7 @@ function MainContent() {
         {view === 'bank' && <SkyBankView />}
         {view === 'invoice-pad' && <InvoicePadView />}
       </main>
-      <MobileBottomNav />
+      {view !== "bank" && view !== "invoice-pad" && <MobileBottomNav />}
       {view !== "bank" && view !== "invoice-pad" && (
       <footer className="glass-strong border-t border-amber-200/80 bg-white/95 backdrop-blur-xl py-3.5 px-6 no-print shadow-xs mt-auto">
         <div className="container mx-auto text-center text-xs font-bold text-slate-700 flex flex-col sm:flex-row items-center justify-between gap-2">

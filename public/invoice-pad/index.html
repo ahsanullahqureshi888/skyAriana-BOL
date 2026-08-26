@@ -1487,7 +1487,7 @@
         <button class="zoom-btn" onclick="setA4Zoom(1.0)">100%</button>
       </div>
 
-      <div class="invoice-container" id="a4-scalable-container" style="transform: scale(0.74); margin-bottom: -280px;">
+      <div class="invoice-container" id="a4-scalable-container" style="transform: scale(0.74); margin-bottom: 20px;">
           <div class="invoice-page" id="printable-invoice">
             <div class="border-frame">
               <div class="border-inner">
@@ -2654,7 +2654,7 @@
       container.style.transform = `scale(${scale})`;
       if (scale < 1.0) {
         const offset = Math.round((1.0 - scale) * 1120);
-        container.style.marginBottom = `-${offset}px`;
+        container.style.marginBottom = "20px";
       } else {
         container.style.marginBottom = "20px";
       }
