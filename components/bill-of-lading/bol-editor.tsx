@@ -16,7 +16,7 @@ import { BillOfLadingFormData, initialFormData, RouteStop, AFGHANISTAN_DOCUMENT_
 import consigneeSeedData from "@/lib/data/consignees-from-pdf.json"
 import shipperSeedData from "@/lib/data/shippers-from-pdf.json"
 import notifyPartySeedData from "@/lib/data/notify-parties-from-pdf.json"
-import { Printer, Save, FileText, Eye, Plus, Loader2, Calendar, Truck, MapPin, Trash2, ArrowRight, Package, Edit3, ImageIcon, Upload, RotateCcw, ScrollText, Check, Download, Building2, Phone, Mail, Ship, Plane, Train, AlertCircle, User, Bell, Globe, Shield, Leaf, Heart, Scale, Bookmark, BookmarkPlus, X, IdCard, Car, Landmark, ShieldCheck, Receipt, List, ChevronDown, ChevronUp, Info, CheckCircle2, Circle, Sparkles, Copy, Box, ArrowLeftRight, Zap, Calculator, SlidersHorizontal, Layers, Keyboard, Cloud, DownloadCloud, UploadCloud, RefreshCw, FileSpreadsheet, Coins, Hash } from "lucide-react"
+import { Printer, Save, FileText, Eye, Plus, Loader2, Calendar, Truck, MapPin, Trash2, ArrowRight, Package, Edit3, ImageIcon, Upload, RotateCcw, ScrollText, Check, Download, Building2, Phone, Mail, Ship, Plane, Train, AlertCircle, User, Bell, Globe, Shield, Leaf, Heart, Scale, Bookmark, BookmarkPlus, X, IdCard, Car, Landmark, ShieldCheck, Receipt, List, ChevronDown, ChevronUp, Info, CheckCircle2, Circle, Sparkles, Copy, Box, ArrowLeftRight, Zap, Calculator, Sliders, SlidersHorizontal, Layers, Keyboard, Cloud, DownloadCloud, UploadCloud, RefreshCw, FileSpreadsheet, Coins, Hash } from "lucide-react"
 import { formatPersianDate, getDualDates } from "@/lib/utils/persian-date"
 import {
   generateBOLPDFBlob,
@@ -3745,9 +3745,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               <span className="hidden sm:inline">Account</span>
               <span className="sm:hidden">Ledger</span>
             </TabsTrigger>
-            <TabsTrigger value="pdf-settings" className="gap-1 rounded-[16px] text-[11px] sm:text-xs md:text-sm font-bold flex-1 justify-center px-1">
-              <Download className="h-3.5 md:h-4 w-3.5 md:w-4 shrink-0" />
-              <span className="hidden sm:inline">PDF Settings</span>
+            <TabsTrigger value="pdf-settings" className="gap-1 rounded-[16px] text-[11px] sm:text-xs md:text-sm font-black flex-1 justify-center px-1">
+              <Sliders className="h-3.5 md:h-4 w-3.5 md:w-4 shrink-0 text-blue-600" />
+              <span className="hidden sm:inline">BOL Settings</span>
               <span className="sm:hidden">Settings</span>
             </TabsTrigger>
           </TabsList>
@@ -8049,15 +8049,17 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               <CardHeader className="pb-4 border-b border-white/50 bg-white/40">
                 <CardTitle className="text-base flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-linear-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25">
-                      <Download className="h-4 w-4 text-white" />
+                    <div className="p-2.5 rounded-2xl bg-linear-to-br from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25">
+                      <Sliders className="h-5 w-5" />
                     </div>
                     <div>
-                      <span className="block font-black text-slate-950">PDF Download Console</span>
-                      <span className="text-xs font-medium text-slate-500">Export, save, print, and review A4 output</span>
+                      <span className="block text-base sm:text-lg font-black text-slate-950">BOL & Document Settings</span>
+                      <span className="text-xs font-semibold text-slate-500">Configure company profile, stamp, watermarks, logo, and document export preferences</span>
                     </div>
                   </div>
-                  <span className="text-sm font-normal text-blue-600/80 font-[vazirmatn]">تنظیمات PDF</span>
+                  <span className="text-xs sm:text-sm font-black text-blue-700 font-[vazirmatn] bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                    تنظیمات بارنامه و اسناد
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-5 pb-6 pt-5">
@@ -8466,7 +8468,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       size="sm"
                       onClick={() => {
                         persistCompanySettings()
-                        toast.success("Company & PDF settings saved successfully! They will persist across page refreshes.")
+                        toast.success("BOL & Company settings saved successfully! They will persist across all devices.")
                       }}
                       className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md h-8 text-xs font-bold gap-1.5 cursor-pointer"
                     >

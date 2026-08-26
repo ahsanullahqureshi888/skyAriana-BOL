@@ -879,7 +879,7 @@ export function InvoiceEditor() {
             <TabsTrigger value="preview">A4 Preview</TabsTrigger>
             <TabsTrigger value="saved">Saved PDF Documents</TabsTrigger>
             <TabsTrigger value="account">Account</TabsTrigger>
-            <TabsTrigger value="settings">PDF Settings</TabsTrigger>
+            <TabsTrigger value="settings">Invoice Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="form" className="space-y-4">
@@ -1163,7 +1163,7 @@ export function InvoiceEditor() {
           </TabsContent>
 
           <TabsContent value="settings">
-            <GlassBlock title="PDF Settings" icon={<Settings className="h-4 w-4" />}>
+            <GlassBlock title="Invoice & Print Settings" icon={<Settings className="h-4 w-4" />}>
               <p className="text-sm font-semibold text-slate-600">Professional A4 logistics invoice PDF, white-blue-gold theme, print and download enabled.</p>
               <div className="grid gap-3 md:grid-cols-3">
                 <TotalMetric label="Format" value="A4" />
