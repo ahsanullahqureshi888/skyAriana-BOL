@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react"
 import { toast } from "sonner"
 import {
   BadgeCheck,
+  CheckCircle2,
   CreditCard,
   Download,
   Eye,
@@ -748,6 +749,37 @@ export function InvoiceEditor() {
   const [savedInvoices, setSavedInvoices] = useState<InvoiceForm[]>([])
   const [query, setQuery] = useState("")
   const [activeTab, setActiveTab] = useState("form")
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "idle">("idle")
+  const [lastAutoSaveTime, setLastAutoSaveTime] = useState<string>("")
+  const isInvoiceInitialMount = useRef(true)
+
+  // Real-Time Debounced Invoice Auto-Saving Engine
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    if (isInvoiceInitialMount.current) {
+      isInvoiceInitialMount.current = false
+      return
+    }
+
+    setAutoSaveStatus("saving")
+    const timer = setTimeout(() => {
+      try {
+        window.localStorage.setItem("skybol:active-invoice-draft", JSON.stringify(invoice))
+        if (invoice.invoice_number && invoice.invoice_number.trim()) {
+          const stored = window.localStorage.getItem("skybol:saved-invoices")
+          const list = stored ? JSON.parse(stored) : []
+          const updated = [invoice, ...list.filter((inv: any) => inv.invoice_number !== invoice.invoice_number)]
+          window.localStorage.setItem("skybol:saved-invoices", JSON.stringify(updated))
+        }
+        setAutoSaveStatus("saved")
+        setLastAutoSaveTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }))
+      } catch (e) {
+        setAutoSaveStatus("idle")
+      }
+    }, 600)
+
+    return () => clearTimeout(timer)
+  }, [invoice])
   const totals = calculateInvoice(invoice)
   const attachmentCount = invoice.attachments.split(",").map((item) => item.trim()).filter(Boolean).length
 
@@ -857,7 +889,20 @@ export function InvoiceEditor() {
               {invoice.invoice_number || "New Invoice"}
             </span>
           </CardTitle>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {autoSaveStatus === "saving" && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-amber-50 text-amber-950 border border-amber-300 text-[11px] font-black shadow-2xs animate-pulse">
+                <RefreshCw className="h-3.5 w-3.5 text-amber-600 animate-spin" />
+                <span>Auto-Saving invoice...</span>
+              </span>
+            )}
+            {autoSaveStatus === "saved" && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-950 border border-emerald-300 text-[11px] font-black shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Auto-Saved {lastAutoSaveTime}</span>
+              </span>
+            )}
             <ToolbarButton onClick={newInvoice} icon={<Plus className="h-4 w-4" />} label="New Invoice" />
             <ToolbarButton onClick={printInvoice} icon={<Printer className="h-4 w-4" />} label="Print" />
             <Button onClick={saveInvoice} className="rounded-2xl bg-linear-to-r from-[#2563EB] to-[#1D4ED8] text-white shadow-lg shadow-blue-200">

@@ -345,7 +345,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [lastAutoSaveTime, setLastAutoSaveTime] = useState<string>("")
   const isInitialMount = useRef(true)
 
-  // Real-Time Debounced Continuous Auto-Saving Engine
+  // Enterprise Multi-Tier Real-Time Auto-Saving Engine
   useEffect(() => {
     if (typeof window === "undefined") return
     if (isInitialMount.current) {
@@ -354,7 +354,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     }
 
     setAutoSaveStatus("saving")
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       try {
         const currentDocData = {
           ...formData,
@@ -365,10 +365,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           updated_at: new Date().toISOString(),
         }
 
-        // 1. Save active draft
+        // Tier 1: Active Draft Instant Sync
         window.localStorage.setItem("skybol:active-form-draft", JSON.stringify(currentDocData))
 
-        // 2. If it has a valid BOL number, continuously update in local documents & backup
+        // Tier 2: Update Saved Documents & Crash-Resistant Mirrors
         if (bolNumber && bolNumber.trim().length >= 2) {
           const storedLocal = window.localStorage.getItem("sky-bol-browser-documents")
           const currentList: any[] = storedLocal ? JSON.parse(storedLocal) : []
@@ -380,14 +380,57 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           window.localStorage.setItem("sky-bol-browser-documents", jsonStr)
           window.localStorage.setItem("skybol:saved-documents", jsonStr)
           window.localStorage.setItem("skybol:backup-documents", jsonStr)
+
+          // Background fire-and-forget sync to API
+          fetch("/api/bol/local-save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ document: currentDocData }),
+          }).catch(() => {})
         }
 
+        // Tier 3: Auto-save Shipper, Consignee & Notify Parties into Autocomplete Databases
+        try {
+          if (formData.shipper_name?.trim()) {
+            const sName = formData.shipper_name.trim()
+            const matchS = savedShippers.find((s) => s.name.trim().toLowerCase() === sName.toLowerCase())
+            const curS: SavedParty = {
+              id: matchS ? matchS.id : crypto.randomUUID(),
+              name: sName,
+              address: formData.shipper_address || "",
+              contact: formData.shipper_contact || "",
+              email: formData.shipper_email || "",
+              savedAt: new Date().toISOString(),
+            }
+            const nextS = [curS, ...savedShippers.filter((s) => s.id !== curS.id)].slice(0, 100)
+            window.localStorage.setItem(SAVED_SHIPPERS_STORAGE_KEY, JSON.stringify(nextS))
+          }
+
+          if (formData.consignee_name?.trim()) {
+            const cName = formData.consignee_name.trim()
+            const matchC = savedConsignees.find((c) => c.name.trim().toLowerCase() === cName.toLowerCase())
+            const curC: SavedParty = {
+              id: matchC ? matchC.id : crypto.randomUUID(),
+              name: cName,
+              address: formData.consignee_address || "",
+              contact: formData.consignee_contact || "",
+              email: formData.consignee_email || "",
+              savedAt: new Date().toISOString(),
+            }
+            const nextC = [curC, ...savedConsignees.filter((c) => c.id !== curC.id)].slice(0, 100)
+            window.localStorage.setItem(SAVED_CONSIGNEES_STORAGE_KEY, JSON.stringify(nextC))
+          }
+        } catch (e) {}
+
+        // Tier 4: Background Ledger Live Update
+        syncBolToAccountLedger(currentDocData)
+
         setAutoSaveStatus("saved")
-        setLastAutoSaveTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+        setLastAutoSaveTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }))
       } catch (e) {
         setAutoSaveStatus("idle")
       }
-    }, 600)
+    }, 500)
 
     return () => clearTimeout(timer)
   }, [formData, bolNumber, issueDate, persianDate, persianDateNumeric])
@@ -3809,15 +3852,30 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   {autoSaveStatus === "saving" && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-50 text-blue-900 border border-blue-200 text-[11px] font-black shadow-2xs animate-pulse">
-                      <RefreshCw className="h-3 w-3 text-blue-600 animate-spin" />
-                      <span>Saving draft...</span>
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-amber-50 text-amber-950 border border-amber-300 text-[11px] font-black shadow-2xs animate-pulse">
+                      <RefreshCw className="h-3.5 w-3.5 text-amber-600 animate-spin" />
+                      <span>Auto-Saving changes...</span>
                     </span>
                   )}
                   {autoSaveStatus === "saved" && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-950 border border-emerald-200 text-[11px] font-black shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSave()
+                        toast.success("Document & Ledger manually synced to all storage layers!")
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 text-[11px] font-black shadow-2xs cursor-pointer transition-all active:scale-95"
+                      title="All changes auto-saved. Click to force instant save to all layers."
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      <span>Auto-Saved {lastAutoSaveTime}</span>
+                      <span>Auto-Saved {lastAutoSaveTime} (Device & Storage)</span>
+                    </button>
+                  )}
+                  {autoSaveStatus === "idle" && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-50 text-slate-700 border border-slate-200 text-[11px] font-black">
+                      <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
+                      <span>Auto-Save Active</span>
                     </span>
                   )}
                 </div>
