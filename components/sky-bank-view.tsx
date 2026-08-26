@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Landmark, RefreshCw, Maximize2, Minimize2, ArrowUpRight, ShieldCheck, Wallet, CreditCard } from "lucide-react"
+import { Landmark, RefreshCw, Maximize2, Minimize2, ArrowUpRight, Wallet, CreditCard } from "lucide-react"
 
 export function SkyBankView() {
   const [currentUrl, setCurrentUrl] = useState("https://skyariana-bank.vercel.app/transactions")
@@ -44,7 +44,7 @@ export function SkyBankView() {
   }
 
   return (
-    <div className={`relative w-full overflow-hidden bg-slate-950 flex flex-col ${isFullscreen ? "fixed inset-0 z-[99999] h-screen w-screen" : "flex-1 w-full h-[calc(100vh-58px)] min-h-[calc(100vh-58px)]"}`}>
+    <div className={`w-full overflow-hidden bg-[#040d1a] flex flex-col ${isFullscreen ? "fixed inset-0 z-[99999] h-screen w-screen" : "flex-1 w-full h-[calc(100vh-56px)] min-h-0"}`}>
       {/* Floating Executive Glass Ribbon */}
       <div className="absolute top-2.5 right-3.5 z-30 flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-900 backdrop-blur-xl border border-emerald-500/30 p-1.5 rounded-2xl shadow-2xl shadow-emerald-950/40 transition-all">
         {/* Sky Bank Status Indicator */}
@@ -113,7 +113,7 @@ export function SkyBankView() {
 
       {/* Loading Overlay */}
       {isLoading && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-md transition-opacity">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#040d1a]/90 backdrop-blur-md transition-opacity">
           <div className="relative">
             <div className="h-16 w-16 rounded-full border-4 border-emerald-500/20 border-t-emerald-400 animate-spin" />
             <div className="absolute inset-0 flex items-center justify-center">
@@ -130,14 +130,15 @@ export function SkyBankView() {
         ref={iframeRef}
         src={currentUrl}
         onLoad={() => setIsLoading(false)}
-        className="w-full flex-1 border-0 block bg-[#f5f9ff]"
+        className="w-full h-full flex-1 min-h-0 border-0 block bg-[#040d1a]"
         style={{
           width: "100%",
-          height: isFullscreen ? "100vh" : "calc(100vh - 58px)",
-          minHeight: isFullscreen ? "100vh" : "calc(100vh - 58px)",
+          height: "100%",
+          minHeight: "100%",
           flex: "1 1 0%",
           display: "block",
-          border: "none"
+          border: "none",
+          backgroundColor: "#040d1a"
         }}
         title="Sky Ariana Bank System"
         allow="payment; camera; microphone; clipboard-read; clipboard-write; fullscreen"
