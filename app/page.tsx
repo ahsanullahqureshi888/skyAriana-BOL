@@ -124,7 +124,7 @@ function MainContent() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header showBack={view !== 'accounts' && view !== 'settings' && view !== 'bank' && view !== 'invoice-pad'} />
-      <main className="flex-1">
+      <main className={view === "bank" || view === "invoice-pad" ? "flex-1 flex flex-col h-[calc(100dvh-60px)] overflow-hidden" : "flex-1"}>
         {view === 'accounts' && <AccountsView />}
         {view === 'companies' && <CompaniesView />}
         {view === 'ledger' && <LedgerView />}
@@ -134,6 +134,7 @@ function MainContent() {
         {view === 'bank' && <SkyBankView />}
         {view === 'invoice-pad' && <InvoicePadView />}
       </main>
+      {view !== "bank" && view !== "invoice-pad" && (
       <footer className="glass-strong border-t border-amber-200/80 bg-white/95 backdrop-blur-xl py-3.5 px-6 no-print shadow-xs mt-auto">
         <div className="container mx-auto text-center text-xs font-bold text-slate-700 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -149,6 +150,7 @@ function MainContent() {
           </div>
         </div>
       </footer>
+      )}
     </div>
   )
 }
