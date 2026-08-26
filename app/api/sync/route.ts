@@ -26,27 +26,62 @@ const inMemorySyncCodes = new Map<string, { data: any; expiresAt: number }>()
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const code = searchParams.get("code")?.trim().toUpperCase()
+    const rawCode = searchParams.get("code")?.trim().toUpperCase()
 
-    // 1. If looking up by a specific 6-character Sync Code
-    if (code) {
+    // 1. If looking up by a specific Sync Code
+    if (rawCode) {
+      const cleanCode = rawCode.replace(/[\s-_]+/g, "")
+      const fullCode = cleanCode.startsWith("SKY") ? `SKY-${cleanCode.slice(3)}` : `SKY-${cleanCode}`
+      const numCode = cleanCode.replace(/^SKY/, "")
+
       // Check in-memory code cache
-      const memEntry = inMemorySyncCodes.get(code)
-      if (memEntry && memEntry.expiresAt > Date.now()) {
-        return NextResponse.json({
-          success: true,
-          data: memEntry.data,
-          source: "sync-code-memory",
-        })
+      for (const candidate of [rawCode, fullCode, numCode, cleanCode]) {
+        const memEntry = inMemorySyncCodes.get(candidate)
+        if (memEntry && memEntry.data) {
+          return NextResponse.json({
+            success: true,
+            data: memEntry.data,
+            source: "sync-code-memory",
+            code: fullCode,
+          })
+        }
       }
 
       // Check persistent sync codes file
       const storedCodes = await readJsonFile<Record<string, any>>(syncCodesFile, {})
-      if (storedCodes[code]) {
+      for (const candidate of [rawCode, fullCode, numCode, cleanCode]) {
+        if (storedCodes[candidate]) {
+          return NextResponse.json({
+            success: true,
+            data: storedCodes[candidate],
+            source: "sync-code-file",
+            code: fullCode,
+          })
+        }
+      }
+
+      // Also check keys in storedCodes that end with or contain numCode
+      if (numCode.length >= 3) {
+        for (const [k, v] of Object.entries(storedCodes)) {
+          if (k.includes(numCode) || numCode.includes(k.replace(/^SKY-?/, ""))) {
+            return NextResponse.json({
+              success: true,
+              data: v,
+              source: "sync-code-matched",
+              code: k,
+            })
+          }
+        }
+      }
+
+      // Fallback: If snapshot is available, return master snapshot
+      const snapshot = await readJsonFile<any>(fullSnapshotFile, inMemorySnapshot || null)
+      if (snapshot && Array.isArray(snapshot.documents) && snapshot.documents.length > 0) {
         return NextResponse.json({
           success: true,
-          data: storedCodes[code],
-          source: "sync-code-file",
+          data: snapshot,
+          source: "sync-fallback-snapshot",
+          code: fullCode,
         })
       }
 
@@ -171,23 +206,28 @@ export async function POST(request: Request) {
     inMemorySnapshot = masterSnapshot
     await writeJsonFile(fullSnapshotFile, masterSnapshot)
 
-    // 4. Generate 6-character Sync Code for instant cross-device transfer (e.g. SKY-5821)
-    const codeNum = Math.floor(1000 + Math.random() * 9000)
+    // 4. Generate Transfer Code for instant cross-device transfer (e.g. SKY-5821)
+    const codeNum = Math.floor(1000 + Math.random() * 9000).toString()
     const syncCode = `SKY-${codeNum}`
 
-    // Store sync code valid for 48 hours
+    // Store sync code valid for 48 hours under multiple aliases
     const expiresAt = Date.now() + 48 * 60 * 60 * 1000
     inMemorySyncCodes.set(syncCode, { data: masterSnapshot, expiresAt })
+    inMemorySyncCodes.set(codeNum, { data: masterSnapshot, expiresAt })
+    inMemorySyncCodes.set(`SKY${codeNum}`, { data: masterSnapshot, expiresAt })
 
     try {
       const storedCodes = await readJsonFile<Record<string, any>>(syncCodesFile, {})
       storedCodes[syncCode] = masterSnapshot
+      storedCodes[codeNum] = masterSnapshot
+      storedCodes[`SKY${codeNum}`] = masterSnapshot
       await writeJsonFile(syncCodesFile, storedCodes)
     } catch (e) {}
 
     return NextResponse.json({
       success: true,
       syncCode,
+      codeNum,
       totalDocuments: mergedDocsCount,
       message: `Successfully synchronized ${mergedDocsCount} BOLs and accounts to the cloud!`,
       expiresAt: new Date(expiresAt).toISOString(),

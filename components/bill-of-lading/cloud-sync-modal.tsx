@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,6 +28,10 @@ import {
   Download,
   Upload,
   Sparkles,
+  ExternalLink,
+  ShieldCheck,
+  ArrowRight,
+  Zap,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -45,8 +48,11 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
   const [syncCode, setSyncCode] = useState<string>("")
   const [inputCode, setInputCode] = useState<string>("")
   const [copiedCode, setCopiedCode] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
   const [localDocCount, setLocalDocCount] = useState<number>(0)
+  const [localLedgerCount, setLocalLedgerCount] = useState<number>(0)
   const [lastSyncTime, setLastSyncTime] = useState<string>("")
+  const [showQrCode, setShowQrCode] = useState<boolean>(true)
 
   useEffect(() => {
     if (open && typeof window !== "undefined") {
@@ -61,11 +67,22 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
           if (k) map.set(k, d)
         }
         setLocalDocCount(map.size)
+
+        const lRaw = window.localStorage.getItem("skybol:account-ledgers")
+        const ledgers = lRaw ? JSON.parse(lRaw) : {}
+        setLocalLedgerCount(Object.keys(ledgers).length)
       } catch (e) {
         setLocalDocCount(0)
+        setLocalLedgerCount(0)
       }
     }
   }, [open])
+
+  // Get dynamic sync URL for QR and sharing
+  const getSyncUrl = () => {
+    if (!syncCode || typeof window === "undefined") return ""
+    return `${window.location.origin}/?sync=${encodeURIComponent(syncCode)}`
+  }
 
   // 1. Upload all local BOLs, accounts, and ledgers to cloud
   const handleUploadAllToCloud = async () => {
@@ -141,7 +158,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
         setLastSyncTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
         toast.success(`Successfully uploaded ${localDocs.length} BOL documents to Cloud! 🚀`, {
           id: toastId,
-          description: `Sync Code: ${result.syncCode}. Use this code on any device to transfer instantly.`,
+          description: `Transfer Code: ${result.syncCode}. Scan QR code or enter code on your other devices.`,
         })
       } else {
         throw new Error(result.error || "Upload failed")
@@ -241,6 +258,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
 
       toast.success(`Successfully synchronized ${restoredDocsCount || data.documents?.length || 0} BOLs on this device! 🎉`, {
         id: toastId,
+        description: "All client accounts, ledgers, and document files are now up to date.",
       })
 
       if (onSyncComplete) onSyncComplete()
@@ -358,23 +376,54 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
     navigator.clipboard.writeText(syncCode)
     setCopiedCode(true)
     setTimeout(() => setCopiedCode(false), 2500)
-    toast.success("Sync code copied to clipboard!")
+    toast.success(`Code ${syncCode} copied!`)
+  }
+
+  const copyDirectSyncLink = () => {
+    const link = getSyncUrl()
+    if (!link) return
+    navigator.clipboard.writeText(link)
+    setCopiedLink(true)
+    setTimeout(() => setCopiedLink(false), 2500)
+    toast.success("Direct Sync Link copied to clipboard! 🔗", {
+      description: "Send this link via WhatsApp or Telegram to sync immediately on any phone.",
+    })
+  }
+
+  const handlePasteCode = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) {
+        // Extract code if a full URL was pasted
+        const match = text.match(/[?&]sync=([^&]+)/) || text.match(/(SKY-?\d{4,6})/i) || text.match(/(\d{4,6})/)
+        if (match) {
+          setInputCode(match[1].toUpperCase())
+          toast.success(`Pasted code: ${match[1]}`)
+        } else {
+          setInputCode(text.trim().toUpperCase())
+        }
+      }
+    } catch (e) {
+      toast.error("Could not read clipboard")
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong sm:max-w-xl rounded-3xl border-blue-200 shadow-2xl p-5 sm:p-6">
+      <DialogContent className="glass-strong sm:max-w-xl rounded-[32px] border border-blue-200/80 shadow-2xl p-5 sm:p-7 max-h-[90vh] overflow-y-auto no-scrollbar">
         <DialogHeader className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-md shadow-blue-600/25">
-              <Cloud className="h-5 w-5" />
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-linear-to-br from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25">
+              <Cloud className="h-6 w-6" />
             </div>
             <div>
-              <DialogTitle className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2">
+              <DialogTitle className="text-lg sm:text-xl font-black text-slate-900 flex flex-wrap items-center gap-2">
                 <span>Multi-Device Cloud Sync Hub</span>
-                <span className="text-xs font-bold text-amber-700 font-[vazirmatn]">/ همگام‌سازی ابری</span>
+                <span className="text-xs font-black text-blue-700 font-[vazirmatn] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                  همگام‌سازی ابری
+                </span>
               </DialogTitle>
-              <DialogDescription className="text-xs text-slate-500 font-semibold">
+              <DialogDescription className="text-xs text-slate-500 font-semibold mt-0.5">
                 Sync all BOLs, accounts, and ledgers between PC, Phone, and other browsers seamlessly.
               </DialogDescription>
             </div>
@@ -386,95 +435,148 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
           <button
             type="button"
             onClick={() => setActiveTab("upload")}
-            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === "upload"
-                ? "bg-white text-blue-900 shadow-xs border border-slate-200/80"
+                ? "bg-white text-blue-900 shadow-sm border border-slate-200/80"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <UploadCloud className="h-3.5 w-3.5 text-blue-600" />
+            <UploadCloud className="h-4 w-4 text-blue-600" />
             <span>Upload to Cloud</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("download")}
-            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === "download"
-                ? "bg-white text-blue-900 shadow-xs border border-slate-200/80"
+                ? "bg-white text-blue-900 shadow-sm border border-slate-200/80"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <DownloadCloud className="h-3.5 w-3.5 text-emerald-600" />
+            <DownloadCloud className="h-4 w-4 text-emerald-600" />
             <span>Download & Sync</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("code")}
-            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === "code"
-                ? "bg-white text-blue-900 shadow-xs border border-slate-200/80"
+                ? "bg-white text-blue-900 shadow-sm border border-slate-200/80"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            <QrCode className="h-3.5 w-3.5 text-purple-600" />
+            <QrCode className="h-4 w-4 text-purple-600" />
             <span>Sync Code / کد</span>
           </button>
         </div>
 
         {/* Tab 1: Upload */}
         {activeTab === "upload" && (
-          <div className="space-y-4 py-3 animate-in fade-in">
-            <div className="p-4 rounded-2xl bg-linear-to-br from-blue-50/90 to-indigo-50/80 border border-blue-200/80 space-y-2">
+          <div className="space-y-4 py-2 animate-in fade-in">
+            {/* Status Card */}
+            <div className="p-4 rounded-2xl bg-linear-to-br from-blue-50/90 via-indigo-50/50 to-white border border-blue-200/80 space-y-2.5 shadow-2xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-blue-950">Local Documents Found</span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-600 text-white shadow-2xs">
-                  {localDocCount} BOLs
+                <span className="text-xs font-black uppercase tracking-wider text-blue-950 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Local Documents Found</span>
                 </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-600 text-white shadow-2xs">
+                    {localDocCount} BOLs
+                  </span>
+                  {localLedgerCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-emerald-600 text-white shadow-2xs">
+                      {localLedgerCount} Ledgers
+                    </span>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-slate-600 font-medium">
-                Push all your currently saved {localDocCount} Bills of Lading, client ledgers, and company settings to the cloud so all other devices can access them.
+              <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                Push all your currently saved <strong className="text-blue-950 font-black">{localDocCount} Bills of Lading</strong>, client ledgers, and company settings to the cloud so all your other devices can access them.
               </p>
             </div>
 
+            {/* Primary Upload Button */}
             <Button
               onClick={handleUploadAllToCloud}
               disabled={isUploading}
-              className="w-full h-11 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 hover:from-blue-950 hover:to-indigo-950 text-white font-black text-xs sm:text-sm shadow-md cursor-pointer gap-2"
+              className="w-full h-12 rounded-2xl bg-linear-to-r from-blue-700 via-indigo-700 to-blue-800 hover:from-blue-800 hover:to-indigo-800 text-white font-black text-xs sm:text-sm shadow-md shadow-blue-700/20 cursor-pointer gap-2 transition-all active:scale-[0.99]"
             >
               {isUploading ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />
               ) : (
-                <UploadCloud className="h-4 w-4 text-amber-400" />
+                <UploadCloud className="h-4.5 w-4.5 text-amber-400" />
               )}
               <span>{isUploading ? "Uploading to Cloud..." : `Upload All (${localDocCount}) BOLs to Cloud / آپلود به سرور`}</span>
             </Button>
 
+            {/* Uploaded Success Result Block */}
             {syncCode && (
-              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-950 space-y-2 animate-in zoom-in-95">
+              <div className="p-4 rounded-2xl bg-linear-to-br from-emerald-50/90 via-teal-50/40 to-white border border-emerald-300 text-emerald-950 space-y-3.5 animate-in zoom-in-95 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-black">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    <span>Upload Successful! Your 6-Digit Transfer Code:</span>
+                    <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600" />
+                    <span>Upload Successful! Your Transfer Code:</span>
                   </div>
-                  <span className="text-[11px] font-bold text-slate-500">{lastSyncTime}</span>
+                  <span className="text-[11px] font-bold text-slate-500 bg-white/80 px-2 py-0.5 rounded-md border border-slate-200">{lastSyncTime}</span>
                 </div>
+
+                {/* Transfer Code Box */}
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 py-2 px-3 bg-white rounded-xl border border-emerald-300 font-mono text-center text-lg font-black tracking-widest text-emerald-950 shadow-inner">
+                  <div className="flex-1 py-2.5 px-3 bg-white rounded-xl border border-emerald-300 font-mono text-center text-xl sm:text-2xl font-black tracking-widest text-emerald-950 shadow-inner">
                     {syncCode}
                   </div>
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={copySyncCode}
-                    className="h-10 rounded-xl border-emerald-300 bg-white font-bold text-xs gap-1.5 cursor-pointer"
+                    className="h-11 px-3.5 rounded-xl border-emerald-300 bg-white hover:bg-emerald-50 text-emerald-900 font-black text-xs gap-1.5 cursor-pointer shadow-2xs"
                   >
                     {copiedCode ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                     <span>{copiedCode ? "Copied!" : "Copy"}</span>
                   </Button>
                 </div>
-                <p className="text-[11px] text-emerald-800 font-medium">
-                  💡 On your phone or another device, open this modal, go to <strong>Sync Code</strong>, and enter <strong>{syncCode}</strong>.
-                </p>
+
+                {/* QR Code & Mobile Fast Scan Section */}
+                <div className="p-3 bg-white rounded-xl border border-emerald-200/80 flex flex-col sm:flex-row items-center gap-3">
+                  <div className="p-1.5 bg-white rounded-lg border border-slate-200 shadow-2xs shrink-0">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(getSyncUrl())}&bgcolor=ffffff&color=1e3a8a&margin=4`}
+                      alt="Sync QR Code"
+                      className="w-24 h-24 sm:w-28 sm:h-28 rounded"
+                    />
+                  </div>
+                  <div className="space-y-1.5 text-center sm:text-left flex-1 min-w-0">
+                    <div className="flex items-center justify-center sm:justify-start gap-1 text-xs font-black text-slate-900">
+                      <Smartphone className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Scan with Phone Camera</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 font-medium leading-tight">
+                      Point your phone camera at this QR code to automatically sync and load all {localDocCount} BOLs instantly!
+                    </p>
+                    <div className="pt-1 flex flex-wrap gap-1.5 justify-center sm:justify-start">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={copyDirectSyncLink}
+                        className="h-7 px-2.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 text-[10.5px] font-bold gap-1 cursor-pointer border border-blue-200"
+                      >
+                        {copiedLink ? <Check className="w-3 h-3 text-emerald-600" /> : <Share2 className="w-3 h-3 text-blue-600" />}
+                        <span>{copiedLink ? "Link Copied!" : "Copy Direct Link"}</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-emerald-900 font-medium bg-emerald-100/60 p-2.5 rounded-xl border border-emerald-200 space-y-1">
+                  <p>
+                    💡 <strong>On your other device:</strong> Open <strong>skyarianabol.vercel.app</strong>, click <strong>Sync</strong>, go to <strong>Sync Code</strong>, and enter <strong>{syncCode}</strong>.
+                  </p>
+                  <p className="font-[vazirmatn] text-[10.5px] text-emerald-950 font-bold">
+                    در موبایل یا لپ‌تاپ دیگر، وارد بخش کد همگام‌سازی شوید و کد <strong>{syncCode}</strong> را وارد کنید.
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -482,10 +584,13 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
 
         {/* Tab 2: Download */}
         {activeTab === "download" && (
-          <div className="space-y-4 py-3 animate-in fade-in">
-            <div className="p-4 rounded-2xl bg-emerald-50/90 border border-emerald-200/80 space-y-2">
-              <span className="text-xs font-black uppercase tracking-wider text-emerald-950">Receive Cloud Documents</span>
-              <p className="text-xs text-slate-600 font-medium">
+          <div className="space-y-4 py-2 animate-in fade-in">
+            <div className="p-4 rounded-2xl bg-linear-to-br from-emerald-50/90 via-teal-50/40 to-white border border-emerald-200/80 space-y-2 shadow-2xs">
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+                <DownloadCloud className="w-4 h-4 text-emerald-600" />
+                <span>Receive Cloud Documents</span>
+              </span>
+              <p className="text-xs text-slate-600 font-medium leading-relaxed">
                 Fetch and merge all latest BOLs, ledgers, and accounts from the cloud server into this device.
               </p>
             </div>
@@ -493,59 +598,93 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
             <Button
               onClick={() => handleDownloadAllFromCloud()}
               disabled={isDownloading}
-              className="w-full h-11 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm shadow-md cursor-pointer gap-2"
+              className="w-full h-12 rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 cursor-pointer gap-2 transition-all active:scale-[0.99]"
             >
               {isDownloading ? (
                 <RefreshCw className="h-4 w-4 animate-spin" />
               ) : (
-                <DownloadCloud className="h-4 w-4 text-white" />
+                <DownloadCloud className="h-4.5 w-4.5 text-white" />
               )}
               <span>{isDownloading ? "Downloading & Merging..." : "Download & Sync All Documents on This Device"}</span>
             </Button>
+
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-600 text-xs space-y-1.5">
+              <span className="font-black text-slate-800 text-xs block">✨ What gets synchronized:</span>
+              <ul className="space-y-1 text-[11px] text-slate-600 list-disc list-inside">
+                <li>All Bills of Lading and saved document records</li>
+                <li>Customer accounts & transaction ledgers</li>
+                <li>Saved Shippers, Consignees, and Notify Parties directories</li>
+                <li>Company stamp, signature, and print preferences</li>
+              </ul>
+            </div>
           </div>
         )}
 
         {/* Tab 3: Code Transfer */}
         {activeTab === "code" && (
-          <div className="space-y-4 py-3 animate-in fade-in">
-            <div className="p-4 rounded-2xl bg-purple-50/90 border border-purple-200/80 space-y-2">
-              <span className="text-xs font-black uppercase tracking-wider text-purple-950">Transfer via 6-Digit Code</span>
-              <p className="text-xs text-slate-600 font-medium">
-                Enter the transfer code generated from your main computer to instantly sync all 58 BOLs and ledgers here.
+          <div className="space-y-4 py-2 animate-in fade-in">
+            <div className="p-4 rounded-2xl bg-linear-to-br from-purple-50/90 via-indigo-50/40 to-white border border-purple-200/80 space-y-2 shadow-2xs">
+              <span className="text-xs font-black uppercase tracking-wider text-purple-950 flex items-center gap-1.5">
+                <QrCode className="w-4 h-4 text-purple-600" />
+                <span>Transfer via Transfer Code</span>
+              </span>
+              <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                Enter the transfer code (e.g. <strong>SKY-5837</strong> or <strong>5837</strong>) generated from your other computer to instantly pull all documents here.
               </p>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-700 uppercase tracking-wider">Enter Sync Code (e.g. SKY-5821)</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                  Enter Sync Code
+                </label>
+                <button
+                  type="button"
+                  onClick={handlePasteCode}
+                  className="text-[11px] font-bold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2 py-0.5 rounded-lg border border-purple-200 transition cursor-pointer"
+                >
+                  📋 Paste from Clipboard
+                </button>
+              </div>
+
               <div className="flex gap-2">
                 <Input
                   value={inputCode}
                   onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                  placeholder="SKY-XXXX"
-                  className="font-mono text-center font-black tracking-wider text-base uppercase bg-white border-slate-300 rounded-xl h-11"
-                  maxLength={10}
+                  placeholder="e.g. SKY-5837 or 5837"
+                  className="font-mono text-center font-black tracking-widest text-base sm:text-lg uppercase bg-white border-slate-300 rounded-xl h-12 shadow-inner focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+                  maxLength={15}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && inputCode.trim() && !isDownloading) {
+                      handleDownloadAllFromCloud(inputCode)
+                    }
+                  }}
                 />
                 <Button
                   onClick={() => handleDownloadAllFromCloud(inputCode)}
                   disabled={isDownloading || !inputCode.trim()}
-                  className="h-11 px-5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs shrink-0 cursor-pointer"
+                  className="h-12 px-6 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs sm:text-sm shadow-md shadow-purple-600/20 shrink-0 cursor-pointer transition-all active:scale-95"
                 >
                   {isDownloading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Transfer Now"}
                 </Button>
               </div>
             </div>
+
+            <div className="rounded-xl border border-purple-100 bg-purple-50/50 p-3 text-[11px] text-purple-900 font-medium">
+              💡 Tip: You can type just the 4 numbers (e.g. <strong>5837</strong>) or the full code (<strong>SKY-5837</strong>).
+            </div>
           </div>
         )}
 
         {/* Bottom File Backup Quick Actions */}
-        <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap text-xs">
+        <div className="pt-3.5 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap text-xs">
           <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleExportFullBackup}
-              className="h-8.5 rounded-xl border-slate-200 font-bold text-[11px] gap-1.5 cursor-pointer hover:bg-slate-50"
+              className="h-8.5 rounded-xl border-slate-200 font-bold text-[11px] gap-1.5 cursor-pointer hover:bg-slate-50 shadow-2xs"
             >
               <Download className="h-3.5 w-3.5 text-emerald-600" />
               <span>Save Backup File (.json)</span>
@@ -562,7 +701,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
             variant="ghost"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="h-8.5 rounded-xl font-bold text-xs text-slate-500 hover:text-slate-800"
+            className="h-8.5 rounded-xl font-bold text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
           >
             Close
           </Button>
