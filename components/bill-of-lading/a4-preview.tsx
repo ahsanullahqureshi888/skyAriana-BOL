@@ -1208,7 +1208,17 @@ function parseDriverRentInfo(rent?: string | null): { amount: string; note: stri
   const text = cleanText(rent)
   if (!text) return { amount: "", note: "" }
 
-  if (text.includes("کرایه") || text.includes("واپسی")) {
+  if (text.includes("\n")) {
+    const lines = text.split("\n").map(l => l.trim()).filter(Boolean)
+    return { amount: lines[0] || "", note: lines.slice(1).join(" - ") }
+  }
+
+  const match = text.match(/^([\d,.]+\s*(?:AFN|USD|\$|دالر|افغانی|تومان|IRR|PKR)?)(?:\s*[-:]\s*|\s+)(.*)$/i)
+  if (match && match[1] && match[2]) {
+    return { amount: match[1].trim(), note: match[2].trim() }
+  }
+
+  if (text.includes("کرایه") || text.includes("واپسی") || text.includes("-")) {
     const parts = text.split(/\s*-\s*|\s*:\s*/)
     if (parts.length >= 2) {
       const amountPart = parts[0].trim()
@@ -1380,12 +1390,12 @@ function ShipmentOverview({
               کرایه راننده
             </div>
           </div>
-          <div className="mt-0.5 space-y-0.2">
-            <div className="font-mono font-black text-emerald-950 text-[8.2pt] leading-tight break-words">
+          <div className="mt-0.5 space-y-0.5">
+            <div className="font-mono font-black text-emerald-950 text-[7.8pt] sm:text-[8.2pt] leading-tight break-words">
               {rentInfo.amount || formData.driver_rent}
             </div>
             {rentInfo.note && (
-              <div className="persian-text bol-persian-text font-[vazirmatn] font-extrabold text-[6.5pt] text-emerald-800 leading-tight truncate" dir="rtl">
+              <div className="persian-text bol-persian-text font-[vazirmatn] font-extrabold text-[6.5pt] sm:text-[7pt] text-emerald-800 leading-tight break-words" dir="rtl">
                 {rentInfo.note}
               </div>
             )}

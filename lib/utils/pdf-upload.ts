@@ -358,20 +358,21 @@ function drawDetailCard(
   width: number,
   height: number
 ) {
-  const compact = height <= 14
+  const compact = height <= 15
   roundedCard(doc, x, y, width, height, [255, 255, 255], BORDER_BLUE, 1.6)
   drawText(doc, item.label || "", x + 2, y + 1.6, {
-    size: compact ? 5.2 : 5.6,
+    size: compact ? 5.0 : 5.6,
     weight: "bold",
     color: BLUE,
     maxWidth: width - 4,
+    lineHeight: 2.2,
   })
-  drawText(doc, item.value || "", x + 2, y + (compact ? 5.5 : 6.2), {
-    size: compact ? (item.important ? 6.8 : 6.2) : item.important ? 7.6 : 6.8,
+  drawText(doc, item.value || "", x + 2, y + (compact ? 5.2 : 6.2), {
+    size: compact ? (item.important ? 6.4 : 5.8) : item.important ? 7.4 : 6.6,
     weight: item.important ? "bold" : "normal",
     color: TEXT_DARK,
     maxWidth: width - 4,
-    lineHeight: 2.7,
+    lineHeight: 2.5,
   })
 }
 
