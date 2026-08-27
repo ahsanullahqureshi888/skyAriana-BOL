@@ -189,21 +189,23 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ بانک</span>
             </Button>
 
-            {/* Settings Navigation */}
-            <Button
-              variant={view === 'settings' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setView('settings')}
-              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                view === 'settings' 
-                  ? 'bg-gradient-to-r from-purple-700 to-indigo-800 text-white border-transparent shadow-md shadow-purple-500/25' 
-                  : 'bg-white/90 border-purple-200 text-purple-800 hover:bg-purple-50 hover:border-purple-300'
-              }`}
-              title="System Settings"
-            >
-              <SettingsIcon className="h-3.5 w-3.5" />
-              <span className="hidden md:inline">Settings</span>
-            </Button>
+            {/* Settings Navigation (Admins & Accountants only) */}
+            {currentUser?.role !== 'shipper' && (
+              <Button
+                variant={view === 'settings' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setView('settings')}
+                className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  view === 'settings' 
+                    ? 'bg-gradient-to-r from-purple-700 to-indigo-800 text-white border-transparent shadow-md shadow-purple-500/25' 
+                    : 'bg-white/90 border-purple-200 text-purple-800 hover:bg-purple-50 hover:border-purple-300'
+                }`}
+                title="System Settings"
+              >
+                <SettingsIcon className="h-3.5 w-3.5" />
+                <span className="hidden md:inline">Settings</span>
+              </Button>
+            )}
 
             {/* Global Command Hub & Search Button */}
             <Button

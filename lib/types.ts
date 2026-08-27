@@ -29,12 +29,15 @@ export interface Company {
   name: string
   ledgerEntries: LedgerEntry[]
   ledgerSettings?: LedgerSettings
+  createdBy?: string
 }
 
 export interface Account {
   id: string
   name: string
   companies: Company[]
+  createdBy?: string
+  shipperUsername?: string
 }
 
 export interface InvoiceItem {
@@ -49,7 +52,7 @@ export interface InvoiceItem {
   detentionDetails?: string
 }
 
-export type UserRole = "superadmin" | "admin" | "accountant" | "viewer"
+export type UserRole = "superadmin" | "admin" | "accountant" | "viewer" | "shipper"
 
 export interface User {
   id: string

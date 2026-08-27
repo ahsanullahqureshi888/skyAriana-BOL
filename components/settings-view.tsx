@@ -89,6 +89,13 @@ const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; i
     icon: "👁️",
     desc: "Read-only access to view and print Bills of Lading and reports",
   },
+  shipper: {
+    label: "Shipper",
+    bg: "bg-amber-100 border-amber-300",
+    text: "text-amber-900 font-extrabold",
+    icon: "🚢",
+    desc: "Dedicated client access to own shipments, BOLs, and business accounts",
+  },
 }
 
 export function SettingsView() {

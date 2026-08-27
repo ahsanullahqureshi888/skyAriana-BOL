@@ -179,6 +179,16 @@ const DEFAULT_USERS_LIST: User[] = [
     createdAt: "2026-04-20",
     lastLogin: "2026-07-28",
   },
+  {
+    id: "usr-shipper-5",
+    username: "shipper",
+    name: "Shipper Portal",
+    role: "shipper",
+    email: "shipper@skybalam.com",
+    avatar: "/logo.png",
+    createdAt: "2026-05-01",
+    lastLogin: "2026-08-28",
+  },
 ]
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -296,15 +306,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (!cleanUser || !cleanPass) return false
 
-    // Match existing user from state.users or default admin
+    // Match existing user from state.users or default admin/shipper
     const foundUser = state.users.find((u) => u.username.toLowerCase() === cleanUser.toLowerCase())
 
-    if (foundUser || (cleanUser.toLowerCase() === 'admin' && cleanPass === 'skybalam2026') || cleanPass.length >= 3) {
-      const role: UserRole = foundUser ? foundUser.role : cleanUser.toLowerCase() === 'admin' ? 'superadmin' : 'admin'
+    if (foundUser || cleanUser.toLowerCase() === 'admin' || cleanUser.toLowerCase() === 'shipper' || cleanPass.length >= 3) {
+      let role: UserRole = 'admin'
+      if (foundUser?.role) {
+        role = foundUser.role
+      } else if (cleanUser.toLowerCase() === 'admin') {
+        role = 'superadmin'
+      } else if (cleanUser.toLowerCase() === 'shipper') {
+        role = 'shipper'
+      }
+
       const userObj: User = {
         id: foundUser?.id || `usr-${Date.now()}`,
         username: cleanUser,
-        name: foundUser?.name || cleanUser.toUpperCase(),
+        name: foundUser?.name || (cleanUser.toLowerCase() === 'shipper' ? 'Shipper Portal' : cleanUser.toUpperCase()),
         role: role,
         email: foundUser?.email || `${cleanUser}@skybalam.com`,
         avatar: '/logo.png',
@@ -595,7 +613,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentCompany: updatedCurrentComp,
       }
     })
-
     setIsSyncing(false)
   }, [])
 
@@ -620,15 +637,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [syncShippersAndBols])
 
   const addAccount = useCallback((name: string) => {
-    const newAccount: Account = {
-      id: crypto.randomUUID(),
-      name,
-      companies: [],
-    }
-    setState(prev => ({
-      ...prev,
-      accounts: [...prev.accounts, newAccount],
-    }))
+    setState(prev => {
+      const creator = prev.currentUser?.username || 'admin'
+      const newAccount: Account = {
+        id: crypto.randomUUID(),
+        name,
+        companies: [],
+        createdBy: creator,
+        shipperUsername: prev.currentUser?.role === 'shipper' ? creator : undefined,
+      }
+      return {
+        ...prev,
+        accounts: [...prev.accounts, newAccount],
+      }
+    })
   }, [])
 
   const deleteAccount = useCallback((id: string) => {
@@ -649,20 +671,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addCompany = useCallback((accountId: string, name: string) => {
-    const newCompany: Company = {
-      id: crypto.randomUUID(),
-      name,
-      ledgerEntries: [],
-    }
-    setState(prev => ({
-      ...prev,
-      accounts: prev.accounts.map(a =>
-        a.id === accountId ? { ...a, companies: [...a.companies, newCompany] } : a
-      ),
-      currentAccount: prev.currentAccount?.id === accountId
-        ? { ...prev.currentAccount, companies: [...prev.currentAccount.companies, newCompany] }
-        : prev.currentAccount,
-    }))
+    setState(prev => {
+      const creator = prev.currentUser?.username || 'admin'
+      const newCompany: Company = {
+        id: crypto.randomUUID(),
+        name,
+        ledgerEntries: [],
+        createdBy: creator,
+      }
+      return {
+        ...prev,
+        accounts: prev.accounts.map(a =>
+          a.id === accountId ? { ...a, companies: [...a.companies, newCompany] } : a
+        ),
+        currentAccount: prev.currentAccount?.id === accountId
+          ? { ...prev.currentAccount, companies: [...prev.currentAccount.companies, newCompany] }
+          : prev.currentAccount,
+      }
+    })
   }, [])
 
   const deleteCompany = useCallback((accountId: string, companyId: string) => {

@@ -41,6 +41,7 @@ import {
 } from "lucide-react"
 import { generateBOLPDFBlob, savePDFToDevice, buildBolSmartFileName } from "@/lib/utils/pdf-upload"
 import { CloudSyncModal } from "./cloud-sync-modal"
+import { useApp } from "@/lib/app-context"
 
 type DocumentCategoryKey = "all" | "latest" | "account" | "export" | "import" | "with-pdf"
 type ViewMode = "grid" | "list" | "table"
@@ -420,6 +421,9 @@ const DocumentGridCard = memo(function DocumentGridCard({
 })
 
 export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "sidebar" }: SavedDocumentsProps) {
+  const { currentUser } = useApp()
+  const isShipper = currentUser?.role === "shipper"
+
   const [documents, setDocuments] = useState<SavedDocument[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -674,6 +678,14 @@ function parseBolSeq(bolNum: string): number {
     const cleanQuery = query.trim().toLowerCase()
 
     const filtered = documents.filter((doc) => {
+      if (isShipper) {
+        const u = (currentUser?.username || "").toLowerCase()
+        const n = (currentUser?.name || "").toLowerCase()
+        const sName = (doc.shipper_name || "").toLowerCase()
+        const isMatch = sName === u || sName === n || sName.includes(u) || (doc as any).created_by === u
+        if (!isMatch) return false
+      }
+
       const matchesSearch = !cleanQuery || getDocumentSearchText(doc).includes(cleanQuery)
       return matchesSearch && matchesCategory(doc, activeCategory)
     })
@@ -700,7 +712,7 @@ function parseBolSeq(bolNum: string): number {
       }
       return 0
     })
-  }, [documents, query, activeCategory, sortBy, documentCategories])
+  }, [documents, query, activeCategory, sortBy, documentCategories, isShipper, currentUser])
 
   // Get Top 6 Latest BOLs for the Top Feature Banner
   const latestTopBOLs = useMemo(() => {

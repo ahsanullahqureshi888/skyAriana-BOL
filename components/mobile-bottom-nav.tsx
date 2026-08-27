@@ -6,13 +6,15 @@ import { useState } from "react"
 import { CloudSyncModal } from "@/components/bill-of-lading/cloud-sync-modal"
 
 export function MobileBottomNav() {
-  const { view, setView } = useApp()
+  const { view, setView, currentUser } = useApp()
   const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false)
+
+  const isShipper = currentUser?.role === 'shipper'
 
   const navItems = [
     {
       id: "accounts",
-      label: "Accounts",
+      label: isShipper ? "My Portal" : "Accounts",
       icon: Building2,
       activeClass: "text-blue-600 bg-blue-50 border-blue-200",
       activeIndicator: "bg-blue-600",
@@ -42,14 +44,14 @@ export function MobileBottomNav() {
       activeIndicator: "bg-emerald-600",
       onClick: () => setView("bank")
     },
-    {
+    ...(!isShipper ? [{
       id: "settings",
       label: "Settings",
       icon: SettingsIcon,
       activeClass: "text-purple-600 bg-purple-50 border-purple-200",
       activeIndicator: "bg-purple-600",
       onClick: () => setView("settings")
-    },
+    }] : [])
   ]
 
   return (

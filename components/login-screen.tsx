@@ -64,22 +64,21 @@ export function LoginScreen() {
     setIsLoading(true)
 
     setTimeout(() => {
-      const targetUser = username.trim() || (activePortal === "admin" ? "admin" : "shipper")
-      const targetPass = password.trim() || "skybalam2026"
+      const cleanUser = username.trim()
+      const cleanPass = password.trim()
       
-      const success = login(targetUser, targetPass, rememberMe)
+      if (!cleanUser || !cleanPass) {
+        setError("Please enter both username and password.")
+        setIsLoading(false)
+        return
+      }
+
+      const success = login(cleanUser, cleanPass, rememberMe)
       if (!success) {
-        setError("Invalid credentials. Use admin / skybalam2026 or shipper / skybalam2026")
+        setError("Invalid username or password. Please try again.")
         setIsLoading(false)
       }
-    }, 450)
-  }
-
-  const handleQuickFill = (portal: "admin" | "shipper") => {
-    setActivePortal(portal)
-    setUsername(portal === "admin" ? "admin" : "shipper")
-    setPassword("skybalam2026")
-    setError(null)
+    }, 400)
   }
 
   return (
@@ -297,32 +296,8 @@ export function LoginScreen() {
               </button>
             </form>
 
-            {/* Quick Auto-Fill */}
-            <div className="w-full mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
-              <span className="font-semibold flex items-center gap-1">
-                <KeyRound className="w-3 h-3 text-slate-400" />
-                Quick Fill:
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill("admin")}
-                  className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded border border-blue-200 transition-all hover:scale-105 active:scale-95"
-                >
-                  Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickFill("shipper")}
-                  className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded border border-slate-300 transition-all hover:scale-105 active:scale-95"
-                >
-                  Shipper
-                </button>
-              </div>
-            </div>
-
             {/* Footer Links */}
-            <div className="mt-3 flex items-center justify-center gap-2.5 text-[10px] font-bold text-slate-500">
+            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-center gap-2.5 text-[10px] font-bold text-slate-500">
               <button 
                 type="button"
                 onClick={() => setShowHelpModal(true)} 
@@ -398,16 +373,6 @@ export function LoginScreen() {
             </p>
 
             <div className="space-y-2 text-left mb-4">
-              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5">
-                  Default Credentials
-                </div>
-                <div className="text-[11px] font-mono font-bold text-slate-800 flex justify-between items-center">
-                  <span>Admin: <strong className="text-blue-700 font-extrabold">admin</strong></span>
-                  <span>Pass: <strong className="text-blue-700 font-extrabold">skybalam2026</strong></span>
-                </div>
-              </div>
-
               <a 
                 href="tel:+93700939365" 
                 className="p-2.5 bg-slate-50 hover:bg-blue-50/80 rounded-xl border border-slate-100 hover:border-blue-200 flex items-center gap-2.5 transition-all group"

@@ -17,7 +17,7 @@ import {
 import { useApp } from '@/lib/app-context'
 
 export function AccountsView() {
-  const { accounts, addAccount, deleteAccount, selectAccount, selectCompany, isSyncing, syncCloudData } = useApp()
+  const { accounts, addAccount, deleteAccount, selectAccount, selectCompany, isSyncing, syncCloudData, currentUser } = useApp()
   const [newAccountName, setNewAccountName] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -41,13 +41,37 @@ export function AccountsView() {
     setNewAccountName('')
   }, [])
 
-  const totalCompanies = accounts.reduce((acc, a) => acc + (a.companies?.length || 0), 0)
+  // Strict Shipper Isolation: Shippers only see their own created or assigned accounts
+  const isShipper = currentUser?.role === 'shipper'
+  const visibleAccounts = isShipper
+    ? accounts.filter((acc) => {
+        const u = (currentUser?.username || '').toLowerCase()
+        const n = (currentUser?.name || '').toLowerCase()
+        const accName = acc.name.toLowerCase()
+        const createdBy = (acc.createdBy || '').toLowerCase()
+        const shipperUser = (acc.shipperUsername || '').toLowerCase()
+        return (
+          createdBy === u ||
+          shipperUser === u ||
+          accName === u ||
+          accName === n ||
+          acc.companies?.some(
+            (c) =>
+              (c.createdBy || '').toLowerCase() === u ||
+              c.name.toLowerCase() === u ||
+              c.name.toLowerCase() === n
+          )
+        )
+      })
+    : accounts
 
-  const allCompanies = accounts.flatMap((acc) =>
+  const totalCompanies = visibleAccounts.reduce((acc, a) => acc + (a.companies?.length || 0), 0)
+
+  const allCompanies = visibleAccounts.flatMap((acc) =>
     (acc.companies || []).map((comp) => ({ account: acc, company: comp }))
   )
 
-  const filteredAccounts = accounts.filter(account =>
+  const filteredAccounts = visibleAccounts.filter(account =>
     account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     account.companies?.some(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
   )
@@ -57,7 +81,7 @@ export function AccountsView() {
     account.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const chartData = accounts.map(acc => ({
+  const chartData = visibleAccounts.map(acc => ({
     name: acc.name.length > 12 ? acc.name.substring(0, 12) + '...' : acc.name,
     shippers: acc.companies?.length || 0,
     fullName: acc.name
