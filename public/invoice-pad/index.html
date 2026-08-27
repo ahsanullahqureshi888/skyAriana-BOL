@@ -709,8 +709,8 @@
     }
 
     .header-logo-box {
-      width: 68px;
-      height: 68px;
+      width: 72px;
+      height: 72px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -718,10 +718,11 @@
     }
 
     .header-logo-box img {
-      width: 64px;
-      height: 64px;
+      width: 70px;
+      height: 70px;
       object-fit: contain;
-      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+      filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.14));
+      transition: transform 0.2s ease;
     }
 
     .header-center {
@@ -2361,8 +2362,15 @@
           if (!profile.companyName || profile.companyName.includes("Balam Bar Baran")) {
             profile.companyName = "SKY ARIANA LIMITED";
             profile.footerCompany = "SKY ARIANA LIMITED | International Transport & Logistics";
-            localStorage.setItem("sky_ariana_profile", JSON.stringify(profile));
           }
+          // Ensure fresh high-res logos are always linked
+          if (!profile.logoLeft || profile.logoLeft === "sky_ariana_logo.png") {
+            profile.logoLeft = "sky_ariana_logo.png";
+          }
+          if (!profile.logoRight || profile.logoRight === "globe_flags.png") {
+            profile.logoRight = "globe_flags.png";
+          }
+          localStorage.setItem("sky_ariana_profile", JSON.stringify(profile));
         } catch (e) {
           console.error("Error loading saved profile:", e);
         }
