@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sky Ariana &amp; Balam Bar Baran - Commercial Logistics Dashboard</title>
+  <title>SKY ARIANA LIMITED - Commercial Logistics Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Roboto:ital,wght@0,300;0,400;0,500;0,700;0,900;1,400;1,700&display=swap" rel="stylesheet">
@@ -1500,7 +1500,7 @@
                       <!-- Center Corporate Header (Dynamic via Settings) -->
                       <div class="header-center">
                         <div class="country-title" id="display-country-title">Islamic Republic of Afghanistan</div>
-                        <div class="company-name-main" id="display-company-name">Sky Ariana &amp; Balam Bar Baran</div>
+                        <div class="company-name-main" id="display-company-name">SKY ARIANA LIMITED</div>
                         <div class="company-meta-line" id="display-company-lic">Lic No: 2401-2198</div>
                         <div class="company-meta-line" id="display-company-city" style="font-style: italic;">Kandahar Afghanistan</div>
                         <div class="company-email-line" id="display-company-email">transport@skyariana.com/ info@skyariana.com</div>
@@ -1689,7 +1689,7 @@
                     <!-- Footer Line -->
                     <div class="invoice-footer">
                       <div class="invoice-footer-left" id="display-footer-company">
-                        Sky Ariana &amp; Balam Bar Baran | Kandahar Afghanistan
+                        SKY ARIANA LIMITED | Kandahar Afghanistan
                       </div>
                       <div class="invoice-footer-right" id="footer-bill-date">
                         Bill #SKY-001 | 10/08/2026
@@ -1738,7 +1738,7 @@
             </div>
             <div class="setting-field full-col">
               <label class="setting-label">Primary Company Name</label>
-              <input type="text" id="set-company-name" class="setting-input" value="Sky Ariana &amp; Balam Bar Baran" />
+              <input type="text" id="set-company-name" class="setting-input" value="SKY ARIANA LIMITED" />
             </div>
             <div class="setting-field">
               <label class="setting-label">Company License No.</label>
@@ -1762,7 +1762,7 @@
             </div>
             <div class="setting-field full-col">
               <label class="setting-label">Bottom Footer Company Text</label>
-              <input type="text" id="set-footer-company" class="setting-input" value="Sky Ariana &amp; Balam Bar Baran | Kandahar Afghanistan" />
+              <input type="text" id="set-footer-company" class="setting-input" value="SKY ARIANA LIMITED | Kandahar Afghanistan" />
             </div>
           </div>
         </div>
@@ -1941,13 +1941,13 @@
     // ==========================================================================
     const DEFAULT_PROFILE = {
       countryTitle: "Islamic Republic of Afghanistan",
-      companyName: "Sky Ariana & Balam Bar Baran",
+      companyName: "SKY ARIANA LIMITED",
       companyLic: "Lic No: 2401-2198",
       companyCity: "Kandahar Afghanistan",
       companyEmail: "transport@skyariana.com/ info@skyariana.com",
       phoneLeft: "+93 700 9393 65",
       phoneRight: "+93 711 4355 29",
-      footerCompany: "Sky Ariana & Balam Bar Baran | Kandahar Afghanistan",
+      footerCompany: "SKY ARIANA LIMITED | Kandahar Afghanistan",
       logoLeft: "sky_ariana_logo.png",
       logoRight: "globe_flags.png",
       watermarkEnabled: true,
@@ -2358,6 +2358,11 @@
       if (saved) {
         try {
           profile = { ...DEFAULT_PROFILE, ...JSON.parse(saved) };
+          if (!profile.companyName || profile.companyName.includes("Balam Bar Baran")) {
+            profile.companyName = "SKY ARIANA LIMITED";
+            profile.footerCompany = "SKY ARIANA LIMITED | International Transport & Logistics";
+            localStorage.setItem("sky_ariana_profile", JSON.stringify(profile));
+          }
         } catch (e) {
           console.error("Error loading saved profile:", e);
         }
