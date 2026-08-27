@@ -1469,7 +1469,7 @@
 @media print {
   @page {
     size: A4 landscape !important;
-    margin: 4mm !important;
+    margin: 4mm 5mm !important;
   }
 
   [data-ledger-print-hidden="true"] {
@@ -1486,7 +1486,7 @@
   [data-ledger-print-sheet="true"] {
     border-radius: 0 !important;
     box-shadow: none !important;
-    min-height: 100vh !important;
+    min-height: 0 !important;
     width: 100% !important;
   }
 
@@ -4375,7 +4375,11 @@
 /* Print styles for Bill of Lading, Invoices, and Ledgers */
 @media print {
   /* Dedicated A4 Landscape setup for Account Ledger printing */
-  body.ledger-landscape-active {
+  body.ledger-landscape-active,
+  html[data-print-mode="ledger-landscape"],
+  body[data-print-mode="ledger-landscape"],
+  html[data-print-active="ledger"],
+  body[data-print-active="ledger"] {
     page: ledger-landscape-page !important;
   }
 

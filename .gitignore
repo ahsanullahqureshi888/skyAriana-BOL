@@ -24,3 +24,5 @@ __pycache__/
 .codeboarding/
 .vercel
 .env*
+.local-*.json
+*.log

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, memo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History } from 'lucide-react'
+import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History, Eye, Download, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -204,8 +204,10 @@ export const LedgerView = memo(function LedgerView() {
   }
 
   const [printError, setPrintError] = useState<string | null>(null)
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false)
+  const [isExportingPDF, setIsExportingPDF] = useState(false)
 
-  const handlePrint = useCallback(() => {
+  const triggerDirectPrint = useCallback(() => {
     // Check if there's content to print
     if (!currentCompany || currentCompany.ledgerEntries.length === 0) {
       setPrintError('No ledger entries to print. Add some entries first.')
@@ -213,219 +215,121 @@ export const LedgerView = memo(function LedgerView() {
       return
     }
 
-    const printContainer = document.querySelector('#sky-ledger-print-root') || document.querySelector('.ledger-print-root')
-    if (!printContainer) {
+    // 1. Inject dynamic style tag to guarantee browser print engine uses A4 Landscape
+    const existingStyle = document.getElementById('sky-ledger-dynamic-print-style')
+    if (existingStyle) existingStyle.remove()
+
+    const styleEl = document.createElement('style')
+    styleEl.id = 'sky-ledger-dynamic-print-style'
+    styleEl.innerHTML = `
+      @page {
+        size: A4 landscape !important;
+        margin: 4mm 5mm !important;
+      }
+      @media print {
+        @page {
+          size: A4 landscape !important;
+          margin: 4mm 5mm !important;
+        }
+        html, body {
+          background: #ffffff !important;
+          width: 100% !important;
+          height: auto !important;
+          min-height: 0 !important;
+          overflow: visible !important;
+        }
+      }
+    `
+    document.head.appendChild(styleEl)
+
+    // 2. Set landscape markers on body and html
+    document.body.classList.add('ledger-landscape-active')
+    document.body.setAttribute('data-print-mode', 'ledger-landscape')
+    document.documentElement.setAttribute('data-print-mode', 'ledger-landscape')
+
+    const cleanup = () => {
+      document.body.classList.remove('ledger-landscape-active')
+      document.body.removeAttribute('data-print-mode')
+      document.documentElement.removeAttribute('data-print-mode')
+      const el = document.getElementById('sky-ledger-dynamic-print-style')
+      if (el) el.remove()
+      window.removeEventListener('afterprint', cleanup)
+    }
+
+    window.addEventListener('afterprint', cleanup)
+
+    // 3. Trigger native print with slight delay for DOM reflow
+    setTimeout(() => {
       window.print()
+      // Fallback cleanup after print dialog
+      setTimeout(cleanup, 2500)
+    }, 60)
+  }, [currentCompany])
+
+  const handlePrint = useCallback(() => {
+    triggerDirectPrint()
+  }, [triggerDirectPrint])
+
+  const handleExportLandscapePDF = async () => {
+    if (!currentCompany || currentCompany.ledgerEntries.length === 0) {
+      setPrintError('No ledger entries to export.')
+      setTimeout(() => setPrintError(null), 4000)
       return
     }
 
-    const printHtml = printContainer.innerHTML
-
-    // Try opening dedicated print window first for guaranteed landscape print dialog
+    setIsExportingPDF(true)
     try {
-      const win = window.open('', '_blank', 'width=1180,height=820,menubar=no,toolbar=no,location=no,status=no')
-      if (win) {
-        win.document.open()
-        win.document.write(`
-          <!DOCTYPE html>
-          <html lang="en">
-            <head>
-              <meta charset="utf-8">
-              <title>${currentCompany.name} - Account Ledger (Landscape)</title>
-              <style>
-                @page {
-                  size: A4 landscape !important;
-                  margin: 4mm 5mm !important;
-                }
-                @media print {
-                  @page {
-                    size: A4 landscape !important;
-                    margin: 4mm 5mm !important;
-                  }
-                  body {
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    background: #ffffff !important;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                  }
-                  .no-print-toolbar {
-                    display: none !important;
-                  }
-                }
-                * {
-                  box-sizing: border-box !important;
-                  -webkit-print-color-adjust: exact !important;
-                  print-color-adjust: exact !important;
-                }
-                html, body {
-                  margin: 0;
-                  padding: 0;
-                  background: #f8fafc;
-                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-                  color: #0f172a;
-                  width: 100%;
-                }
-                .no-print-toolbar {
-                  position: sticky;
-                  top: 0;
-                  z-index: 9999;
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                  padding: 10px 20px;
-                  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-                  color: #ffffff;
-                  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                }
-                .no-print-toolbar button {
-                  padding: 8px 18px;
-                  font-size: 13px;
-                  font-weight: bold;
-                  border-radius: 8px;
-                  cursor: pointer;
-                  border: none;
-                  transition: all 0.2s;
-                }
-                .btn-print {
-                  background: #fbbf24;
-                  color: #0f172a;
-                }
-                .btn-print:hover {
-                  background: #f59e0b;
-                }
-                .btn-close {
-                  background: rgba(255,255,255,0.2);
-                  color: #ffffff;
-                  margin-left: 10px;
-                }
-                .btn-close:hover {
-                  background: rgba(255,255,255,0.3);
-                }
-                .print-page-wrapper {
-                  background: #ffffff;
-                  width: 100%;
-                  margin: 0 auto;
-                  padding: 6px 8px;
-                }
-                .ledger-print-root {
-                  width: 100% !important;
-                  max-width: 100% !important;
-                  margin: 0 auto !important;
-                  background: #ffffff !important;
-                }
-                table.ledger-print-table {
-                  width: 100% !important;
-                  table-layout: fixed !important;
-                  border-collapse: collapse !important;
-                  margin-top: 3px !important;
-                  margin-bottom: 3px !important;
-                }
-                table.ledger-print-table thead {
-                  display: table-header-group !important;
-                }
-                table.ledger-print-table tbody {
-                  display: table-row-group !important;
-                }
-                table.ledger-print-table tr {
-                  display: table-row !important;
-                  page-break-inside: avoid !important;
-                  break-inside: avoid !important;
-                }
-                table.ledger-print-table th,
-                table.ledger-print-table td {
-                  display: table-cell !important;
-                  border: 1px solid #bfdbfe !important;
-                  padding: 2.5px 2px !important;
-                  font-size: 7.2pt !important;
-                  line-height: 1.15 !important;
-                  vertical-align: middle !important;
-                }
-                table.ledger-print-table th {
-                  background-color: #eff6ff !important;
-                  color: #1e3a8a !important;
-                  text-align: center !important;
-                  padding: 2.5px 1.5px !important;
-                }
-                table.ledger-print-table th .header-en {
-                  font-size: 7pt !important;
-                  font-weight: 800 !important;
-                  color: #1e3a8a !important;
-                  white-space: nowrap !important;
-                  word-break: keep-all !important;
-                  overflow-wrap: normal !important;
-                  line-height: 1.1 !important;
-                }
-                table.ledger-print-table th .header-ps {
-                  font-size: 5.8pt !important;
-                  font-weight: 700 !important;
-                  color: #2563eb !important;
-                  direction: rtl !important;
-                  white-space: nowrap !important;
-                  word-break: keep-all !important;
-                  overflow-wrap: normal !important;
-                  line-height: 1.1 !important;
-                  margin-top: 1px !important;
-                }
-                table.ledger-print-table tbody tr:nth-child(even):not(.credit-row):not(.totals-row) {
-                  background-color: #f8fafc !important;
-                }
-                table.ledger-print-table tbody tr:nth-child(odd):not(.credit-row):not(.totals-row) {
-                  background-color: #ffffff !important;
-                }
-                tr.credit-row td {
-                  background-color: #ecfdf5 !important;
-                  color: #065f46 !important;
-                  border-color: #a7f3d0 !important;
-                }
-                tr.totals-row td {
-                  background-color: #eff6ff !important;
-                  font-weight: 900 !important;
-                  border-top: 2px solid #3b82f6 !important;
-                  border-bottom: 2px solid #3b82f6 !important;
-                }
-                .print-signatures, .print-footer, .print-header {
-                  page-break-inside: avoid !important;
-                  break-inside: avoid !important;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="no-print-toolbar">
-                <div style="font-weight: bold; font-size: 14px;">
-                  📄 Sky Ariana - Account Ledger Print Preview (A4 Landscape)
-                </div>
-                <div>
-                  <button class="btn-print" onclick="window.print()">🖨️ Print Document</button>
-                  <button class="btn-close" onclick="window.close()">✕ Close</button>
-                </div>
-              </div>
-              <div class="print-page-wrapper">
-                <div class="ledger-print-root">
-                  ${printHtml}
-                </div>
-              </div>
-              <script>
-                window.addEventListener('load', function() {
-                  setTimeout(function() {
-                    window.focus();
-                    window.print();
-                  }, 300);
-                });
-              </script>
-            </body>
-          </html>
-        `)
-        win.document.close()
-        return
-      }
-    } catch (e) {
-      console.warn('Popup window blocked, fallback to in-page print:', e)
-    }
+      const printContainer = document.querySelector('#sky-ledger-print-root') || document.querySelector('.ledger-print-root')
+      if (!printContainer) throw new Error('Print container not found')
 
-    // In-page fallback if popup is blocked
-    window.print()
-  }, [currentCompany])
+      const { default: html2canvas } = await import('html2canvas')
+      // @ts-ignore
+      const { jsPDF } = await import('jspdf/dist/jspdf.es.min.js')
+
+      const canvas = await html2canvas(printContainer as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: 1400,
+      })
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.98)
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+      })
+
+      const pdfWidth = 297
+      const pdfHeight = 210
+      const imgProps = pdf.getImageProperties(imgData)
+      const canvasHeightMM = (imgProps.height * pdfWidth) / imgProps.width
+
+      let heightLeft = canvasHeightMM
+      let position = 0
+
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'FAST')
+      heightLeft -= pdfHeight
+
+      while (heightLeft > 0) {
+        position = heightLeft - canvasHeightMM
+        pdf.addPage()
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'FAST')
+        heightLeft -= pdfHeight
+      }
+
+      const fileName = `${currentCompany.name.replace(/[^a-z0-9]/gi, '_')}_Account_Ledger_${new Date().toISOString().split('T')[0]}.pdf`
+      pdf.save(fileName)
+    } catch (err) {
+      console.error('Failed to export PDF:', err)
+      setPrintError('Failed to generate PDF. You can use the Print button to Save as PDF.')
+      setTimeout(() => setPrintError(null), 5000)
+    } finally {
+      setIsExportingPDF(false)
+    }
+  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -1181,9 +1085,9 @@ export const LedgerView = memo(function LedgerView() {
           {/* Export Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" className="gap-2 rounded-2xl h-12 px-5 bg-emerald-50/80 hover:bg-emerald-100/90 border-emerald-200 text-emerald-800 font-bold shadow-sm transition-all">
-                <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-                Export
+              <Button type="button" variant="outline" className="gap-2 rounded-2xl h-12 px-5 bg-emerald-50/80 hover:bg-emerald-100/90 border-emerald-200 text-emerald-800 font-bold shadow-sm transition-all" disabled={isExportingPDF}>
+                {isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin text-emerald-600" /> : <FileSpreadsheet className="h-4 w-4 text-emerald-600" />}
+                {isExportingPDF ? 'Exporting...' : 'Export'}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="glass-strong border-emerald-200/60 rounded-2xl p-1">
@@ -1194,6 +1098,10 @@ export const LedgerView = memo(function LedgerView() {
               <DropdownMenuItem onClick={handleExportCSV} className="gap-2 cursor-pointer hover:bg-emerald-50 font-semibold rounded-xl p-2">
                 <FileText className="h-4 w-4 text-blue-600" />
                 Export CSV (.csv)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportLandscapePDF} className="gap-2 cursor-pointer hover:bg-emerald-50 font-semibold rounded-xl p-2 text-rose-700">
+                <Download className="h-4 w-4 text-rose-600" />
+                Export PDF (A4 Landscape)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1218,10 +1126,28 @@ export const LedgerView = memo(function LedgerView() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button type="button" variant="outline" className="gap-2 rounded-2xl h-12 px-5 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all" onClick={handlePrint}>
-            <Printer className="h-4 w-4" />
-            Print
-          </Button>
+          {/* Print & Preview Button Group */}
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2 rounded-2xl h-12 px-5 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all"
+              onClick={() => setIsPrintPreviewOpen(true)}
+              title="Open A4 Landscape Print Preview / کتل مخکې له چاپه"
+            >
+              <Eye className="h-4 w-4 text-blue-600" />
+              Preview
+            </Button>
+            <Button
+              type="button"
+              className="gap-2 rounded-2xl h-12 px-5 bg-blue-900 hover:bg-blue-950 text-white font-bold shadow-md shadow-blue-950/15 transition-all"
+              onClick={handlePrint}
+              title="Print Account Ledger (A4 Landscape) / چاپول"
+            >
+              <Printer className="h-4 w-4 text-amber-400" />
+              Print
+            </Button>
+          </div>
 
           {/* Restore Deleted / Recycle Bin Button */}
           <Button
@@ -1998,7 +1924,7 @@ export const LedgerView = memo(function LedgerView() {
 
         {/* Print Table - Rendered via React Portal directly on document.body */}
         <LedgerPrintPortal>
-          <div data-print-root="true" className="print-container print-wrapper ledger-print-root" style={{ position: 'relative', background: '#ffffff', width: '100%' }}>
+          <div data-print-root="true" className="print-container print-wrapper ledger-print-root" style={{ position: 'relative', background: '#ffffff', width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
             {/* Content Container */}
             <div style={{ position: 'relative', zIndex: 1, width: '100%' }}>
               {/* Print Header with Logo, Company Info, and Account Info - Clean Blue Executive Style */}
@@ -2006,18 +1932,19 @@ export const LedgerView = memo(function LedgerView() {
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
-                marginBottom: '4px',
-                padding: '4px 10px',
-                borderBottom: '2px solid #1e40af',
-                background: '#eff6ff',
-                borderRadius: '5px 5px 0 0'
+                marginBottom: '3px',
+                padding: '5px 12px',
+                border: '1.5px solid #1e40af',
+                borderBottom: '2.5px solid #1e40af',
+                background: 'linear-gradient(180deg, #f0f7ff 0%, #e0edfe 100%)',
+                borderRadius: '6px 6px 0 0'
               }}>
                 {/* Left Side - Account/Shipper Info */}
                 <div style={{ flex: '1.2', textAlign: 'left' }}>
-                  <p style={{ fontSize: '8.5pt', color: '#1e40af', fontWeight: '800', marginBottom: '1px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>ACCOUNT LEDGER</p>
-                  <p style={{ fontSize: '11.5pt', fontWeight: '900', color: '#1e3a8a', marginBottom: '1px', lineHeight: '1.15' }}>{currentCompany.name}</p>
-                  <p style={{ fontSize: '7.5pt', color: '#3b82f6', fontWeight: '600' }}>Account Holder / Shipper</p>
-                  <p style={{ fontSize: '7.5pt', color: '#1e40af', marginTop: '2px', fontWeight: '600' }}>
+                  <p style={{ fontSize: '8.5pt', color: '#1e40af', fontWeight: '800', marginBottom: '1px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>ACCOUNT LEDGER / حساب کتاب</p>
+                  <p style={{ fontSize: '12pt', fontWeight: '900', color: '#1e3a8a', marginBottom: '1px', lineHeight: '1.15' }}>{currentCompany.name}</p>
+                  <p style={{ fontSize: '7.5pt', color: '#2563eb', fontWeight: '600' }}>Account Holder / Shipper</p>
+                  <p style={{ fontSize: '7.5pt', color: '#1e40af', marginTop: '2px', fontWeight: '700' }}>
                     {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
                   </p>
                 </div>
@@ -2030,89 +1957,89 @@ export const LedgerView = memo(function LedgerView() {
                     alt="SKY ARIANA Logo" 
                     className="print-logo"
                     style={{ 
-                      height: '40px', 
-                      maxWidth: '120px', 
+                      height: '42px', 
+                      maxWidth: '140px', 
                       objectFit: 'contain',
-                      marginBottom: '1px',
+                      marginBottom: '2px',
                       display: 'inline-block'
                     }} 
                   />
-                  <p style={{ fontSize: '13pt', fontWeight: '900', color: '#1e40af', marginBottom: '0px', letterSpacing: '0.5px', lineHeight: '1.1' }}>SKY ARIANA</p>
-                  <p style={{ fontSize: '7.5pt', color: '#2563eb', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>Transport & Logistics</p>
+                  <p style={{ fontSize: '13.5pt', fontWeight: '900', color: '#1e40af', marginBottom: '0px', letterSpacing: '0.5px', lineHeight: '1.1' }}>SKY ARIANA</p>
+                  <p style={{ fontSize: '7.5pt', color: '#2563eb', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '800' }}>Transport & Logistics</p>
                 </div>
                 
                 {/* Right Side - Company Address */}
                 <div style={{ flex: '1.2', textAlign: 'right' }}>
                   <p style={{ fontSize: '8.5pt', fontWeight: '800', color: '#1e40af', marginBottom: '1px' }}>AFGHANISTAN OFFICE</p>
-                  <p style={{ fontSize: '6.5pt', color: '#2563eb', lineHeight: '1.25' }}>
+                  <p style={{ fontSize: '6.8pt', color: '#2563eb', lineHeight: '1.25' }}>
                     2nd Floor, 16 No. Office, Shahidano Chowk<br />
                     Etimad Rahmi Market, Kandahar, Afghanistan
                   </p>
-                  <p style={{ fontSize: '6.5pt', color: '#1d4ed8', marginTop: '1px', fontWeight: '600' }}>
+                  <p style={{ fontSize: '6.8pt', color: '#1d4ed8', marginTop: '1px', fontWeight: '700' }}>
                     Tel: +93 700 939 365 | info@skyariana.com
                   </p>
-                  <p style={{ fontSize: '6.5pt', color: '#3b82f6', marginTop: '0.5px' }}>Licence: 2401-2198</p>
+                  <p style={{ fontSize: '6.5pt', color: '#3b82f6', marginTop: '0.5px', fontWeight: '600' }}>Licence: 2401-2198 | Verified ERP</p>
                 </div>
               </div>
               
-              <table className="ledger-print-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
+              <table className="ledger-print-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', margin: '2px 0' }}>
                 <thead>
                   <tr>
-                    <th style={{ width: '3%' }}>
-                      <div className="header-en">S.NO</div>
-                      <div className="header-ps">مسلسل</div>
+                    <th style={{ width: '3.2%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>S.NO</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>مسلسل</div>
                     </th>
-                    <th style={{ width: '6.5%' }}>
-                      <div className="header-en">DATE</div>
-                      <div className="header-ps">نېټه</div>
+                    <th style={{ width: '6.8%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>نېټه</div>
                     </th>
-                    <th style={{ width: '11%' }}>
-                      <div className="header-en">SHIPPER / DESC</div>
-                      <div className="header-ps">لیږدونکی / تفصیل</div>
+                    <th style={{ width: '12.5%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>SHIPPER / DESC</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>لیږدونکی / تفصیل</div>
                     </th>
-                    <th style={{ width: '6%' }}>
-                      <div className="header-en">INVOICE</div>
-                      <div className="header-ps">انوایس</div>
+                    <th style={{ width: '6.2%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>INVOICE</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>انوایس</div>
                     </th>
-                    <th style={{ width: '6.5%' }}>
-                      <div className="header-en">DATE SHIP</div>
-                      <div className="header-ps">د بار نېټه</div>
+                    <th style={{ width: '6.5%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE SHIP</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د بار نېټه</div>
                     </th>
-                    <th style={{ width: '7.5%' }}>
-                      <div className="header-en">BARNAMEH</div>
-                      <div className="header-ps">بارنامه</div>
+                    <th style={{ width: '7.5%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BARNAMEH</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بارنامه</div>
                     </th>
-                    <th style={{ width: '6%' }}>
-                      <div className="header-en">B/L NO</div>
-                      <div className="header-ps">بی ال</div>
+                    <th style={{ width: '6.5%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>B/L NO</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بی ال</div>
                     </th>
-                    <th style={{ width: '6%' }}>
-                      <div className="header-en">CONTAINER</div>
-                      <div className="header-ps">کانټینر</div>
+                    <th style={{ width: '6.8%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONTAINER</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>کانټینر</div>
                     </th>
-                    <th style={{ width: '12%' }}>
-                      <div className="header-en">CONSIGNEE</div>
-                      <div className="header-ps">د مال وصول کوونکی</div>
+                    <th style={{ width: '11.5%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONSIGNEE</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د مال وصول کوونکی</div>
                     </th>
-                    <th style={{ width: '12%' }}>
-                      <div className="header-en">QUANTITY / تعداد</div>
-                      <div className="header-ps">د توکو بسته بندي</div>
+                    <th style={{ width: '9.5%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>QUANTITY / تعداد</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د توکو بسته بندي</div>
                     </th>
-                    <th style={{ width: '10.5%' }}>
-                      <div className="header-en">DRIVER FREIGHT</div>
-                      <div className="header-ps">کرایه موتر / دریور</div>
+                    <th style={{ width: '8.2%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DRIVER FREIGHT</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>کرایه موتر / دریور</div>
                     </th>
-                    <th style={{ width: '4.5%' }}>
-                      <div className="header-en">DEBIT</div>
-                      <div className="header-ps">پور</div>
+                    <th style={{ width: '4.8%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DEBIT</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>پور</div>
                     </th>
-                    <th style={{ width: '4.5%' }}>
-                      <div className="header-en">CREDIT</div>
-                      <div className="header-ps">ترلاسه</div>
+                    <th style={{ width: '4.8%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CREDIT</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>ترلاسه</div>
                     </th>
-                    <th style={{ width: '4%' }}>
-                      <div className="header-en">BALANCE</div>
-                      <div className="header-ps">بیلانس</div>
+                    <th style={{ width: '5.2%', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', padding: '3px 2px' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BALANCE</div>
+                      <div className="header-ps" style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بیلانس</div>
                     </th>
                   </tr>
                 </thead>
@@ -2123,11 +2050,16 @@ export const LedgerView = memo(function LedgerView() {
                     <tr 
                       key={entry.id}
                       className={isCredit ? 'credit-row' : ''}
-                      style={{ height: '22px', pageBreakInside: 'avoid', breakInside: 'avoid' }}
+                      style={{ 
+                        height: '21px', 
+                        pageBreakInside: 'avoid', 
+                        breakInside: 'avoid',
+                        backgroundColor: isCredit ? '#ecfdf5' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc')
+                      }}
                     >
-                      <td style={{ fontWeight: 600, color: '#1e3a8a', textAlign: 'center', fontSize: '7pt' }}>{entry.sNo}</td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt' }}>{entry.date}</td>
-                      <td style={{ textAlign: 'left', paddingLeft: '3px', fontWeight: isCredit ? 700 : 500, fontSize: '6.8pt', lineHeight: '1.15' }}>
+                      <td style={{ fontWeight: 700, color: '#1e3a8a', textAlign: 'center', fontSize: '7pt', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>{entry.sNo}</td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>{entry.date}</td>
+                      <td style={{ textAlign: 'left', paddingLeft: '4px', fontWeight: isCredit ? 700 : 500, fontSize: '6.8pt', lineHeight: '1.15', border: '1px solid #bfdbfe', color: isCredit ? '#065f46' : '#0f172a' }}>
                         {isCredit ? (
                           <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                             <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981', flexShrink: 0 }}></span>
@@ -2135,18 +2067,18 @@ export const LedgerView = memo(function LedgerView() {
                           </span>
                         ) : entry.shipperDescription}
                       </td>
-                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 600, fontSize: '6.8pt', whiteSpace: 'nowrap' }}>{entry.invoiceNo}</td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt' }}>{entry.dateOfShip}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold', fontFamily: 'monospace', color: '#1e3a8a', fontSize: '7pt', whiteSpace: 'nowrap' }}>{entry.barnamehNo || ''}</td>
-                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap' }}>
+                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 600, fontSize: '6.8pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>{entry.invoiceNo}</td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>{entry.dateOfShip}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold', fontFamily: 'monospace', color: '#1e3a8a', fontSize: '7pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>{entry.barnamehNo || ''}</td>
+                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
                           <span>{entry.billOfLanding}</span>
                           {entry.surrenderedBL && (
                             <span style={{ 
                               border: '1px solid #059669',
                               color: '#059669',
-                              padding: '0.5px 2px',
-                              fontSize: '5pt',
+                              padding: '0.5px 3px',
+                              fontSize: '5.2pt',
                               fontWeight: 'bold',
                               textTransform: 'uppercase',
                               letterSpacing: '0.04em',
@@ -2158,21 +2090,21 @@ export const LedgerView = memo(function LedgerView() {
                           )}
                         </div>
                       </td>
-                      <td style={{ textAlign: 'center', fontSize: '6.8pt', whiteSpace: 'nowrap' }}>{entry.containerNo}</td>
-                      <td style={{ textAlign: 'left', paddingLeft: '3px', fontSize: '6.8pt', lineHeight: '1.15' }}>{entry.consignee}</td>
-                      <td style={{ textAlign: 'left', paddingLeft: '3px', fontSize: '6.8pt', lineHeight: '1.15', fontWeight: 600 }}>{entry.quantity}</td>
-                      <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '7pt', backgroundColor: '#fffdf5', lineHeight: '1.15' }}>
+                      <td style={{ textAlign: 'center', fontSize: '6.8pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>{entry.containerNo}</td>
+                      <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', border: '1px solid #bfdbfe' }}>{entry.consignee}</td>
+                      <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', fontWeight: 600, border: '1px solid #bfdbfe' }}>{entry.quantity}</td>
+                      <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '6.8pt', backgroundColor: '#fffdf5', lineHeight: '1.15', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>
                         {entry.driverFreight && entry.driverFreight.trim() !== ''
                           ? entry.driverFreight
                           : ''}
                       </td>
-                      <td style={{ textAlign: 'right', paddingRight: '3px', fontWeight: 600, color: '#dc2626', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap' }}>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe' }}>
                         {entry.debit > 0 ? `$${entry.debit.toLocaleString()}` : ''}
                       </td>
-                      <td style={{ textAlign: 'right', paddingRight: '3px', fontWeight: 600, color: '#059669', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap' }}>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#059669', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe' }}>
                         {entry.credit > 0 ? `$${entry.credit.toLocaleString()}` : ''}
                       </td>
-                      <td style={{ textAlign: 'right', paddingRight: '3px', fontWeight: 700, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap' }}>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe' }}>
                         ${entry.balance.toLocaleString()}
                       </td>
                     </tr>
@@ -2180,30 +2112,30 @@ export const LedgerView = memo(function LedgerView() {
                   })}
                   {/* Empty rows only if list is short to fill 1 page cleanly */}
                   {filteredEntries.length < 10 && Array.from({ length: 10 - filteredEntries.length }).map((_, idx) => (
-                    <tr key={`empty-${idx}`} style={{ height: '20px', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                      <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '6.8pt' }}>{filteredEntries.length + idx + 1}</td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td></td>
-                      <td style={{ textAlign: 'right', paddingRight: '3px', color: '#94a3b8', fontFamily: 'monospace', fontSize: '6.8pt' }}>$0</td>
+                    <tr key={`empty-${idx}`} style={{ height: '20px', pageBreakInside: 'avoid', breakInside: 'avoid', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                      <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '6.8pt', border: '1px solid #bfdbfe' }}>{filteredEntries.length + idx + 1}</td>
+                      <td style={{ border: '1px solid #bfdbfe' }}></td>
+                      <td style={{ border: '1px solid #bfdbfe' }}></td>
+                      <td style={{ border: '1px solid #bfdbfe' }}></td>
+                      <td style={{ border: '1px solid #bfdbfe' }}></td>
+                      <td style={{ border: '1px solid #bfdbfe' }}></td>
+                      <td style={{ border: '1px solid #bfdbfe' }}></td>
+                      <td style={{ border: '1px solid #bfdbfe' }}></td>
+                      <td style={{ border: '1px solid #bfdbfe' }}></td>
+                      <td style={{ border: '1px solid #bfdbfe' }}></td>
+                      <td style={{ border: '1px solid #bfdbfe' }}></td>
+                      <td style={{ border: '1px solid #bfdbfe' }}></td>
+                      <td style={{ border: '1px solid #bfdbfe' }}></td>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', color: '#94a3b8', fontFamily: 'monospace', fontSize: '6.8pt', border: '1px solid #bfdbfe' }}>$0</td>
                     </tr>
                   ))}
                   {/* Totals row */}
-                  <tr className="totals-row" style={{ height: '24px', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
-                    <td colSpan={10} style={{ textAlign: 'right', fontWeight: 900, color: '#1e3a8a', fontSize: '7.8pt', paddingRight: '6px' }}>TOTAL:</td>
-                    <td style={{ textAlign: 'center', fontWeight: 800, color: '#92400e', backgroundColor: '#fef3c7', fontSize: '7.2pt' }}>{formatAFN(totalDriverRentAFN)}</td>
-                    <td style={{ textAlign: 'right', paddingRight: '3px', fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', fontSize: '7pt' }}>${totalDebit.toLocaleString()}</td>
-                    <td style={{ textAlign: 'right', paddingRight: '3px', fontWeight: 700, color: '#059669', fontFamily: 'monospace', fontSize: '7pt' }}>${totalCredit.toLocaleString()}</td>
-                    <td style={{ textAlign: 'right', paddingRight: '3px', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7pt' }}>${finalBalance.toLocaleString()}</td>
+                  <tr className="totals-row" style={{ height: '24px', pageBreakInside: 'avoid', breakInside: 'avoid', backgroundColor: '#eff6ff' }}>
+                    <td colSpan={10} style={{ textAlign: 'right', fontWeight: 900, color: '#1e3a8a', fontSize: '8pt', paddingRight: '8px', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>GRAND TOTAL:</td>
+                    <td style={{ textAlign: 'center', fontWeight: 800, color: '#92400e', backgroundColor: '#fef3c7', fontSize: '7.2pt', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>{formatAFN(totalDriverRentAFN)}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: '#dc2626', fontFamily: 'monospace', fontSize: '7.2pt', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>${totalDebit.toLocaleString()}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: '#059669', fontFamily: 'monospace', fontSize: '7.2pt', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>${totalCredit.toLocaleString()}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7.5pt', backgroundColor: '#dbeafe', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>${finalBalance.toLocaleString()}</td>
                   </tr>
                 </tbody>
               </table>
@@ -2214,7 +2146,7 @@ export const LedgerView = memo(function LedgerView() {
                 marginBottom: '4px', 
                 padding: '4px 10px', 
                 backgroundColor: '#fffbeb', 
-                border: '1px solid #fde68a', 
+                border: '1.5px solid #fde68a', 
                 borderRadius: '5px',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -2222,9 +2154,12 @@ export const LedgerView = memo(function LedgerView() {
                 pageBreakInside: 'avoid',
                 breakInside: 'avoid'
               }}>
-                <span style={{ fontSize: '8pt', fontWeight: '800', color: '#78350f' }}>
-                  DRIVER RENT TOTAL (مجموع کرایه درایوران در افغانی):
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ backgroundColor: '#f59e0b', color: '#0f172a', fontWeight: '900', fontSize: '6.5pt', padding: '1px 5px', borderRadius: '3px' }}>AFN</span>
+                  <span style={{ fontSize: '7.8pt', fontWeight: '800', color: '#78350f' }}>
+                    DRIVER RENT TOTAL (مجموع کرایه درایوران در افغانی):
+                  </span>
+                </div>
                 <span style={{ fontSize: '9.5pt', fontWeight: '900', color: '#92400e', fontFamily: 'monospace' }}>
                   {formatAFN(totalDriverRentAFN)} (افغانی)
                 </span>
@@ -2237,57 +2172,359 @@ export const LedgerView = memo(function LedgerView() {
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'flex-end',
-                padding: '0 10px',
+                padding: '0 8px',
                 pageBreakInside: 'avoid',
                 breakInside: 'avoid'
               }}>
                 <div style={{ textAlign: 'center', width: '28%' }}>
-                  <div style={{ borderBottom: '1px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
-                  <p style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e3a8a' }}>PREPARED BY / ترتیب کوونکی</p>
+                  <div style={{ borderBottom: '1.5px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
+                  <p style={{ fontSize: '7.2pt', fontWeight: '800', color: '#1e3a8a' }}>PREPARED BY / ترتیب کوونکی</p>
                   <p style={{ fontSize: '6pt', color: '#64748b' }}>Accountant Signature</p>
                 </div>
                 <div style={{ textAlign: 'center', width: '28%' }}>
-                  <div style={{ borderBottom: '1px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
-                  <p style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e3a8a' }}>CHECKED BY / کتونکی</p>
+                  <div style={{ borderBottom: '1.5px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
+                  <p style={{ fontSize: '7.2pt', fontWeight: '800', color: '#1e3a8a' }}>CHECKED BY / کتونکی</p>
                   <p style={{ fontSize: '6pt', color: '#64748b' }}>Auditor Approval</p>
                 </div>
                 <div style={{ textAlign: 'center', width: '32%' }}>
-                  <div style={{ border: '1px dashed #cbd5e1', borderRadius: '5px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', marginBottom: '2px' }}>
-                    <span style={{ fontSize: '6.5pt', color: '#94a3b8', fontStyle: 'italic' }}>[ OFFICIAL COMPANY STAMP ]</span>
+                  <div style={{ border: '1.5px dashed #93c5fd', borderRadius: '5px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f7ff', marginBottom: '2px' }}>
+                    <span style={{ fontSize: '6.5pt', color: '#3b82f6', fontWeight: '700', letterSpacing: '0.04em' }}>[ OFFICIAL COMPANY STAMP ]</span>
                   </div>
-                  <p style={{ fontSize: '7pt', fontWeight: 'bold', color: '#1e3a8a' }}>AUTHORIZED STAMP & SIGNATURE</p>
+                  <p style={{ fontSize: '7.2pt', fontWeight: '800', color: '#1e3a8a' }}>AUTHORIZED STAMP & SIGNATURE</p>
                   <p style={{ fontSize: '6pt', color: '#64748b' }}>د منلو امضا او ټاپه</p>
                 </div>
               </div>
 
               {/* Print Footer - Premium Blue Executive Style */}
               <div className="print-footer" style={{ 
-                padding: '4px 10px', 
+                padding: '5px 10px', 
                 borderTop: '2px solid #1e3a8a',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 background: '#eff6ff',
-                borderRadius: '0 0 5px 5px',
+                borderRadius: '0 0 6px 6px',
                 pageBreakInside: 'avoid',
                 breakInside: 'avoid'
               }}>
                 <div style={{ fontSize: '6.5pt', textAlign: 'left' }}>
-                  <p style={{ fontWeight: 'bold', color: '#1e40af', marginBottom: '0.5px' }}>SKY ARIANA TRANSPORT & LOGISTICS</p>
-                  <p style={{ color: '#3b82f6' }}>Licence: 2401-2198 | Cloud ERP Verified</p>
+                  <p style={{ fontWeight: '800', color: '#1e40af', marginBottom: '0.5px' }}>SKY ARIANA TRANSPORT & LOGISTICS</p>
+                  <p style={{ color: '#3b82f6', fontWeight: '600' }}>Licence: 2401-2198 | Cloud ERP Verified</p>
                 </div>
                 <div style={{ fontSize: '6.5pt', textAlign: 'center' }}>
-                  <p style={{ color: '#1e40af', fontWeight: '600' }}>info@skyariana.com | transport@skyariana.com</p>
-                  <p style={{ color: '#3b82f6' }}>+93 700 939 365 | +93 711 435 529</p>
+                  <p style={{ color: '#1e40af', fontWeight: '700' }}>info@skyariana.com | transport@skyariana.com</p>
+                  <p style={{ color: '#3b82f6', fontWeight: '600' }}>+93 700 939 365 | +93 711 435 529</p>
                 </div>
                 <div style={{ fontSize: '6.5pt', textAlign: 'right' }}>
-                  <p style={{ color: '#1e40af' }}>2nd Floor, 16 No. Office, Shahidano Chowk</p>
-                  <p style={{ color: '#3b82f6' }}>Etimad Rahmi Market, Kandahar, Afghanistan</p>
+                  <p style={{ color: '#1e40af', fontWeight: '700' }}>2nd Floor, 16 No. Office, Shahidano Chowk</p>
+                  <p style={{ color: '#3b82f6', fontWeight: '600' }}>Etimad Rahmi Market, Kandahar, Afghanistan</p>
                 </div>
               </div>
             </div>
           </div>
         </LedgerPrintPortal>
+
+        {/* Live A4 Landscape Print Preview Dialog */}
+        <Dialog open={isPrintPreviewOpen} onOpenChange={setIsPrintPreviewOpen}>
+          <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-0 overflow-hidden bg-slate-900/95 border-slate-700 text-white">
+            <DialogHeader className="px-6 py-4 border-b border-slate-800 flex flex-row items-center justify-between">
+              <div>
+                <DialogTitle className="text-lg font-bold flex items-center gap-2.5 text-white">
+                  <Printer className="h-5 w-5 text-amber-400" />
+                  Account Ledger Print Preview
+                </DialogTitle>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  A4 Landscape (297mm × 210mm) • {currentCompany.name} • {filteredEntries.length} Active Entries
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportLandscapePDF}
+                  disabled={isExportingPDF}
+                  className="gap-2 bg-emerald-600/20 hover:bg-emerald-600/30 border-emerald-500/40 text-emerald-300 font-bold"
+                >
+                  {isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  Export PDF
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setIsPrintPreviewOpen(false)
+                    setTimeout(handlePrint, 150)
+                  }}
+                  className="gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md shadow-blue-600/30"
+                >
+                  <Printer className="h-4 w-4 text-amber-300" />
+                  Print Now
+                </Button>
+              </div>
+            </DialogHeader>
+
+            <div className="flex-1 overflow-auto p-6 bg-slate-950 flex justify-center items-start">
+              {/* Scaled A4 Landscape Sheet Preview Container */}
+              <div className="w-full max-w-[1100px] bg-white text-slate-950 p-6 rounded-lg shadow-2xl border border-slate-200">
+                {/* Header */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginBottom: '4px',
+                  padding: '6px 12px',
+                  border: '1.5px solid #1e40af',
+                  borderBottom: '2.5px solid #1e40af',
+                  background: 'linear-gradient(180deg, #f0f7ff 0%, #e0edfe 100%)',
+                  borderRadius: '6px 6px 0 0'
+                }}>
+                  <div style={{ flex: '1.2', textAlign: 'left' }}>
+                    <p style={{ fontSize: '8.5pt', color: '#1e40af', fontWeight: '800', marginBottom: '1px', textTransform: 'uppercase' }}>ACCOUNT LEDGER / حساب کتاب</p>
+                    <p style={{ fontSize: '12pt', fontWeight: '900', color: '#1e3a8a', marginBottom: '1px', lineHeight: '1.15' }}>{currentCompany.name}</p>
+                    <p style={{ fontSize: '7.5pt', color: '#2563eb', fontWeight: '600' }}>Account Holder / Shipper</p>
+                    <p style={{ fontSize: '7.5pt', color: '#1e40af', marginTop: '2px', fontWeight: '700' }}>
+                      {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                  <div style={{ flex: '1', textAlign: 'center' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src={getLedgerSettings().logoUrl || getLedgerSettings().companyLogo || "/logo.png"} 
+                      alt="SKY ARIANA Logo" 
+                      style={{ height: '42px', maxWidth: '140px', objectFit: 'contain', marginBottom: '2px', display: 'inline-block' }} 
+                    />
+                    <p style={{ fontSize: '13.5pt', fontWeight: '900', color: '#1e40af', marginBottom: '0px', lineHeight: '1.1' }}>SKY ARIANA</p>
+                    <p style={{ fontSize: '7.5pt', color: '#2563eb', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '800' }}>Transport & Logistics</p>
+                  </div>
+                  <div style={{ flex: '1.2', textAlign: 'right' }}>
+                    <p style={{ fontSize: '8.5pt', fontWeight: '800', color: '#1e40af', marginBottom: '1px' }}>AFGHANISTAN OFFICE</p>
+                    <p style={{ fontSize: '6.8pt', color: '#2563eb', lineHeight: '1.25' }}>
+                      2nd Floor, 16 No. Office, Shahidano Chowk<br />
+                      Etimad Rahmi Market, Kandahar, Afghanistan
+                    </p>
+                    <p style={{ fontSize: '6.8pt', color: '#1d4ed8', marginTop: '1px', fontWeight: '700' }}>
+                      Tel: +93 700 939 365 | info@skyariana.com
+                    </p>
+                    <p style={{ fontSize: '6.5pt', color: '#3b82f6', marginTop: '0.5px', fontWeight: '600' }}>Licence: 2401-2198 | Verified ERP</p>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', margin: '2px 0' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#eff6ff' }}>
+                      <th style={{ width: '3.2%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>S.NO</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>مسلسل</div>
+                      </th>
+                      <th style={{ width: '6.8%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>DATE</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>نېټه</div>
+                      </th>
+                      <th style={{ width: '12.5%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>SHIPPER / DESC</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>لیږدونکی / تفصیل</div>
+                      </th>
+                      <th style={{ width: '6.2%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>INVOICE</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>انوایس</div>
+                      </th>
+                      <th style={{ width: '6.5%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>DATE SHIP</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>د بار نېټه</div>
+                      </th>
+                      <th style={{ width: '7.5%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>BARNAMEH</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>بارنامه</div>
+                      </th>
+                      <th style={{ width: '6.5%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>B/L NO</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>بی ال</div>
+                      </th>
+                      <th style={{ width: '6.8%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>CONTAINER</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>کانټینر</div>
+                      </th>
+                      <th style={{ width: '11.5%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>CONSIGNEE</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>د مال وصول کوونکی</div>
+                      </th>
+                      <th style={{ width: '9.5%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>QUANTITY / تعداد</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>د توکو بسته بندي</div>
+                      </th>
+                      <th style={{ width: '8.2%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>DRIVER FREIGHT</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>کرایه موتر / دریور</div>
+                      </th>
+                      <th style={{ width: '4.8%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>DEBIT</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>پور</div>
+                      </th>
+                      <th style={{ width: '4.8%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>CREDIT</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>ترلاسه</div>
+                      </th>
+                      <th style={{ width: '5.2%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a' }}>BALANCE</div>
+                        <div style={{ fontSize: '5.8pt', fontWeight: 700, color: '#2563eb' }}>بیلانس</div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEntries.map((entry, idx) => {
+                      const isCredit = entry.credit > 0;
+                      return (
+                      <tr 
+                        key={entry.id}
+                        style={{ 
+                          height: '21px',
+                          backgroundColor: isCredit ? '#ecfdf5' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc')
+                        }}
+                      >
+                        <td style={{ fontWeight: 700, color: '#1e3a8a', textAlign: 'center', fontSize: '7pt', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>{entry.sNo}</td>
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>{entry.date}</td>
+                        <td style={{ textAlign: 'left', paddingLeft: '4px', fontWeight: isCredit ? 700 : 500, fontSize: '6.8pt', lineHeight: '1.15', border: '1px solid #bfdbfe', color: isCredit ? '#065f46' : '#0f172a' }}>
+                          {isCredit ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981', flexShrink: 0 }}></span>
+                              <span>{entry.shipperDescription || 'RECEIVING MONEY'}</span>
+                            </span>
+                          ) : entry.shipperDescription}
+                        </td>
+                        <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 600, fontSize: '6.8pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>{entry.invoiceNo}</td>
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>{entry.dateOfShip}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold', fontFamily: 'monospace', color: '#1e3a8a', fontSize: '7pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>{entry.barnamehNo || ''}</td>
+                        <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
+                            <span>{entry.billOfLanding}</span>
+                            {entry.surrenderedBL && (
+                              <span style={{ 
+                                border: '1px solid #059669',
+                                color: '#059669',
+                                padding: '0.5px 3px',
+                                fontSize: '5.2pt',
+                                fontWeight: 'bold',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em',
+                                backgroundColor: '#ecfdf5',
+                                borderRadius: '2px',
+                                whiteSpace: 'nowrap',
+                                lineHeight: '1'
+                              }}>Surrender</span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'center', fontSize: '6.8pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>{entry.containerNo}</td>
+                        <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', border: '1px solid #bfdbfe' }}>{entry.consignee}</td>
+                        <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', fontWeight: 600, border: '1px solid #bfdbfe' }}>{entry.quantity}</td>
+                        <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '6.8pt', backgroundColor: '#fffdf5', lineHeight: '1.15', border: '1px solid #bfdbfe', padding: '2.5px 2px' }}>
+                          {entry.driverFreight && entry.driverFreight.trim() !== ''
+                            ? entry.driverFreight
+                            : ''}
+                        </td>
+                        <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe' }}>
+                          {entry.debit > 0 ? `$${entry.debit.toLocaleString()}` : ''}
+                        </td>
+                        <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#059669', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe' }}>
+                          {entry.credit > 0 ? `$${entry.credit.toLocaleString()}` : ''}
+                        </td>
+                        <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: '1px solid #bfdbfe' }}>
+                          ${entry.balance.toLocaleString()}
+                        </td>
+                      </tr>
+                    );
+                    })}
+                    {/* Totals row */}
+                    <tr style={{ height: '24px', backgroundColor: '#eff6ff' }}>
+                      <td colSpan={10} style={{ textAlign: 'right', fontWeight: 900, color: '#1e3a8a', fontSize: '8pt', paddingRight: '8px', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>GRAND TOTAL:</td>
+                      <td style={{ textAlign: 'center', fontWeight: 800, color: '#92400e', backgroundColor: '#fef3c7', fontSize: '7.2pt', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>{formatAFN(totalDriverRentAFN)}</td>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: '#dc2626', fontFamily: 'monospace', fontSize: '7.2pt', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>${totalDebit.toLocaleString()}</td>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: '#059669', fontFamily: 'monospace', fontSize: '7.2pt', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>${totalCredit.toLocaleString()}</td>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7.5pt', backgroundColor: '#dbeafe', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>${finalBalance.toLocaleString()}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Driver Total AFN Banner */}
+                <div style={{ 
+                  marginTop: '4px', 
+                  marginBottom: '4px', 
+                  padding: '4px 10px', 
+                  backgroundColor: '#fffbeb', 
+                  border: '1.5px solid #fde68a', 
+                  borderRadius: '5px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ backgroundColor: '#f59e0b', color: '#0f172a', fontWeight: '900', fontSize: '6.5pt', padding: '1px 5px', borderRadius: '3px' }}>AFN</span>
+                    <span style={{ fontSize: '7.8pt', fontWeight: '800', color: '#78350f' }}>
+                      DRIVER RENT TOTAL (مجموع کرایه درایوران در افغانی):
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '9.5pt', fontWeight: '900', color: '#92400e', fontFamily: 'monospace' }}>
+                    {formatAFN(totalDriverRentAFN)} (افغانی)
+                  </span>
+                </div>
+
+                {/* Signatures */}
+                <div style={{ 
+                  marginTop: '6px', 
+                  marginBottom: '4px',
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'flex-end',
+                  padding: '0 8px'
+                }}>
+                  <div style={{ textAlign: 'center', width: '28%' }}>
+                    <div style={{ borderBottom: '1.5px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
+                    <p style={{ fontSize: '7.2pt', fontWeight: '800', color: '#1e3a8a' }}>PREPARED BY / ترتیب کوونکی</p>
+                    <p style={{ fontSize: '6pt', color: '#64748b' }}>Accountant Signature</p>
+                  </div>
+                  <div style={{ textAlign: 'center', width: '28%' }}>
+                    <div style={{ borderBottom: '1.5px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
+                    <p style={{ fontSize: '7.2pt', fontWeight: '800', color: '#1e3a8a' }}>CHECKED BY / کتونکی</p>
+                    <p style={{ fontSize: '6pt', color: '#64748b' }}>Auditor Approval</p>
+                  </div>
+                  <div style={{ textAlign: 'center', width: '32%' }}>
+                    <div style={{ border: '1.5px dashed #93c5fd', borderRadius: '5px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f7ff', marginBottom: '2px' }}>
+                      <span style={{ fontSize: '6.5pt', color: '#3b82f6', fontWeight: '700', letterSpacing: '0.04em' }}>[ OFFICIAL COMPANY STAMP ]</span>
+                    </div>
+                    <p style={{ fontSize: '7.2pt', fontWeight: '800', color: '#1e3a8a' }}>AUTHORIZED STAMP & SIGNATURE</p>
+                    <p style={{ fontSize: '6pt', color: '#64748b' }}>د منلو امضا او ټاپه</p>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div style={{ 
+                  padding: '5px 10px', 
+                  borderTop: '2px solid #1e3a8a',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: '#eff6ff',
+                  borderRadius: '0 0 6px 6px'
+                }}>
+                  <div style={{ fontSize: '6.5pt', textAlign: 'left' }}>
+                    <p style={{ fontWeight: '800', color: '#1e40af', marginBottom: '0.5px' }}>SKY ARIANA TRANSPORT & LOGISTICS</p>
+                    <p style={{ color: '#3b82f6', fontWeight: '600' }}>Licence: 2401-2198 | Cloud ERP Verified</p>
+                  </div>
+                  <div style={{ fontSize: '6.5pt', textAlign: 'center' }}>
+                    <p style={{ color: '#1e40af', fontWeight: '700' }}>info@skyariana.com | transport@skyariana.com</p>
+                    <p style={{ color: '#3b82f6', fontWeight: '600' }}>+93 700 939 365 | +93 711 435 529</p>
+                  </div>
+                  <div style={{ fontSize: '6.5pt', textAlign: 'right' }}>
+                    <p style={{ color: '#1e40af', fontWeight: '700' }}>2nd Floor, 16 No. Office, Shahidano Chowk</p>
+                    <p style={{ color: '#3b82f6', fontWeight: '600' }}>Etimad Rahmi Market, Kandahar, Afghanistan</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </Card>
 
       {/* Edit Ledger Entry Dialog */}
