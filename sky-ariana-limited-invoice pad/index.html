@@ -1119,6 +1119,162 @@
     .toast-msg.show { opacity: 1; transform: translateY(0); }
 
     /* ==========================================================================
+       6.5 ADVANCED MOBILE & TABLET RESPONSIVE UX ENGINE
+       ========================================================================== */
+    @media (max-width: 900px) {
+      .dashbar-header {
+        height: auto;
+        min-height: 48px;
+        padding: 6px 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .app-workspace {
+        height: auto;
+        min-height: calc(100vh - 54px);
+        padding: 6px 8px 70px 8px; /* Extra bottom padding for mobile floating dock */
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .view-content-wrapper {
+        flex-direction: column;
+        gap: 12px;
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+      }
+
+      .edit-forum-panel {
+        max-width: 100%;
+        width: 100%;
+        height: auto;
+        min-height: auto;
+        padding: 10px 12px;
+        overflow: visible;
+        border-radius: 12px;
+      }
+
+      .preview-panel {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        min-height: auto;
+        overflow: visible;
+        padding: 6px 0;
+      }
+
+      /* Mobile input sizing & touch targets */
+      .form-input, .goods-input-col input {
+        height: 38px;
+        font-size: 14px !important;
+        padding: 8px 10px;
+        border-radius: 8px;
+      }
+
+      .goods-grid-row-1 {
+        grid-template-columns: 1fr !important;
+        gap: 8px;
+      }
+
+      .goods-grid-row-2 {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr !important;
+        gap: 8px;
+      }
+
+      .form-group {
+        grid-column: span 1 !important;
+      }
+
+      .goods-item-card {
+        padding: 10px 10px;
+      }
+
+      .goods-item-header {
+        margin-bottom: 8px;
+      }
+
+      .goods-calc-preview {
+        font-size: 10px;
+        padding: 2px 6px;
+      }
+
+      .btn {
+        height: 34px;
+        padding: 0 12px;
+        font-size: 12px;
+      }
+
+      .preview-zoom-controls {
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 8px;
+        padding: 4px 10px;
+        flex-wrap: wrap;
+      }
+
+      /* Mobile floating action dock */
+      .mobile-floating-dock {
+        display: flex !important;
+        position: fixed;
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--glass-bg);
+        backdrop-filter: blur(24px) saturate(200%);
+        -webkit-backdrop-filter: blur(24px) saturate(200%);
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        border-radius: 30px;
+        padding: 5px 8px;
+        gap: 6px;
+        z-index: 999;
+        align-items: center;
+      }
+
+      .mobile-dock-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 800;
+        background: var(--btn-dark-bg);
+        color: var(--text-main);
+        border: 1px solid var(--btn-dark-border);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+      }
+
+      .mobile-dock-btn.active {
+        background: var(--primary-crimson);
+        color: #ffffff;
+        border-color: var(--primary-crimson);
+        box-shadow: 0 3px 12px rgba(200, 29, 37, 0.45);
+      }
+
+      .mobile-dock-btn-print {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        color: #ffffff;
+        border-color: transparent;
+      }
+    }
+
+    @media (min-width: 901px) {
+      .mobile-floating-dock {
+        display: none !important;
+      }
+    }
+
+    /* ==========================================================================
        7. STRICT A4 PRINT MEDIA
        ========================================================================== */
     @media print {
@@ -1928,6 +2084,22 @@
     </div>
   </div>
 
+  <!-- Mobile Quick Action Floating Dock (Visible on Mobile Only) -->
+  <div class="mobile-floating-dock no-print" id="mobile-quick-dock">
+    <button class="mobile-dock-btn active" id="mob-btn-forum" onclick="setViewMode('forum'); updateMobileDockActive('mob-btn-forum');">
+      ✏️ Edit Form
+    </button>
+    <button class="mobile-dock-btn" id="mob-btn-pad" onclick="setViewMode('pad'); updateMobileDockActive('mob-btn-pad');">
+      👁️ A4 Sheet
+    </button>
+    <button class="mobile-dock-btn" id="mob-btn-split" onclick="setViewMode('split'); updateMobileDockActive('mob-btn-split');">
+      📱 Split
+    </button>
+    <button class="mobile-dock-btn mobile-dock-btn-print" onclick="window.print()">
+      🖨️ Print
+    </button>
+  </div>
+
   <!-- Toast Notification -->
   <div class="toast-msg" id="toast-el">
     <span id="toast-text">Settings saved successfully</span>
@@ -2005,6 +2177,21 @@
     // ==========================================================================
     // 3. DASHBAR VIEW MODES & TWO-WAY SYNC
     // ==========================================================================
+    function updateMobileDockActive(activeId) {
+      document.querySelectorAll('.mobile-dock-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById(activeId);
+      if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    // Auto-adjust default view mode for mobile on first load
+    function checkInitialMobileView() {
+      if (window.innerWidth <= 900) {
+        // Default to Edit Form on mobile for convenient touch editing
+        setViewMode('forum');
+        updateMobileDockActive('mob-btn-forum');
+      }
+    }
+
     function setViewMode(mode) {
       profile.viewMode = mode;
       document.querySelectorAll(".mode-tab-btn").forEach(btn => btn.classList.remove("active"));
@@ -3001,6 +3188,7 @@
     });
 
     window.addEventListener("DOMContentLoaded", () => {
+      checkInitialMobileView();
       initTheme();
       loadSavedProfile();
       restoreAutoSavedDraft();
