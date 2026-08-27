@@ -22,6 +22,8 @@ import { Button } from '@/components/ui/button'
 import { useApp } from '@/lib/app-context'
 import { PWAInstallButton } from '@/components/pwa-install-prompt'
 import { CloudSyncModal } from '@/components/bill-of-lading/cloud-sync-modal'
+import { CommandPalette } from '@/components/command-palette'
+import { Command, Search } from 'lucide-react'
 
 interface HeaderProps {
   showBack?: boolean
@@ -32,6 +34,7 @@ interface HeaderProps {
 export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   const { goBack, currentAccount, currentCompany, view, setView, currentUser, logout } = useApp()
   const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false)
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
 
   const getTitle = () => {
     if (title) return title
@@ -202,6 +205,20 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               <span className="hidden md:inline">Settings</span>
             </Button>
 
+            {/* Global Command Hub & Search Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsCommandPaletteOpen(true)}
+              className="gap-1.5 h-8.5 sm:h-9 px-2 sm:px-2.5 rounded-xl text-xs font-black bg-slate-100/90 hover:bg-slate-200/90 border-slate-300 text-slate-800 transition-all cursor-pointer shadow-2xs group active:scale-95"
+              title="Quick Search & Command Hub (Ctrl+K)"
+            >
+              <Search className="h-3.5 w-3.5 text-slate-600 group-hover:text-blue-600 group-hover:scale-110 transition-all" />
+              <span className="hidden sm:inline font-mono text-[10px] text-slate-500 bg-white/80 border border-slate-300/80 px-1 py-0.2 rounded font-bold">
+                Ctrl+K
+              </span>
+            </Button>
+
             {/* Quick Cloud Sync Across Devices */}
             <Button
               variant="outline"
@@ -262,6 +279,13 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
       {/* Cloud Sync Modal */}
       <CloudSyncModal open={isCloudSyncOpen} onOpenChange={setIsCloudSyncOpen} />
+
+      {/* Command Palette Modal */}
+      <CommandPalette 
+        open={isCommandPaletteOpen} 
+        onOpenChange={setIsCommandPaletteOpen} 
+        onOpenCloudSync={() => setIsCloudSyncOpen(true)} 
+      />
     </header>
   )
 }

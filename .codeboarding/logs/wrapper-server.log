@@ -1,21 +1,20 @@
-[stderr] INFO:     Started server process [32188]
+[stderr] INFO:     Started server process [17912]
 [stderr] INFO:     Waiting for application startup.
 [stderr] INFO:     Application startup complete.
-[stderr] INFO:     Uvicorn running on http://127.0.0.1:8770 (Press CTRL+C to quit)
-INFO:     127.0.0.1:9289 - "GET /health HTTP/1.1" 200 OK
-[stderr] INFO:     ('127.0.0.1', 9356) - "WebSocket /ws" [accepted]
-[stderr] 2026-08-26 13:32:48 INFO     [codeboarding_pro.ws.server:258] WebSocket connected: session fe6f6e30-d55f-41f8-a792-a864f83e6602
+[stderr] INFO:     Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+INFO:     127.0.0.1:1788 - "GET /health HTTP/1.1" 200 OK
+[stderr] INFO:     ('127.0.0.1', 1789) - "WebSocket /ws" [accepted]
+[stderr] 2026-08-27 12:02:27 INFO     [codeboarding_pro.ws.server:258] WebSocket connected: session 764e6c07-8f32-4dcc-bbe9-bbf79db9fe9e
 [stderr] INFO:     connection open
-[stderr] 2026-08-26 13:32:59 INFO     [tool_registry.manifest:320] has_required_tools: csharp missing or stale at C:\Users\HomePC\.codeboarding\servers\bin\win\pm-tools\csharp-ls\csharp-ls.exe
-[stderr] 2026-08-26 13:33:10 INFO     [tool_registry.manifest:320] has_required_tools: csharp missing or stale at C:\Users\HomePC\.codeboarding\servers\bin\win\pm-tools\csharp-ls\csharp-ls.exe
-[stderr] 2026-08-26 13:33:15 INFO     [tool_registry.installers:451] Installing Node.js packages: ['pyright@1.1.400', 'typescript-language-server@4.3.4', 'typescript@5.7', 'intelephense@1.16.5']
-[stderr] 2026-08-26 13:34:02 INFO     [tool_registry.installers:465] Node.js packages installed successfully
-[stderr] 2026-08-26 13:34:02 INFO     [tool_registry.installers:225]   tokei: already installed, skipping
-[stderr] 2026-08-26 13:34:02 INFO     [tool_registry.installers:225]   gopls: already installed, skipping
-[stderr] 2026-08-26 13:34:02 INFO     [tool_registry.installers:225]   rust-analyzer: already installed, skipping
-[stderr] INFO:     connection closed
-[stderr] 2026-08-26 13:34:27 INFO     [tool_registry.installers:489] java already installed
-[stderr] 2026-08-26 13:34:28 WARNING  [tool_registry.installers:397]   csharp-ls: dotnet install failed (exit 2147516561): The command could not be loaded, possibly because:
+[stderr] 2026-08-27 12:02:32 INFO     [tool_registry.manifest:320] has_required_tools: csharp missing or stale at C:\Users\HomePC\.codeboarding\servers\bin\win\pm-tools\csharp-ls\csharp-ls.exe
+[stderr] 2026-08-27 12:02:36 INFO     [tool_registry.manifest:320] has_required_tools: csharp missing or stale at C:\Users\HomePC\.codeboarding\servers\bin\win\pm-tools\csharp-ls\csharp-ls.exe
+[stderr] 2026-08-27 12:02:39 INFO     [tool_registry.installers:451] Installing Node.js packages: ['pyright@1.1.400', 'typescript-language-server@4.3.4', 'typescript@5.7', 'intelephense@1.16.5']
+[stderr] 2026-08-27 12:03:26 INFO     [tool_registry.installers:465] Node.js packages installed successfully
+[stderr] 2026-08-27 12:03:26 INFO     [tool_registry.installers:225]   tokei: already installed, skipping
+[stderr] 2026-08-27 12:03:26 INFO     [tool_registry.installers:225]   gopls: already installed, skipping
+[stderr] 2026-08-27 12:03:26 INFO     [tool_registry.installers:225]   rust-analyzer: already installed, skipping
+[stderr] 2026-08-27 12:03:40 INFO     [tool_registry.installers:489] java already installed
+[stderr] 2026-08-27 12:03:40 WARNING  [tool_registry.installers:397]   csharp-ls: dotnet install failed (exit 2147516561): The command could not be loaded, possibly because:
 [stderr]   * You intended to execute a .NET application:
 [stderr]       The application 'tool' does not exist.
 [stderr]   * You intended to execute a .NET SDK command:
@@ -27,34 +26,30 @@ INFO:     127.0.0.1:9289 - "GET /health HTTP/1.1" 200 OK
 [stderr] Learn about SDK resolution:
 [stderr] https://aka.ms/dotnet/sdk-not-found
 [stderr] 
-[stderr] 2026-08-26 13:34:29 INFO     [static_analyzer.java_utils:115] Using JAVA_HOME Java 25 at C:\Program Files\Eclipse Adoptium\jdk-25.0.2.10-hotspot
-[stderr] 2026-08-26 13:34:30 INFO     [codeboarding_pro.lsp.bootstrap:56] LSP startup attempt 1/3
-[stderr] 2026-08-26 13:34:30 INFO     [codeboarding_pro.session:183] Session fe6f6e30-d55f-41f8-a792-a864f83e6602 initialized: repo=D:\skybalam-26-bol-V3.2\skybalam-26-bol-V3.2, project=skybalam-26-bol-V3.2, output=D:\skybalam-26-bol-V3.2\skybalam-26-bol-V3.2\.codeboarding
-[stderr] 2026-08-26 13:34:30 ERROR    [codeboarding_pro.ws.server:387] WebSocket error: session fe6f6e30-d55f-41f8-a792-a864f83e6602
-[stderr] Traceback (most recent call last):
-[stderr]   File "websockets\legacy\protocol.py", line 1279, in close_connection
-[stderr]   File "websockets\legacy\protocol.py", line 945, in transfer_data
-[stderr]   File "websockets\legacy\protocol.py", line 1015, in read_message
-[stderr]   File "websockets\legacy\protocol.py", line 1090, in read_data_frame
-[stderr]   File "websockets\legacy\protocol.py", line 1147, in read_frame
-[stderr]   File "websockets\legacy\framing.py", line 71, in read
-[stderr]   File "asyncio\streams.py", line 752, in readexactly
-[stderr]   File "asyncio\streams.py", line 545, in _wait_for_data
-[stderr] asyncio.exceptions.CancelledError
-[stderr] 
-[stderr] The above exception was the direct cause of the following exception:
-[stderr] 
-[stderr] Traceback (most recent call last):
-[stderr]   File "codeboarding_pro\ws\server.py", line 339, in websocket_endpoint
-[stderr]   File "starlette\websockets.py", line 165, in send_text
-[stderr]   File "starlette\websockets.py", line 85, in send
-[stderr]   File "starlette\_exception_handler.py", line 39, in sender
-[stderr]   File "uvicorn\protocols\websockets\websockets_impl.py", line 320, in asgi_send
-[stderr]   File "websockets\legacy\protocol.py", line 620, in send
-[stderr]   File "websockets\legacy\protocol.py", line 921, in ensure_open
-[stderr] websockets.exceptions.ConnectionClosedError: sent 1011 (internal error) keepalive ping timeout; no close frame received
-[stderr] 2026-08-26 13:34:33 INFO     [codeboarding_pro.session:298] Session fe6f6e30-d55f-41f8-a792-a864f83e6602 destroyed
-[stderr] 2026-08-26 13:35:11 INFO     [codeboarding_pro.ws.server:118] No active connections for 41s (threshold 30s). Shutting down.
+[stderr] 2026-08-27 12:03:41 INFO     [static_analyzer.java_utils:115] Using JAVA_HOME Java 25 at C:\Program Files\Eclipse Adoptium\jdk-25.0.2.10-hotspot
+[stderr] 2026-08-27 12:03:41 INFO     [codeboarding_pro.lsp.bootstrap:56] LSP startup attempt 1/3
+[stderr] 2026-08-27 12:03:41 INFO     [codeboarding_pro.session:183] Session 764e6c07-8f32-4dcc-bbe9-bbf79db9fe9e initialized: repo=D:\skybalam-26-bol-V3.2\skybalam-26-bol-V3.2, project=skybalam-26-bol-V3.2, output=D:\skybalam-26-bol-V3.2\skybalam-26-bol-V3.2\.codeboarding
+[stderr] 2026-08-27 12:04:19 INFO     [static_analyzer.typescript_config_scanner:82] Found 2 TypeScript project(s) in repository (223 total files across all projects)
+[stderr] 2026-08-27 12:04:19 INFO     [static_analyzer:104] Creating engine config for JavaScript at repo root (223 files across 2 tsconfig project(s): ., bol-ledger)
+[stderr] 2026-08-27 12:04:36 INFO     [static_analyzer.typescript_config_scanner:82] Found 2 TypeScript project(s) in repository (223 total files across all projects)
+[stderr] 2026-08-27 12:04:36 INFO     [static_analyzer:104] Creating engine config for TypeScript at repo root (223 files across 2 tsconfig project(s): ., bol-ledger)
+[stderr] 2026-08-27 12:04:36 INFO     [static_analyzer:238] Starting engine LSP client for JavaScript at D:\skybalam-26-bol-V3.2\skybalam-26-bol-V3.2
+[stderr] 2026-08-27 12:04:41 INFO     [static_analyzer:263] JavaScript LSP start: 5.1s
+[stderr] 2026-08-27 12:04:41 INFO     [static_analyzer:238] Starting engine LSP client for Python at D:\skybalam-26-bol-V3.2\skybalam-26-bol-V3.2
+[stderr] 2026-08-27 12:04:47 INFO     [static_analyzer:263] Python LSP start: 5.7s
+[stderr] 2026-08-27 12:04:47 INFO     [static_analyzer:238] Starting engine LSP client for TypeScript at D:\skybalam-26-bol-V3.2\skybalam-26-bol-V3.2
+[stderr] 2026-08-27 12:04:51 INFO     [static_analyzer:263] TypeScript LSP start: 4.3s
+[stderr] 2026-08-27 12:04:51 INFO     [static_analyzer:238] Starting engine LSP client for TypeScript at D:\skybalam-26-bol-V3.2\skybalam-26-bol-V3.2
+[stderr] 2026-08-27 12:04:55 INFO     [static_analyzer:263] TypeScript LSP start: 4.3s
+[stderr] 2026-08-27 12:04:55 INFO     [codeboarding_pro.file_monitor:106] FileMonitor started for D:\skybalam-26-bol-V3.2\skybalam-26-bol-V3.2
+[stderr] 2026-08-27 12:04:55 INFO     [codeboarding_pro.session:202] Session 764e6c07-8f32-4dcc-bbe9-bbf79db9fe9e: FileMonitor activated
+[stderr] 2026-08-27 12:04:55 INFO     [codeboarding_pro.session:243] Session 764e6c07-8f32-4dcc-bbe9-bbf79db9fe9e: LSP wiring complete
+[stderr] 2026-08-27 12:04:55 INFO     [codeboarding_pro.lsp.bootstrap:67] LSP clients started successfully (attempt 1)
+[stderr] 2026-08-27 12:18:48 INFO     [codeboarding_pro.ws.server:385] WebSocket disconnected: session 764e6c07-8f32-4dcc-bbe9-bbf79db9fe9e
+[stderr] 2026-08-27 12:18:48 INFO     [codeboarding_pro.file_monitor:120] FileMonitor stopped
+[stderr] 2026-08-27 12:18:48 INFO     [codeboarding_pro.session:298] Session 764e6c07-8f32-4dcc-bbe9-bbf79db9fe9e destroyed
+[stderr] INFO:     connection closed
+[stderr] 2026-08-27 12:19:28 INFO     [codeboarding_pro.ws.server:118] No active connections for 40s (threshold 30s). Shutting down.
 Step: npm check started
 Step: npm check finished: success (version 11.12.1)
 Step: Node.js servers installation started

@@ -41,6 +41,7 @@ import { LedgerEntry } from '@/lib/types'
 import { EditLedgerEntryDialog } from '@/components/edit-ledger-entry-dialog'
 import * as XLSX from 'xlsx'
 import Image from 'next/image'
+import { SupportedCurrency, CURRENCY_CONFIGS, convertFromUSD, formatCurrencyAmount, exportToUtf8CSV } from '@/lib/utils/currency'
 
 // Column mapping type
 interface ColumnMapping {
@@ -170,6 +171,7 @@ export const LedgerView = memo(function LedgerView() {
     visible: false,
     entry: null,
   })
+  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('USD')
 
   if (!currentAccount || !currentCompany) return null
 
@@ -211,106 +213,218 @@ export const LedgerView = memo(function LedgerView() {
       return
     }
 
-    // Inject A4 Landscape @page rule dynamically to force landscape print orientation
-    let landscapeStyle = document.getElementById("sky-ledger-landscape-print-style") as HTMLStyleElement | null
-    if (!landscapeStyle) {
-      landscapeStyle = document.createElement("style")
-      landscapeStyle.id = "sky-ledger-landscape-print-style"
-      landscapeStyle.innerHTML = `
-        @page {
-          size: A4 landscape !important;
-          margin: 4mm 5mm !important;
-        }
-        @media print {
-          @page {
-            size: A4 landscape !important;
-            margin: 4mm 5mm !important;
-          }
-          html, body {
-            width: 100% !important;
-            height: auto !important;
-            min-height: 0 !important;
-            max-height: none !important;
-            overflow: visible !important;
-            background: #ffffff !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          body > *:not(.ledger-print-root, #sky-ledger-print-root, [data-print-root="true"]) {
-            display: none !important;
-            height: 0 !important;
-            max-height: 0 !important;
-            overflow: hidden !important;
-          }
-          .ledger-print-root,
-          #sky-ledger-print-root {
-            display: block !important;
-            visibility: visible !important;
-            opacity: 1 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            min-width: 0 !important;
-            height: auto !important;
-            max-height: none !important;
-            margin: 0 auto !important;
-            padding: 0 !important;
-            position: static !important;
-            overflow: visible !important;
-            background: #ffffff !important;
-            box-shadow: none !important;
-          }
-          .ledger-print-root * {
-            visibility: visible !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            box-sizing: border-box !important;
-          }
-          .ledger-print-root table.ledger-print-table {
-            display: table !important;
-            width: 100% !important;
-            table-layout: fixed !important;
-            border-collapse: collapse !important;
-          }
-          .ledger-print-root table.ledger-print-table th,
-          .ledger-print-root table.ledger-print-table td {
-            border: 1px solid #1e3a8a !important;
-            padding: 3px 2px !important;
-            font-size: 7.5pt !important;
-            line-height: 1.15 !important;
-            word-break: normal !important;
-            overflow-wrap: normal !important;
-          }
-        }
-      `
-      document.head.appendChild(landscapeStyle)
+    const printContainer = document.querySelector('#sky-ledger-print-root') || document.querySelector('.ledger-print-root')
+    if (!printContainer) {
+      window.print()
+      return
     }
 
-    document.body.classList.add("ledger-landscape-active")
-    document.documentElement.classList.add("ledger-landscape-active")
+    const printHtml = printContainer.innerHTML
 
-    const cleanup = () => {
-      document.body.classList.remove("ledger-landscape-active")
-      document.documentElement.classList.remove("ledger-landscape-active")
-      const styleEl = document.getElementById("sky-ledger-landscape-print-style")
-      if (styleEl && styleEl.parentElement) {
-        styleEl.parentElement.removeChild(styleEl)
+    // Try opening dedicated print window first for guaranteed landscape print dialog
+    try {
+      const win = window.open('', '_blank', 'width=1180,height=820,menubar=no,toolbar=no,location=no,status=no')
+      if (win) {
+        win.document.open()
+        win.document.write(`
+          <!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="utf-8">
+              <title>${currentCompany.name} - Account Ledger (Landscape)</title>
+              <style>
+                @page {
+                  size: A4 landscape !important;
+                  margin: 4mm 5mm !important;
+                }
+                @media print {
+                  @page {
+                    size: A4 landscape !important;
+                    margin: 4mm 5mm !important;
+                  }
+                  body {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: #ffffff !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                  }
+                  .no-print-toolbar {
+                    display: none !important;
+                  }
+                }
+                * {
+                  box-sizing: border-box !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+                html, body {
+                  margin: 0;
+                  padding: 0;
+                  background: #f8fafc;
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                  color: #0f172a;
+                  width: 100%;
+                }
+                .no-print-toolbar {
+                  position: sticky;
+                  top: 0;
+                  z-index: 9999;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  padding: 10px 20px;
+                  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+                  color: #ffffff;
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                }
+                .no-print-toolbar button {
+                  padding: 8px 18px;
+                  font-size: 13px;
+                  font-weight: bold;
+                  border-radius: 8px;
+                  cursor: pointer;
+                  border: none;
+                  transition: all 0.2s;
+                }
+                .btn-print {
+                  background: #fbbf24;
+                  color: #0f172a;
+                }
+                .btn-print:hover {
+                  background: #f59e0b;
+                }
+                .btn-close {
+                  background: rgba(255,255,255,0.2);
+                  color: #ffffff;
+                  margin-left: 10px;
+                }
+                .btn-close:hover {
+                  background: rgba(255,255,255,0.3);
+                }
+                .print-page-wrapper {
+                  background: #ffffff;
+                  width: 100%;
+                  margin: 0 auto;
+                  padding: 6px 8px;
+                }
+                .ledger-print-root {
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  margin: 0 auto !important;
+                  background: #ffffff !important;
+                }
+                table.ledger-print-table {
+                  width: 100% !important;
+                  table-layout: fixed !important;
+                  border-collapse: collapse !important;
+                  margin-top: 3px !important;
+                  margin-bottom: 3px !important;
+                }
+                table.ledger-print-table thead {
+                  display: table-header-group !important;
+                }
+                table.ledger-print-table tbody {
+                  display: table-row-group !important;
+                }
+                table.ledger-print-table tr {
+                  display: table-row !important;
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                }
+                table.ledger-print-table th,
+                table.ledger-print-table td {
+                  display: table-cell !important;
+                  border: 1px solid #bfdbfe !important;
+                  padding: 2.5px 2px !important;
+                  font-size: 7.2pt !important;
+                  line-height: 1.15 !important;
+                  vertical-align: middle !important;
+                }
+                table.ledger-print-table th {
+                  background-color: #eff6ff !important;
+                  color: #1e3a8a !important;
+                  text-align: center !important;
+                  padding: 2.5px 1.5px !important;
+                }
+                table.ledger-print-table th .header-en {
+                  font-size: 7pt !important;
+                  font-weight: 800 !important;
+                  color: #1e3a8a !important;
+                  white-space: nowrap !important;
+                  word-break: keep-all !important;
+                  overflow-wrap: normal !important;
+                  line-height: 1.1 !important;
+                }
+                table.ledger-print-table th .header-ps {
+                  font-size: 5.8pt !important;
+                  font-weight: 700 !important;
+                  color: #2563eb !important;
+                  direction: rtl !important;
+                  white-space: nowrap !important;
+                  word-break: keep-all !important;
+                  overflow-wrap: normal !important;
+                  line-height: 1.1 !important;
+                  margin-top: 1px !important;
+                }
+                table.ledger-print-table tbody tr:nth-child(even):not(.credit-row):not(.totals-row) {
+                  background-color: #f8fafc !important;
+                }
+                table.ledger-print-table tbody tr:nth-child(odd):not(.credit-row):not(.totals-row) {
+                  background-color: #ffffff !important;
+                }
+                tr.credit-row td {
+                  background-color: #ecfdf5 !important;
+                  color: #065f46 !important;
+                  border-color: #a7f3d0 !important;
+                }
+                tr.totals-row td {
+                  background-color: #eff6ff !important;
+                  font-weight: 900 !important;
+                  border-top: 2px solid #3b82f6 !important;
+                  border-bottom: 2px solid #3b82f6 !important;
+                }
+                .print-signatures, .print-footer, .print-header {
+                  page-break-inside: avoid !important;
+                  break-inside: avoid !important;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="no-print-toolbar">
+                <div style="font-weight: bold; font-size: 14px;">
+                  📄 Sky Ariana - Account Ledger Print Preview (A4 Landscape)
+                </div>
+                <div>
+                  <button class="btn-print" onclick="window.print()">🖨️ Print Document</button>
+                  <button class="btn-close" onclick="window.close()">✕ Close</button>
+                </div>
+              </div>
+              <div class="print-page-wrapper">
+                <div class="ledger-print-root">
+                  ${printHtml}
+                </div>
+              </div>
+              <script>
+                window.addEventListener('load', function() {
+                  setTimeout(function() {
+                    window.focus();
+                    window.print();
+                  }, 300);
+                });
+              </script>
+            </body>
+          </html>
+        `)
+        win.document.close()
+        return
       }
-      window.removeEventListener("afterprint", cleanup)
+    } catch (e) {
+      console.warn('Popup window blocked, fallback to in-page print:', e)
     }
 
-    window.addEventListener("afterprint", cleanup)
-
-    // Use a slight delay to ensure DOM and print styles are ready
-    setTimeout(() => {
-      try {
-        window.print()
-      } catch (error) {
-        console.error('Print error:', error)
-        setPrintError('Failed to open print dialog. Please try again or use Ctrl+P.')
-        setTimeout(() => setPrintError(null), 5000)
-        cleanup()
-      }
-    }, 150)
+    // In-page fallback if popup is blocked
+    window.print()
   }, [currentCompany])
 
   const formatCurrency = (amount: number) => {
@@ -832,32 +946,40 @@ export const LedgerView = memo(function LedgerView() {
   }
 
   const handleExportCSV = () => {
-    const exportData = filteredEntries.map((e, idx) => ({
-      "S.NO": idx + 1,
-      "DATE": e.date || "",
-      "SHIPPER/DESCRIPTION": e.shipperDescription || "",
-      "INVOICE NO": e.invoiceNo || "",
-      "DATE OF SHIP": e.dateOfShip || "",
-      "BARNAMEH NO": e.barnamehNo || "",
-      "CONTAINER NO": e.containerNo || "",
-      "CONSIGNEE": e.consignee || "",
-      "QUANTITY": e.quantity || "",
-      "DRIVER FREIGHT": e.driverFreight || "",
-      "DEBIT (USD)": e.debit > 0 ? e.debit : "",
-      "CREDIT (USD)": e.credit > 0 ? e.credit : "",
-      "BALANCE (USD)": e.balance,
-    }))
+    const headers = [
+      "S.NO",
+      "DATE",
+      "SHIPPER/DESCRIPTION",
+      "INVOICE NO",
+      "DATE OF SHIP",
+      "BARNAMEH NO",
+      "CONTAINER NO",
+      "CONSIGNEE",
+      "QUANTITY",
+      "DRIVER FREIGHT",
+      "DEBIT (USD)",
+      "CREDIT (USD)",
+      "BALANCE (USD)",
+    ]
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData)
-    const csvOutput = XLSX.utils.sheet_to_csv(worksheet)
-    const blob = new Blob([csvOutput], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', `${currentCompany.name.replace(/[^a-z0-9]/gi, '_')}_Ledger_${new Date().toISOString().split('T')[0]}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    const rows = filteredEntries.map((e, idx) => [
+      idx + 1,
+      e.date || "",
+      e.shipperDescription || "",
+      e.invoiceNo || "",
+      e.dateOfShip || "",
+      e.barnamehNo || "",
+      e.containerNo || "",
+      e.consignee || "",
+      e.quantity || "",
+      e.driverFreight || "",
+      e.debit > 0 ? e.debit : "",
+      e.credit > 0 ? e.credit : "",
+      e.balance,
+    ])
+
+    const fileName = `${currentCompany.name.replace(/[^a-z0-9]/gi, '_')}_Ledger_${new Date().toISOString().split('T')[0]}.csv`
+    exportToUtf8CSV(headers, rows, fileName)
   }
 
   const formatAFN = (amount: number) => {
@@ -915,51 +1037,87 @@ export const LedgerView = memo(function LedgerView() {
           </p>
         </div>
 
-        {/* Top Ledger Summary Metric Badges (Inline) */}
-        <div className="flex flex-wrap gap-3 xl:gap-4 relative z-10">
-          <div className="px-4 py-3 rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-3 min-w-[140px]">
-            <div className="w-8 h-8 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-black text-[10px]">
-              USD
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Debit (پور)</p>
-              <p className="text-lg font-black text-blue-950 font-mono leading-none mt-0.5">${totalDebit.toLocaleString()}</p>
-            </div>
-          </div>
-          
-          <div className="px-4 py-3 rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-3 min-w-[140px]">
-            <div className="w-8 h-8 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 font-black text-[10px]">
-              REC
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Credit (ترلاسه)</p>
-              <p className="text-lg font-black text-emerald-950 font-mono leading-none mt-0.5">${totalCredit.toLocaleString()}</p>
-            </div>
+        {/* Top Ledger Summary Metric Badges with Multi-Currency Engine */}
+        <div className="flex flex-col gap-2 relative z-10">
+          {/* Currency Pill Switcher */}
+          <div className="flex items-center gap-1 bg-white/60 backdrop-blur-md p-1 rounded-xl border border-slate-200/90 w-fit self-start sm:self-end shadow-2xs">
+            <span className="text-[10px] font-black text-slate-500 uppercase px-1.5">Currency:</span>
+            {(['USD', 'AFN', 'IRR', 'AED', 'PKR'] as SupportedCurrency[]).map((cur) => (
+              <button
+                key={cur}
+                type="button"
+                onClick={() => setSelectedCurrency(cur)}
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                  selectedCurrency === cur
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                {cur} {CURRENCY_CONFIGS[cur].symbol}
+              </button>
+            ))}
           </div>
 
-          <div className={`px-4 py-3 rounded-2xl bg-white/90 border shadow-sm flex items-center gap-3 min-w-[140px] ${
-            finalBalance >= 0 ? 'border-amber-200' : 'border-red-200'
-          }`}>
-            <div className={`w-8 h-8 rounded-xl border flex items-center justify-center font-black text-[10px] ${
-              finalBalance >= 0 ? 'bg-amber-100 border-amber-200 text-amber-800' : 'bg-red-100 border-red-200 text-red-800'
+          <div className="flex flex-wrap gap-3 xl:gap-4">
+            <div className="px-4 py-3 rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-3 min-w-[140px]">
+              <div className="w-8 h-8 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-black text-[10px]">
+                USD
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Debit (پور)</p>
+                <p className="text-lg font-black text-blue-950 font-mono leading-none mt-0.5">${totalDebit.toLocaleString()}</p>
+                {selectedCurrency !== 'USD' && (
+                  <p className="text-[10px] font-bold text-blue-700 mt-1 font-mono">
+                    ≈ {formatCurrencyAmount(convertFromUSD(totalDebit, selectedCurrency), selectedCurrency)}
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            <div className="px-4 py-3 rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-3 min-w-[140px]">
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 font-black text-[10px]">
+                REC
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Credit (ترلاسه)</p>
+                <p className="text-lg font-black text-emerald-950 font-mono leading-none mt-0.5">${totalCredit.toLocaleString()}</p>
+                {selectedCurrency !== 'USD' && (
+                  <p className="text-[10px] font-bold text-emerald-700 mt-1 font-mono">
+                    ≈ {formatCurrencyAmount(convertFromUSD(totalCredit, selectedCurrency), selectedCurrency)}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className={`px-4 py-3 rounded-2xl bg-white/90 border shadow-sm flex items-center gap-3 min-w-[140px] ${
+              finalBalance >= 0 ? 'border-amber-200' : 'border-red-200'
             }`}>
-              BAL
+              <div className={`w-8 h-8 rounded-xl border flex items-center justify-center font-black text-[10px] ${
+                finalBalance >= 0 ? 'bg-amber-100 border-amber-200 text-amber-800' : 'bg-red-100 border-red-200 text-red-800'
+              }`}>
+                BAL
+              </div>
+              <div>
+                <p className={`text-[10px] font-bold uppercase tracking-wider ${finalBalance >= 0 ? 'text-amber-700' : 'text-red-600'}`}>Net (بیلانس)</p>
+                <p className={`text-lg font-black font-mono leading-none mt-0.5 ${finalBalance >= 0 ? 'text-amber-950' : 'text-red-700'}`}>
+                  ${finalBalance.toLocaleString()}
+                </p>
+                {selectedCurrency !== 'USD' && (
+                  <p className={`text-[10px] font-bold mt-1 font-mono ${finalBalance >= 0 ? 'text-amber-800' : 'text-red-600'}`}>
+                    ≈ {formatCurrencyAmount(convertFromUSD(finalBalance, selectedCurrency), selectedCurrency)}
+                  </p>
+                )}
+              </div>
             </div>
-            <div>
-              <p className={`text-[10px] font-bold uppercase tracking-wider ${finalBalance >= 0 ? 'text-amber-700' : 'text-red-600'}`}>Net (بیلانس)</p>
-              <p className={`text-lg font-black font-mono leading-none mt-0.5 ${finalBalance >= 0 ? 'text-amber-950' : 'text-red-700'}`}>
-                ${finalBalance.toLocaleString()}
-              </p>
-            </div>
-          </div>
-          
-          <div className="px-4 py-3 rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-3 min-w-[140px]">
-            <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-black text-[10px]">
-              AFN
-            </div>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Driver Rent</p>
-              <p className="text-lg font-black text-slate-900 font-mono leading-none mt-0.5">{formatAFN(totalDriverRentAFN)}</p>
+            
+            <div className="px-4 py-3 rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-3 min-w-[140px]">
+              <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-black text-[10px]">
+                AFN
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Driver Rent</p>
+                <p className="text-lg font-black text-slate-900 font-mono leading-none mt-0.5">{formatAFN(totalDriverRentAFN)}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -1900,61 +2058,61 @@ export const LedgerView = memo(function LedgerView() {
               <table className="ledger-print-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={{ width: '3.5%' }}>
+                    <th style={{ width: '3%' }}>
                       <div className="header-en">S.NO</div>
                       <div className="header-ps">مسلسل</div>
                     </th>
-                    <th style={{ width: '7.5%' }}>
-                      <div className="header-en">DATE / تاریخ</div>
+                    <th style={{ width: '6.5%' }}>
+                      <div className="header-en">DATE</div>
                       <div className="header-ps">نېټه</div>
                     </th>
-                    <th style={{ width: '14.5%' }}>
-                      <div className="header-en">SHIPPER/Description</div>
+                    <th style={{ width: '11%' }}>
+                      <div className="header-en">SHIPPER / DESC</div>
                       <div className="header-ps">لیږدونکی / تفصیل</div>
                     </th>
-                    <th style={{ width: '6.5%' }}>
-                      <div className="header-en">INVOICE.NO</div>
+                    <th style={{ width: '6%' }}>
+                      <div className="header-en">INVOICE</div>
                       <div className="header-ps">انوایس</div>
                     </th>
-                    <th style={{ width: '7.5%' }}>
-                      <div className="header-en">DATE-OF-SHIP</div>
+                    <th style={{ width: '6.5%' }}>
+                      <div className="header-en">DATE SHIP</div>
                       <div className="header-ps">د بار نېټه</div>
                     </th>
-                    <th style={{ width: '8.5%' }}>
-                      <div className="header-en">BARNAMEH NO</div>
+                    <th style={{ width: '7.5%' }}>
+                      <div className="header-en">BARNAMEH</div>
                       <div className="header-ps">بارنامه</div>
                     </th>
-                    <th style={{ width: '8.5%' }}>
-                      <div className="header-en">BILL OF LADING</div>
-                      <div className="header-ps">B/L NO / بی ال</div>
+                    <th style={{ width: '6%' }}>
+                      <div className="header-en">B/L NO</div>
+                      <div className="header-ps">بی ال</div>
                     </th>
-                    <th style={{ width: '7.5%' }}>
-                      <div className="header-en">CONTAINER NO</div>
-                      <div className="header-ps">د کانټینر شمېره</div>
+                    <th style={{ width: '6%' }}>
+                      <div className="header-en">CONTAINER</div>
+                      <div className="header-ps">کانټینر</div>
                     </th>
-                    <th style={{ width: '10.5%' }}>
+                    <th style={{ width: '12%' }}>
                       <div className="header-en">CONSIGNEE</div>
                       <div className="header-ps">د مال وصول کوونکی</div>
                     </th>
-                    <th style={{ width: '6%' }}>
-                      <div className="header-en">QUANTITY</div>
-                      <div className="header-ps">تعداد / بسته</div>
+                    <th style={{ width: '12%' }}>
+                      <div className="header-en">QUANTITY / تعداد</div>
+                      <div className="header-ps">د توکو بسته بندي</div>
                     </th>
-                    <th style={{ width: '7.5%' }}>
+                    <th style={{ width: '10.5%' }}>
                       <div className="header-en">DRIVER FREIGHT</div>
                       <div className="header-ps">کرایه موتر / دریور</div>
                     </th>
-                    <th style={{ width: '6%' }}>
+                    <th style={{ width: '4.5%' }}>
                       <div className="header-en">DEBIT</div>
-                      <div className="header-ps">د پور حساب</div>
+                      <div className="header-ps">پور</div>
                     </th>
-                    <th style={{ width: '6%' }}>
+                    <th style={{ width: '4.5%' }}>
                       <div className="header-en">CREDIT</div>
-                      <div className="header-ps">ترلاسه شوی مبلغ</div>
+                      <div className="header-ps">ترلاسه</div>
                     </th>
-                    <th style={{ width: '6.5%' }}>
-                      <div className="header-en">BALANCE USD</div>
-                      <div className="header-ps">(USD) بیلانس</div>
+                    <th style={{ width: '4%' }}>
+                      <div className="header-en">BALANCE</div>
+                      <div className="header-ps">بیلانس</div>
                     </th>
                   </tr>
                 </thead>
@@ -1965,11 +2123,11 @@ export const LedgerView = memo(function LedgerView() {
                     <tr 
                       key={entry.id}
                       className={isCredit ? 'credit-row' : ''}
-                      style={{ height: '22px' }}
+                      style={{ height: '22px', pageBreakInside: 'avoid', breakInside: 'avoid' }}
                     >
-                      <td style={{ fontWeight: 600, color: '#1e3a8a', textAlign: 'center' }}>{entry.sNo}</td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '7pt' }}>{entry.date}</td>
-                      <td style={{ textAlign: 'left', paddingLeft: '4px', fontWeight: isCredit ? 700 : 500 }}>
+                      <td style={{ fontWeight: 600, color: '#1e3a8a', textAlign: 'center', fontSize: '7pt' }}>{entry.sNo}</td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt' }}>{entry.date}</td>
+                      <td style={{ textAlign: 'left', paddingLeft: '3px', fontWeight: isCredit ? 700 : 500, fontSize: '6.8pt', lineHeight: '1.15' }}>
                         {isCredit ? (
                           <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                             <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981', flexShrink: 0 }}></span>
@@ -1977,18 +2135,18 @@ export const LedgerView = memo(function LedgerView() {
                           </span>
                         ) : entry.shipperDescription}
                       </td>
-                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 600, fontSize: '7pt' }}>{entry.invoiceNo}</td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '7pt' }}>{entry.dateOfShip}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold', fontFamily: 'monospace', color: '#1e3a8a', fontSize: '7.5pt' }}>{entry.barnamehNo || ''}</td>
-                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '7pt' }}>
+                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 600, fontSize: '6.8pt', whiteSpace: 'nowrap' }}>{entry.invoiceNo}</td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt' }}>{entry.dateOfShip}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold', fontFamily: 'monospace', color: '#1e3a8a', fontSize: '7pt', whiteSpace: 'nowrap' }}>{entry.barnamehNo || ''}</td>
+                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
                           <span>{entry.billOfLanding}</span>
                           {entry.surrenderedBL && (
                             <span style={{ 
                               border: '1px solid #059669',
                               color: '#059669',
-                              padding: '0.5px 3px',
-                              fontSize: '5.5pt',
+                              padding: '0.5px 2px',
+                              fontSize: '5pt',
                               fontWeight: 'bold',
                               textTransform: 'uppercase',
                               letterSpacing: '0.04em',
@@ -2000,30 +2158,30 @@ export const LedgerView = memo(function LedgerView() {
                           )}
                         </div>
                       </td>
-                      <td style={{ textAlign: 'center', fontSize: '7pt' }}>{entry.containerNo}</td>
-                      <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '7.5pt' }}>{entry.consignee}</td>
-                      <td style={{ textAlign: 'center', fontSize: '7pt' }}>{entry.quantity}</td>
-                      <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '7.5pt', backgroundColor: '#fffdf5' }}>
+                      <td style={{ textAlign: 'center', fontSize: '6.8pt', whiteSpace: 'nowrap' }}>{entry.containerNo}</td>
+                      <td style={{ textAlign: 'left', paddingLeft: '3px', fontSize: '6.8pt', lineHeight: '1.15' }}>{entry.consignee}</td>
+                      <td style={{ textAlign: 'left', paddingLeft: '3px', fontSize: '6.8pt', lineHeight: '1.15', fontWeight: 600 }}>{entry.quantity}</td>
+                      <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '7pt', backgroundColor: '#fffdf5', lineHeight: '1.15' }}>
                         {entry.driverFreight && entry.driverFreight.trim() !== ''
                           ? entry.driverFreight
                           : ''}
                       </td>
-                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 600, color: '#dc2626', fontFamily: 'monospace', fontSize: '7.5pt' }}>
+                      <td style={{ textAlign: 'right', paddingRight: '3px', fontWeight: 600, color: '#dc2626', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap' }}>
                         {entry.debit > 0 ? `$${entry.debit.toLocaleString()}` : ''}
                       </td>
-                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 600, color: '#059669', fontFamily: 'monospace', fontSize: '7.5pt' }}>
+                      <td style={{ textAlign: 'right', paddingRight: '3px', fontWeight: 600, color: '#059669', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap' }}>
                         {entry.credit > 0 ? `$${entry.credit.toLocaleString()}` : ''}
                       </td>
-                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7.5pt' }}>
+                      <td style={{ textAlign: 'right', paddingRight: '3px', fontWeight: 700, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap' }}>
                         ${entry.balance.toLocaleString()}
                       </td>
                     </tr>
                   );
                   })}
-                  {/* Empty rows to fill page cleanly without overflow */}
-                  {Array.from({ length: Math.max(0, 11 - filteredEntries.length) }).map((_, idx) => (
-                    <tr key={`empty-${idx}`} style={{ height: '20px' }}>
-                      <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '7pt' }}>{filteredEntries.length + idx + 1}</td>
+                  {/* Empty rows only if list is short to fill 1 page cleanly */}
+                  {filteredEntries.length < 10 && Array.from({ length: 10 - filteredEntries.length }).map((_, idx) => (
+                    <tr key={`empty-${idx}`} style={{ height: '20px', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                      <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '6.8pt' }}>{filteredEntries.length + idx + 1}</td>
                       <td></td>
                       <td></td>
                       <td></td>
@@ -2036,16 +2194,16 @@ export const LedgerView = memo(function LedgerView() {
                       <td></td>
                       <td></td>
                       <td></td>
-                      <td style={{ textAlign: 'right', paddingRight: '4px', color: '#94a3b8', fontFamily: 'monospace', fontSize: '7pt' }}>$0</td>
+                      <td style={{ textAlign: 'right', paddingRight: '3px', color: '#94a3b8', fontFamily: 'monospace', fontSize: '6.8pt' }}>$0</td>
                     </tr>
                   ))}
                   {/* Totals row */}
-                  <tr className="totals-row" style={{ height: '24px' }}>
-                    <td colSpan={10} style={{ textAlign: 'right', fontWeight: 900, color: '#1e3a8a', fontSize: '8pt', paddingRight: '6px' }}>TOTAL:</td>
-                    <td style={{ textAlign: 'center', fontWeight: 800, color: '#92400e', backgroundColor: '#fef3c7', fontSize: '7.5pt' }}>{formatAFN(totalDriverRentAFN)}</td>
-                    <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', fontSize: '7.5pt' }}>${totalDebit.toLocaleString()}</td>
-                    <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#059669', fontFamily: 'monospace', fontSize: '7.5pt' }}>${totalCredit.toLocaleString()}</td>
-                    <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7.5pt' }}>${finalBalance.toLocaleString()}</td>
+                  <tr className="totals-row" style={{ height: '24px', pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                    <td colSpan={10} style={{ textAlign: 'right', fontWeight: 900, color: '#1e3a8a', fontSize: '7.8pt', paddingRight: '6px' }}>TOTAL:</td>
+                    <td style={{ textAlign: 'center', fontWeight: 800, color: '#92400e', backgroundColor: '#fef3c7', fontSize: '7.2pt' }}>{formatAFN(totalDriverRentAFN)}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '3px', fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', fontSize: '7pt' }}>${totalDebit.toLocaleString()}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '3px', fontWeight: 700, color: '#059669', fontFamily: 'monospace', fontSize: '7pt' }}>${totalCredit.toLocaleString()}</td>
+                    <td style={{ textAlign: 'right', paddingRight: '3px', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7pt' }}>${finalBalance.toLocaleString()}</td>
                   </tr>
                 </tbody>
               </table>
@@ -2060,7 +2218,9 @@ export const LedgerView = memo(function LedgerView() {
                 borderRadius: '5px',
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center'
+                alignItems: 'center',
+                pageBreakInside: 'avoid',
+                breakInside: 'avoid'
               }}>
                 <span style={{ fontSize: '8pt', fontWeight: '800', color: '#78350f' }}>
                   DRIVER RENT TOTAL (مجموع کرایه درایوران در افغانی):
@@ -2077,7 +2237,9 @@ export const LedgerView = memo(function LedgerView() {
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'flex-end',
-                padding: '0 10px'
+                padding: '0 10px',
+                pageBreakInside: 'avoid',
+                breakInside: 'avoid'
               }}>
                 <div style={{ textAlign: 'center', width: '28%' }}>
                   <div style={{ borderBottom: '1px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
@@ -2106,7 +2268,9 @@ export const LedgerView = memo(function LedgerView() {
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 background: '#eff6ff',
-                borderRadius: '0 0 5px 5px'
+                borderRadius: '0 0 5px 5px',
+                pageBreakInside: 'avoid',
+                breakInside: 'avoid'
               }}>
                 <div style={{ fontSize: '6.5pt', textAlign: 'left' }}>
                   <p style={{ fontWeight: 'bold', color: '#1e40af', marginBottom: '0.5px' }}>SKY ARIANA TRANSPORT & LOGISTICS</p>

@@ -7,17 +7,12 @@
   --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-/* Screen UI Zoom Out for high-density, spacious dashboard experience */
+/* Full Viewport Configuration without distortion */
 @media screen {
-  html {
-    min-height: 100%;
-    margin: 0;
-    padding: 0;
-  }
-  body {
-    zoom: 0.85;
+  html, body {
     min-height: 100vh;
     min-height: 100dvh;
+    height: 100%;
     margin: 0;
     padding: 0;
   }
@@ -4377,20 +4372,9 @@
   }
 }
 
-@page {
-  size: A4 portrait;
-  margin: 0;
-}
-
 /* Print styles for Bill of Lading, Invoices, and Ledgers */
 @media print {
-  /* 1. Default A4 Portrait setup for Bill of Lading & Invoices */
-  @page {
-    size: A4 portrait;
-    margin: 0;
-  }
-
-  /* 1b. Dedicated A4 Landscape setup for Account Ledger printing */
+  /* Dedicated A4 Landscape setup for Account Ledger printing */
   body.ledger-landscape-active {
     page: ledger-landscape-page !important;
   }
@@ -4647,14 +4631,14 @@
   .ledger-print-table th,
   .ledger-print-table td {
     display: table-cell !important;
-    border: 1px solid #1e3a8a !important;
-    padding: 3px 2px !important;
-    font-size: 7.5pt !important;
+    border: 1px solid #1e40af !important;
+    padding: 2.5px 2px !important;
+    font-size: 7pt !important;
     line-height: 1.15 !important;
     color: #0f172a !important;
     text-align: center !important;
     vertical-align: middle !important;
-    word-break: normal !important;
+    word-break: keep-all !important;
     overflow-wrap: normal !important;
   }
 
@@ -4663,8 +4647,8 @@
     color: #1e3a8a !important;
     font-weight: 800 !important;
     text-transform: uppercase !important;
-    font-size: 7.5pt !important;
-    padding: 3px 2px !important;
+    font-size: 6.8pt !important;
+    padding: 2.5px 1.5px !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -4680,7 +4664,7 @@
   .ledger-print-table tr.totals-row td {
     background-color: #eff6ff !important;
     font-weight: 900 !important;
-    font-size: 8pt !important;
+    font-size: 7.8pt !important;
     border-top: 2px solid #1e3a8a !important;
     border-bottom: 2px solid #1e3a8a !important;
     -webkit-print-color-adjust: exact !important;
@@ -4689,18 +4673,24 @@
 
   .ledger-print-table .header-en {
     font-weight: 800 !important;
-    font-size: 7.5pt !important;
+    font-size: 6.8pt !important;
     color: #1e3a8a !important;
     line-height: 1.1 !important;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
   }
 
   .ledger-print-table .header-ps {
     font-weight: 700 !important;
-    font-size: 6.5pt !important;
+    font-size: 5.8pt !important;
     color: #2563eb !important;
     line-height: 1.1 !important;
     margin-top: 1px !important;
     direction: rtl !important;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
   }
 
   [data-print-root="true"]:not(.ledger-print-root) {

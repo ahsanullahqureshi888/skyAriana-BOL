@@ -11,7 +11,7 @@ import { LoginScreen } from '@/components/login-screen'
 import { SettingsView } from '@/components/settings-view'
 import { SkyBankView } from '@/components/sky-bank-view'
 import { InvoicePadView } from '@/components/invoice-pad-view'
-import { MobileBottomNav } from '@/components/mobile-bottom-nav'
+import { ErrorBoundary } from '@/components/error-boundary'
 
 import { useEffect } from 'react'
 import { toast } from 'sonner'
@@ -114,6 +114,61 @@ function MainContent() {
           }
         }
         performSync()
+      } else {
+        // Automatic master database hydration for all devices
+        const autoHydrateAllDevices = async () => {
+          try {
+            const raw1 = window.localStorage.getItem("skybol:saved-documents")
+            const raw2 = window.localStorage.getItem("sky-bol-browser-documents")
+            const docs1 = raw1 ? JSON.parse(raw1) : []
+            const docs2 = raw2 ? JSON.parse(raw2) : []
+            const localCount = Math.max(docs1.length, docs2.length)
+
+            const res = await fetch("/api/sync", { cache: "no-store" })
+            if (res.ok) {
+              const body = await res.json()
+              const data = body.data || body
+              if (Array.isArray(data.documents) && data.documents.length > 0) {
+                // If local storage has fewer documents or needs refresh, merge seamlessly
+                const mergedMap = new Map<string, any>()
+                for (const d of data.documents) {
+                  const k = d.bol_number || d.id
+                  if (k) mergedMap.set(k, d)
+                }
+                for (const d of [...docs1, ...docs2]) {
+                  const k = d.bol_number || d.id
+                  if (k && !mergedMap.has(k)) mergedMap.set(k, d)
+                }
+
+                const allMerged = Array.from(mergedMap.values())
+                const jsonStr = JSON.stringify(allMerged)
+                window.localStorage.setItem("sky-bol-browser-documents", jsonStr)
+                window.localStorage.setItem("skybol:saved-documents", jsonStr)
+                window.localStorage.setItem("skybol:backup-documents", jsonStr)
+
+                if (Array.isArray(data.customCompanies || data.accounts)) {
+                  const incoming = (data.customCompanies || data.accounts) as string[]
+                  const curRaw = window.localStorage.getItem("skybol:account-custom-companies")
+                  const cur = curRaw ? JSON.parse(curRaw) : []
+                  window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(Array.from(new Set([...cur, ...incoming]))))
+                }
+                if (data.ledgerRecords) {
+                  const curRaw = window.localStorage.getItem("skybol:account-ledgers")
+                  const cur = curRaw ? JSON.parse(curRaw) : {}
+                  window.localStorage.setItem("skybol:account-ledgers", JSON.stringify({ ...cur, ...data.ledgerRecords }))
+                }
+                if (data.companySettings && !window.localStorage.getItem("skybol:company-settings")) {
+                  window.localStorage.setItem("skybol:company-settings", JSON.stringify(data.companySettings))
+                  window.localStorage.setItem("skybol:pdf-company-settings", JSON.stringify(data.companySettings))
+                }
+
+                window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: {} }))
+                window.dispatchEvent(new CustomEvent("skybol:account-ledger-updated", { detail: {} }))
+              }
+            }
+          } catch (e) {}
+        }
+        void autoHydrateAllDevices()
       }
     }
   }, [])
@@ -125,7 +180,7 @@ function MainContent() {
   return (
     <div className={view === "bank" || view === "invoice-pad" ? "h-screen w-full flex flex-col overflow-hidden bg-slate-950" : "min-h-screen flex flex-col"}>
       <Header showBack={view !== 'accounts' && view !== 'settings' && view !== 'bank' && view !== 'invoice-pad'} />
-      <main className={view === "bank" || view === "invoice-pad" ? "flex-1 w-full h-[calc(100vh-58px)] overflow-hidden flex flex-col min-h-0" : "flex-1 pb-16 sm:pb-0"}>
+      <main className={view === "bank" || view === "invoice-pad" ? "flex-1 w-full h-full overflow-hidden flex flex-col min-h-0" : "flex-1"}>
         {view === 'accounts' && <AccountsView />}
         {view === 'companies' && <CompaniesView />}
         {view === 'ledger' && <LedgerView />}
@@ -135,32 +190,16 @@ function MainContent() {
         {view === 'bank' && <SkyBankView />}
         {view === 'invoice-pad' && <InvoicePadView />}
       </main>
-      {view !== "bank" && view !== "invoice-pad" && <MobileBottomNav />}
-      {view !== "bank" && view !== "invoice-pad" && (
-      <footer className="glass-strong border-t border-amber-200/80 bg-white/95 backdrop-blur-xl py-3.5 px-6 no-print shadow-xs mt-auto">
-        <div className="container mx-auto text-center text-xs font-bold text-slate-700 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.8)]" />
-            <span>© {new Date().getFullYear()} SKY ARIANA LIMITED. All rights reserved.</span>
-          </div>
-          <div className="flex items-center gap-4 text-[11px] font-bold text-slate-700">
-            <span className="flex items-center gap-1">🇦🇫 AFGHANISTAN: <span className="font-extrabold text-slate-900">+93 700 939 365</span></span>
-            <span className="text-amber-500 font-extrabold">•</span>
-            <span className="flex items-center gap-1">🇮🇷 IRAN: <span className="font-extrabold text-slate-900">+98 9172325086</span></span>
-            <span className="text-amber-500 font-extrabold">•</span>
-            <span className="flex items-center gap-1">✉️ <span className="font-extrabold text-slate-900">info@skyariana.com</span></span>
-          </div>
-        </div>
-      </footer>
-      )}
     </div>
   )
 }
 
 export default function Home() {
   return (
-    <AppProvider>
-      <MainContent />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <MainContent />
+      </AppProvider>
+    </ErrorBoundary>
   )
 }

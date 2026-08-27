@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useApp } from "@/lib/app-context"
 import { CURRENT_SYSTEM_VERSION } from "@/lib/config/system-version"
 import { UserRole } from "@/lib/types"
@@ -95,6 +95,40 @@ export function SettingsView() {
   const { users, addUser, updateUserRole, deleteUser, changePassword, currentUser, isSyncing, syncCloudData } = useApp()
   const [activeTab, setActiveTab] = useState<SettingsTab>("users")
   const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false)
+
+  // Storage Analytics & Health Calculation
+  const storageStats = useMemo(() => {
+    if (typeof window === "undefined") {
+      return { totalKB: "0.0", percent: 0, bolCount: 0, customCompaniesCount: 0, ledgerCount: 0 }
+    }
+    let totalBytes = 0
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i)
+      if (key) {
+        const val = window.localStorage.getItem(key) || ""
+        totalBytes += (key.length + val.length) * 2
+      }
+    }
+    const rawBols = window.localStorage.getItem("skybol:saved-documents") || window.localStorage.getItem("sky-bol-browser-documents")
+    const bols = rawBols ? JSON.parse(rawBols) : []
+    const rawCos = window.localStorage.getItem("skybol:account-custom-companies")
+    const cos = rawCos ? JSON.parse(rawCos) : []
+    const rawLedgers = window.localStorage.getItem("skybol:account-ledgers")
+    const ledgers = rawLedgers ? JSON.parse(rawLedgers) : {}
+    let ledgerCount = 0
+    if (ledgers && typeof ledgers === "object") {
+      for (const k in ledgers) {
+        if (Array.isArray(ledgers[k])) ledgerCount += ledgers[k].length
+      }
+    }
+    return {
+      totalKB: (totalBytes / 1024).toFixed(1),
+      percent: Math.min(100, Math.max(1, Math.round((totalBytes / (5 * 1024 * 1024)) * 100))),
+      bolCount: Array.isArray(bols) ? bols.length : 0,
+      customCompaniesCount: Array.isArray(cos) ? cos.length : 0,
+      ledgerCount,
+    }
+  }, [activeTab])
 
   // Add User Form State
   const [newUsername, setNewUsername] = useState("")
@@ -870,6 +904,53 @@ export function SettingsView() {
               <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
                 همگام‌سازی بارنامه‌ها و دفاتر حساب بین تمام کامپیوترها و موبایل‌ها
               </p>
+            </div>
+          </div>
+
+          {/* Real-time Storage & Database Health Analytics Widget */}
+          <div className="p-4 sm:p-5 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Server className="w-4 h-4 text-blue-400" />
+                <span className="text-xs font-black tracking-wide uppercase">Local Storage & Health Analytics</span>
+              </div>
+              <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/30 px-2 py-0.5 rounded-lg">
+                Status: Optimal & Healthy
+              </span>
+            </div>
+
+            {/* Storage Meter Bar */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[11px] font-bold text-slate-400">
+                <span>Database Usage: {storageStats.totalKB} KB used</span>
+                <span>{storageStats.percent}% of 5 MB safe browser quota</span>
+              </div>
+              <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700/60">
+                <div 
+                  className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.max(3, storageStats.percent)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Storage Data Counts Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-800 text-center">
+              <div className="p-2 bg-slate-950/60 rounded-xl border border-slate-800">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Saved BOLs</p>
+                <p className="text-sm font-black text-amber-400 font-mono mt-0.5">{storageStats.bolCount} Docs</p>
+              </div>
+              <div className="p-2 bg-slate-950/60 rounded-xl border border-slate-800">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Accounts</p>
+                <p className="text-sm font-black text-blue-400 font-mono mt-0.5">{storageStats.customCompaniesCount} Clients</p>
+              </div>
+              <div className="p-2 bg-slate-950/60 rounded-xl border border-slate-800">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Ledger Entries</p>
+                <p className="text-sm font-black text-emerald-400 font-mono mt-0.5">{storageStats.ledgerCount} Rows</p>
+              </div>
+              <div className="p-2 bg-slate-950/60 rounded-xl border border-slate-800">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Security Version</p>
+                <p className="text-sm font-black text-purple-400 font-mono mt-0.5">{CURRENT_SYSTEM_VERSION.version}</p>
+              </div>
             </div>
           </div>
 

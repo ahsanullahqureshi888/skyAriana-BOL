@@ -44,7 +44,7 @@ export function SkyBankView() {
   }
 
   return (
-    <div className={`w-full overflow-hidden bg-[#040d1a] flex flex-col ${isFullscreen ? "fixed inset-0 z-[99999] h-screen w-screen" : "flex-1 w-full h-[calc(100vh-56px)] min-h-0"}`}>
+    <div className={`w-full overflow-hidden bg-[#040d1a] flex flex-col ${isFullscreen ? "fixed inset-0 z-[99999] h-screen w-screen" : "flex-1 w-full h-full min-h-0"}`}>
       {/* Floating Executive Glass Ribbon */}
       <div className="absolute top-2.5 right-3.5 z-30 flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-900 backdrop-blur-xl border border-emerald-500/30 p-1.5 rounded-2xl shadow-2xl shadow-emerald-950/40 transition-all">
         {/* Sky Bank Status Indicator */}

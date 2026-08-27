@@ -41,7 +41,7 @@ export function InvoicePadView() {
   }
 
   return (
-    <div className={`w-full overflow-hidden bg-slate-950 flex flex-col ${isFullscreen ? "fixed inset-0 z-[99999] h-screen w-screen" : "flex-1 w-full h-[calc(100vh-56px)] min-h-0"}`}>
+    <div className={`w-full overflow-hidden bg-slate-950 flex flex-col ${isFullscreen ? "fixed inset-0 z-[99999] h-screen w-screen" : "flex-1 w-full h-full min-h-0"}`}>
       {/* Floating Minimal Controls */}
       <div className="absolute top-2.5 right-4 z-30 flex items-center gap-1.5 bg-slate-900/90 hover:bg-slate-900 backdrop-blur-xl border border-indigo-500/30 p-1 rounded-xl shadow-2xl transition-all">
         <button
