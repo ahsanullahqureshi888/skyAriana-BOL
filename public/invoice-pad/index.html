@@ -785,91 +785,108 @@
       box-shadow: 0 2px 4px rgba(200, 29, 37, 0.2);
     }
 
-    /* Structured 3-Column Metadata Grid Card */
+    /* Structured Metadata Grid Card */
     .meta-grid-card {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr 1.3fr;
-      gap: 3px;
       background: #f8fafc;
-      border: 1px solid #cbd5e1;
-      border-radius: 3px;
-      padding: 4px 6px;
-      margin-bottom: 5px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 5px 8px;
+      margin-bottom: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 3.5px;
     }
 
-    .meta-cell {
+    .meta-grid-row {
       display: flex;
       align-items: center;
-      gap: 4px;
+      justify-content: space-between;
+      gap: 6px;
       font-size: 8.5px;
-      line-height: 1.3;
     }
 
-    .meta-cell-label {
-      font-weight: 700;
-      color: #475569;
-      white-space: nowrap;
+    .meta-field {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .meta-label {
+      font-size: 7.8px;
+      font-weight: 800;
+      color: #334155;
       text-transform: uppercase;
-      font-size: 8px;
+      white-space: nowrap;
+      letter-spacing: 0.2px;
     }
 
-    .meta-cell-val {
-      flex: 1;
+    .meta-input {
       border: none;
       border-bottom: 1px dashed #cbd5e1;
-      font-size: 8.5px;
-      font-family: inherit;
-      color: #0f172a;
-      padding: 0 2px;
       background: transparent;
       outline: none;
-      font-weight: 600;
+      font-family: inherit;
+      font-size: 8.5px;
+      font-weight: 700;
+      color: #0f172a;
+      padding: 1px 3px;
+      transition: all 0.15s;
     }
 
-    .meta-cell-val:focus {
-      border-bottom-color: #c81d25;
+    .meta-input:focus {
+      border-bottom-color: #0284c7;
       background: #fffbeb;
     }
 
-    .meta-cell-val.bold { font-weight: 800; }
-    .meta-cell-val.highlight-bill { font-size: 11px; font-weight: 900; color: #c81d25; }
+    .meta-input.bill-highlight {
+      color: #c81d25;
+      font-weight: 900;
+      font-size: 9.5px;
+      letter-spacing: 0.4px;
+    }
+
+    .meta-input.sender-highlight {
+      color: #1e3a8a;
+      font-weight: 800;
+    }
 
     /* Structured Importer / Consignee Profile Card */
     .importer-card {
       background: #f8fafc;
-      border: 1px solid #cbd5e1;
-      border-left: 3.5px solid #0284c7;
-      border-radius: 3px;
-      padding: 4px 7px;
-      margin-bottom: 5px;
+      border: 1.5px solid #cbd5e1;
+      border-left: 4px solid #0284c7;
+      border-radius: 4px;
+      padding: 5px 8px;
+      margin-bottom: 4px;
     }
 
     .importer-header-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 2px;
+      gap: 8px;
+      margin-bottom: 3px;
     }
 
-    .importer-title-tag {
-      font-size: 8.5px;
+    .importer-tag {
+      font-size: 8px;
       font-weight: 800;
       color: #0284c7;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
     }
 
     .importer-name-input {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 900;
       color: #0f172a;
       width: 100%;
       border: none;
-      border-bottom: 1px solid transparent;
-      outline: none;
+      border-bottom: 1px dashed #cbd5e1;
       background: transparent;
+      outline: none;
       font-family: inherit;
-      margin-bottom: 1px;
+      padding: 1px 3px;
     }
 
     .importer-name-input:focus {
@@ -879,60 +896,68 @@
 
     .importer-grid {
       display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 3px 10px;
-      font-size: 8px;
+      grid-template-columns: 1.3fr 1fr;
+      gap: 3px 12px;
     }
 
-    .importer-address-block {
+    .importer-addr-col {
       display: flex;
       flex-direction: column;
-      gap: 1px;
+      gap: 2px;
     }
 
-    .importer-input-line {
+    .importer-addr-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .importer-input {
+      width: 100%;
       border: none;
       border-bottom: 1px dashed #cbd5e1;
-      font-size: 8px;
-      font-family: inherit;
-      color: #1e293b;
       background: transparent;
       outline: none;
-      padding: 0 1px;
-      font-weight: 600;
+      font-family: inherit;
+      font-size: 8px;
+      font-weight: 700;
+      color: #1e293b;
+      padding: 1px 2px;
     }
 
-    .importer-input-line:focus {
+    .importer-input:focus {
       border-bottom-color: #0284c7;
       background: #fffbeb;
     }
 
-    .importer-compliance-grid {
+    .importer-comp-col {
       display: flex;
       flex-direction: column;
-      gap: 1px;
+      gap: 2px;
       border-left: 1px solid #e2e8f0;
-      padding-left: 6px;
+      padding-left: 8px;
     }
 
-    .compliance-row {
+    .importer-comp-row {
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 4px;
     }
 
-    .compliance-label {
+    .comp-label {
+      font-size: 7.5px;
       font-weight: 800;
       color: #64748b;
-      font-size: 7.5px;
       white-space: nowrap;
+      width: 54px;
+      text-transform: uppercase;
     }
 
     /* Structured Full-Grid Items Table */
     .table-container {
       margin-bottom: 4px;
-      border: 1px solid #0f172a;
-      border-radius: 2px;
+      border: 1.5px solid #0f172a;
+      border-radius: 3px;
       overflow: hidden;
     }
 
@@ -947,9 +972,9 @@
       color: #ffffff;
       font-weight: 800;
       text-align: center;
-      padding: 4px 3px;
+      padding: 4px 2px;
       border-right: 1px solid #334155;
-      font-size: 8px;
+      font-size: 7.5px;
       letter-spacing: 0.3px;
       text-transform: uppercase;
     }
@@ -959,7 +984,7 @@
     }
 
     .invoice-table td {
-      padding: 3.5px 3px;
+      padding: 3.5px 2px;
       border-bottom: 1px solid #cbd5e1;
       border-right: 1px solid #e2e8f0;
       vertical-align: middle;
@@ -973,10 +998,6 @@
 
     .invoice-table tr:nth-child(even) td {
       background-color: #f8fafc;
-    }
-
-    .invoice-table tr:hover td {
-      background-color: #f1f5f9;
     }
 
     .invoice-table input {
@@ -999,47 +1020,39 @@
     .invoice-table .col-desc { width: 170px; text-align: left; font-weight: 800; }
     .invoice-table .col-qual { width: 60px; text-align: center; }
     .invoice-table .col-gw { width: 75px; text-align: right; }
-    .invoice-table .col-nw { width: 75px; text-align: right; font-weight: 800; }
-    .invoice-table .col-rate { width: 52px; text-align: right; }
+    .invoice-table .col-nw { width: 75px; text-align: right; font-weight: 800; color: #0284c7; }
+    .invoice-table .col-rate { width: 52px; text-align: right; font-weight: 800; color: #059669; }
     .invoice-table .col-amount { width: 85px; text-align: right; font-weight: 900; color: #0f172a; }
     .invoice-table .col-action { width: 14px; text-align: center; }
 
-    /* Summary Rows Inside Table */
-    .table-summary-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 3.5px 8px;
+    /* Summary Bar & Weight Breakdown */
+    .summary-text-line {
       background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-top: none;
-      font-size: 9px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 3px;
+      padding: 3px 8px;
+      font-size: 8.5px;
       font-weight: 800;
-      color: #0f172a;
+      color: #1e3a8a;
+      text-align: center;
       margin-bottom: 4px;
     }
 
-    .table-grand-total {
-      font-size: 11px;
-      font-weight: 900;
-      color: #c81d25;
-    }
-
-    /* Say USD in Words & Truck Box */
+    /* Words & Truck Box Grid */
     .words-and-truck-grid {
       display: grid;
       grid-template-columns: 2fr 1fr;
       gap: 4px;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
     }
 
     .amount-words-box {
       background: #fffbeb;
-      border: 1px solid #fde68a;
+      border: 1.5px solid #fde68a;
       border-radius: 3px;
       padding: 3px 6px;
       font-size: 8px;
-      line-height: 1.3;
+      line-height: 1.25;
     }
 
     .amount-words-title {
@@ -1050,14 +1063,14 @@
     }
 
     .amount-words-val {
-      font-size: 8.5px;
+      font-size: 8px;
       font-weight: 800;
       color: #78350f;
     }
 
     .truck-box {
       background: #f8fafc;
-      border: 1px solid #cbd5e1;
+      border: 1.5px solid #cbd5e1;
       border-radius: 3px;
       padding: 3px 6px;
       font-size: 8px;
@@ -1073,7 +1086,7 @@
       text-transform: uppercase;
     }
 
-    .truck-box-input {
+    .truck-input {
       border: none;
       border-bottom: 1px dashed #cbd5e1;
       font-size: 8.5px;
@@ -1082,72 +1095,56 @@
       background: transparent;
       outline: none;
       color: #0f172a;
+      padding: 0 2px;
     }
 
-    /* Highlight Grand Total Banner */
+    .truck-input:focus {
+      border-bottom-color: #0284c7;
+      background: #fffbeb;
+    }
+
+    /* Executive Big Grand Total Banner */
     .big-total-banner {
-      background: #0f172a;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
       color: #ffffff;
       border-radius: 3px;
-      padding: 4px 8px;
+      padding: 4px 10px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 6px;
+      margin-bottom: 5px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
     }
 
     .big-total-banner-title {
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 800;
       letter-spacing: 0.4px;
       text-transform: uppercase;
+      color: #cbd5e1;
     }
 
     .big-total-banner-val {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 900;
       letter-spacing: 0.5px;
       color: #38bdf8;
+      font-family: monospace;
     }
 
-    /* Bank Payment & Routing Details Card */
-    .bank-details-card {
-      background: #f8fafc;
-      border: 1px dashed #94a3b8;
-      border-radius: 3px;
-      padding: 3.5px 6px;
-      font-size: 7.5px;
-      color: #475569;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    .bank-info-item {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-    }
-
-    .bank-info-label {
-      font-weight: 800;
-      color: #1e293b;
-    }
-
-    /* Official Dual Signature & Stamp Section */
+    /* Dual Signature & Stamp Section */
     .signatures-section {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 20px;
-      padding: 4px 10px;
-      margin-bottom: 3px;
+      padding: 2px 10px 4px 10px;
+      margin-bottom: 2px;
     }
 
     .sig-box {
       border: 1px dashed #cbd5e1;
       border-radius: 3px;
-      padding: 4px 8px 3px 8px;
+      padding: 3px 8px 2px 8px;
       text-align: center;
       display: flex;
       flex-direction: column;
@@ -1157,7 +1154,7 @@
     }
 
     .sig-top-label {
-      font-size: 7.5px;
+      font-size: 7.2pt;
       font-weight: 700;
       color: #64748b;
       text-transform: uppercase;
@@ -1166,8 +1163,8 @@
     .sig-line {
       border-top: 1px solid #0f172a;
       margin-top: auto;
-      padding-top: 2px;
-      font-size: 8px;
+      padding-top: 1px;
+      font-size: 7.5pt;
       font-weight: 800;
       color: #0f172a;
     }
@@ -1179,7 +1176,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 7px;
+      font-size: 7.2pt;
       color: #64748b;
       font-weight: 600;
     }
@@ -1828,119 +1825,123 @@
                     <!-- Crimson Contact Bar -->
                     <div class="crimson-bar">
                       <span id="display-phone-left">+93 700 9393 65</span>
+                      <span style="font-weight: 900; letter-spacing: 0.5px;">COMMERCIAL INVOICE / تجارتي انوایس</span>
                       <span id="display-phone-right">+93 711 4355 29</span>
                     </div>
 
-                    <!-- Invoice Details Metadata Section (Exact Reference Layout) -->
-                    <div class="meta-section">
+                    <!-- Structured Metadata Grid Card -->
+                    <div class="meta-grid-card">
                       <!-- Row 1: Date | Bill No | Sender -->
-                      <div class="meta-row" style="justify-content: space-between;">
-                        <div class="meta-item" style="width: 170px;">
+                      <div class="meta-grid-row">
+                        <div class="meta-field" style="width: 160px;">
                           <span class="meta-label">Date:</span>
-                          <input type="text" id="inv-date" class="meta-input bold" style="width: 110px;" value="10/08/2026" oninput="syncPadToForum('date', this.value)" />
+                          <input type="text" id="inv-date" class="meta-input" style="width: 100px;" value="10/08/2026" oninput="syncPadToForum('date', this.value)" />
                         </div>
-                        <div class="meta-item" style="width: 220px;">
+                        <div class="meta-field" style="width: 200px;">
                           <span class="meta-label">Bill No:</span>
-                          <input type="text" id="inv-bill" class="meta-input bill-bold" style="width: 140px;" value="SKY-001" oninput="syncPadToForum('bill', this.value)" />
+                          <input type="text" id="inv-bill" class="meta-input bill-highlight" style="width: 130px;" value="SKY-001" oninput="syncPadToForum('bill', this.value)" />
                         </div>
-                        <div class="meta-item" style="flex: 1; justify-content: flex-end;">
+                        <div class="meta-field" style="flex: 1; justify-content: flex-end;">
                           <span class="meta-label">Sender:</span>
-                          <input type="text" id="inv-sender" class="meta-input sender-bold" style="width: 180px; text-align: right;" value="NASIB OBID AKBARI LTD" oninput="syncPadToForum('sender', this.value)" />
+                          <input type="text" id="inv-sender" class="meta-input sender-highlight" style="width: 180px; text-align: right;" value="NASIB OBID AKBARI LTD" oninput="syncPadToForum('sender', this.value)" />
                         </div>
                       </div>
 
-                      <!-- Row 2: Invoice No | Lic No -->
-                      <div class="meta-row" style="justify-content: space-between;">
-                        <div class="meta-item" style="width: 170px;">
+                      <!-- Row 2: Invoice No | Lic No | Transit No -->
+                      <div class="meta-grid-row">
+                        <div class="meta-field" style="width: 160px;">
                           <span class="meta-label">Invoice No:</span>
-                          <input type="text" id="inv-no" class="meta-input bold" style="width: 90px;" value="013" oninput="syncPadToForum('invno', this.value)" />
+                          <input type="text" id="inv-no" class="meta-input" style="width: 80px;" value="013" oninput="syncPadToForum('invno', this.value)" />
                         </div>
-                        <div class="meta-item" style="flex: 1; justify-content: flex-end;">
+                        <div class="meta-field" style="width: 160px;">
                           <span class="meta-label">Lic No:</span>
-                          <input type="text" id="inv-sender-lic" class="meta-input bold" style="width: 110px; text-align: right;" value="33215" oninput="syncPadToForum('senderlic', this.value)" />
+                          <input type="text" id="inv-sender-lic" class="meta-input" style="width: 90px;" value="33215" oninput="syncPadToForum('senderlic', this.value)" />
                         </div>
-                      </div>
-
-                      <!-- Row 3: Transit No | Rasta Bazaar -->
-                      <div class="meta-row" style="justify-content: space-between;">
-                        <div class="meta-item" style="width: 200px;">
+                        <div class="meta-field" style="flex: 1; justify-content: flex-end;">
                           <span class="meta-label">Transit No:</span>
-                          <input type="text" id="inv-transit" class="meta-input bold" style="width: 120px;" value="A00004750" oninput="syncPadToForum('transit', this.value)" />
-                        </div>
-                        <div class="meta-item" style="flex: 1; justify-content: flex-end;">
-                          <input type="text" id="inv-origin" class="meta-input bold" style="width: 320px; text-align: right;" value="RASTA BAZAAR, NIMROZ CENTER ZARANJ - NIMROZ" oninput="syncPadToForum('origin', this.value)" />
+                          <input type="text" id="inv-transit" class="meta-input" style="width: 140px; text-align: right;" value="A00004750" oninput="syncPadToForum('transit', this.value)" />
                         </div>
                       </div>
 
-                      <!-- Row 4: Certificate of Origin No | VIA | TL NO -->
-                      <div class="meta-row" style="justify-content: space-between;">
-                        <div class="meta-item" style="width: 220px;">
-                          <span class="meta-label">Certificate of Origin No:</span>
-                          <input type="text" id="inv-coo" class="meta-input bold" style="width: 80px;" value="132169" oninput="syncPadToForum('coo', this.value)" />
+                      <!-- Row 3: Origin / Rasta Bazaar | COO No -->
+                      <div class="meta-grid-row">
+                        <div class="meta-field" style="width: 240px;">
+                          <span class="meta-label">Certificate of Origin:</span>
+                          <input type="text" id="inv-coo" class="meta-input" style="width: 85px;" value="132169" oninput="syncPadToForum('coo', this.value)" />
                         </div>
-                        <div class="meta-item" style="flex: 1; justify-content: center;">
+                        <div class="meta-field" style="flex: 1; justify-content: flex-end;">
+                          <span class="meta-label">Origin:</span>
+                          <input type="text" id="inv-origin" class="meta-input" style="width: 320px; text-align: right;" value="RASTA BAZAAR, NIMROZ CENTER ZARANJ - NIMROZ" oninput="syncPadToForum('origin', this.value)" />
+                        </div>
+                      </div>
+
+                      <!-- Row 4: VIA | TL NO | Phyto No -->
+                      <div class="meta-grid-row">
+                        <div class="meta-field" style="width: 180px;">
                           <span class="meta-label">VIA:</span>
-                          <input type="text" id="inv-via" class="meta-input bold" style="width: 130px; text-align: center;" value="" placeholder="VIA Route" oninput="syncPadToForum('via', this.value)" />
+                          <input type="text" id="inv-via" class="meta-input" style="width: 130px;" value="" placeholder="VIA Route" oninput="syncPadToForum('via', this.value)" />
                         </div>
-                        <div class="meta-item" style="flex: 1; justify-content: flex-end;">
+                        <div class="meta-field" style="width: 140px;">
                           <span class="meta-label">TL NO:</span>
-                          <input type="text" id="inv-tl" class="meta-input bold" style="width: 90px; text-align: right;" value="" oninput="syncPadToForum('tl', this.value)" />
+                          <input type="text" id="inv-tl" class="meta-input" style="width: 80px;" value="" oninput="syncPadToForum('tl', this.value)" />
                         </div>
-                      </div>
-
-                      <!-- Row 5: Phytosanitary Certificate No -->
-                      <div class="meta-row">
-                        <div class="meta-item">
-                          <span class="meta-label">Phytosanitary Certificate No:</span>
-                          <input type="text" id="inv-phyto" class="meta-input bold" style="width: 110px;" value="548172" oninput="syncPadToForum('phyto', this.value)" />
+                        <div class="meta-field" style="flex: 1; justify-content: flex-end;">
+                          <span class="meta-label">Phytosanitary No:</span>
+                          <input type="text" id="inv-phyto" class="meta-input" style="width: 90px; text-align: right;" value="548172" oninput="syncPadToForum('phyto', this.value)" />
                         </div>
                       </div>
                     </div>
 
-                    <!-- Section Divider -->
-                    <div class="section-divider"></div>
-
-                    <!-- Importer / Consignee Section (Exact Reference) -->
-                    <div class="importer-container">
-                      <div class="importer-title">Name of Importer:</div>
-                      <input type="text" id="imp-name" class="importer-name-input" value="JDM ENTERPRISES" oninput="syncPadToForum('impname', this.value)" />
+                    <!-- Structured Importer / Consignee Profile Card -->
+                    <div class="importer-card">
+                      <div class="importer-header-row">
+                        <span class="importer-tag">Name of Importer / Consignee:</span>
+                        <input type="text" id="imp-name" class="importer-name-input" value="JDM ENTERPRISES" oninput="syncPadToForum('impname', this.value)" />
+                      </div>
                       
-                      <div class="importer-field-row">
-                        <span class="importer-label">ADDRESS:</span>
-                        <input type="text" id="imp-addr1" class="importer-input bold" value="132/B, BEHIND GEETA V1HAR HOTEL," oninput="syncPadToForum('impaddr1', this.value)" />
-                      </div>
-                      <div class="importer-field-row" style="padding-left: 56px;">
-                        <input type="text" id="imp-addr2" class="importer-input bold" value="NEAR SPENCER'S GYM, SANTACRUZ (EAST)," oninput="syncPadToForum('impaddr2', this.value)" />
-                      </div>
-                      <div class="importer-field-row" style="padding-left: 56px;">
-                        <input type="text" id="imp-addr3" class="importer-input bold" value="MUMBAI -400029,INDIA" oninput="syncPadToForum('impaddr3', this.value)" />
-                      </div>
-                      <div class="importer-field-row">
-                        <span class="importer-label">FSSAINO:</span>
-                        <input type="text" id="imp-fssai" class="importer-input bold" value="10018022007908" oninput="syncPadToForum('impfssai', this.value)" />
-                      </div>
-                      <div class="importer-field-row">
-                        <span class="importer-label">GST1N:</span>
-                        <input type="text" id="imp-gstin" class="importer-input bold" value="27BAAPA6587K1ZH" oninput="syncPadToForum('impgstin', this.value)" />
-                      </div>
-                      <div class="importer-field-row">
-                        <span class="importer-label">IEC CODE:</span>
-                        <input type="text" id="imp-iec" class="importer-input bold" value="BAAPA6587K" oninput="syncPadToForum('impiec', this.value)" />
-                      </div>
-                      <div class="importer-field-row">
-                        <span class="importer-label">EMAIL ID :</span>
-                        <input type="text" id="imp-email" class="importer-input bold" value="JDMENTERPRISES89@GMAIL.COM" oninput="syncPadToForum('impemail', this.value)" />
+                      <div class="importer-grid">
+                        <div class="importer-addr-col">
+                          <div class="importer-addr-row">
+                            <span class="comp-label" style="width: 50px;">ADDRESS:</span>
+                            <input type="text" id="imp-addr1" class="importer-input" value="132/B, BEHIND GEETA V1HAR HOTEL," oninput="syncPadToForum('impaddr1', this.value)" />
+                          </div>
+                          <div class="importer-addr-row" style="padding-left: 54px;">
+                            <input type="text" id="imp-addr2" class="importer-input" value="NEAR SPENCER'S GYM, SANTACRUZ (EAST)," oninput="syncPadToForum('impaddr2', this.value)" />
+                          </div>
+                          <div class="importer-addr-row" style="padding-left: 54px;">
+                            <input type="text" id="imp-addr3" class="importer-input" value="MUMBAI -400029,INDIA" oninput="syncPadToForum('impaddr3', this.value)" />
+                          </div>
+                        </div>
+
+                        <div class="importer-comp-col">
+                          <div class="importer-comp-row">
+                            <span class="comp-label">FSSAI NO:</span>
+                            <input type="text" id="imp-fssai" class="importer-input" value="10018022007908" oninput="syncPadToForum('impfssai', this.value)" />
+                          </div>
+                          <div class="importer-comp-row">
+                            <span class="comp-label">GSTIN:</span>
+                            <input type="text" id="imp-gstin" class="importer-input" value="27BAAPA6587K1ZH" oninput="syncPadToForum('impgstin', this.value)" />
+                          </div>
+                          <div class="importer-comp-row">
+                            <span class="comp-label">IEC CODE:</span>
+                            <input type="text" id="imp-iec" class="importer-input" value="BAAPA6587K" oninput="syncPadToForum('impiec', this.value)" />
+                          </div>
+                          <div class="importer-comp-row">
+                            <span class="comp-label">EMAIL ID:</span>
+                            <input type="text" id="imp-email" class="importer-input" value="JDMENTERPRISES89@GMAIL.COM" oninput="syncPadToForum('impemail', this.value)" />
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    <!-- Main Items Table (Calculated as NW * Rate) -->
+                    <!-- Main Items Table -->
                     <div class="table-container">
                       <table class="invoice-table" id="items-table">
                         <thead>
                           <tr>
                             <th class="col-qty">QTY</th>
                             <th class="col-unit">UNIT</th>
-                            <th class="col-desc">DESCRIPTION</th>
+                            <th class="col-desc">DESCRIPTION OF GOODS</th>
                             <th class="col-qual">QUALITY</th>
                             <th class="col-gw">GROSS WT</th>
                             <th class="col-nw">NET WT</th>
@@ -1955,56 +1956,57 @@
                       </table>
                     </div>
 
-                    <!-- Subtotal Line -->
-                    <div class="subtotal-line" id="subtotal-line-block">
-                      <span id="commodity-subtotal-tag">BLACK RAISINS:</span>
-                      <span id="subtotal-val">52,950 USD</span>
-                    </div>
-
-                    <!-- Grand Total Bar -->
-                    <div class="grand-total-bar">
-                      <span>Grand Total:</span>
-                      <span id="grand-total-val">52,950 USD</span>
-                    </div>
-
-                    <!-- Package & Weight Summary Line -->
+                    <!-- Subtotal & Weight Summary Bar -->
                     <div class="summary-text-line" id="summary-line-text">
                       2118 CTNS: BLACK RAISINS, GW 22,239 KGS, NW 21,180 KGS
                     </div>
 
-                    <!-- Truck No Line -->
-                    <div class="truck-line">
-                      <span>Truck No:</span>
-                      <input type="text" id="ship-truck" class="truck-input" value="" placeholder="Enter Truck No" oninput="syncPadToForum('truck', this.value)" />
+                    <!-- Hidden compatibility tags for calculation scripts -->
+                    <div style="display:none;">
+                      <span id="commodity-subtotal-tag">BLACK RAISINS:</span>
+                      <span id="subtotal-val">52,950 USD</span>
+                      <span id="grand-total-val">52,950 USD</span>
                     </div>
 
-                    <!-- Big Highlight Total Box -->
-                    <div class="big-total-box">
-                      <span class="big-total-title">Total:</span>
-                      <span class="big-total-value" id="big-total-val">52,950 USD</span>
+                    <!-- Words and Truck Grid -->
+                    <div class="words-and-truck-grid">
+                      <div class="amount-words-box">
+                        <div class="amount-words-title">Amount in Words (USD):</div>
+                        <div class="amount-words-val" id="say-usd-words">FIFTY-TWO THOUSAND NINE HUNDRED FIFTY US DOLLARS ONLY</div>
+                      </div>
+                      <div class="truck-box">
+                        <span class="truck-box-label">Truck No:</span>
+                        <input type="text" id="ship-truck" class="truck-input" value="" placeholder="Enter Truck No" oninput="syncPadToForum('truck', this.value)" />
+                      </div>
+                    </div>
+
+                    <!-- Big Highlight Total Banner -->
+                    <div class="big-total-banner">
+                      <span class="big-total-banner-title">TOTAL PAYABLE / مجموع مبلغ:</span>
+                      <span class="big-total-banner-val" id="big-total-val">52,950 USD</span>
                     </div>
                   </div>
 
                   <!-- BOTTOM FIXED: SIGNATURES & FOOTER -->
                   <div>
                     <!-- Signatures Section -->
-                    <div class="signatures-container">
-                      <div class="signature-slot">
-                        <div class="signature-line"></div>
-                        <div class="signature-text" id="display-sig-left">Authorized Signature</div>
+                    <div class="signatures-section">
+                      <div class="sig-box">
+                        <div class="sig-top-label">PREPARED &amp; VERIFIED BY</div>
+                        <div class="sig-line" id="display-sig-left">Authorized Signature</div>
                       </div>
-                      <div class="signature-slot">
-                        <div class="signature-line"></div>
-                        <div class="signature-text" id="display-sig-right">Company Stamp</div>
+                      <div class="sig-box">
+                        <div class="sig-top-label">OFFICIAL COMPANY SEAL / STAMP</div>
+                        <div class="sig-line" id="display-sig-right">Company Stamp</div>
                       </div>
                     </div>
 
                     <!-- Footer Line -->
-                    <div class="invoice-footer">
-                      <div class="invoice-footer-left" id="display-footer-company">
+                    <div class="invoice-footer-bar">
+                      <div id="display-footer-company">
                         SKY ARIANA LIMITED | Kandahar Afghanistan
                       </div>
-                      <div class="invoice-footer-right" id="footer-bill-date">
+                      <div id="footer-bill-date">
                         Bill #SKY-001 | 10/08/2026
                       </div>
                     </div>
@@ -3169,10 +3171,17 @@
       const formattedTotal = `${formatCurrency(grandTotal)} ${curr}`;
       const mainCommodity = commodityNames.join(", ") || "COMMODITY";
 
-      document.getElementById("commodity-subtotal-tag").textContent = `${mainCommodity}:`;
-      document.getElementById("subtotal-val").textContent = formattedTotal;
-      document.getElementById("grand-total-val").textContent = formattedTotal;
-      document.getElementById("big-total-val").textContent = formattedTotal;
+      const subtotalTag = document.getElementById("commodity-subtotal-tag");
+      if (subtotalTag) subtotalTag.textContent = `${mainCommodity}:`;
+      const subtotalVal = document.getElementById("subtotal-val");
+      if (subtotalVal) subtotalVal.textContent = formattedTotal;
+      const grandTotalVal = document.getElementById("grand-total-val");
+      if (grandTotalVal) grandTotalVal.textContent = formattedTotal;
+      const bigTotalVal = document.getElementById("big-total-val");
+      if (bigTotalVal) bigTotalVal.textContent = formattedTotal;
+
+      const sayWordsEl = document.getElementById("say-usd-words");
+      if (sayWordsEl) sayWordsEl.textContent = numberToWordsUSD(grandTotal);
 
       const forumTotalTag = document.getElementById("forum-grand-total-tag");
       if (forumTotalTag) forumTotalTag.textContent = `Total: ${formattedTotal}`;
@@ -3181,7 +3190,8 @@
       const nwFormatted = totalNW.toLocaleString('en-US');
       const qtyFormatted = totalQty.toLocaleString('en-US');
 
-      document.getElementById("summary-line-text").textContent = `${qtyFormatted} CTNS: ${mainCommodity}, GW ${gwFormatted} KGS, NW ${nwFormatted} KGS`;
+      const summaryLineText = document.getElementById("summary-line-text");
+      if (summaryLineText) summaryLineText.textContent = `${qtyFormatted} CTNS: ${mainCommodity}, GW ${gwFormatted} KGS, NW ${nwFormatted} KGS`;
 
       // Update Top KPI Metrics Cards
       const kpiTotal = document.getElementById("kpi-total-val");
