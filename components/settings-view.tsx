@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react"
 import { useApp } from "@/lib/app-context"
 import { CURRENT_SYSTEM_VERSION } from "@/lib/config/system-version"
-import { UserRole } from "@/lib/types"
+import { UserRole, User } from "@/lib/types"
 import {
   Users,
   Lock,
@@ -56,6 +56,7 @@ import {
   FileSignature,
 } from "lucide-react"
 import { PWAInstallButton } from "@/components/pwa-install-prompt"
+import { Button } from "@/components/ui/button"
 import { CloudSyncModal } from "@/components/bill-of-lading/cloud-sync-modal"
 import {
   COMPANY_STAMP_SIGNATURE_SRC,
@@ -160,7 +161,7 @@ const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; i
 }
 
 export function SettingsView() {
-  const { users, addUser, updateUserRole, deleteUser, changePassword, currentUser, isSyncing, syncCloudData } = useApp()
+  const { users, addUser, updateUserRole, deleteUser, changePassword, currentUser, isSyncing, syncCloudData, accounts, toggleUserStatus, resetUserPassword } = useApp()
   const [activeTab, setActiveTab] = useState<SettingsTab>("users")
   const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false)
 
@@ -203,7 +204,27 @@ export function SettingsView() {
   const [newName, setNewName] = useState("")
   const [newRole, setNewRole] = useState<UserRole>("admin")
   const [newEmail, setNewEmail] = useState("")
+  const [newPasswordUser, setNewPasswordUser] = useState("")
+  const [newConfirmPasswordUser, setNewConfirmPasswordUser] = useState("")
+  const [newClientName, setNewClientName] = useState("")
+  const [newStatus, setNewStatus] = useState<"active" | "disabled">("active")
   const [userMsg, setUserMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  // Reset Password Modal State
+  const [resetModalUser, setResetModalUser] = useState<User | null>(null)
+  const [resetModalNewPass, setResetModalNewPass] = useState("")
+
+  // Available Client Names for Linking
+  const clientOptions = useMemo(() => {
+    const names = new Set<string>()
+    accounts.forEach((acc) => {
+      if (acc.name) names.add(acc.name.trim())
+      acc.companies?.forEach((c) => {
+        if (c.name) names.add(c.name.trim())
+      })
+    })
+    return Array.from(names).sort()
+  }, [accounts])
 
   // Change Password Form State
   const [oldPassword, setOldPassword] = useState("")
@@ -290,6 +311,11 @@ export function SettingsView() {
       return
     }
 
+    if (newRole === "shipper" && newPasswordUser && newPasswordUser !== newConfirmPasswordUser) {
+      setUserMsg({ type: "error", text: "Passwords do not match." })
+      return
+    }
+
     if (users.some((u) => u.username.toLowerCase() === newUsername.trim().toLowerCase())) {
       setUserMsg({ type: "error", text: "Username already exists. Please choose a different username." })
       return
@@ -300,6 +326,9 @@ export function SettingsView() {
       name: newName,
       role: newRole,
       email: newEmail,
+      password: newPasswordUser || "skybalam2026",
+      clientName: newRole === "shipper" ? (newClientName || newName) : undefined,
+      status: newStatus,
     })
 
     toast.success(`User '${newUsername}' created with role ${newRole.toUpperCase()}!`)
@@ -307,6 +336,10 @@ export function SettingsView() {
     setNewUsername("")
     setNewName("")
     setNewEmail("")
+    setNewPasswordUser("")
+    setNewConfirmPasswordUser("")
+    setNewClientName("")
+    setNewStatus("active")
     setNewRole("admin")
   }
 
@@ -2097,16 +2130,15 @@ export function SettingsView() {
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => setResetModalUser(null)}
-                className="rounded-xl text-xs"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700"
               >
                 Cancel
-              </Button>
-              <Button
-                size="sm"
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   if (resetModalNewPass.length < 4) {
                     toast.error("Password must be at least 4 characters long.")
@@ -2116,10 +2148,10 @@ export function SettingsView() {
                   toast.success(`Password updated for @${resetModalUser.username}!`)
                   setResetModalUser(null)
                 }}
-                className="rounded-xl text-xs bg-blue-700 hover:bg-blue-800 text-white font-bold"
+                className="px-4 py-2 rounded-xl text-xs bg-blue-700 hover:bg-blue-800 text-white font-bold"
               >
                 Save Password
-              </Button>
+              </button>
             </div>
           </div>
         </div>

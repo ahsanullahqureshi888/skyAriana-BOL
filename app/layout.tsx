@@ -1,26 +1,11 @@
 import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
-import { Inter, Vazirmatn, JetBrains_Mono } from 'next/font/google'
 import { PWARegister } from '@/components/pwa-register'
 import './globals.css'
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-})
-
-const vazirmatn = Vazirmatn({ 
-  subsets: ['arabic'],
-  variable: '--font-vazirmatn',
-  display: 'swap',
-})
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-  display: 'swap',
-})
+const inter = { variable: 'font-sans' }
+const vazirmatn = { variable: 'font-vazirmatn' }
+const jetbrainsMono = { variable: 'font-mono' }
 
 export const viewport: Viewport = {
   themeColor: '#1e3a8a',

@@ -20,7 +20,7 @@ import { useEffect } from 'react'
 import { toast } from 'sonner'
 
 function MainContent() {
-  const { view, isAuthenticated } = useApp()
+  const { view, isAuthenticated, currentUser } = useApp()
 
   useEffect(() => {
     if (typeof window !== "undefined") {
