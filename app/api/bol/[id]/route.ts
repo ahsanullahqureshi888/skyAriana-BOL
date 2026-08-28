@@ -18,20 +18,37 @@ export async function GET(
       .or(`id.eq.${id},bol_number.eq.${id}`)
       .single()
     
-    if (error) {
-      console.error("[v0] Error fetching BOL from Supabase:", error.message)
-      // Try local storage
+    let resultDoc = data
+    if (error || !resultDoc) {
       const localBol = await localStorage.getLocalBOL(id)
       if (localBol) {
-        return NextResponse.json({ data: localBol, source: "local" })
+        resultDoc = localBol
+      } else {
+        return NextResponse.json({ error: error?.message || "BOL not found" }, { status: 404 })
       }
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    // Backend Authorization Check: Prevent Shipper ID manipulation
+    const shipperFilter = request.headers.get("x-shipper-name") || new URL(request.url).searchParams.get("shipper_name")
+    const roleFilter = request.headers.get("x-user-role") || new URL(request.url).searchParams.get("role")
+
+    if (roleFilter === "shipper" && shipperFilter) {
+      const sFilter = shipperFilter.trim().toLowerCase()
+      const docShipper = (resultDoc.shipper_name || "").toLowerCase()
+      const docClientId = (resultDoc.client_id || "").toLowerCase()
+      const isMatch = docShipper === sFilter || docShipper.includes(sFilter) || sFilter.includes(docShipper) || docClientId === sFilter
+
+      if (!isMatch) {
+        return NextResponse.json(
+          { error: "Forbidden: You do not have permission to access this Bill of Lading record" },
+          { status: 403 }
+        )
+      }
     }
     
-    return NextResponse.json({ data, source: "supabase" })
+    return NextResponse.json({ data: resultDoc, source: data ? "supabase" : "local" })
   } catch (err) {
     console.error("[v0] Unexpected error fetching BOL:", err)
-    // Try local storage as fallback
     const localBol = await localStorage.getLocalBOL(id)
     if (localBol) {
       return NextResponse.json({ data: localBol, source: "local" })

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from 'react'
-import { Plus, Trash2, Building2, ChevronRight, Sparkles, FileText, Search, X, CheckCircle2, ArrowUpRight, BarChart3, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, Building2, ChevronRight, Sparkles, FileText, Search, X, CheckCircle2, ArrowUpRight, BarChart3, AlertTriangle, RefreshCw, Truck, Receipt, Landmark, ExternalLink, Globe } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts'
 import { Input } from '@/components/ui/input'
@@ -17,7 +17,7 @@ import {
 import { useApp } from '@/lib/app-context'
 
 export function AccountsView() {
-  const { accounts, addAccount, deleteAccount, selectAccount, selectCompany, isSyncing, syncCloudData, currentUser } = useApp()
+  const { accounts, addAccount, deleteAccount, selectAccount, selectCompany, isSyncing, syncCloudData, currentUser, setView } = useApp()
   const [newAccountName, setNewAccountName] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -175,6 +175,169 @@ export function AccountsView() {
           </div>
         </div>
       )}
+
+      {/* Enterprise Suite Quick Module Hub (Featured SKY DOC Launcher) */}
+      <div className="mb-8 bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 rounded-3xl p-5 sm:p-6 border border-cyan-500/30 shadow-2xl shadow-cyan-950/40 relative overflow-hidden">
+        {/* Glow Accents */}
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-10 w-80 h-80 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30">
+                <Globe className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
+                  <span>SKY ARIANA Enterprise Module Suite</span>
+                  <span className="px-2 py-0.5 text-[10px] font-black uppercase rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    Live Portal
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-400 font-semibold">
+                  Direct access to Document Management, Bills of Lading, CMR Waybills, Commercial Invoices &amp; Banking
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Module Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            
+            {/* 1. SKY DOC (Featured Flagship) */}
+            <div 
+              onClick={() => setView('sky-doc')}
+              className="relative col-span-1 sm:col-span-2 lg:col-span-2 bg-gradient-to-br from-cyan-950/80 via-slate-900 to-blue-950/90 border-2 border-cyan-400/50 hover:border-cyan-300 rounded-2xl p-4 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-xl shadow-cyan-950/50 group"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-cyan-500 via-teal-500 to-blue-600 flex items-center justify-center text-white shadow-md shadow-cyan-500/30 group-hover:scale-105 transition-transform shrink-0">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-base font-black text-white group-hover:text-cyan-300 transition-colors">
+                        SKY DOC Enterprise
+                      </h4>
+                      <span className="flex items-center gap-1 px-2 py-0.2 rounded-md bg-cyan-400/20 border border-cyan-400/40 text-cyan-300 text-[10px] font-black uppercase tracking-wider animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                        Live System
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-cyan-200/80 font-bold mt-0.5">
+                      Enterprise Operating System &amp; Document Management • سیستم جامع اسناد
+                    </p>
+                  </div>
+                </div>
+                <div className="h-7 w-7 rounded-lg bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300 group-hover:bg-cyan-500 group-hover:text-slate-950 transition-all shrink-0">
+                  <ArrowUpRight className="h-4 w-4" />
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center gap-2 flex-wrap text-[10px] text-slate-300 font-semibold">
+                <span className="px-2 py-0.5 rounded-md bg-slate-800/80 border border-slate-700">Multi-Company Files</span>
+                <span className="px-2 py-0.5 rounded-md bg-slate-800/80 border border-slate-700">Digital Archive</span>
+                <span className="px-2 py-0.5 rounded-md bg-slate-800/80 border border-slate-700">Cloud Sync</span>
+              </div>
+
+              <div className="mt-3.5 pt-3 border-t border-cyan-500/20 flex items-center justify-between">
+                <span className="text-[10px] text-slate-400 font-mono">https://skyariana-doc-ten.vercel.app</span>
+                <Button 
+                  type="button" 
+                  size="sm" 
+                  className="h-7.5 px-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
+                >
+                  <span>Launch SKY DOC</span>
+                  <span className="hidden xs:inline font-[vazirmatn] text-[10px]">/ باز کردن اسناد</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* 2. BOL Editor */}
+            <div 
+              onClick={() => setView('bol')}
+              className="bg-slate-900/90 hover:bg-slate-900 border border-amber-500/30 hover:border-amber-400/60 rounded-2xl p-4 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-lg group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="h-9 w-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+                    <FileText className="h-4.5 w-4.5" />
+                  </div>
+                  <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 uppercase">
+                    Maritime
+                  </span>
+                </div>
+                <h4 className="text-sm font-black text-white group-hover:text-amber-300 transition-colors">
+                  BOL Editor
+                </h4>
+                <p className="text-[11px] text-slate-400 font-bold mt-0.5">
+                  Bills of Lading, Shipping Seals &amp; Stamps • بارنامه دریایی
+                </p>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs font-black text-amber-400">
+                <span>Create &amp; Print</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </div>
+            </div>
+
+            {/* 3. Sky CMR */}
+            <div 
+              onClick={() => setView('sky-cmr')}
+              className="bg-slate-900/90 hover:bg-slate-900 border border-blue-500/30 hover:border-blue-400/60 rounded-2xl p-4 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-lg group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="h-9 w-9 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 group-hover:scale-105 transition-transform">
+                    <Truck className="h-4.5 w-4.5" />
+                  </div>
+                  <span className="text-[10px] font-black text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20 uppercase">
+                    Transit
+                  </span>
+                </div>
+                <h4 className="text-sm font-black text-white group-hover:text-blue-300 transition-colors">
+                  Sky CMR Waybill
+                </h4>
+                <p className="text-[11px] text-slate-400 font-bold mt-0.5">
+                  International Border Consignment • بارنامه ترانزیت
+                </p>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs font-black text-blue-400">
+                <span>Open CMR</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </div>
+            </div>
+
+            {/* 4. Invoice Pad & Bank */}
+            <div 
+              onClick={() => setView('invoice-pad')}
+              className="bg-slate-900/90 hover:bg-slate-900 border border-indigo-500/30 hover:border-indigo-400/60 rounded-2xl p-4 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-lg group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="h-9 w-9 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 group-hover:scale-105 transition-transform">
+                    <Receipt className="h-4.5 w-4.5" />
+                  </div>
+                  <span className="text-[10px] font-black text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20 uppercase">
+                    Customs
+                  </span>
+                </div>
+                <h4 className="text-sm font-black text-white group-hover:text-indigo-300 transition-colors">
+                  Invoice Pad
+                </h4>
+                <p className="text-[11px] text-slate-400 font-bold mt-0.5">
+                  A4 Commercial Invoices &amp; Auto-Parse • فاکتور تجاری
+                </p>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs font-black text-indigo-400">
+                <span>Open Invoices</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
 
       {/* Search & Filter Toolbar */}
       {accounts.length > 0 && (

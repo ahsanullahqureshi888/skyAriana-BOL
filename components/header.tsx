@@ -145,6 +145,24 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               <span className="hidden sm:inline">Accounts</span>
             </Button>
 
+            {/* Sky Doc Module Navigation (Prominent Position) */}
+            <Button
+              variant={view === 'sky-doc' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('sky-doc')}
+              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-3 sm:px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs ${
+                view === 'sky-doc' 
+                  ? 'bg-gradient-to-r from-cyan-600 via-teal-600 to-blue-700 text-white border-transparent shadow-md shadow-cyan-500/35 ring-2 ring-cyan-400/40' 
+                  : 'bg-gradient-to-r from-cyan-50 to-blue-50/80 border-cyan-300/80 text-cyan-900 hover:bg-cyan-100 hover:border-cyan-400'
+              }`}
+              title="Sky Ariana Document Management System (SKY DOC)"
+            >
+              <span className="w-2 h-2 rounded-full bg-cyan-500 animate-ping mr-0.5" />
+              <FileText className="h-3.5 w-3.5 text-cyan-700 group-hover:text-cyan-800" />
+              <span className="font-black text-[12.5px] tracking-tight">SKY DOC</span>
+              <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ اسناد</span>
+            </Button>
+
             {/* BOL Editor Navigation */}
             <Button
               variant={view === 'bol' ? 'default' : 'outline'}
@@ -210,23 +228,6 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               <Landmark className="h-3.5 w-3.5 text-emerald-600 group-hover:text-emerald-700" />
               <span className="font-extrabold">Sky Bank</span>
               <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ بانک</span>
-            </Button>
-
-            {/* Sky Doc Module Navigation */}
-            <Button
-              variant={view === 'sky-doc' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setView('sky-doc')}
-              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                view === 'sky-doc' 
-                  ? 'bg-gradient-to-r from-cyan-600 via-teal-600 to-blue-700 text-white border-transparent shadow-md shadow-cyan-500/25' 
-                  : 'bg-white/90 border-cyan-200/90 text-cyan-800 hover:bg-cyan-50 hover:border-cyan-300'
-              }`}
-              title="Sky Ariana Document Management System (SKY DOC)"
-            >
-              <FileText className="h-3.5 w-3.5 text-cyan-600 group-hover:text-cyan-700" />
-              <span className="font-extrabold">SKY DOC</span>
-              <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ اسناد</span>
             </Button>
 
             {/* Settings Navigation (Admins & Accountants only) */}

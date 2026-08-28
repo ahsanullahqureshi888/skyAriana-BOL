@@ -14,7 +14,20 @@ export async function GET(request: Request) {
   const pythonInvoices = await tryPythonBackend(`/api/invoices${searchParams.get("q") ? `?q=${encodeURIComponent(searchParams.get("q") || "")}` : ""}`)
   if (pythonInvoices) return NextResponse.json(pythonInvoices)
 
-  return NextResponse.json({ data: await getAllInvoices(), source: "local" })
+  let allInvoices = await getAllInvoices()
+  const shipperFilter = searchParams.get("shipper_name") || searchParams.get("client_name") || request.headers.get("x-shipper-name")
+  const roleFilter = searchParams.get("role") || request.headers.get("x-user-role")
+
+  if ((roleFilter === "shipper" || shipperFilter) && shipperFilter) {
+    const sFilter = shipperFilter.trim().toLowerCase()
+    allInvoices = allInvoices.filter((inv: any) => {
+      const sName = (inv.shipper || inv.companyName || "").toLowerCase()
+      const cId = (inv.companyId || inv.clientId || "").toLowerCase()
+      return sName === sFilter || sName.includes(sFilter) || sFilter.includes(sName) || cId === sFilter
+    })
+  }
+
+  return NextResponse.json({ data: allInvoices, source: "local" })
 }
 
 export async function POST(request: Request) {

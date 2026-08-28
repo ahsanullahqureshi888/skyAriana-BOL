@@ -735,6 +735,7 @@ export function SettingsView() {
                   onChange={(e) => setNewRole(e.target.value as UserRole)}
                   className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer"
                 >
+                  <option value="shipper">🚢 Shipper / Client Portal Account (Dedicated Client Access)</option>
                   <option value="superadmin">👑 Superadmin (Full System Access)</option>
                   <option value="admin">🛡️ Admin (BOL & Accounting Access)</option>
                   <option value="accountant">💼 Accountant (Ledgers & Invoices Only)</option>
@@ -744,6 +745,72 @@ export function SettingsView() {
                   {ROLE_BADGES[newRole]?.desc}
                 </p>
               </div>
+
+              {/* Shipper Linked Client Selector */}
+              {newRole === "shipper" && (
+                <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-3 animate-in fade-in duration-200">
+                  <div>
+                    <label className="text-[11px] font-black uppercase tracking-wider text-amber-900 block mb-1">
+                      🏢 Link Existing Client / Company (مربوط به مشتری)
+                    </label>
+                    <select
+                      value={newClientName}
+                      onChange={(e) => {
+                        setNewClientName(e.target.value)
+                        if (!newName) setNewName(e.target.value)
+                      }}
+                      className="w-full h-10 px-3 text-xs font-bold text-slate-900 bg-white border border-amber-300 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    >
+                      <option value="">-- Select Existing Client or Type Below --</option>
+                      {clientOptions.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-black uppercase tracking-wider text-amber-900 block mb-1">
+                      Account Password / رمز عبور پورتال
+                    </label>
+                    <input
+                      type="password"
+                      value={newPasswordUser}
+                      onChange={(e) => setNewPasswordUser(e.target.value)}
+                      placeholder="Enter secure password"
+                      className="w-full h-10 px-3 text-xs font-bold text-slate-900 bg-white border border-amber-300 rounded-xl focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-black uppercase tracking-wider text-amber-900 block mb-1">
+                      Confirm Password / تکرار رمز عبور
+                    </label>
+                    <input
+                      type="password"
+                      value={newConfirmPasswordUser}
+                      onChange={(e) => setNewConfirmPasswordUser(e.target.value)}
+                      placeholder="Confirm password"
+                      className="w-full h-10 px-3 text-xs font-bold text-slate-900 bg-white border border-amber-300 rounded-xl focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-black uppercase tracking-wider text-amber-900 block mb-1">
+                      Account Status / وضعیت حساب
+                    </label>
+                    <select
+                      value={newStatus}
+                      onChange={(e) => setNewStatus(e.target.value as any)}
+                      className="w-full h-10 px-3 text-xs font-bold text-slate-900 bg-white border border-amber-300 rounded-xl"
+                    >
+                      <option value="active">Active / فعال (Can Log In)</option>
+                      <option value="disabled">Disabled / غیرفعال (Access Blocked)</option>
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
@@ -807,25 +874,62 @@ export function SettingsView() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 self-end sm:self-auto">
-                      <span className={`px-3 py-1.5 rounded-xl text-xs font-black border ${badge.bg} ${badge.text}`}>
-                        {badge.icon} {badge.label}
-                      </span>
-                      {!isSuper && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm(`Delete user account '${u.username}'?`)) {
-                              deleteUser(u.id)
-                              toast.success(`User '${u.username}' removed.`)
-                            }
-                          }}
-                          className="p-2 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition cursor-pointer"
-                          title="Delete User"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`px-2.5 py-1 rounded-xl text-[11px] font-black border ${badge.bg} ${badge.text}`}>
+                          {badge.icon} {badge.label}
+                        </span>
+
+                        {u.role === "shipper" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              toggleUserStatus(u.id)
+                              toast.success(`Status updated for @${u.username}`)
+                            }}
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+                              u.status === "disabled"
+                                ? "bg-red-100 text-red-800 border-red-300 hover:bg-red-200"
+                                : "bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200"
+                            }`}
+                            title="Click to toggle Active / Disabled status"
+                          >
+                            {u.status === "disabled" ? "🚫 Disabled" : "✓ Active"}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        {u.role === "shipper" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResetModalUser(u)
+                              setResetModalNewPass("")
+                            }}
+                            className="px-2 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition"
+                            title="Reset password for this shipper"
+                          >
+                            🔑 Password
+                          </button>
+                        )}
+
+                        {!isSuper && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Revoke portal access & delete user '${u.username}'?`)) {
+                                deleteUser(u.id)
+                                toast.success(`User '${u.username}' removed.`)
+                              }
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition cursor-pointer"
+                            title="Delete User / Revoke Access"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )
@@ -1973,6 +2077,54 @@ export function SettingsView() {
 
       {/* Cloud Sync Hub Modal */}
       <CloudSyncModal open={isCloudSyncOpen} onOpenChange={setIsCloudSyncOpen} />
+
+      {/* Reset Password Modal */}
+      {resetModalUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-4 border border-slate-200 text-slate-900">
+            <h3 className="text-base font-black text-slate-900">Reset Shipper Password</h3>
+            <p className="text-xs text-slate-500 font-medium">
+              Setting new login password for <strong className="text-blue-700 font-bold">@{resetModalUser.username}</strong> ({resetModalUser.name}).
+            </p>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">New Password</label>
+              <input
+                type="password"
+                value={resetModalNewPass}
+                onChange={(e) => setResetModalNewPass(e.target.value)}
+                placeholder="Enter at least 4 characters"
+                className="w-full h-10 px-3 text-xs bg-slate-50 border border-slate-300 rounded-xl font-bold"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setResetModalUser(null)}
+                className="rounded-xl text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (resetModalNewPass.length < 4) {
+                    toast.error("Password must be at least 4 characters long.")
+                    return
+                  }
+                  resetUserPassword(resetModalUser.id, resetModalNewPass)
+                  toast.success(`Password updated for @${resetModalUser.username}!`)
+                  setResetModalUser(null)
+                }}
+                className="rounded-xl text-xs bg-blue-700 hover:bg-blue-800 text-white font-bold"
+              >
+                Save Password
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

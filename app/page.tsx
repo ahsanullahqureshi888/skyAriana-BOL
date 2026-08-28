@@ -13,6 +13,7 @@ import { SkyBankView } from '@/components/sky-bank-view'
 import { InvoicePadView } from '@/components/invoice-pad-view'
 import { SkyCmrView } from '@/components/sky-cmr-view'
 import { SkyDocView } from '@/components/sky-doc-view'
+import { ShipperDashboardView } from '@/components/shipper-dashboard'
 import { ErrorBoundary } from '@/components/error-boundary'
 
 import { useEffect } from 'react'
@@ -177,6 +178,10 @@ function MainContent() {
 
   if (!isAuthenticated) {
     return <LoginScreen />
+  }
+
+  if (currentUser?.role === 'shipper' || view === 'shipper-portal') {
+    return <ShipperDashboardView />
   }
 
   const isFullBleedView = view === "bank" || view === "invoice-pad" || view === "sky-cmr" || view === "sky-doc"

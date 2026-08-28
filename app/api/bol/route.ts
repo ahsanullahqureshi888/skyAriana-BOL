@@ -116,24 +116,50 @@ export async function GET(request: Request) {
       }
     }
 
-    const allBols = Array.from(mergedByNumber.values()).sort((a, b) => {
+    let allBols = Array.from(mergedByNumber.values()).sort((a, b) => {
       const dateA = new Date(a.created_at || a.updated_at || a.issue_date || 0).getTime()
       const dateB = new Date(b.created_at || b.updated_at || b.issue_date || 0).getTime()
       if (dateB !== dateA) return dateB - dateA
       return extractBolNumberSuffix(b.bol_number || "") - extractBolNumberSuffix(a.bol_number || "")
     })
 
+    // Backend Authorization: Filter by linked shipper identity if requested by a shipper
+    const shipperFilter = searchParams.get("shipper_name") || searchParams.get("client_name") || request.headers.get("x-shipper-name")
+    const roleFilter = searchParams.get("role") || request.headers.get("x-user-role")
+
+    if ((roleFilter === "shipper" || shipperFilter) && shipperFilter) {
+      const sFilter = shipperFilter.trim().toLowerCase()
+      allBols = allBols.filter((bol) => {
+        const sName = (bol.shipper_name || "").toLowerCase()
+        const cId = (bol.client_id || "").toLowerCase()
+        return sName === sFilter || sName.includes(sFilter) || sFilter.includes(sName) || cId === sFilter
+      })
+    }
+
     return NextResponse.json({ data: allBols, source: localBols.length ? "merged" : "supabase" })
   } catch (err) {
     console.error("[v0] Error fetching BOLs:", err instanceof Error ? err.message : String(err))
     // Fallback to local storage on any error
     const localBols = await localStorage.getAllLocalBOLs()
-    const sortedLocal = [...localBols].sort((a, b) => {
+    let sortedLocal = [...localBols].sort((a, b) => {
       const dateA = new Date(a.created_at || a.updated_at || a.issue_date || 0).getTime()
       const dateB = new Date(b.created_at || b.updated_at || b.issue_date || 0).getTime()
       if (dateB !== dateA) return dateB - dateA
       return extractBolNumberSuffix(b.bol_number || "") - extractBolNumberSuffix(a.bol_number || "")
     })
+
+    const shipperFilter = searchParams.get("shipper_name") || searchParams.get("client_name") || request.headers.get("x-shipper-name")
+    const roleFilter = searchParams.get("role") || request.headers.get("x-user-role")
+
+    if ((roleFilter === "shipper" || shipperFilter) && shipperFilter) {
+      const sFilter = shipperFilter.trim().toLowerCase()
+      sortedLocal = sortedLocal.filter((bol) => {
+        const sName = (bol.shipper_name || "").toLowerCase()
+        const cId = (bol.client_id || "").toLowerCase()
+        return sName === sFilter || sName.includes(sFilter) || sFilter.includes(sName) || cId === sFilter
+      })
+    }
+
     return NextResponse.json({ 
       data: sortedLocal, 
       source: "local",

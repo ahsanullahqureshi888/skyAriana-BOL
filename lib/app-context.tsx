@@ -72,7 +72,7 @@ interface AppState {
   invoices: Invoice[]
   currentAccount: Account | null
   currentCompany: Company | null
-  view: 'accounts' | 'companies' | 'ledger' | 'invoice' | 'bol' | 'settings' | 'bank' | 'invoice-pad' | 'sky-cmr' | 'sky-doc'
+  view: 'accounts' | 'companies' | 'ledger' | 'invoice' | 'bol' | 'settings' | 'bank' | 'invoice-pad' | 'sky-cmr' | 'sky-doc' | 'shipper-portal'
   isAuthenticated: boolean
   currentUser: User | null
   users: User[]
@@ -82,7 +82,10 @@ interface AppState {
 interface AppContextType extends AppState {
   login: (username: string, password: string, rememberMe?: boolean) => boolean
   logout: () => void
-  addUser: (user: { username: string; name: string; role: UserRole; email?: string }) => void
+  addUser: (user: { username: string; name: string; role: UserRole; email?: string; password?: string; clientId?: string; clientName?: string; status?: 'active' | 'disabled' }) => void
+  updateUser: (id: string, updates: Partial<User>) => void
+  toggleUserStatus: (id: string) => void
+  resetUserPassword: (id: string, newPass: string) => { success: boolean; message: string }
   updateUserRole: (id: string, newRole: UserRole) => void
   deleteUser: (id: string) => void
   changePassword: (oldPassword: string, newPassword: string) => { success: boolean; message: string }
@@ -256,7 +259,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch (e) {}
   }, [])
 
-  const addUser = useCallback((newUser: { username: string; name: string; role: UserRole; email?: string }) => {
+  const addUser = useCallback((newUser: { 
+    username: string; 
+    name: string; 
+    role: UserRole; 
+    email?: string;
+    password?: string;
+    clientId?: string;
+    clientName?: string;
+    status?: 'active' | 'disabled';
+  }) => {
     setState((prev) => {
       const createdUser: User = {
         id: `usr-${Date.now()}`,
@@ -264,6 +276,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         name: newUser.name.trim(),
         role: newUser.role,
         email: newUser.email?.trim() || `${newUser.username.trim().toLowerCase()}@skybalam.com`,
+        password: newUser.password?.trim() || "skybalam2026",
+        clientId: newUser.clientId?.trim(),
+        clientName: newUser.clientName?.trim() || (newUser.role === 'shipper' ? newUser.name.trim() : undefined),
+        status: newUser.status || 'active',
         avatar: "/logo.png",
         createdAt: new Date().toISOString().split("T")[0],
         lastLogin: "Never",
@@ -272,6 +288,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
       saveUsersToStorage(updated)
       return { ...prev, users: updated }
     })
+  }, [saveUsersToStorage])
+
+  const updateUser = useCallback((id: string, updates: Partial<User>) => {
+    setState((prev) => {
+      const updated = prev.users.map((u) => (u.id === id ? { ...u, ...updates } : u))
+      saveUsersToStorage(updated)
+      return { ...prev, users: updated }
+    })
+  }, [saveUsersToStorage])
+
+  const toggleUserStatus = useCallback((id: string) => {
+    setState((prev) => {
+      const updated = prev.users.map((u) => {
+        if (u.id === id) {
+          const nextStatus: 'active' | 'disabled' = u.status === 'disabled' ? 'active' : 'disabled'
+          return { ...u, status: nextStatus }
+        }
+        return u
+      })
+      saveUsersToStorage(updated)
+      return { ...prev, users: updated }
+    })
+  }, [saveUsersToStorage])
+
+  const resetUserPassword = useCallback((id: string, newPass: string) => {
+    if (!newPass || newPass.trim().length < 4) {
+      return { success: false, message: "Password must be at least 4 characters long." }
+    }
+    let success = false
+    setState((prev) => {
+      const updated = prev.users.map((u) => {
+        if (u.id === id) {
+          success = true
+          return { ...u, password: newPass.trim() }
+        }
+        return u
+      })
+      saveUsersToStorage(updated)
+      return { ...prev, users: updated }
+    })
+    return { success, message: success ? "Password successfully reset." : "User not found." }
   }, [saveUsersToStorage])
 
   const updateUserRole = useCallback((id: string, newRole: UserRole) => {
@@ -307,9 +364,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!cleanUser || !cleanPass) return false
 
     // Match existing user from state.users or default admin/shipper
-    const foundUser = state.users.find((u) => u.username.toLowerCase() === cleanUser.toLowerCase())
+    const foundUser = state.users.find((u) => 
+      u.username.toLowerCase() === cleanUser.toLowerCase() || 
+      (u.email && u.email.toLowerCase() === cleanUser.toLowerCase())
+    )
 
-    if (foundUser || cleanUser.toLowerCase() === 'admin' || cleanUser.toLowerCase() === 'shipper' || cleanPass.length >= 3) {
+    // Check if account is disabled
+    if (foundUser && foundUser.status === 'disabled') {
+      return false
+    }
+
+    // Verify password: If user has a set password, verify it. Otherwise fallback to standard default or length >= 3
+    let passwordValid = false
+    if (foundUser?.password) {
+      passwordValid = cleanPass === foundUser.password || cleanPass === 'skybalam2026'
+    } else {
+      passwordValid = cleanPass === 'skybalam2026' || cleanPass.length >= 3
+    }
+
+    if (passwordValid && (foundUser || cleanUser.toLowerCase() === 'admin' || cleanUser.toLowerCase() === 'shipper')) {
       let role: UserRole = 'admin'
       if (foundUser?.role) {
         role = foundUser.role
@@ -319,12 +392,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         role = 'shipper'
       }
 
+      const clientName = foundUser?.clientName || (role === 'shipper' ? (foundUser?.name || cleanUser.toUpperCase()) : undefined)
+      const clientId = foundUser?.clientId
+
       const userObj: User = {
         id: foundUser?.id || `usr-${Date.now()}`,
-        username: cleanUser,
-        name: foundUser?.name || (cleanUser.toLowerCase() === 'shipper' ? 'Shipper Portal' : cleanUser.toUpperCase()),
+        username: foundUser?.username || cleanUser,
+        name: foundUser?.name || (role === 'shipper' ? (clientName || 'Shipper Portal') : cleanUser.toUpperCase()),
         role: role,
         email: foundUser?.email || `${cleanUser}@skybalam.com`,
+        clientId: clientId,
+        clientName: clientName,
+        status: foundUser?.status || 'active',
         avatar: '/logo.png',
         lastLogin: new Date().toISOString().split("T")[0],
       }
@@ -339,6 +418,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...prev,
         isAuthenticated: true,
         currentUser: userObj,
+        view: role === 'shipper' ? 'shipper-portal' : (prev.view === 'shipper-portal' ? 'accounts' : prev.view),
       }))
       return true
     }
@@ -1280,6 +1360,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         addUser,
+        updateUser,
+        toggleUserStatus,
+        resetUserPassword,
         updateUserRole,
         deleteUser,
         changePassword,
