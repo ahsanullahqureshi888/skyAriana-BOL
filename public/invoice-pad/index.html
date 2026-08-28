@@ -485,14 +485,34 @@
 
     .goods-grid-row-1 {
       display: grid;
-      grid-template-columns: 2fr 1fr 1fr;
-      gap: 10px;
+      grid-template-columns: 2fr 1fr 1.2fr;
+      gap: 8px;
+      margin-bottom: 8px;
     }
 
-    .goods-grid-row-2 {
+    .goods-grid-row-weights {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr 1.2fr;
-      gap: 10px;
+      grid-template-columns: 1fr 1fr 1.15fr 1.15fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .goods-grid-row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .goods-grid-row-1 {
+        grid-template-columns: 1fr;
+      }
+      .goods-grid-row-weights {
+        grid-template-columns: 1fr 1fr;
+      }
+      .goods-grid-row-3 {
+        grid-template-columns: 1fr;
+      }
     }
 
     .goods-input-col {
@@ -2335,9 +2355,9 @@
 
     let profile = { ...DEFAULT_PROFILE };
 
-    // Standard Sample: 2118 CTNS, GW 22239, NW 21180, Rate 2.50 USD -> Amount = 21180 * 2.50 = 52,950 USD!
+    // Standard Sample: 2118 CTNS, Per Ctn NW 10 kg, Per Ctn GW 10.5 kg -> NW 21180 kg, GW 22239 kg, Rate 2.50 USD -> Amount = 52,950 USD!
     let items = [
-      { qty: 2118, unit: "CTNS", desc: "BLACK RAISINS", quality: "", gw: 22239, nw: 21180, rate: 2.50 }
+      { qty: 2118, unit: "CTNS", desc: "BLACK RAISINS", quality: "", per_ctn_nw: 10, per_ctn_gw: 10.5, gw: 22239, nw: 21180, rate: 2.50 }
     ];
 
     let autoSaveTimer = null;
@@ -2472,85 +2492,111 @@
       }
     }
 
+    function setElVal(id, val) {
+      if (val === undefined || val === null) return;
+      const el = document.getElementById(id);
+      if (el) {
+        el.value = val;
+      }
+    }
+
     function parseAndApplyImporterText(rawText) {
       if (!rawText || !rawText.trim()) return;
       isParsingInternal = true;
-      const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-      if (lines.length === 0) {
-        isParsingInternal = false;
-        return;
-      }
+      const text = rawText.trim();
 
       let name = "";
-      let addrLines = [];
+      let addr1 = "";
+      let addr2 = "";
+      let addr3 = "";
       let fssai = "";
       let gstin = "";
       let iec = "";
       let email = "";
       let truck = "";
 
-      lines.forEach((line, index) => {
+      // 1. Regex Extraction for structured keys
+      const fssaiMatch = text.match(/(?:fssai\s*no|fssai\s*#|fssai|fssaino)[:\-]?\s*([0-9A-Za-z]+)/i);
+      if (fssaiMatch) fssai = fssaiMatch[1].trim();
+
+      const gstinMatch = text.match(/(?:gstin|gst\s*no|gst1n|gst)[:\-]?\s*([0-9A-Za-z]+)/i);
+      if (gstinMatch) gstin = gstinMatch[1].trim();
+
+      const iecMatch = text.match(/(?:iec\s*code|iec\s*no|iec\s*#|iec)[:\-]?\s*([0-9A-Za-z]+)/i);
+      if (iecMatch) iec = iecMatch[1].trim();
+
+      const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+      if (emailMatch) email = emailMatch[0].trim();
+
+      const truckMatch = text.match(/(?:truck\s*no|truck\s*#|truck|vehicle)[:\-]?\s*([^\n\r,]+)/i);
+      if (truckMatch) truck = truckMatch[1].trim();
+
+      // 2. Process Lines for Importer Name and Address components
+      const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      const addrLines = [];
+
+      rawLines.forEach((line, index) => {
         const lower = line.toLowerCase();
-        
-        if (lower.startsWith("fssai") || lower.includes("fssai no") || lower.includes("fssai:") || lower.includes("fssaino")) {
-          const match = line.replace(/^[^\d:]*[:\-]?\s*/i, '').trim();
-          fssai = match || line;
-        } else if (lower.startsWith("gstin") || lower.startsWith("gst") || lower.includes("gstin:") || lower.includes("gst1n")) {
-          const match = line.replace(/^[^\w:]*[:\-]?\s*/i, '').trim();
-          gstin = match || line;
-        } else if (lower.startsWith("iec") || lower.includes("iec code") || lower.includes("iec:")) {
-          const match = line.replace(/^[^\w:]*[:\-]?\s*/i, '').trim();
-          iec = match || line;
-        } else if (lower.includes("@") || lower.startsWith("email") || lower.includes("email id")) {
-          const emailMatch = line.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-          email = emailMatch ? emailMatch[0] : line.replace(/^[^\w:]*[:\-]?\s*/i, '').trim();
-        } else if (lower.startsWith("truck") || lower.startsWith("truck no") || lower.includes("truck:")) {
-          const match = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
-          truck = match || line;
-        } else if (!name && (index === 0 || lower.startsWith("name:") || lower.startsWith("importer:") || lower.startsWith("consignee:"))) {
+        // Skip metadata lines already handled
+        if (
+          lower.startsWith("fssai") ||
+          lower.startsWith("gst") ||
+          lower.startsWith("iec") ||
+          lower.startsWith("email") ||
+          lower.includes("@") ||
+          lower.startsWith("truck")
+        ) {
+          return;
+        }
+
+        if (!name && (index === 0 || lower.startsWith("name:") || lower.startsWith("importer:") || lower.startsWith("consignee:"))) {
           name = line.replace(/^(name of importer|name|importer|consignee)[:\-]?\s*/i, '').trim();
         } else {
-          const cleanAddr = line.replace(/^(address|addr)[:\-]?\s*/i, '').trim();
-          if (cleanAddr) addrLines.push(cleanAddr);
+          const clean = line.replace(/^(address|addr|street|location)[:\-]?\s*/i, '').trim();
+          if (clean) addrLines.push(clean);
         }
       });
 
+      if (addrLines[0]) addr1 = addrLines[0];
+      if (addrLines[1]) addr2 = addrLines[1];
+      if (addrLines[2]) addr3 = addrLines.slice(2).join(', ');
+
+      // 3. Immediately apply to BOTH Live Invoice Pad & Edit Forum
       if (name) {
-        document.getElementById("imp-name").value = name;
-        document.getElementById("f-imp-name").value = name;
+        setElVal("imp-name", name);
+        setElVal("f-imp-name", name);
       }
-      if (addrLines[0] !== undefined) {
-        document.getElementById("imp-addr1").value = addrLines[0];
-        document.getElementById("f-imp-addr1").value = addrLines[0];
+      if (addr1) {
+        setElVal("imp-addr1", addr1);
+        setElVal("f-imp-addr1", addr1);
       }
-      if (addrLines[1] !== undefined) {
-        document.getElementById("imp-addr2").value = addrLines[1];
-        document.getElementById("f-imp-addr2").value = addrLines[1];
+      if (addr2) {
+        setElVal("imp-addr2", addr2);
+        setElVal("f-imp-addr2", addr2);
       }
-      if (addrLines[2] !== undefined) {
-        const fullThird = addrLines.slice(2).join(', ');
-        document.getElementById("imp-addr3").value = fullThird;
-        document.getElementById("f-imp-addr3").value = fullThird;
+      if (addr3) {
+        setElVal("imp-addr3", addr3);
+        setElVal("f-imp-addr3", addr3);
       }
       if (fssai) {
-        document.getElementById("imp-fssai").value = fssai;
-        document.getElementById("f-imp-fssai").value = fssai;
+        setElVal("imp-fssai", fssai);
+        setElVal("f-imp-fssai", fssai);
       }
       if (gstin) {
-        document.getElementById("imp-gstin").value = gstin;
-        document.getElementById("f-imp-gstin").value = gstin;
+        setElVal("imp-gstin", gstin);
+        setElVal("f-imp-gstin", gstin);
       }
       if (iec) {
-        document.getElementById("imp-iec").value = iec;
-        document.getElementById("f-imp-iec").value = iec;
+        setElVal("imp-iec", iec);
+        setElVal("f-imp-iec", iec);
       }
       if (email) {
-        document.getElementById("imp-email").value = email;
-        document.getElementById("f-imp-email").value = email;
+        setElVal("imp-email", email);
+        setElVal("f-imp-email", email);
       }
       if (truck) {
-        document.getElementById("ship-truck").value = truck;
-        document.getElementById("f-ship-truck").value = truck;
+        setElVal("ship-truck", truck);
+        setElVal("f-ship-truck", truck);
       }
 
       isParsingInternal = false;
@@ -2560,11 +2606,7 @@
     function parseAndApplySenderText(rawText) {
       if (!rawText || !rawText.trim()) return;
       isParsingInternal = true;
-      const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-      if (lines.length === 0) {
-        isParsingInternal = false;
-        return;
-      }
+      const text = rawText.trim();
 
       let sender = "";
       let lic = "";
@@ -2577,83 +2619,126 @@
       let date = "";
       let bill = "";
       let invNo = "";
+      let truck = "";
 
-      lines.forEach((line, index) => {
-        const lower = line.toLowerCase();
-        
-        if (lower.startsWith("date:") || lower.includes("date:")) {
-          const match = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
-          if (match) date = match;
-        } else if (lower.startsWith("bill:") || lower.startsWith("bill no:") || lower.includes("bill no")) {
-          const match = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
-          if (match) bill = match;
-        } else if (lower.startsWith("invoice no:") || lower.startsWith("inv no:") || lower.startsWith("inv:")) {
-          const match = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
-          if (match) invNo = match;
-        } else if (lower.startsWith("sender:") || lower.startsWith("shipper:") || lower.includes("sender name")) {
-          sender = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
-        } else if (lower.startsWith("lic:") || lower.startsWith("lic no:") || lower.includes("sender lic") || lower.includes("license")) {
-          lic = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
-        } else if (lower.startsWith("transit:") || lower.startsWith("transit no:") || lower.includes("transit")) {
-          transit = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
-        } else if (lower.startsWith("origin:") || lower.startsWith("rasta") || lower.includes("bazaar") || lower.includes("origin")) {
-          origin = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
-        } else if (lower.startsWith("coo:") || lower.includes("certificate of origin") || lower.includes("coo no")) {
-          coo = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
-        } else if (lower.startsWith("phyto:") || lower.includes("phytosanitary")) {
-          phyto = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
-        } else if (lower.startsWith("via:") || lower.includes("transit route") || lower.startsWith("route:")) {
-          via = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
-        } else if (lower.startsWith("tl:") || lower.startsWith("tl no:") || lower.includes("tl number")) {
-          tl = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
-        } else if (!sender && index === 0) {
-          sender = line;
+      // 1. Regex Extraction for structured fields
+      const dateMatch = text.match(/(?:date|invoice\s*date)[:\-]?\s*([0-9]{1,2}[\/\.\-][0-9]{1,2}[\/\.\-][0-9]{2,4})/i);
+      if (dateMatch) date = dateMatch[1].trim();
+
+      const billMatch = text.match(/(?:bill\s*no|bill\s*#|bill)[:\-]?\s*([A-Za-z0-9\-_]+)/i);
+      if (billMatch) bill = billMatch[1].trim();
+
+      const invMatch = text.match(/(?:invoice\s*no|invoice\s*#|inv\s*no|inv\s*#|inv)[:\-]?\s*([A-Za-z0-9\-_]+)/i);
+      if (invMatch) invNo = invMatch[1].trim();
+
+      const licMatch = text.match(/(?:sender\s*lic|lic\s*no|lic\s*#|lic|license\s*no|jawaz)[:\-]?\s*([A-Za-z0-9\-_]+)/i);
+      if (licMatch) lic = licMatch[1].trim();
+
+      // Matches: Transit NO, T.t NO, T.T NO, TT NO, TC NO, Afghan TC
+      const transitMatch = text.match(/(?:transit\s*no|transit\s*#|transit|t\.t\s*no|tt\s*no|t\.t|tt|tc\s*no|afghan\s*tc)[:\-]?\s*([A-Za-z0-9\-_]+)/i);
+      if (transitMatch) transit = transitMatch[1].trim();
+
+      const cooMatch = text.match(/(?:certificate\s*of\s*origin|coo\s*no|coo\s*#|coo|c\.o\.o)[:\-]?\s*([A-Za-z0-9\-_]+)/i);
+      if (cooMatch) coo = cooMatch[1].trim();
+
+      const phytoMatch = text.match(/(?:phytosanitary\s*no|phytosanitary\s*#|phyto\s*no|phyto)[:\-]?\s*([A-Za-z0-9\-_]+)/i);
+      if (phytoMatch) phyto = phytoMatch[1].trim();
+
+      const viaMatch = text.match(/(?:via|transit\s*route|route)[:\-]?\s*([^\n\r,]+)/i);
+      if (viaMatch) via = viaMatch[1].trim();
+
+      const tlMatch = text.match(/(?:tl\s*no|tl\s*#|tl\s*number|tl)[:\-]?\s*([A-Za-z0-9\-_]+)/i);
+      if (tlMatch) tl = tlMatch[1].trim();
+
+      const truckMatch = text.match(/(?:truck\s*no|truck\s*#|truck)[:\-]?\s*([^\n\r,]+)/i);
+      if (truckMatch) truck = truckMatch[1].trim();
+
+      // 2. Extract Lines for Sender Company Name and Origin Address
+      const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      
+      if (rawLines.length > 0) {
+        const firstLine = rawLines[0];
+        if (/^(sender|shipper|exporter|company)[:\-]?\s*/i.test(firstLine)) {
+          sender = firstLine.replace(/^(sender|shipper|exporter|company)[:\-]?\s*/i, '').trim();
+        } else if (!/^(date|bill|invoice|inv|lic|transit|t\.t|tt|coo|phyto|via|tl|origin|tel)[:\-]/i.test(firstLine)) {
+          sender = firstLine;
         }
-      });
+      }
 
+      // Check if explicit ORIGIN: line exists
+      const originMatch = text.match(/(?:origin|rasta\s*bazaar|rasta|location)[:\-]?\s*([^\n\r]+)/i);
+      if (originMatch) {
+        origin = originMatch[1].trim();
+      } else {
+        // Collect address lines (lines after sender that aren't pure metadata)
+        const addrParts = [];
+        for (let i = 1; i < rawLines.length; i++) {
+          let l = rawLines[i];
+          // Strip out transit/t.t tags
+          l = l.replace(/(?:t\.t\s*no|tt\s*no|transit\s*no|transit|t\.t|tt)[:\-]?\s*[A-Za-z0-9\-_]+/gi, '');
+          // Strip out tel tags
+          l = l.replace(/(?:tel|phone|contact|cell)[:\-]?\s*[\+0-9\s\-]+/gi, '');
+          // Strip out lic tags
+          l = l.replace(/(?:lic\s*no|license|lic)[:\-]?\s*[A-Za-z0-9\-_]+/gi, '');
+          // Clean leading/trailing punctuation and spaces
+          l = l.replace(/^[\s,.\-]+|[\s,.\-]+$/g, '').trim();
+          if (l.length > 2 && !/^(date|bill|inv|coo|phyto|via|tl):/i.test(l)) {
+            addrParts.push(l);
+          }
+        }
+        if (addrParts.length > 0) {
+          origin = addrParts.join(', ');
+        }
+      }
+
+      // 3. Immediately apply to BOTH Live Invoice Pad & Edit Forum
       if (date) {
-        document.getElementById("inv-date").value = date;
-        document.getElementById("f-inv-date").value = date;
+        setElVal("inv-date", date);
+        setElVal("f-inv-date", date);
       }
       if (bill) {
-        document.getElementById("inv-bill").value = bill;
-        document.getElementById("f-inv-bill").value = bill;
+        setElVal("inv-bill", bill);
+        setElVal("f-inv-bill", bill);
       }
       if (invNo) {
-        document.getElementById("inv-no").value = invNo;
-        document.getElementById("f-inv-no").value = invNo;
+        setElVal("inv-no", invNo);
+        setElVal("f-inv-no", invNo);
       }
       if (sender) {
-        document.getElementById("inv-sender").value = sender;
-        document.getElementById("f-inv-sender").value = sender;
+        setElVal("inv-sender", sender);
+        setElVal("f-inv-sender", sender);
       }
       if (lic) {
-        document.getElementById("inv-sender-lic").value = lic;
-        document.getElementById("f-inv-sender-lic").value = lic;
+        setElVal("inv-sender-lic", lic);
+        setElVal("f-inv-sender-lic", lic);
       }
       if (transit) {
-        document.getElementById("inv-transit").value = transit;
-        document.getElementById("f-inv-transit").value = transit;
+        setElVal("inv-transit", transit);
+        setElVal("f-inv-transit", transit);
       }
       if (origin) {
-        document.getElementById("inv-origin").value = origin;
-        document.getElementById("f-inv-origin").value = origin;
+        setElVal("inv-origin", origin);
+        setElVal("f-inv-origin", origin);
       }
       if (coo) {
-        document.getElementById("inv-coo").value = coo;
-        document.getElementById("f-inv-coo").value = coo;
+        setElVal("inv-coo", coo);
+        setElVal("f-inv-coo", coo);
       }
       if (phyto) {
-        document.getElementById("inv-phyto").value = phyto;
-        document.getElementById("f-inv-phyto").value = phyto;
+        setElVal("inv-phyto", phyto);
+        setElVal("f-inv-phyto", phyto);
       }
       if (via) {
-        document.getElementById("inv-via").value = via;
-        document.getElementById("f-inv-via").value = via;
+        setElVal("inv-via", via);
+        setElVal("f-inv-via", via);
       }
       if (tl) {
-        document.getElementById("inv-tl").value = tl;
-        document.getElementById("f-inv-tl").value = tl;
+        setElVal("inv-tl", tl);
+        setElVal("f-inv-tl", tl);
+      }
+      if (truck) {
+        setElVal("ship-truck", truck);
+        setElVal("f-ship-truck", truck);
       }
 
       isParsingInternal = false;
@@ -2964,7 +3049,17 @@
       }
 
       if (draft.items && Array.isArray(draft.items) && draft.items.length > 0) {
-        items = draft.items;
+        items = draft.items.map(item => ({
+          qty: parseFloat(item.qty) || 0,
+          unit: item.unit || "CTNS",
+          desc: item.desc || "",
+          quality: item.quality || "",
+          per_ctn_nw: item.per_ctn_nw !== undefined && item.per_ctn_nw !== null ? parseFloat(item.per_ctn_nw) : (item.qty > 0 && item.nw ? parseFloat((item.nw / item.qty).toFixed(3)) : 0),
+          per_ctn_gw: item.per_ctn_gw !== undefined && item.per_ctn_gw !== null ? parseFloat(item.per_ctn_gw) : (item.qty > 0 && item.gw ? parseFloat((item.gw / item.qty).toFixed(3)) : 0),
+          nw: parseFloat(item.nw) || 0,
+          gw: parseFloat(item.gw) || 0,
+          rate: parseFloat(item.rate) || 0
+        }));
       }
 
       syncAllPadValuesToForum();
@@ -3218,7 +3313,7 @@
         const formattedLineAmt = formatCurrency(lineAmt);
         const curr = profile.currency || "USD";
 
-        // 1. Render Document Table Row
+        // 1. Render Document Table Row in Printable Invoice
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td class="col-qty"><input type="number" class="text-center bold" value="${item.qty}" oninput="updateItem(${index}, 'qty', this.value)" /></td>
@@ -3226,10 +3321,12 @@
           <td class="col-desc"><input type="text" class="text-left bold" value="${item.desc}" oninput="updateItem(${index}, 'desc', this.value)" /></td>
           <td class="col-qual"><input type="text" class="text-center" value="${item.quality}" oninput="updateItem(${index}, 'quality', this.value)" /></td>
           <td class="col-gw text-right">
-            GW <input type="number" step="any" style="display:inline-block; width: 50px; text-align:right; font-weight:bold;" value="${item.gw}" oninput="updateItem(${index}, 'gw', this.value)" /><br/><span style="font-size: 8.5px; font-weight: 500;">KGS</span>
+            GW <input type="number" step="any" style="display:inline-block; width: 54px; text-align:right; font-weight:bold;" value="${item.gw}" oninput="updateItem(${index}, 'gw', this.value)" /><br/>
+            <span style="font-size: 8.5px; color: #475569; font-weight: 600;">${item.per_ctn_gw ? '(' + item.per_ctn_gw + ' kg)' : 'KGS'}</span>
           </td>
           <td class="col-nw text-right">
-            NW <input type="number" step="any" style="display:inline-block; width: 50px; text-align:right; font-weight:bold;" value="${item.nw}" oninput="updateItem(${index}, 'nw', this.value)" /><br/><span style="font-size: 8.5px; font-weight: 500;">KGS</span>
+            NW <input type="number" step="any" style="display:inline-block; width: 54px; text-align:right; font-weight:bold;" value="${item.nw}" oninput="updateItem(${index}, 'nw', this.value)" /><br/>
+            <span style="font-size: 8.5px; color: #0284c7; font-weight: 700;">${item.per_ctn_nw ? '(' + item.per_ctn_nw + ' kg)' : 'KGS'}</span>
           </td>
           <td class="col-rate"><input type="number" step="any" class="text-right bold" value="${item.rate}" oninput="updateItem(${index}, 'rate', this.value)" /></td>
           <td class="col-amount text-right">${formattedLineAmt}</td>
@@ -3237,7 +3334,7 @@
         `;
         tbody.appendChild(tr);
 
-        // 2. Render Edit Forum Goods Card with Fit Layout
+        // 2. Render Edit Forum Goods Card with Per Ctn Net/Gross & Total Net/Gross
         const card = document.createElement("div");
         card.className = "forum-goods-item-card";
         const isNW = profile.calcMode === "net_weight";
@@ -3276,18 +3373,30 @@
             </div>
           </div>
 
-          <!-- Row 2: Gross WT, Net WT, Rate & Amount -->
-          <div class="goods-grid-row-2">
+          <!-- Row 2: Per Carton Weights & Total Net/Gross Weights -->
+          <div class="goods-grid-row-weights">
             <div class="goods-input-col">
-              <label>Gross WT (GW) <span class="badge-tag" style="background: rgba(148,163,184,0.2); color: var(--text-muted);">KGS</span></label>
-              <input type="number" step="any" value="${item.gw || ''}" placeholder="0" oninput="updateItem(${index}, 'gw', this.value)" />
+              <label>Per Ctn Net <span class="badge-tag blue">KG/CTN</span></label>
+              <input type="number" step="any" value="${item.per_ctn_nw !== undefined && item.per_ctn_nw !== null ? item.per_ctn_nw : ''}" placeholder="e.g. 10.00" oninput="updateItem(${index}, 'per_ctn_nw', this.value)" />
+            </div>
+            <div class="goods-input-col">
+              <label>Per Ctn Gross <span class="badge-tag" style="background: rgba(148,163,184,0.2); color: var(--text-muted);">KG/CTN</span></label>
+              <input type="number" step="any" value="${item.per_ctn_gw !== undefined && item.per_ctn_gw !== null ? item.per_ctn_gw : ''}" placeholder="e.g. 10.50" oninput="updateItem(${index}, 'per_ctn_gw', this.value)" />
             </div>
             <div class="goods-input-col highlight-nw">
-              <label>Net WT (NW) <span class="badge-tag blue">Multiplier</span></label>
+              <label>Total Net WT <span class="badge-tag blue">KGS (NW)</span></label>
               <input type="number" step="any" value="${item.nw || ''}" placeholder="0" oninput="updateItem(${index}, 'nw', this.value)" />
             </div>
+            <div class="goods-input-col">
+              <label>Total Gross WT <span class="badge-tag" style="background: rgba(148,163,184,0.2); color: var(--text-muted);">KGS (GW)</span></label>
+              <input type="number" step="any" value="${item.gw || ''}" placeholder="0" oninput="updateItem(${index}, 'gw', this.value)" />
+            </div>
+          </div>
+
+          <!-- Row 3: Rate & Line Total Amount -->
+          <div class="goods-grid-row-3">
             <div class="goods-input-col highlight-rate">
-              <label>Rate ($) <span class="badge-tag green">Per Unit</span></label>
+              <label>Rate ($) <span class="badge-tag green">Per ${isNW ? 'KG' : 'Unit'}</span></label>
               <input type="number" step="any" value="${item.rate || ''}" placeholder="0.00" oninput="updateItem(${index}, 'rate', this.value)" />
             </div>
             <div class="goods-input-col amount-preview">
@@ -3305,8 +3414,6 @@
 
       recalculate();
     }
-
-
 
     let isAutoFitEnabled = true;
 
@@ -3354,26 +3461,52 @@
     setTimeout(applyAutoFitZoom, 100);
     setTimeout(applyAutoFitZoom, 500);
 
-    function _old_setA4Zoom(scale) {
-      const container = document.getElementById("a4-scalable-container");
-      if (!container) return;
-      container.style.transform = `scale(${scale})`;
-      if (scale < 1.0) {
-        const offset = Math.round((1.0 - scale) * 1120);
-        container.style.marginBottom = "20px";
-      } else {
-        container.style.marginBottom = "20px";
-      }
-      document.querySelectorAll(".zoom-btn").forEach(b => b.classList.remove("active"));
-      if (event && event.target) event.target.classList.add("active");
-    }
-
     function updateItem(index, field, value) {
-      if (field === 'qty' || field === 'gw' || field === 'nw' || field === 'rate') {
-        items[index][field] = parseFloat(value) || 0;
+      const item = items[index];
+      if (!item) return;
+
+      if (field === 'desc' || field === 'unit' || field === 'quality') {
+        item[field] = value;
       } else {
-        items[index][field] = value;
+        const num = parseFloat(value) || 0;
+        item[field] = num;
+
+        // Smart Bidirectional Calculations between Qty, Per Ctn Net/Gross and Total NW/GW
+        if (field === 'qty') {
+          if (item.per_ctn_nw > 0) {
+            item.nw = parseFloat((num * item.per_ctn_nw).toFixed(2));
+          } else if (item.nw > 0 && num > 0) {
+            item.per_ctn_nw = parseFloat((item.nw / num).toFixed(3));
+          }
+
+          if (item.per_ctn_gw > 0) {
+            item.gw = parseFloat((num * item.per_ctn_gw).toFixed(2));
+          } else if (item.gw > 0 && num > 0) {
+            item.per_ctn_gw = parseFloat((item.gw / num).toFixed(3));
+          }
+        } else if (field === 'per_ctn_nw') {
+          const qty = parseFloat(item.qty) || 0;
+          if (qty > 0) {
+            item.nw = parseFloat((qty * num).toFixed(2));
+          }
+        } else if (field === 'per_ctn_gw') {
+          const qty = parseFloat(item.qty) || 0;
+          if (qty > 0) {
+            item.gw = parseFloat((qty * num).toFixed(2));
+          }
+        } else if (field === 'nw') {
+          const qty = parseFloat(item.qty) || 0;
+          if (qty > 0) {
+            item.per_ctn_nw = parseFloat((num / qty).toFixed(3));
+          }
+        } else if (field === 'gw') {
+          const qty = parseFloat(item.qty) || 0;
+          if (qty > 0) {
+            item.per_ctn_gw = parseFloat((num / qty).toFixed(3));
+          }
+        }
       }
+
       renderTable();
       const sayWordsEl = document.getElementById("say-usd-words");
       if (sayWordsEl) {
@@ -3387,7 +3520,7 @@
         alert("Maximum 6 item rows recommended to fit strictly on 1 print page.");
         return;
       }
-      items.push({ qty: 0, unit: "CTNS", desc: "", quality: "", gw: 0, nw: 0, rate: 0 });
+      items.push({ qty: 0, unit: "CTNS", desc: "", quality: "", per_ctn_nw: 0, per_ctn_gw: 0, gw: 0, nw: 0, rate: 0 });
       renderTable();
       scheduleAutoSave();
       showToast("Goods item added");
@@ -3400,7 +3533,7 @@
         scheduleAutoSave();
         showToast("Goods item removed");
       } else {
-        items[0] = { qty: 0, unit: "CTNS", desc: "", quality: "", gw: 0, nw: 0, rate: 0 };
+        items[0] = { qty: 0, unit: "CTNS", desc: "", quality: "", per_ctn_nw: 0, per_ctn_gw: 0, gw: 0, nw: 0, rate: 0 };
         renderTable();
         scheduleAutoSave();
       }
@@ -3488,7 +3621,9 @@
       const qtyFormatted = totalQty.toLocaleString('en-US');
 
       const summaryLineText = document.getElementById("summary-line-text");
-      if (summaryLineText) summaryLineText.textContent = `${qtyFormatted} CTNS: ${mainCommodity}, GW ${gwFormatted} KGS, NW ${nwFormatted} KGS`;
+      if (summaryLineText) {
+        summaryLineText.textContent = `${qtyFormatted} CTNS: ${mainCommodity}, GW ${gwFormatted} KGS, NW ${nwFormatted} KGS`;
+      }
 
       // Update Top KPI Metrics Cards
       const kpiTotal = document.getElementById("kpi-total-val");
