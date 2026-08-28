@@ -810,25 +810,33 @@
       background: #f8fafc;
       border: 1.5px solid #cbd5e1;
       border-radius: 4px;
-      padding: 6px 10px;
-      margin-bottom: 6px;
+      padding: 5px 8px;
+      margin-bottom: 5px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3.5px;
     }
 
     .meta-grid-row {
-      display: flex;
+      display: grid;
       align-items: center;
-      justify-content: space-between;
       gap: 8px;
-      font-size: 9px;
+      font-size: 8.5px;
+    }
+
+    .meta-grid-row.row-3col {
+      grid-template-columns: 140px 180px 1fr;
+    }
+
+    .meta-grid-row.row-2col {
+      grid-template-columns: 210px 1fr;
     }
 
     .meta-field {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 4px;
+      min-width: 0;
     }
 
     .meta-label {
@@ -838,6 +846,7 @@
       text-transform: uppercase;
       white-space: nowrap;
       letter-spacing: 0.25px;
+      flex-shrink: 0;
     }
 
     .meta-input {
@@ -846,10 +855,12 @@
       background: transparent;
       outline: none;
       font-family: inherit;
-      font-size: 9px;
+      font-size: 8.5px;
       font-weight: 700;
       color: #0f172a;
-      padding: 1px 3px;
+      padding: 1px 2px;
+      width: 100%;
+      min-width: 0;
       transition: all 0.15s;
     }
 
@@ -861,13 +872,14 @@
     .meta-input.bill-highlight {
       color: #c81d25;
       font-weight: 900;
-      font-size: 10px;
+      font-size: 9.5px;
       letter-spacing: 0.4px;
     }
 
     .meta-input.sender-highlight {
       color: #1e3a8a;
       font-weight: 800;
+      text-align: right;
     }
 
     /* Structured Importer / Consignee Profile Card */
@@ -876,15 +888,15 @@
       border: 1.5px solid #cbd5e1;
       border-left: 4.5px solid #0284c7;
       border-radius: 4px;
-      padding: 6px 10px;
-      margin-bottom: 6px;
+      padding: 5px 8px;
+      margin-bottom: 5px;
     }
 
     .importer-header-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 3.5px;
+      gap: 6px;
+      margin-bottom: 3px;
     }
 
     .importer-tag {
@@ -892,12 +904,13 @@
       font-weight: 800;
       color: #0284c7;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.4px;
       white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .importer-name-input {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 900;
       color: #0f172a;
       width: 100%;
@@ -916,24 +929,27 @@
 
     .importer-grid {
       display: grid;
-      grid-template-columns: 1.3fr 1fr;
-      gap: 3px 14px;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 2px 10px;
     }
 
     .importer-addr-col {
       display: flex;
       flex-direction: column;
-      gap: 2.5px;
+      gap: 2px;
+      min-width: 0;
     }
 
     .importer-addr-row {
       display: flex;
       align-items: center;
       gap: 4px;
+      min-width: 0;
     }
 
     .importer-input {
       width: 100%;
+      min-width: 0;
       border: none;
       border-bottom: 1px dashed #cbd5e1;
       background: transparent;
@@ -953,15 +969,17 @@
     .importer-comp-col {
       display: flex;
       flex-direction: column;
-      gap: 2.5px;
+      gap: 2px;
       border-left: 1px solid #e2e8f0;
-      padding-left: 10px;
+      padding-left: 8px;
+      min-width: 0;
     }
 
     .importer-comp-row {
       display: flex;
       align-items: center;
       gap: 4px;
+      min-width: 0;
     }
 
     .comp-label {
@@ -970,17 +988,18 @@
       color: #64748b;
       white-space: nowrap;
       width: 58px;
+      flex-shrink: 0;
       text-transform: uppercase;
     }
 
     /* Structured Full-Grid Items Table (Expands to Fill Middle) */
     .table-container {
-      margin-bottom: 6px;
+      margin-bottom: 5px;
       border: 1.5px solid #0f172a;
       border-radius: 3px;
       overflow: hidden;
       flex: 1;
-      min-height: 180px;
+      min-height: 140px;
       display: flex;
       flex-direction: column;
     }
@@ -997,7 +1016,7 @@
       color: #ffffff;
       font-weight: 800;
       text-align: center;
-      padding: 5px 3px;
+      padding: 4px 3px;
       border-right: 1px solid #334155;
       font-size: 8px;
       letter-spacing: 0.35px;
@@ -1009,7 +1028,7 @@
     }
 
     .invoice-table td {
-      padding: 4.5px 3px;
+      padding: 3.5px 3px;
       border-bottom: 1px solid #cbd5e1;
       border-right: 1px solid #e2e8f0;
       vertical-align: middle;
@@ -1041,13 +1060,13 @@
     }
 
     .invoice-table .col-qty { width: 42px; text-align: center; font-weight: 800; }
-    .invoice-table .col-unit { width: 42px; text-align: center; font-weight: 700; }
-    .invoice-table .col-desc { width: 175px; text-align: left; font-weight: 800; }
-    .invoice-table .col-qual { width: 62px; text-align: center; }
-    .invoice-table .col-gw { width: 78px; text-align: right; }
-    .invoice-table .col-nw { width: 78px; text-align: right; font-weight: 800; color: #0284c7; }
+    .invoice-table .col-unit { width: 40px; text-align: center; font-weight: 700; }
+    .invoice-table .col-desc { width: auto; min-width: 140px; text-align: left; font-weight: 800; }
+    .invoice-table .col-qual { width: 55px; text-align: center; }
+    .invoice-table .col-gw { width: 75px; text-align: right; }
+    .invoice-table .col-nw { width: 75px; text-align: right; font-weight: 800; color: #0284c7; }
     .invoice-table .col-rate { width: 55px; text-align: right; font-weight: 800; color: #059669; }
-    .invoice-table .col-amount { width: 90px; text-align: right; font-weight: 900; color: #0f172a; }
+    .invoice-table .col-amount { width: 85px; text-align: right; font-weight: 900; color: #0f172a; }
     .invoice-table .col-action { width: 14px; text-align: center; }
 
     /* Summary Bar & Weight Breakdown */
@@ -1892,62 +1911,62 @@
                     <!-- Structured Metadata Grid Card -->
                     <div class="meta-grid-card">
                       <!-- Row 1: Date | Bill No | Sender -->
-                      <div class="meta-grid-row">
-                        <div class="meta-field" style="width: 160px;">
+                      <div class="meta-grid-row row-3col">
+                        <div class="meta-field">
                           <span class="meta-label">Date:</span>
-                          <input type="text" id="inv-date" class="meta-input" style="width: 100px;" value="10/08/2026" oninput="syncPadToForm('date', this.value)" />
+                          <input type="text" id="inv-date" class="meta-input" value="10/08/2026" oninput="syncPadToForm('date', this.value)" />
                         </div>
-                        <div class="meta-field" style="width: 200px;">
+                        <div class="meta-field">
                           <span class="meta-label">Bill No:</span>
-                          <input type="text" id="inv-bill" class="meta-input bill-highlight" style="width: 130px;" value="SKY-001" oninput="syncPadToForm('bill', this.value)" />
+                          <input type="text" id="inv-bill" class="meta-input bill-highlight" value="SKY-001" oninput="syncPadToForm('bill', this.value)" />
                         </div>
-                        <div class="meta-field" style="flex: 1; justify-content: flex-end;">
+                        <div class="meta-field" style="justify-content: flex-end;">
                           <span class="meta-label">Sender:</span>
-                          <input type="text" id="inv-sender" class="meta-input sender-highlight" style="width: 180px; text-align: right;" value="NASIB OBID AKBARI LTD" oninput="syncPadToForm('sender', this.value)" />
+                          <input type="text" id="inv-sender" class="meta-input sender-highlight" value="NASIB OBID AKBARI LTD" oninput="syncPadToForm('sender', this.value)" />
                         </div>
                       </div>
 
                       <!-- Row 2: Invoice No | Lic No | Transit No -->
-                      <div class="meta-grid-row">
-                        <div class="meta-field" style="width: 160px;">
+                      <div class="meta-grid-row row-3col">
+                        <div class="meta-field">
                           <span class="meta-label">Invoice No:</span>
-                          <input type="text" id="inv-no" class="meta-input" style="width: 80px;" value="013" oninput="syncPadToForm('invno', this.value)" />
+                          <input type="text" id="inv-no" class="meta-input" value="013" oninput="syncPadToForm('invno', this.value)" />
                         </div>
-                        <div class="meta-field" style="width: 160px;">
+                        <div class="meta-field">
                           <span class="meta-label">Lic No:</span>
-                          <input type="text" id="inv-sender-lic" class="meta-input" style="width: 90px;" value="33215" oninput="syncPadToForm('senderlic', this.value)" />
+                          <input type="text" id="inv-sender-lic" class="meta-input" value="33215" oninput="syncPadToForm('senderlic', this.value)" />
                         </div>
-                        <div class="meta-field" style="flex: 1; justify-content: flex-end;">
+                        <div class="meta-field" style="justify-content: flex-end;">
                           <span class="meta-label">Transit No:</span>
-                          <input type="text" id="inv-transit" class="meta-input" style="width: 140px; text-align: right;" value="A00004750" oninput="syncPadToForm('transit', this.value)" />
+                          <input type="text" id="inv-transit" class="meta-input" style="text-align: right; font-weight: 800;" value="A00004750" oninput="syncPadToForm('transit', this.value)" />
                         </div>
                       </div>
 
                       <!-- Row 3: Origin / Rasta Bazaar | COO No -->
-                      <div class="meta-grid-row">
-                        <div class="meta-field" style="width: 240px;">
+                      <div class="meta-grid-row row-2col">
+                        <div class="meta-field">
                           <span class="meta-label">Certificate of Origin:</span>
-                          <input type="text" id="inv-coo" class="meta-input" style="width: 85px;" value="132169" oninput="syncPadToForm('coo', this.value)" />
+                          <input type="text" id="inv-coo" class="meta-input" value="132169" oninput="syncPadToForm('coo', this.value)" />
                         </div>
-                        <div class="meta-field" style="flex: 1; justify-content: flex-end;">
+                        <div class="meta-field" style="justify-content: flex-end;">
                           <span class="meta-label">Origin:</span>
-                          <input type="text" id="inv-origin" class="meta-input" style="width: 320px; text-align: right;" value="RASTA BAZAAR, NIMROZ CENTER ZARANJ - NIMROZ" oninput="syncPadToForm('origin', this.value)" />
+                          <input type="text" id="inv-origin" class="meta-input" style="text-align: right; font-size: 8px;" value="RASTA BAZAAR, NIMROZ CENTER ZARANJ - NIMROZ" oninput="syncPadToForm('origin', this.value)" />
                         </div>
                       </div>
 
                       <!-- Row 4: VIA | TL NO | Phyto No -->
-                      <div class="meta-grid-row">
-                        <div class="meta-field" style="width: 180px;">
+                      <div class="meta-grid-row row-3col">
+                        <div class="meta-field">
                           <span class="meta-label">VIA:</span>
-                          <input type="text" id="inv-via" class="meta-input" style="width: 130px;" value="" placeholder="VIA Route" oninput="syncPadToForm('via', this.value)" />
+                          <input type="text" id="inv-via" class="meta-input" value="" placeholder="VIA Route" oninput="syncPadToForm('via', this.value)" />
                         </div>
-                        <div class="meta-field" style="width: 140px;">
+                        <div class="meta-field">
                           <span class="meta-label">TL NO:</span>
-                          <input type="text" id="inv-tl" class="meta-input" style="width: 80px;" value="" oninput="syncPadToForm('tl', this.value)" />
+                          <input type="text" id="inv-tl" class="meta-input" value="" oninput="syncPadToForm('tl', this.value)" />
                         </div>
-                        <div class="meta-field" style="flex: 1; justify-content: flex-end;">
+                        <div class="meta-field" style="justify-content: flex-end;">
                           <span class="meta-label">Phytosanitary No:</span>
-                          <input type="text" id="inv-phyto" class="meta-input" style="width: 90px; text-align: right;" value="548172" oninput="syncPadToForm('phyto', this.value)" />
+                          <input type="text" id="inv-phyto" class="meta-input" style="text-align: right;" value="548172" oninput="syncPadToForm('phyto', this.value)" />
                         </div>
                       </div>
                     </div>
@@ -2001,12 +2020,12 @@
                           <tr>
                             <th class="col-qty">QTY</th>
                             <th class="col-unit">UNIT</th>
-                            <th class="col-desc">DESCRIPTION OF GOODS</th>
+                            <th class="col-desc" style="text-align: left; padding-left: 6px;">DESCRIPTION OF GOODS</th>
                             <th class="col-qual">QUALITY</th>
-                            <th class="col-gw">GROSS WT</th>
-                            <th class="col-nw">NET WT</th>
-                            <th class="col-rate">RATE</th>
-                            <th class="col-amount">AMOUNT</th>
+                            <th class="col-gw" style="text-align: right; padding-right: 6px;">GROSS WT</th>
+                            <th class="col-nw" style="text-align: right; padding-right: 6px; color: #38bdf8;">NET WT</th>
+                            <th class="col-rate" style="text-align: right; padding-right: 6px; color: #34d399;">RATE ($)</th>
+                            <th class="col-amount" style="text-align: right; padding-right: 6px;">AMOUNT (USD)</th>
                             <th class="col-action no-print"></th>
                           </tr>
                         </thead>
@@ -2550,10 +2569,18 @@
         }
 
         if (!name && (index === 0 || lower.startsWith("name:") || lower.startsWith("importer:") || lower.startsWith("consignee:"))) {
-          name = line.replace(/^(name of importer|name|importer|consignee)[:\-]?\s*/i, '').trim();
+          name = line.replace(/^(name of importer \/ consignee|name of importer|name|importer|consignee)[:\-]?\s*/i, '').trim();
         } else {
-          const clean = line.replace(/^(address|addr|street|location)[:\-]?\s*/i, '').trim();
-          if (clean) addrLines.push(clean);
+          let clean = line.replace(/^(address|addr|street|location)[:\-]?\s*/i, '').trim();
+          // Strip inline metadata tags from address lines
+          clean = clean.replace(/(?:iec\s*code|iec\s*no|iec)[:\-]?\s*[0-9A-Za-z]+/gi, '');
+          clean = clean.replace(/(?:gstin|gst\s*no|gst1n|gst)[:\-]?\s*[0-9A-Za-z]+/gi, '');
+          clean = clean.replace(/(?:pan\s*no|pan)[:\-]?\s*[0-9A-Za-z]+/gi, '');
+          clean = clean.replace(/(?:contact|tel|phone|mobile|cell)[:\-]?\s*[\+0-9\s\-]+/gi, '');
+          clean = clean.replace(/(?:fssai\s*no|fssai)[:\-]?\s*[0-9A-Za-z]+/gi, '');
+          clean = clean.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
+          clean = clean.replace(/;\s*;/g, ';').replace(/^[\s,;.\-]+|[\s,;.\-]+$/g, '').trim();
+          if (clean && clean.length > 1) addrLines.push(clean);
         }
       });
 
@@ -2647,7 +2674,7 @@
       const viaMatch = text.match(/(?:via|transit\s*route|route)[:\-]?\s*([^\n\r,]+)/i);
       if (viaMatch) via = viaMatch[1].trim();
 
-      const tlMatch = text.match(/(?:tl\s*no|tl\s*#|tl\s*number|tl)[:\-]?\s*([A-Za-z0-9\-_]+)/i);
+      const tlMatch = text.match(/(?:t\.l\s*no|tl\s*no|tl\s*#|tl\s*number|tl)[:\-]?\s*([A-Za-z0-9\-_]+)/i);
       if (tlMatch) tl = tlMatch[1].trim();
 
       const truckMatch = text.match(/(?:truck\s*no|truck\s*#|truck)[:\-]?\s*([^\n\r,]+)/i);
@@ -2657,7 +2684,8 @@
       const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
       
       if (rawLines.length > 0) {
-        const firstLine = rawLines[0];
+        let firstLine = rawLines[0];
+        firstLine = firstLine.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
         if (/^(sender|shipper|exporter|company)[:\-]?\s*/i.test(firstLine)) {
           sender = firstLine.replace(/^(sender|shipper|exporter|company)[:\-]?\s*/i, '').trim();
         } else if (!/^(date|bill|invoice|inv|lic|transit|t\.t|tt|coo|phyto|via|tl|origin|tel)[:\-]/i.test(firstLine)) {
@@ -2668,7 +2696,15 @@
       // Check if explicit ORIGIN: line exists
       const originMatch = text.match(/(?:origin|rasta\s*bazaar|rasta|location)[:\-]?\s*([^\n\r]+)/i);
       if (originMatch) {
-        origin = originMatch[1].trim();
+        let orig = originMatch[1].trim();
+        const origTlMatch = orig.match(/(?:t\.l\s*no|tl\s*no|tl)[:\-]?\s*([A-Za-z0-9\-_]+)/i);
+        if (origTlMatch && !tl) {
+          tl = origTlMatch[1].trim();
+        }
+        orig = orig.replace(/(?:t\.l\s*no|tl\s*no|tl)[:\-]?\s*[A-Za-z0-9\-_]+/gi, '');
+        orig = orig.replace(/(?:tel|phone|contact|cell)[:\-]?\s*[\+0-9\s\-]+/gi, '');
+        orig = orig.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
+        origin = orig.replace(/^[\s,.\-]+|[\s,.\-]+$/g, '').trim();
       } else {
         // Collect address lines (lines after sender that aren't pure metadata)
         const addrParts = [];
@@ -2680,6 +2716,11 @@
           l = l.replace(/(?:tel|phone|contact|cell)[:\-]?\s*[\+0-9\s\-]+/gi, '');
           // Strip out lic tags
           l = l.replace(/(?:lic\s*no|license|lic)[:\-]?\s*[A-Za-z0-9\-_]+/gi, '');
+          // Strip out tl tags
+          const tlInLine = l.match(/(?:t\.l\s*no|tl\s*no|tl)[:\-]?\s*([A-Za-z0-9\-_]+)/i);
+          if (tlInLine && !tl) tl = tlInLine[1].trim();
+          l = l.replace(/(?:t\.l\s*no|tl\s*no|tl)[:\-]?\s*[A-Za-z0-9\-_]+/gi, '');
+          l = l.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '');
           // Clean leading/trailing punctuation and spaces
           l = l.replace(/^[\s,.\-]+|[\s,.\-]+$/g, '').trim();
           if (l.length > 2 && !/^(date|bill|inv|coo|phyto|via|tl):/i.test(l)) {
@@ -3322,20 +3363,28 @@
           const tr = document.createElement("tr");
           tr.id = "doc-tr-" + index;
           tr.innerHTML = `
-            <td class="col-qty"><input type="number" id="doc-qty-${index}" class="text-center bold" value="${item.qty || ''}" placeholder="0" oninput="updateItem(${index}, 'qty', this.value, 'doc')" /></td>
-            <td class="col-unit"><input type="text" id="doc-unit-${index}" class="text-center bold" value="${item.unit || 'CTNS'}" placeholder="CTNS" oninput="updateItem(${index}, 'unit', this.value, 'doc')" /></td>
-            <td class="col-desc"><input type="text" id="doc-desc-${index}" class="text-left bold" value="${item.desc || ''}" placeholder="Cargo Description" oninput="updateItem(${index}, 'desc', this.value, 'doc')" /></td>
-            <td class="col-qual"><input type="text" id="doc-quality-${index}" class="text-center" value="${item.quality || ''}" placeholder="Grade" oninput="updateItem(${index}, 'quality', this.value, 'doc')" /></td>
-            <td class="col-gw text-right">
-              GW <input type="number" id="doc-gw-${index}" step="any" style="display:inline-block; width: 54px; text-align:right; font-weight:bold;" value="${item.gw || ''}" placeholder="0" oninput="updateItem(${index}, 'gw', this.value, 'doc')" /><br/>
-              <span id="doc-per-gw-${index}" style="font-size: 8.5px; color: #475569; font-weight: 600;">${item.per_ctn_gw ? '(' + item.per_ctn_gw + ' kg)' : 'KGS'}</span>
+            <td class="col-qty"><input type="number" id="doc-qty-${index}" class="text-center" style="font-weight: 800; width: 100%; text-align: center;" value="${item.qty || ''}" placeholder="0" oninput="updateItem(${index}, 'qty', this.value, 'doc')" /></td>
+            <td class="col-unit"><input type="text" id="doc-unit-${index}" class="text-center" style="font-weight: 700; width: 100%; text-align: center;" value="${item.unit || 'CTNS'}" placeholder="CTNS" oninput="updateItem(${index}, 'unit', this.value, 'doc')" /></td>
+            <td class="col-desc"><input type="text" id="doc-desc-${index}" style="font-weight: 800; width: 100%; padding-left: 4px;" value="${item.desc || ''}" placeholder="Cargo Description" oninput="updateItem(${index}, 'desc', this.value, 'doc')" /></td>
+            <td class="col-qual"><input type="text" id="doc-quality-${index}" class="text-center" style="width: 100%; text-align: center;" value="${item.quality || ''}" placeholder="Grade" oninput="updateItem(${index}, 'quality', this.value, 'doc')" /></td>
+            <td class="col-gw" style="text-align: right; padding-right: 4px;">
+              <div style="display: flex; align-items: center; justify-content: flex-end; gap: 3px;">
+                <span style="font-size: 8px; font-weight: 800; color: #64748b;">GW</span>
+                <input type="number" id="doc-gw-${index}" step="any" style="width: 52px; text-align: right; font-weight: 800; font-size: 9px;" value="${item.gw || ''}" placeholder="0" oninput="updateItem(${index}, 'gw', this.value, 'doc')" />
+              </div>
+              <div id="doc-per-gw-${index}" style="font-size: 7.5px; color: #64748b; font-weight: 600; text-align: right; margin-top: 1px;">${item.per_ctn_gw ? '(' + item.per_ctn_gw + ' kg)' : ''}</div>
             </td>
-            <td class="col-nw text-right">
-              NW <input type="number" id="doc-nw-${index}" step="any" style="display:inline-block; width: 54px; text-align:right; font-weight:bold;" value="${item.nw || ''}" placeholder="0" oninput="updateItem(${index}, 'nw', this.value, 'doc')" /><br/>
-              <span id="doc-per-nw-${index}" style="font-size: 8.5px; color: #0284c7; font-weight: 700;">${item.per_ctn_nw ? '(' + item.per_ctn_nw + ' kg)' : 'KGS'}</span>
+            <td class="col-nw" style="text-align: right; padding-right: 4px;">
+              <div style="display: flex; align-items: center; justify-content: flex-end; gap: 3px;">
+                <span style="font-size: 8px; font-weight: 800; color: #0284c7;">NW</span>
+                <input type="number" id="doc-nw-${index}" step="any" style="width: 52px; text-align: right; font-weight: 800; font-size: 9px; color: #0284c7;" value="${item.nw || ''}" placeholder="0" oninput="updateItem(${index}, 'nw', this.value, 'doc')" />
+              </div>
+              <div id="doc-per-nw-${index}" style="font-size: 7.5px; color: #0284c7; font-weight: 700; text-align: right; margin-top: 1px;">${item.per_ctn_nw ? '(' + item.per_ctn_nw + ' kg)' : ''}</div>
             </td>
-            <td class="col-rate"><input type="number" id="doc-rate-${index}" step="any" class="text-right bold" value="${item.rate || ''}" placeholder="0.00" oninput="updateItem(${index}, 'rate', this.value, 'doc')" /></td>
-            <td class="col-amount text-right" id="doc-amount-${index}">${formattedLineAmt}</td>
+            <td class="col-rate" style="text-align: right; padding-right: 4px;">
+              <input type="number" id="doc-rate-${index}" step="any" style="width: 100%; text-align: right; font-weight: 800; color: #059669; font-size: 9px;" value="${item.rate || ''}" placeholder="0.00" oninput="updateItem(${index}, 'rate', this.value, 'doc')" />
+            </td>
+            <td class="col-amount" style="text-align: right; padding-right: 6px; font-weight: 900; font-size: 9.5px;" id="doc-amount-${index}">${formattedLineAmt}</td>
             <td class="col-action no-print"><button class="del-row-btn" onclick="deleteRow(${index})" title="Remove item">✕</button></td>
           `;
           tbody.appendChild(tr);
