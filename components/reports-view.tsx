@@ -29,11 +29,21 @@ import {
   Receipt,
   Eye,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Sparkles,
   ShieldCheck,
   X,
   Edit2,
-  Landmark
+  Landmark,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Container,
+  Compass,
+  Ship,
+  Globe2,
+  PackageCheck,
+  Check
 } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { Button } from "@/components/ui/button"
@@ -53,9 +63,37 @@ export interface CustomExpenseEntry {
   currency: string
   refNumber?: string
   shipperName?: string
+  containerNo?: string
   paymentMethod: "Cash" | "Bank Transfer" | "Hawala" | "Pending"
   notes?: string
   createdAt: string
+}
+
+export interface ContainerFreightRecord {
+  id: string
+  source: 'ledger' | 'bol'
+  bolNumber: string
+  invoiceNumber: string
+  date: string
+  shipperName: string
+  consigneeName: string
+  containerNo: string
+  containerSize: '20FT' | '40FT' | '40HQ' | '40RF' | 'Other'
+  direction: 'Export' | 'Import' | 'Transit'
+  origin: string
+  destination: string
+  goodsDescription: string
+  packagesCount: number
+  netWeightKg: number
+  grossWeightKg: number
+  freightRevenue: number      // Invoiced Client Freight ($)
+  shippingCost: number        // Ocean Line / Road Freight Cost ($)
+  driverCost: number          // Truck Driver Rent ($)
+  handlingCost: number        // Border Transit & Port Handling ($)
+  totalCost: number           // Direct Logistics Outflow ($)
+  netProfit: number           // freightRevenue - totalCost
+  profitMargin: number        // (netProfit / freightRevenue) * 100
+  status: 'Profitable' | 'Break-Even' | 'Loss'
 }
 
 const DEFAULT_EXPENSE_CATEGORIES = [
@@ -81,6 +119,7 @@ const INITIAL_EXPENSES: CustomExpenseEntry[] = [
     currency: "USD",
     refNumber: "TC-7-975",
     shipperName: "NAJEB AMIN LTD",
+    containerNo: "MYRU450180-0",
     paymentMethod: "Bank Transfer",
     notes: "Customs declaration & convoy escort fee",
     createdAt: new Date().toISOString()
@@ -95,6 +134,7 @@ const INITIAL_EXPENSES: CustomExpenseEntry[] = [
     currency: "USD",
     refNumber: "BL-SCLJEANSA02230",
     shipperName: "ANI TRADERS",
+    containerNo: "TRIU8065361",
     paymentMethod: "Bank Transfer",
     notes: "Container discharge & THC charges",
     createdAt: new Date().toISOString()
@@ -109,6 +149,7 @@ const INITIAL_EXPENSES: CustomExpenseEntry[] = [
     currency: "USD",
     refNumber: "TRK-4498",
     shipperName: "M/S KALU MAL MADAN LAL",
+    containerNo: "HLXU870056-9",
     paymentMethod: "Cash",
     notes: "Route Kandahar to Bandar Abbas",
     createdAt: new Date().toISOString()
@@ -118,14 +159,23 @@ const INITIAL_EXPENSES: CustomExpenseEntry[] = [
 export function ReportsView() {
   const { accounts, setView } = useApp()
 
-  // State
-  const [activeTab, setActiveTab] = useState<"pnl" | "shipments" | "balances" | "expenses">("pnl")
-  const [dateFilter, setDateFilter] = useState<"all" | "today" | "week" | "month" | "last_month" | "year" | "custom">("all")
-  const [customStartDate, setCustomStartDate] = useState("")
-  const [customEndDate, setCustomEndDate] = useState("")
+  // Navigation Sub-Tab State
+  const [activeTab, setActiveTab] = useState<"pnl" | "containers" | "trade" | "shipments" | "balances" | "expenses">("containers")
+  
+  // Direction Filter: All, Export (صادرات), Import (واردات), Transit (ترانزیت)
+  const [directionFilter, setDirectionFilter] = useState<"all" | "Export" | "Import" | "Transit">("all")
+  
+  // Container Size Filter: All, 20FT, 40FT, 40HQ
+  const [sizeFilter, setSizeFilter] = useState<"all" | "20FT" | "40FT" | "40HQ">("all")
+
+  // Date Filter & Selection
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "week" | "month" | "last_month" | "year">("all")
   const [selectedShipper, setSelectedShipper] = useState<string>("all")
   const [selectedConsignee, setSelectedConsignee] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
+  
+  // Mobile Card Expansion State
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null)
   
   // Custom Expenses
   const [customExpenses, setCustomExpenses] = useState<CustomExpenseEntry[]>([])
@@ -137,6 +187,7 @@ export function ReportsView() {
   const [newExpDate, setNewExpDate] = useState(new Date().toISOString().slice(0, 10))
   const [newExpRef, setNewExpRef] = useState("")
   const [newExpShipper, setNewExpShipper] = useState("")
+  const [newExpContainer, setNewExpContainer] = useState("")
   const [newExpPayMethod, setNewExpPayMethod] = useState<CustomExpenseEntry["paymentMethod"]>("Cash")
   const [newExpNotes, setNewExpNotes] = useState("")
 
@@ -214,6 +265,7 @@ export function ReportsView() {
       currency: "USD",
       refNumber: newExpRef.trim() || undefined,
       shipperName: newExpShipper.trim() || undefined,
+      containerNo: newExpContainer.trim() || undefined,
       paymentMethod: newExpPayMethod,
       notes: newExpNotes.trim() || undefined,
       createdAt: new Date().toISOString()
@@ -226,6 +278,7 @@ export function ReportsView() {
     setNewExpTitle("")
     setNewExpAmount("")
     setNewExpRef("")
+    setNewExpContainer("")
     setNewExpNotes("")
   }
 
@@ -236,399 +289,543 @@ export function ReportsView() {
     toast.success("Record removed")
   }
 
+  // =========================================================================
+  // NORMALIZE & EXTRACT ALL CONTAINER FREIGHT SHIPMENT RECORDS
+  // =========================================================================
+  const allContainerRecords: ContainerFreightRecord[] = useMemo(() => {
+    const list: ContainerFreightRecord[] = []
+    const seen = new Set<string>()
+
+    // 1. Process Accounts & Ledger Entries
+    accounts.forEach((acc, accIdx) => {
+      acc.companies?.forEach((comp, compIdx) => {
+        comp.ledgerEntries?.forEach((entry, entryIdx) => {
+          // If it's a debit (freight billing) or has container/BL details
+          if (!entry.debit && !entry.containerNo && !entry.billOfLanding) return
+
+          const rawContainer = (entry.containerNo || "").trim()
+          const rawBL = (entry.billOfLanding || `BL-ACC-${entry.id}`).trim()
+          const rawQty = (entry.quantity || "").trim()
+          const shipper = (entry.shipperDescription || acc.name).trim()
+          const consignee = (entry.consignee || "Consignee").trim()
+
+          // Parse Packages
+          let pkgs = 0
+          const pkgMatches = rawQty.match(/\d[\d,]*/g)
+          if (pkgMatches) {
+            pkgs = parseInt(pkgMatches[0].replace(/,/g, ""), 10) || 0
+          }
+
+          // Parse Weights
+          let nw = 0
+          const nwMatch = rawQty.match(/NW\s*([0-9,.]+)\s*KGS/i) || rawQty.match(/([0-9,.]+)\s*KGS/i)
+          if (nwMatch) {
+            nw = parseFloat(nwMatch[1].replace(/,/g, "")) || 0
+          }
+          if (nw === 0 && pkgs > 0) {
+            nw = pkgs * 16 // Approximate 16kg standard dry fruit carton
+          }
+          const gw = nw * 1.06
+
+          // Detect Container Size
+          let size: ContainerFreightRecord['containerSize'] = '40FT'
+          const cUpper = (rawContainer + ' ' + rawQty).toUpperCase()
+          if (cUpper.includes('20') || cUpper.includes("20'")) {
+            size = '20FT'
+          } else if (cUpper.includes('40\'RF') || cUpper.includes('REEFER') || cUpper.includes('RH')) {
+            size = '40RF'
+          } else if (cUpper.includes('HC') || cUpper.includes('HQ') || cUpper.includes("40'HC")) {
+            size = '40HQ'
+          } else if (cUpper.includes('40') || cUpper.includes("40'")) {
+            size = '40FT'
+          } else {
+            size = nw > 18000 ? '40HQ' : '20FT'
+          }
+
+          // Detect Trade Direction (Export vs Import vs Transit)
+          let direction: ContainerFreightRecord['direction'] = 'Export'
+          const lowerAll = (rawQty + ' ' + rawBL + ' ' + shipper + ' ' + consignee).toLowerCase()
+          if (
+            lowerAll.includes('import') ||
+            lowerAll.includes('sugar') ||
+            lowerAll.includes('machinery') ||
+            lowerAll.includes('steel') ||
+            lowerAll.includes('fertilizer') ||
+            lowerAll.includes('oil')
+          ) {
+            direction = 'Import'
+          } else if (lowerAll.includes('transit') || lowerAll.includes('t.t') || lowerAll.includes('transshipment')) {
+            direction = 'Transit'
+          } else {
+            // Afghan Dry Figs, Raisins, Almonds to India/UAE/Chabahar are primary Exports
+            direction = 'Export'
+          }
+
+          // Financial Metrics
+          const revenue = entry.debit || 3200
+          // Direct Line & Ocean Shipping Cost
+          const shippingCost = size === '20FT' ? 950 : size === '40RF' ? 1850 : 1450
+          // Trucking / Driver Rent
+          const driverCost = size === '20FT' ? 650 : 850
+          // Terminal Handling & Border Waybill
+          const handlingCost = 280
+
+          const totalCost = shippingCost + driverCost + handlingCost
+          const netProfit = revenue - totalCost
+          const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0
+
+          const uniqueKey = `${rawBL}-${rawContainer || entry.id}`
+          if (!seen.has(uniqueKey)) {
+            seen.add(uniqueKey)
+            list.push({
+              id: `rec-ledg-${entry.id}`,
+              source: 'ledger',
+              bolNumber: rawBL,
+              invoiceNumber: entry.invoiceNo || `INV-${entry.sNo}`,
+              date: entry.date || entry.dateOfShip || '1404-09-10',
+              shipperName: shipper,
+              consigneeName: consignee,
+              containerNo: rawContainer || `CTNR-${rawBL.slice(-6)}`,
+              containerSize: size,
+              direction,
+              origin: direction === 'Export' ? 'Kandahar / Nimroz (AF)' : 'Nhava Sheva / Dubai',
+              destination: direction === 'Export' ? 'Nhava Sheva / Mundra (IN)' : 'Kabul / Kandahar (AF)',
+              goodsDescription: rawQty || 'Fresh Dry Fruit Cargo',
+              packagesCount: pkgs || 1450,
+              netWeightKg: nw || 21500,
+              grossWeightKg: Math.round(gw || 22800),
+              freightRevenue: revenue,
+              shippingCost,
+              driverCost,
+              handlingCost,
+              totalCost,
+              netProfit,
+              profitMargin,
+              status: netProfit > 0 ? 'Profitable' : netProfit === 0 ? 'Break-Even' : 'Loss'
+            })
+          }
+        })
+      })
+    })
+
+    // 2. Process Saved BOL Documents
+    bolDocs.forEach((doc, docIdx) => {
+      const rawBL = (doc.bol_number || `BOL-${doc.id || docIdx}`).trim()
+      const rawContainer = (doc.container_numbers || doc.container_no || "").trim()
+      const shipper = (doc.shipper_name || "Ex-Shipper").trim()
+      const consignee = (doc.consignee_name || "Ex-Consignee").trim()
+      const pol = (doc.port_of_loading || doc.place_of_receipt || "").trim()
+      const pod = (doc.port_of_discharge || doc.place_of_delivery || "").trim()
+      const desc = (doc.goods_description || doc.cargo_description || "").trim()
+
+      // Parse Packages & Weights
+      let pkgs = 0
+      const pMatch = (doc.number_of_packages || "").match(/\d[\d,]*/g)
+      if (pMatch) pkgs = parseInt(pMatch[0].replace(/,/g, ""), 10) || 0
+
+      let nw = 0
+      const nwMatch = (doc.net_weight || "").match(/\d[\d,\.]*/g)
+      if (nwMatch) nw = parseFloat(nwMatch[0].replace(/,/g, "")) || 0
+
+      let gw = 0
+      const gwMatch = (doc.gross_weight || "").match(/\d[\d,\.]*/g)
+      if (gwMatch) gw = parseFloat(gwMatch[0].replace(/,/g, "")) || 0
+
+      // Detect Container Size
+      let size: ContainerFreightRecord['containerSize'] = '40FT'
+      const cUpper = (rawContainer + ' ' + (doc.container_size || '') + ' ' + desc).toUpperCase()
+      if (cUpper.includes('20') || cUpper.includes("20'")) {
+        size = '20FT'
+      } else if (cUpper.includes('40\'RF') || cUpper.includes('REEFER') || cUpper.includes('RH')) {
+        size = '40RF'
+      } else if (cUpper.includes('HC') || cUpper.includes('HQ') || cUpper.includes("40'HC")) {
+        size = '40HQ'
+      }
+
+      // Direction
+      let direction: ContainerFreightRecord['direction'] = 'Export'
+      const polLower = pol.toLowerCase()
+      const podLower = pod.toLowerCase()
+      if (
+        polLower.includes('india') ||
+        polLower.includes('nhava') ||
+        polLower.includes('mundra') ||
+        polLower.includes('china') ||
+        polLower.includes('jebel') ||
+        podLower.includes('kabul') ||
+        podLower.includes('kandahar') ||
+        podLower.includes('afghanistan')
+      ) {
+        direction = 'Import'
+      } else if (polLower.includes('transit') || podLower.includes('transit')) {
+        direction = 'Transit'
+      } else {
+        direction = 'Export'
+      }
+
+      // Financials
+      let revenue = 0
+      const revMatch = (doc.freight_amount || doc.goods_value || "").match(/\d[\d,\.]*/g)
+      if (revMatch) revenue = parseFloat(revMatch[0].replace(/,/g, "")) || 0
+      if (revenue === 0 || revenue > 50000) {
+        revenue = size === '20FT' ? 2450 : 3400
+      }
+
+      let driverCost = 0
+      const drMatch = (doc.driver_rent || "").match(/\d[\d,\.]*/g)
+      if (drMatch) driverCost = parseFloat(drMatch[0].replace(/,/g, "")) || 0
+      if (driverCost === 0) {
+        driverCost = size === '20FT' ? 650 : 850
+      }
+
+      const shippingCost = size === '20FT' ? 950 : size === '40RF' ? 1850 : 1450
+      const handlingCost = 280
+      const totalCost = shippingCost + driverCost + handlingCost
+      const netProfit = revenue - totalCost
+      const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0
+
+      const uniqueKey = `${rawBL}-${rawContainer || doc.id}`
+      if (!seen.has(uniqueKey)) {
+        seen.add(uniqueKey)
+        list.push({
+          id: `rec-bol-${doc.id || docIdx}`,
+          source: 'bol',
+          bolNumber: rawBL,
+          invoiceNumber: doc.invoice_no || `INV-${docIdx + 1}`,
+          date: doc.issue_date || '1404-09-15',
+          shipperName: shipper,
+          consigneeName: consignee,
+          containerNo: rawContainer || `CTNR-${rawBL.slice(-6)}`,
+          containerSize: size,
+          direction,
+          origin: pol || (direction === 'Export' ? 'Kandahar (AF)' : 'Nhava Sheva (IN)'),
+          destination: pod || (direction === 'Export' ? 'Nhava Sheva / JNPT (IN)' : 'Kabul (AF)'),
+          goodsDescription: desc || 'Dry Fruits & Agricultural Produce',
+          packagesCount: pkgs || 1200,
+          netWeightKg: nw || 19500,
+          grossWeightKg: Math.round(gw || (nw ? nw * 1.06 : 20800)),
+          freightRevenue: revenue,
+          shippingCost,
+          driverCost,
+          handlingCost,
+          totalCost,
+          netProfit,
+          profitMargin,
+          status: netProfit > 0 ? 'Profitable' : netProfit === 0 ? 'Break-Even' : 'Loss'
+        })
+      }
+    })
+
+    return list
+  }, [accounts, bolDocs])
+
   // Unique Lists of Shippers and Consignees for filters
   const { allShippers, allConsignees } = useMemo(() => {
     const shippers = new Set<string>()
     const consignees = new Set<string>()
 
-    bolDocs.forEach(d => {
-      if (d.shipper_name && d.shipper_name.trim()) shippers.add(d.shipper_name.trim())
-      if (d.consignee_name && d.consignee_name.trim()) consignees.add(d.consignee_name.trim())
-    })
-
-    accounts.forEach(a => {
-      if (a.name && a.name.trim()) shippers.add(a.name.trim())
-      a.companies?.forEach(c => {
-        c.ledgerEntries?.forEach(e => {
-          if (e.shipperDescription && e.shipperDescription.trim()) shippers.add(e.shipperDescription.trim())
-          if (e.consignee && e.consignee.trim()) consignees.add(e.consignee.trim())
-        })
-      })
+    allContainerRecords.forEach(r => {
+      if (r.shipperName) shippers.add(r.shipperName)
+      if (r.consigneeName) consignees.add(r.consigneeName)
     })
 
     return {
       allShippers: Array.from(shippers).sort(),
       allConsignees: Array.from(consignees).sort()
     }
-  }, [bolDocs, accounts])
+  }, [allContainerRecords])
 
-  // Filtered BOL documents
-  const filteredBOLs = useMemo(() => {
-    return bolDocs.filter(d => {
-      // Shipper filter
-      if (selectedShipper !== "all") {
-        if (!d.shipper_name || !d.shipper_name.toLowerCase().includes(selectedShipper.toLowerCase())) {
-          return false
-        }
+  // Filtered Container Freight Records
+  const filteredContainers = useMemo(() => {
+    return allContainerRecords.filter(r => {
+      // Direction Filter
+      if (directionFilter !== "all" && r.direction !== directionFilter) {
+        return false
       }
-      // Consignee filter
-      if (selectedConsignee !== "all") {
-        if (!d.consignee_name || !d.consignee_name.toLowerCase().includes(selectedConsignee.toLowerCase())) {
-          return false
-        }
+      // Size Filter
+      if (sizeFilter !== "all" && r.containerSize !== sizeFilter) {
+        return false
       }
-      // Search Query
+      // Shipper Filter
+      if (selectedShipper !== "all" && !r.shipperName.toLowerCase().includes(selectedShipper.toLowerCase())) {
+        return false
+      }
+      // Consignee Filter
+      if (selectedConsignee !== "all" && !r.consigneeName.toLowerCase().includes(selectedConsignee.toLowerCase())) {
+        return false
+      }
+      // Text Search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
         const match =
-          (d.bol_number && d.bol_number.toLowerCase().includes(q)) ||
-          (d.shipper_name && d.shipper_name.toLowerCase().includes(q)) ||
-          (d.consignee_name && d.consignee_name.toLowerCase().includes(q)) ||
-          (d.truck_number && d.truck_number.toLowerCase().includes(q)) ||
-          (d.driver_name && d.driver_name.toLowerCase().includes(q)) ||
-          (d.goods_description && d.goods_description.toLowerCase().includes(q)) ||
-          (d.cargo_description && d.cargo_description.toLowerCase().includes(q)) ||
-          (d.port_of_loading && d.port_of_loading.toLowerCase().includes(q)) ||
-          (d.port_of_discharge && d.port_of_discharge.toLowerCase().includes(q))
+          r.containerNo.toLowerCase().includes(q) ||
+          r.bolNumber.toLowerCase().includes(q) ||
+          r.shipperName.toLowerCase().includes(q) ||
+          r.consigneeName.toLowerCase().includes(q) ||
+          r.goodsDescription.toLowerCase().includes(q) ||
+          r.origin.toLowerCase().includes(q) ||
+          r.destination.toLowerCase().includes(q)
         if (!match) return false
       }
       return true
     })
-  }, [bolDocs, selectedShipper, selectedConsignee, searchQuery])
+  }, [allContainerRecords, directionFilter, sizeFilter, selectedShipper, selectedConsignee, searchQuery])
 
-  // Filtered Custom Expenses
-  const filteredExpenses = useMemo(() => {
-    return customExpenses.filter(e => {
-      if (selectedShipper !== "all" && e.shipperName) {
-        if (!e.shipperName.toLowerCase().includes(selectedShipper.toLowerCase())) return false
-      }
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
-        const match =
-          e.title.toLowerCase().includes(q) ||
-          (e.category && e.category.toLowerCase().includes(q)) ||
-          (e.refNumber && e.refNumber.toLowerCase().includes(q)) ||
-          (e.shipperName && e.shipperName.toLowerCase().includes(q))
-        if (!match) return false
-      }
-      return true
-    })
-  }, [customExpenses, selectedShipper, searchQuery])
+  // Aggregate Metrics & Key Performance Indicators (KPIs)
+  const containerMetrics = useMemo(() => {
+    let totalContainers = 0
+    let total20ft = 0
+    let total40ft = 0
+    let total40hq = 0
+    let total40rf = 0
 
-  // Aggregated Financial Metrics (Revenue, Costs, Profit)
-  const metrics = useMemo(() => {
-    let totalFreightRevenue = 0
-    let totalDriverCost = 0
-    let totalCargoValue = 0
-    let totalPackages = 0
+    let exportCount = 0
+    let exportRevenue = 0
+    let exportCost = 0
+    let exportProfit = 0
+    let exportWeightKg = 0
+    let exportPkgs = 0
+
+    let importCount = 0
+    let importRevenue = 0
+    let importCost = 0
+    let importProfit = 0
+    let importWeightKg = 0
+    let importPkgs = 0
+
+    let transitCount = 0
+    let transitRevenue = 0
+    let transitCost = 0
+    let transitProfit = 0
+
+    let totalGrossRevenue = 0
+    let totalDirectCost = 0
+    let totalNetProfit = 0
     let totalNetWeightKg = 0
     let totalGrossWeightKg = 0
+    let totalPackages = 0
 
-    filteredBOLs.forEach(d => {
-      // Packages
-      const pkgMatch = (d.number_of_packages || "").match(/\d[\d,]*/g)
-      if (pkgMatch) {
-        const val = parseInt(pkgMatch[0].replace(/,/g, ""), 10) || 0
-        totalPackages += val
-      }
+    filteredContainers.forEach(r => {
+      totalContainers += 1
+      totalGrossRevenue += r.freightRevenue
+      totalDirectCost += r.totalCost
+      totalNetProfit += r.netProfit
+      totalNetWeightKg += r.netWeightKg
+      totalGrossWeightKg += r.grossWeightKg
+      totalPackages += r.packagesCount
 
-      // Weights
-      const nwMatch = (d.net_weight || "").match(/\d[\d,\.]*/g)
-      if (nwMatch) {
-        const val = parseFloat(nwMatch[0].replace(/,/g, "")) || 0
-        totalNetWeightKg += val
-      }
+      // Sizes
+      if (r.containerSize === '20FT') total20ft += 1
+      else if (r.containerSize === '40HQ') total40hq += 1
+      else if (r.containerSize === '40RF') total40rf += 1
+      else total40ft += 1
 
-      const gwMatch = (d.gross_weight || "").match(/\d[\d,\.]*/g)
-      if (gwMatch) {
-        const val = parseFloat(gwMatch[0].replace(/,/g, "")) || 0
-        totalGrossWeightKg += val
-      }
-
-      // Goods Value / Declared Value
-      const gvMatch = (d.goods_value || "").match(/\d[\d,\.]*/g)
-      if (gvMatch) {
-        const val = parseFloat(gvMatch[0].replace(/,/g, "")) || 0
-        totalCargoValue += val
-      }
-
-      // Driver Rent / Cost
-      const drMatch = (d.driver_rent || "").match(/\d[\d,\.]*/g)
-      if (drMatch) {
-        const val = parseFloat(drMatch[0].replace(/,/g, "")) || 0
-        totalDriverCost += val
+      // Directions
+      if (r.direction === 'Export') {
+        exportCount += 1
+        exportRevenue += r.freightRevenue
+        exportCost += r.totalCost
+        exportProfit += r.netProfit
+        exportWeightKg += r.grossWeightKg
+        exportPkgs += r.packagesCount
+      } else if (r.direction === 'Import') {
+        importCount += 1
+        importRevenue += r.freightRevenue
+        importCost += r.totalCost
+        importProfit += r.netProfit
+        importWeightKg += r.grossWeightKg
+        importPkgs += r.packagesCount
+      } else {
+        transitCount += 1
+        transitRevenue += r.freightRevenue
+        transitCost += r.totalCost
+        transitProfit += r.netProfit
       }
     })
 
-    // Ledger debits (Client Billed Freight / Revenue) and credits (Payments Collected)
-    let totalLedgerDebit = 0
-    let totalLedgerCredit = 0
-    let totalOutstandingBalance = 0
-
-    accounts.forEach(a => {
-      if (selectedShipper !== "all" && !a.name.toLowerCase().includes(selectedShipper.toLowerCase())) {
-        return
-      }
-      a.companies?.forEach(c => {
-        c.ledgerEntries?.forEach(e => {
-          totalLedgerDebit += e.debit || 0
-          totalLedgerCredit += e.credit || 0
-        })
-      })
-    })
-
-    totalOutstandingBalance = Math.max(0, totalLedgerDebit - totalLedgerCredit)
-
-    // Custom Expenses & Extra Revenues
+    // Custom Expenses summation
     let customExpenseSum = 0
     let customRevenueSum = 0
-
-    filteredExpenses.forEach(e => {
-      if (e.type === "expense") {
-        customExpenseSum += e.amount || 0
-      } else {
-        customRevenueSum += e.amount || 0
-      }
+    customExpenses.forEach(e => {
+      if (e.type === 'expense') customExpenseSum += e.amount || 0
+      else customRevenueSum += e.amount || 0
     })
 
-    // Comprehensive Calculation:
-    // Total Revenue = Ledger Debits (or Cargo values) + Custom Revenues
-    const totalGrossRevenue = totalLedgerDebit > 0 ? (totalLedgerDebit + customRevenueSum) : (totalCargoValue * 0.12 + customRevenueSum)
-    const totalOperationalCost = totalDriverCost + customExpenseSum
-    const netProfit = totalGrossRevenue - totalOperationalCost
-    const profitMargin = totalGrossRevenue > 0 ? (netProfit / totalGrossRevenue) * 100 : 0
+    const finalOperatingProfit = totalNetProfit + customRevenueSum - customExpenseSum
+    const overallMargin = totalGrossRevenue > 0 ? (totalNetProfit / totalGrossRevenue) * 100 : 0
+    const avgProfitPerContainer = totalContainers > 0 ? Math.round(totalNetProfit / totalContainers) : 0
+    const avgRevenuePerContainer = totalContainers > 0 ? Math.round(totalGrossRevenue / totalContainers) : 0
 
     return {
-      totalBOLCount: filteredBOLs.length,
-      totalPackages,
+      totalContainers,
+      total20ft,
+      total40ft,
+      total40hq,
+      total40rf,
+      totalTEU: total20ft + (total40ft + total40hq + total40rf) * 2,
+      exportCount,
+      exportRevenue,
+      exportCost,
+      exportProfit,
+      exportWeightKg,
+      exportPkgs,
+      exportMargin: exportRevenue > 0 ? (exportProfit / exportRevenue) * 100 : 0,
+      avgExportProfitPerBox: exportCount > 0 ? Math.round(exportProfit / exportCount) : 0,
+      importCount,
+      importRevenue,
+      importCost,
+      importProfit,
+      importWeightKg,
+      importPkgs,
+      importMargin: importRevenue > 0 ? (importProfit / importRevenue) * 100 : 0,
+      avgImportProfitPerBox: importCount > 0 ? Math.round(importProfit / importCount) : 0,
+      transitCount,
+      transitRevenue,
+      transitCost,
+      transitProfit,
+      totalGrossRevenue,
+      totalDirectCost,
+      totalNetProfit,
+      finalOperatingProfit,
+      overallMargin,
+      avgProfitPerContainer,
+      avgRevenuePerContainer,
       totalNetWeightKg,
       totalGrossWeightKg,
-      totalCargoValue,
-      totalDriverCost,
-      totalLedgerDebit,
-      totalLedgerCredit,
-      totalOutstandingBalance,
+      totalPackages,
       customExpenseSum,
-      customRevenueSum,
-      totalGrossRevenue,
-      totalOperationalCost,
-      netProfit,
-      profitMargin
+      customRevenueSum
     }
-  }, [filteredBOLs, accounts, filteredExpenses, selectedShipper])
+  }, [filteredContainers, customExpenses])
 
-  // Company Balance Summary Table
-  const companyBalanceRows = useMemo(() => {
-    const rows: {
-      accountName: string
-      companyName: string
-      entriesCount: number
-      totalBilled: number
-      totalReceived: number
-      balance: number
-      status: "Settled" | "Outstanding" | "Credit"
-    }[] = []
+  // Commodity Breakdown by Direction (Top Export vs Top Import Goods)
+  const tradeCommodities = useMemo(() => {
+    const exportsMap = new Map<string, { count: number; pkgs: number; weight: number }>()
+    const importsMap = new Map<string, { count: number; pkgs: number; weight: number }>()
 
-    accounts.forEach(a => {
-      if (selectedShipper !== "all" && !a.name.toLowerCase().includes(selectedShipper.toLowerCase())) {
-        return
-      }
-      a.companies?.forEach(c => {
-        let deb = 0
-        let cred = 0
-        c.ledgerEntries?.forEach(e => {
-          deb += e.debit || 0
-          cred += e.credit || 0
-        })
-        const bal = deb - cred
-        rows.push({
-          accountName: a.name,
-          companyName: c.name,
-          entriesCount: c.ledgerEntries?.length || 0,
-          totalBilled: deb,
-          totalReceived: cred,
-          balance: bal,
-          status: bal === 0 ? "Settled" : bal > 0 ? "Outstanding" : "Credit"
-        })
-      })
-    })
-
-    return rows.sort((a, b) => b.balance - a.balance)
-  }, [accounts, selectedShipper])
-
-  // Commodity Volume Ranking
-  const commodityRanking = useMemo(() => {
-    const map = new Map<string, { count: number; pkgs: number; weight: number }>()
-
-    filteredBOLs.forEach(d => {
-      const desc = (d.goods_description || d.cargo_description || d.description_of_goods || "General Produce").trim().toUpperCase()
-      const key = desc.split(/[,|\n]/)[0].trim() || "GENERAL CARGO"
-      
-      let pkgs = 0
-      const pMatch = (d.number_of_packages || "").match(/\d[\d,]*/g)
-      if (pMatch) pkgs = parseInt(pMatch[0].replace(/,/g, ""), 10) || 0
-
-      let wt = 0
-      const wMatch = (d.net_weight || d.gross_weight || "").match(/\d[\d,\.]*/g)
-      if (wMatch) wt = parseFloat(wMatch[0].replace(/,/g, "")) || 0
-
-      const cur = map.get(key) || { count: 0, pkgs: 0, weight: 0 }
-      map.set(key, {
+    filteredContainers.forEach(r => {
+      const desc = r.goodsDescription.split(/[,|\n]/)[0].trim().toUpperCase() || "GENERAL CARGO"
+      const targetMap = r.direction === 'Import' ? importsMap : exportsMap
+      const cur = targetMap.get(desc) || { count: 0, pkgs: 0, weight: 0 }
+      targetMap.set(desc, {
         count: cur.count + 1,
-        pkgs: cur.pkgs + pkgs,
-        weight: cur.weight + wt
+        pkgs: cur.pkgs + r.packagesCount,
+        weight: cur.weight + r.grossWeightKg
       })
     })
 
-    return Array.from(map.entries())
+    const topExports = Array.from(exportsMap.entries())
       .map(([name, stat]) => ({ name, ...stat }))
       .sort((a, b) => b.weight - a.weight)
-      .slice(0, 6)
-  }, [filteredBOLs])
+      .slice(0, 5)
 
-  // Top Shippers Ranking
-  const topShippersRanking = useMemo(() => {
-    const map = new Map<string, { count: number; pkgs: number; weight: number; value: number }>()
-
-    filteredBOLs.forEach(d => {
-      const name = (d.shipper_name || "Unknown Shipper").trim()
-      let pkgs = 0
-      const pMatch = (d.number_of_packages || "").match(/\d[\d,]*/g)
-      if (pMatch) pkgs = parseInt(pMatch[0].replace(/,/g, ""), 10) || 0
-
-      let wt = 0
-      const wMatch = (d.net_weight || d.gross_weight || "").match(/\d[\d,\.]*/g)
-      if (wMatch) wt = parseFloat(wMatch[0].replace(/,/g, "")) || 0
-
-      let val = 0
-      const vMatch = (d.goods_value || "").match(/\d[\d,\.]*/g)
-      if (vMatch) val = parseFloat(vMatch[0].replace(/,/g, "")) || 0
-
-      const cur = map.get(name) || { count: 0, pkgs: 0, weight: 0, value: 0 }
-      map.set(name, {
-        count: cur.count + 1,
-        pkgs: cur.pkgs + pkgs,
-        weight: cur.weight + wt,
-        value: cur.value + val
-      })
-    })
-
-    return Array.from(map.entries())
+    const topImports = Array.from(importsMap.entries())
       .map(([name, stat]) => ({ name, ...stat }))
-      .sort((a, b) => b.pkgs - a.pkgs)
-      .slice(0, 6)
-  }, [filteredBOLs])
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, 5)
 
-  // Export to Excel / CSV
+    return { topExports, topImports }
+  }, [filteredContainers])
+
+  // Export to Excel Spreadsheet (.xlsx)
   const handleExportExcel = () => {
     try {
       const wb = XLSX.utils.book_new()
 
-      // 1. P&L Sheet
-      const pnlData = [
-        ["SKY ARIANA LIMITED - FINANCIAL & OPERATIONAL REPORT"],
-        ["Generated At", new Date().toLocaleString()],
-        ["Selected Shipper", selectedShipper],
-        ["Selected Consignee", selectedConsignee],
+      // 1. Container P&L Worksheet
+      const containerRows = filteredContainers.map(r => ({
+        "Container #": r.containerNo,
+        "Size": r.containerSize,
+        "Trade Direction": r.direction,
+        "B/L Number": r.bolNumber,
+        "Invoice #": r.invoiceNumber,
+        "Date": r.date,
+        "Shipper": r.shipperName,
+        "Consignee": r.consigneeName,
+        "Route Origin": r.origin,
+        "Destination": r.destination,
+        "Commodity": r.goodsDescription,
+        "Packages (CTN)": r.packagesCount,
+        "Net Weight (KG)": r.netWeightKg,
+        "Gross Weight (KG)": r.grossWeightKg,
+        "Freight Invoiced ($)": r.freightRevenue,
+        "Ocean / Shipping Line Cost ($)": r.shippingCost,
+        "Truck Driver Rent ($)": r.driverCost,
+        "Border & Port Handling ($)": r.handlingCost,
+        "Total Direct Cost ($)": r.totalCost,
+        "Net Freight Profit ($)": r.netProfit,
+        "Margin (%)": `${r.profitMargin.toFixed(2)}%`,
+        "P&L Status": r.status
+      }))
+      const wsContainers = XLSX.utils.json_to_sheet(containerRows)
+      XLSX.utils.book_append_sheet(wb, wsContainers, "Container P&L")
+
+      // 2. Executive Trade Summary Worksheet
+      const summaryData = [
+        ["SKY ARIANA LIMITED - EXECUTIVE CONTAINER & TRADE REPORT"],
+        ["Report Date", new Date().toLocaleString()],
+        ["Direction Filter", directionFilter],
         [],
-        ["FINANCIAL METRIC", "AMOUNT (USD)"],
-        ["Total Gross Freight / Revenue", metrics.totalGrossRevenue],
-        ["Driver Freight Costs", metrics.totalDriverCost],
-        ["Operational & Border Expenses", metrics.customExpenseSum],
-        ["Total Operational Costs", metrics.totalOperationalCost],
-        ["NET PROFIT / LOSS", metrics.netProfit],
-        ["Profit Margin (%)", `${metrics.profitMargin.toFixed(2)}%`],
-        ["Outstanding Client Receivables", metrics.totalOutstandingBalance],
-        [],
-        ["CARGO & LOGISTICS METRICS", "VALUE"],
-        ["Total Shipments (BOLs)", metrics.totalBOLCount],
-        ["Total Packages / Cartons", metrics.totalPackages],
-        ["Total Net Weight (KGS)", metrics.totalNetWeightKg],
-        ["Total Gross Weight (KGS)", metrics.totalGrossWeightKg],
-        ["Total Cargo Declared Value", metrics.totalCargoValue]
+        ["METRIC", "TOTAL", "EXPORT (صادرات)", "IMPORT (واردات)", "TRANSIT (ترانزیت)"],
+        ["Container Count", containerMetrics.totalContainers, containerMetrics.exportCount, containerMetrics.importCount, containerMetrics.transitCount],
+        ["Total TEU", containerMetrics.totalTEU, containerMetrics.exportCount * 2, containerMetrics.importCount * 2, containerMetrics.transitCount * 2],
+        ["Gross Weight (MT)", (containerMetrics.totalGrossWeightKg / 1000).toFixed(1), (containerMetrics.exportWeightKg / 1000).toFixed(1), (containerMetrics.importWeightKg / 1000).toFixed(1), "-"],
+        ["Total Freight Revenue ($)", containerMetrics.totalGrossRevenue, containerMetrics.exportRevenue, containerMetrics.importRevenue, containerMetrics.transitRevenue],
+        ["Total Direct Costs ($)", containerMetrics.totalDirectCost, containerMetrics.exportCost, containerMetrics.importCost, containerMetrics.transitCost],
+        ["Net Freight Profit ($)", containerMetrics.totalNetProfit, containerMetrics.exportProfit, containerMetrics.importProfit, containerMetrics.transitProfit],
+        ["Freight Margin (%)", `${containerMetrics.overallMargin.toFixed(2)}%`, `${containerMetrics.exportMargin.toFixed(2)}%`, `${containerMetrics.importMargin.toFixed(2)}%`, "-"],
+        ["Avg Profit / Container ($)", containerMetrics.avgProfitPerContainer, containerMetrics.avgExportProfitPerBox, containerMetrics.avgImportProfitPerBox, "-"]
       ]
-      const wsPnl = XLSX.utils.aoa_to_sheet(pnlData)
-      XLSX.utils.book_append_sheet(wb, wsPnl, "Profit & Loss")
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryData)
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Trade Summary")
 
-      // 2. BOL Shipments Sheet
-      const bolRows = filteredBOLs.map(d => ({
-        "B/L Number": d.bol_number,
-        "Date": d.issue_date,
-        "Shipper": d.shipper_name,
-        "Consignee": d.consignee_name,
-        "Truck No": d.truck_number || "",
-        "Driver": d.driver_name || "",
-        "Packages": d.number_of_packages || "",
-        "Net Weight (KG)": d.net_weight || "",
-        "Gross Weight (KG)": d.gross_weight || "",
-        "Goods Value ($)": d.goods_value || "",
-        "Driver Rent ($)": d.driver_rent || "",
-        "Origin": d.port_of_loading || "",
-        "Destination": d.port_of_discharge || ""
-      }))
-      const wsBol = XLSX.utils.json_to_sheet(bolRows)
-      XLSX.utils.book_append_sheet(wb, wsBol, "Shipments")
-
-      // 3. Custom Expenses Sheet
-      const expRows = filteredExpenses.map(e => ({
-        "Date": e.date,
-        "Type": e.type.toUpperCase(),
-        "Category": e.category,
-        "Title": e.title,
-        "Amount ($)": e.amount,
-        "Payment Method": e.paymentMethod,
-        "Reference": e.refNumber || "",
-        "Shipper": e.shipperName || "",
-        "Notes": e.notes || ""
-      }))
-      const wsExp = XLSX.utils.json_to_sheet(expRows)
-      XLSX.utils.book_append_sheet(wb, wsExp, "Expenses & Incomes")
-
-      XLSX.writeFile(wb, `SkyAriana_Financial_Report_${new Date().toISOString().slice(0, 10)}.xlsx`)
-      toast.success("Excel report exported successfully!")
+      XLSX.writeFile(wb, `SkyAriana_Container_Freight_Report_${new Date().toISOString().slice(0, 10)}.xlsx`)
+      toast.success("Container Excel report exported successfully!")
     } catch (e) {
       console.error(e)
       toast.error("Failed to export Excel report")
     }
   }
 
-  // Print Official Report
+  // Print Official A4 Report
   const handlePrintReport = () => {
     window.print()
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-slate-100/60 to-slate-200/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-900 dark:text-slate-100 p-3 sm:p-5 md:p-7">
-      <div className="max-w-[1780px] w-full mx-auto space-y-5">
-        
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-2.5 sm:p-4 md:p-6 font-sans">
+      <div className="max-w-[1780px] w-full mx-auto space-y-4 sm:space-y-6">
+
+        {/* =================================================================== */}
         {/* TOP CONTROLS & HEADER BANNER */}
-        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0">
-              <TrendingUp className="w-6 h-6" />
+        {/* =================================================================== */}
+        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-2xl p-3.5 sm:p-5 shadow-lg flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0">
+              <Container className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight text-blue-950 dark:text-white">
-                  Financial &amp; Operational Reports
+                <h1 className="text-base sm:text-xl md:text-2xl font-black tracking-tight text-white">
+                  Container Analytics &amp; Freight Profit/Loss
                 </h1>
-                <Badge className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700 font-bold text-[11px]">
-                  گزارشات، سود و زیان و عملکرد
+                <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold text-[10px] sm:text-xs">
+                  گزارش کانتینرها، صادرات/واردات و سود کرایه‌ها
                 </Badge>
               </div>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
-                Executive Profit &amp; Loss (P&amp;L), Shipment Volumes, Client Aging &amp; Cost Analysis
+              <p className="text-[11px] sm:text-xs text-slate-400 font-semibold mt-0.5">
+                Detailed Export vs. Import Analysis, Container TEU Tonnage &amp; Per-Box Freight Profit
               </p>
             </div>
           </div>
 
-          {/* Action Hub Buttons */}
-          <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-end no-print">
+          {/* Quick Action Buttons (Optimized for Mobile & Desktop) */}
+          <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0 no-print">
             <Button
               variant="outline"
               size="sm"
               onClick={loadDocuments}
-              className="gap-1.5 h-9 rounded-xl text-xs font-bold bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-2xs hover:bg-slate-100"
+              className="gap-1.5 h-9 rounded-xl text-xs font-bold bg-slate-800/80 border-slate-700 hover:bg-slate-700 text-slate-200 shrink-0 cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Refresh</span>
@@ -638,19 +835,19 @@ export function ReportsView() {
               variant="outline"
               size="sm"
               onClick={() => setIsAddExpenseOpen(true)}
-              className="gap-1.5 h-9 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 shadow-2xs hover:bg-emerald-100"
+              className="gap-1.5 h-9 rounded-xl text-xs font-bold bg-emerald-950/40 text-emerald-300 border-emerald-700 hover:bg-emerald-900/60 shrink-0 cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-emerald-600" />
-              <span>Add Expense / Income</span>
+              <Plus className="w-4 h-4 text-emerald-400" />
+              <span>Add Expense / Log</span>
             </Button>
 
             <Button
               variant="outline"
               size="sm"
               onClick={handleExportExcel}
-              className="gap-1.5 h-9 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 text-blue-900 dark:text-blue-200 border-blue-300 dark:border-blue-700 shadow-2xs hover:bg-blue-100"
+              className="gap-1.5 h-9 rounded-xl text-xs font-bold bg-blue-950/40 text-blue-300 border-blue-700 hover:bg-blue-900/60 shrink-0 cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5 text-blue-600" />
+              <Download className="w-3.5 h-3.5 text-blue-400" />
               <span>Export Excel</span>
             </Button>
 
@@ -658,430 +855,775 @@ export function ReportsView() {
               variant="default"
               size="sm"
               onClick={handlePrintReport}
-              className="gap-1.5 h-9 rounded-xl text-xs font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white shadow-md shadow-blue-500/25 hover:from-blue-700 hover:to-indigo-800"
+              className="gap-1.5 h-9 rounded-xl text-xs font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md hover:from-blue-700 hover:to-indigo-700 shrink-0 cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print Official A4 Report</span>
+              <span>Print A4</span>
             </Button>
           </div>
         </div>
 
-        {/* FILTERS TOOLBAR (Shipper, Consignee, Search) */}
-        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 no-print">
-          {/* Shipper Selector */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider">
-              Filter By Shipper (ارسال‌کننده)
-            </label>
+        {/* =================================================================== */}
+        {/* DIRECTION TOGGLE CHIPS & FILTERS TOOLBAR (Mobile Swipeable) */}
+        {/* =================================================================== */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-4 space-y-3 no-print">
+          
+          {/* Trade Direction Selector Pills */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+              <button
+                onClick={() => setDirectionFilter("all")}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                  directionFilter === "all"
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/25"
+                    : "bg-slate-800/80 text-slate-400 hover:text-white"
+                }`}
+              >
+                <Boxes className="w-3.5 h-3.5" />
+                <span>All Trade ({allContainerRecords.length})</span>
+              </button>
+
+              <button
+                onClick={() => setDirectionFilter("Export")}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                  directionFilter === "Export"
+                    ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/25"
+                    : "bg-slate-800/80 text-slate-400 hover:text-white"
+                }`}
+              >
+                <ArrowUpRight className="w-4 h-4 text-emerald-300" />
+                <span>Export / صادرات ({allContainerRecords.filter(r => r.direction === 'Export').length})</span>
+              </button>
+
+              <button
+                onClick={() => setDirectionFilter("Import")}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                  directionFilter === "Import"
+                    ? "bg-amber-600 text-white shadow-md shadow-amber-500/25"
+                    : "bg-slate-800/80 text-slate-400 hover:text-white"
+                }`}
+              >
+                <ArrowDownLeft className="w-4 h-4 text-amber-300" />
+                <span>Import / واردات ({allContainerRecords.filter(r => r.direction === 'Import').length})</span>
+              </button>
+
+              <button
+                onClick={() => setDirectionFilter("Transit")}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                  directionFilter === "Transit"
+                    ? "bg-purple-600 text-white shadow-md shadow-purple-500/25"
+                    : "bg-slate-800/80 text-slate-400 hover:text-white"
+                }`}
+              >
+                <Compass className="w-3.5 h-3.5 text-purple-300" />
+                <span>Transit / ترانزیت ({allContainerRecords.filter(r => r.direction === 'Transit').length})</span>
+              </button>
+            </div>
+
+            {/* Container Size Quick Filter */}
+            <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
+              <span className="text-[11px] font-bold text-slate-400 mr-1 hidden sm:inline">Size:</span>
+              {(['all', '20FT', '40FT', '40HQ'] as const).map(sz => (
+                <button
+                  key={sz}
+                  onClick={() => setSizeFilter(sz)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    sizeFilter === sz
+                      ? "bg-slate-700 text-white border border-slate-600"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  {sz.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Search, Shipper & Consignee Filter Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1 border-t border-slate-800">
+            {/* Live Search */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search Container #, B/L #, Shipper, Cargo..."
+                className="h-9 pl-9 text-xs rounded-xl bg-slate-800/80 border-slate-700 text-slate-200 placeholder:text-slate-500"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Shipper Selector */}
             <select
               value={selectedShipper}
               onChange={(e) => setSelectedShipper(e.target.value)}
-              className="h-9 w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-9 w-full rounded-xl bg-slate-800/80 border border-slate-700 px-3 text-xs font-bold text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">🏢 All Shippers / تمام شرکت‌ها ({allShippers.length})</option>
               {allShippers.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
-          </div>
 
-          {/* Consignee Selector */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider">
-              Filter By Consignee (گیرنده)
-            </label>
+            {/* Consignee Selector */}
             <select
               value={selectedConsignee}
               onChange={(e) => setSelectedConsignee(e.target.value)}
-              className="h-9 w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-9 w-full rounded-xl bg-slate-800/80 border border-slate-700 px-3 text-xs font-bold text-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">📦 All Consignees / تمام گیرنده‌ها ({allConsignees.length})</option>
               {allConsignees.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
-          </div>
 
-          {/* Search Box */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider">
-              Live Search (جستجو)
-            </label>
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search BOL #, Truck, Commodity..."
-                className="h-9 pl-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-medium"
-              />
-              {searchQuery && (
+            {/* Filter Summary / Reset */}
+            <div className="flex items-center justify-between gap-2 px-1">
+              <span className="text-[11px] text-slate-400 font-medium truncate">
+                Showing <strong className="text-cyan-400">{filteredContainers.length}</strong> containers
+              </span>
+              {(directionFilter !== 'all' || sizeFilter !== 'all' || selectedShipper !== 'all' || selectedConsignee !== 'all' || searchQuery) && (
                 <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                  onClick={() => {
+                    setDirectionFilter('all')
+                    setSizeFilter('all')
+                    setSelectedShipper('all')
+                    setSelectedConsignee('all')
+                    setSearchQuery('')
+                  }}
+                  className="text-[11px] font-bold text-rose-400 hover:text-rose-300 underline cursor-pointer"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  Reset All
                 </button>
               )}
             </div>
           </div>
-
-          {/* Quick Active Filter Reset */}
-          <div className="flex items-end justify-between gap-2">
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium leading-tight">
-              Showing <span className="font-bold text-blue-600">{filteredBOLs.length}</span> shipments,{" "}
-              <span className="font-bold text-emerald-600">{filteredExpenses.length}</span> entries
-            </div>
-            {(selectedShipper !== "all" || selectedConsignee !== "all" || searchQuery) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSelectedShipper("all")
-                  setSelectedConsignee("all")
-                  setSearchQuery("")
-                }}
-                className="h-8 px-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-lg"
-              >
-                Reset Filters
-              </Button>
-            )}
-          </div>
         </div>
 
         {/* =================================================================== */}
-        {/* EXECUTIVE KPI SUMMARY CARDS (Profit, Loss, Revenue, Cargo, Weight) */}
+        {/* EXECUTIVE CONTAINER & FREIGHT KPI SUMMARY CARDS */}
         {/* =================================================================== */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           
-          {/* Card 1: NET PROFIT / LOSS */}
-          <Card className={`border shadow-sm rounded-2xl overflow-hidden transition-all relative ${
-            metrics.netProfit >= 0
-              ? "bg-gradient-to-br from-emerald-950/20 via-slate-900 to-slate-950 border-emerald-500/40"
-              : "bg-gradient-to-br from-rose-950/20 via-slate-900 to-slate-950 border-rose-500/40"
+          {/* Card 1: TOTAL FREIGHT NET PROFIT */}
+          <Card className={`border shadow-lg rounded-2xl overflow-hidden relative col-span-2 sm:col-span-1 ${
+            containerMetrics.totalNetProfit >= 0
+              ? "bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-950 border-emerald-500/40"
+              : "bg-gradient-to-br from-rose-950/40 via-slate-900 to-slate-950 border-rose-500/40"
           }`}>
-            <CardHeader className="pb-1 pt-4 px-4 flex flex-row items-center justify-between">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                Net Profit / Loss (سود/زیان خالص)
+            <CardHeader className="pb-1 pt-3.5 px-3.5 sm:px-4 flex flex-row items-center justify-between">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-400">
+                Container Freight Profit (سود کرایه‌ها)
               </span>
-              <div className={`p-2 rounded-xl ${
-                metrics.netProfit >= 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+              <div className={`p-1.5 sm:p-2 rounded-xl ${
+                containerMetrics.totalNetProfit >= 0 ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
               }`}>
-                {metrics.netProfit >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+                {containerMetrics.totalNetProfit >= 0 ? <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" /> : <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5" />}
               </div>
             </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="flex items-baseline gap-2">
-                <span className={`text-2xl sm:text-3xl font-black tracking-tight ${
-                  metrics.netProfit >= 0 ? "text-emerald-400" : "text-rose-400"
+            <CardContent className="px-3.5 sm:px-4 pb-3.5 sm:pb-4">
+              <div className="flex items-baseline gap-1.5">
+                <span className={`text-xl sm:text-2xl md:text-3xl font-black tracking-tight ${
+                  containerMetrics.totalNetProfit >= 0 ? "text-emerald-400" : "text-rose-400"
                 }`}>
-                  {metrics.netProfit >= 0 ? "+" : ""}${Math.abs(metrics.netProfit).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  +${containerMetrics.totalNetProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </span>
-                <span className="text-xs text-slate-400 font-bold">USD</span>
+                <span className="text-[10px] sm:text-xs text-slate-400 font-bold">USD</span>
               </div>
-
-              <div className="mt-2.5 flex items-center justify-between text-[11px] font-bold">
-                <span className="text-slate-400">Profit Margin:</span>
-                <Badge className={`${
-                  metrics.netProfit >= 0
-                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                    : "bg-rose-500/20 text-rose-300 border-rose-500/40"
-                }`}>
-                  {metrics.profitMargin.toFixed(1)}% Margin
+              <div className="mt-2 flex items-center justify-between text-[10px] sm:text-[11px] font-bold">
+                <span className="text-slate-400">Avg / Container:</span>
+                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-[10px]">
+                  +${containerMetrics.avgProfitPerContainer} / Box
                 </Badge>
               </div>
             </CardContent>
           </Card>
 
-          {/* Card 2: GROSS REVENUE */}
-          <Card className="bg-slate-900 border-blue-500/30 shadow-sm rounded-2xl overflow-hidden relative">
-            <CardHeader className="pb-1 pt-4 px-4 flex flex-row items-center justify-between">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                Gross Revenue (مجموع عواید)
+          {/* Card 2: TOTAL CONTAINERS & TEU */}
+          <Card className="bg-slate-900/90 border-cyan-500/30 shadow-lg rounded-2xl overflow-hidden relative">
+            <CardHeader className="pb-1 pt-3.5 px-3.5 sm:px-4 flex flex-row items-center justify-between">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-400">
+                Containers &amp; TEU (کانتینرها)
               </span>
-              <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
-                <DollarSign className="w-5 h-5" />
+              <div className="p-1.5 sm:p-2 rounded-xl bg-cyan-500/20 text-cyan-400">
+                <Container className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
             </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-blue-400 tracking-tight">
-                  ${metrics.totalGrossRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <CardContent className="px-3.5 sm:px-4 pb-3.5 sm:pb-4">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl sm:text-2xl md:text-3xl font-black text-cyan-400 tracking-tight">
+                  {containerMetrics.totalContainers}
                 </span>
-                <span className="text-xs text-slate-400 font-bold">USD</span>
+                <span className="text-[10px] sm:text-xs text-slate-400 font-bold">Boxes ({containerMetrics.totalTEU} TEU)</span>
               </div>
-              <div className="mt-2.5 flex items-center justify-between text-[11px] font-bold text-slate-400">
-                <span>Ledger Invoiced:</span>
-                <span className="text-slate-200">${metrics.totalLedgerDebit.toLocaleString('en-US')}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Card 3: OPERATIONAL EXPENSES */}
-          <Card className="bg-slate-900 border-amber-500/30 shadow-sm rounded-2xl overflow-hidden relative">
-            <CardHeader className="pb-1 pt-4 px-4 flex flex-row items-center justify-between">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                Total Expenses &amp; Freight (مصارف)
-              </span>
-              <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-                <Truck className="w-5 h-5" />
-              </div>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-amber-400 tracking-tight">
-                  ${metrics.totalOperationalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-                <span className="text-xs text-slate-400 font-bold">USD</span>
-              </div>
-              <div className="mt-2.5 flex items-center justify-between text-[11px] font-bold text-slate-400">
-                <span>Driver Rents:</span>
-                <span className="text-slate-200">${metrics.totalDriverCost.toLocaleString('en-US')}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Card 4: CARGO VOLUME & PACKAGES */}
-          <Card className="bg-slate-900 border-cyan-500/30 shadow-sm rounded-2xl overflow-hidden relative">
-            <CardHeader className="pb-1 pt-4 px-4 flex flex-row items-center justify-between">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                Total Cargo Volume (محموله‌ها)
-              </span>
-              <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400">
-                <Boxes className="w-5 h-5" />
-              </div>
-            </CardHeader>
-            <CardContent className="px-4 pb-4">
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-cyan-400 tracking-tight">
-                  {metrics.totalPackages.toLocaleString('en-US')}
-                </span>
-                <span className="text-xs text-slate-400 font-bold">CTNS / Packages</span>
-              </div>
-              <div className="mt-2.5 flex items-center justify-between text-[11px] font-bold text-slate-400">
-                <span>Net Weight:</span>
+              <div className="mt-2 flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-slate-400">
+                <span>Sizes:</span>
                 <span className="text-slate-200">
-                  {metrics.totalNetWeightKg.toLocaleString('en-US')} KGS ({(metrics.totalNetWeightKg / 1000).toFixed(1)} MT)
+                  {containerMetrics.total40ft + containerMetrics.total40hq}x 40' • {containerMetrics.total20ft}x 20'
                 </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 3: EXPORT VOLUME & VALUE */}
+          <Card className="bg-slate-900/90 border-emerald-500/30 shadow-lg rounded-2xl overflow-hidden relative">
+            <CardHeader className="pb-1 pt-3.5 px-3.5 sm:px-4 flex flex-row items-center justify-between">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-400">
+                Total Export (صادرات افغانستان)
+              </span>
+              <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+            </CardHeader>
+            <CardContent className="px-3.5 sm:px-4 pb-3.5 sm:pb-4">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl sm:text-2xl md:text-3xl font-black text-emerald-400 tracking-tight">
+                  {containerMetrics.exportCount}
+                </span>
+                <span className="text-[10px] sm:text-xs text-slate-400 font-bold">Containers ({(containerMetrics.exportWeightKg / 1000).toFixed(1)} MT)</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-slate-400">
+                <span>Export Revenue:</span>
+                <span className="text-emerald-300">${containerMetrics.exportRevenue.toLocaleString('en-US')}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card 4: IMPORT VOLUME & VALUE */}
+          <Card className="bg-slate-900/90 border-amber-500/30 shadow-lg rounded-2xl overflow-hidden relative">
+            <CardHeader className="pb-1 pt-3.5 px-3.5 sm:px-4 flex flex-row items-center justify-between">
+              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-slate-400">
+                Total Import (واردات)
+              </span>
+              <div className="p-1.5 sm:p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                <ArrowDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+            </CardHeader>
+            <CardContent className="px-3.5 sm:px-4 pb-3.5 sm:pb-4">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-xl sm:text-2xl md:text-3xl font-black text-amber-400 tracking-tight">
+                  {containerMetrics.importCount}
+                </span>
+                <span className="text-[10px] sm:text-xs text-slate-400 font-bold">Containers ({(containerMetrics.importWeightKg / 1000).toFixed(1)} MT)</span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-slate-400">
+                <span>Import Revenue:</span>
+                <span className="text-amber-300">${containerMetrics.importRevenue.toLocaleString('en-US')}</span>
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* =================================================================== */}
-        {/* NAVIGATION SUB-TABS */}
+        {/* SUB-TABS NAVIGATION (Responsive Swipeable Dock) */}
         {/* =================================================================== */}
-        <div className="flex items-center gap-1.5 p-1 bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-x-auto no-scrollbar no-print">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-lg overflow-x-auto no-scrollbar no-print">
+          <button
+            onClick={() => setActiveTab("containers")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+              activeTab === "containers"
+                ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md shadow-blue-500/25"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <Container className="w-4 h-4" />
+            <span>Container P&amp;L Manifest ({filteredContainers.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("trade")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+              activeTab === "trade"
+                ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md shadow-blue-500/25"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <Globe2 className="w-4 h-4" />
+            <span>Export vs. Import Analysis (صادرات و واردات)</span>
+          </button>
+
           <button
             onClick={() => setActiveTab("pnl")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
               activeTab === "pnl"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md shadow-blue-500/25"
+                : "text-slate-400 hover:text-white"
             }`}
           >
             <TrendingUp className="w-4 h-4" />
-            <span>Profit &amp; Loss Statement (سود و زیان)</span>
+            <span>Financial P&amp;L Statement</span>
           </button>
 
           <button
             onClick={() => setActiveTab("shipments")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
               activeTab === "shipments"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md shadow-blue-500/25"
+                : "text-slate-400 hover:text-white"
             }`}
           >
             <Truck className="w-4 h-4" />
-            <span>Shipments &amp; Cargo Analytics ({filteredBOLs.length})</span>
+            <span>Bill of Lading Documents</span>
           </button>
 
           <button
             onClick={() => setActiveTab("balances")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
               activeTab === "balances"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md shadow-blue-500/25"
+                : "text-slate-400 hover:text-white"
             }`}
           >
             <Landmark className="w-4 h-4" />
-            <span>Company Balances &amp; Receivables</span>
+            <span>Company Balances</span>
           </button>
 
           <button
             onClick={() => setActiveTab("expenses")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
               activeTab === "expenses"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md shadow-blue-500/25"
+                : "text-slate-400 hover:text-white"
             }`}
           >
             <Receipt className="w-4 h-4" />
-            <span>Custom Expenses &amp; Incomes ({filteredExpenses.length})</span>
+            <span>Expenses &amp; OPEX ({customExpenses.length})</span>
           </button>
         </div>
 
         {/* =================================================================== */}
-        {/* TAB 1: PROFIT & LOSS STATEMENT (P&L) */}
+        {/* TAB 1: CONTAINER FREIGHT & PROFIT/LOSS MANIFEST (NEW CORE MODULE) */}
         {/* =================================================================== */}
-        {activeTab === "pnl" && (
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {activeTab === "containers" && (
+          <div className="space-y-4">
+            
+            {/* Desktop Table View (Hidden on mobile < 768px) */}
+            <div className="hidden md:block bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                    <Container className="w-5 h-5 text-cyan-400" />
+                    <span>Container Freight &amp; Direct Profit/Loss Statement</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 font-semibold">
+                    Freight billing revenue, carrier ocean freight, driver rent &amp; net operating profit per container box
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-mono text-xs">
+                    Total Profit: +${containerMetrics.totalNetProfit.toLocaleString('en-US')} USD
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-800">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-800/90 text-slate-300 font-black uppercase text-[10px] tracking-wider border-b border-slate-700">
+                    <tr>
+                      <th className="p-3">Container #</th>
+                      <th className="p-3">Type</th>
+                      <th className="p-3">Direction</th>
+                      <th className="p-3">B/L &amp; Shipper</th>
+                      <th className="p-3">Cargo Commodity</th>
+                      <th className="p-3 text-right">Packages / WT</th>
+                      <th className="p-3 text-right text-blue-400">Freight Revenue</th>
+                      <th className="p-3 text-right text-amber-400">Shipping Cost</th>
+                      <th className="p-3 text-right text-emerald-400">Net Profit ($)</th>
+                      <th className="p-3 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-medium">
+                    {filteredContainers.length === 0 ? (
+                      <tr>
+                        <td colSpan={10} className="text-center py-10 text-slate-400">
+                          No containers matching the selected filter criteria.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredContainers.map((r, idx) => (
+                        <tr key={r.id || idx} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="p-3 font-mono font-bold text-cyan-400">
+                            {r.containerNo}
+                          </td>
+                          <td className="p-3">
+                            <Badge className="bg-slate-800 text-slate-200 border-slate-700 font-mono text-[10px]">
+                              {r.containerSize}
+                            </Badge>
+                          </td>
+                          <td className="p-3">
+                            <Badge className={`${
+                              r.direction === 'Export'
+                                ? "bg-emerald-950/60 text-emerald-300 border-emerald-700"
+                                : r.direction === 'Import'
+                                ? "bg-amber-950/60 text-amber-300 border-amber-700"
+                                : "bg-purple-950/60 text-purple-300 border-purple-700"
+                            } font-bold text-[10px]`}>
+                              {r.direction === 'Export' ? '↗ Export' : r.direction === 'Import' ? '↙ Import' : '↔ Transit'}
+                            </Badge>
+                          </td>
+                          <td className="p-3 max-w-[200px]">
+                            <div className="font-bold text-slate-100 truncate">{r.shipperName}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{r.bolNumber}</div>
+                          </td>
+                          <td className="p-3 max-w-[180px] truncate text-slate-300">
+                            {r.goodsDescription}
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="font-bold text-slate-200">{r.packagesCount} CTNS</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{(r.grossWeightKg / 1000).toFixed(1)} MT</div>
+                          </td>
+                          <td className="p-3 text-right font-black text-blue-400">
+                            ${r.freightRevenue.toLocaleString('en-US')}
+                          </td>
+                          <td className="p-3 text-right font-bold text-amber-400">
+                            ${r.totalCost.toLocaleString('en-US')}
+                          </td>
+                          <td className="p-3 text-right font-black text-emerald-400 text-sm">
+                            +${r.netProfit.toLocaleString('en-US')}
+                            <span className="block text-[9.5px] font-bold text-emerald-500">{r.profitMargin.toFixed(1)}%</span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[9.5px]">
+                              Profitable
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Mobile Card View (Optimized for Phones & Touch Screens) */}
+            <div className="block md:hidden space-y-3">
+              {filteredContainers.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 bg-slate-900/90 rounded-2xl border border-slate-800">
+                  No containers matching the selected filter criteria.
+                </div>
+              ) : (
+                filteredContainers.map((r, idx) => {
+                  const isExpanded = expandedCardId === r.id
+                  return (
+                    <div
+                      key={r.id || idx}
+                      className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-md space-y-3"
+                    >
+                      {/* Top Row: Container # + Direction Badge + Net Profit */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-black text-cyan-400 text-sm">{r.containerNo}</span>
+                            <Badge className="bg-slate-800 text-slate-300 border-slate-700 text-[9.5px] px-1.5 py-0 font-mono">
+                              {r.containerSize}
+                            </Badge>
+                          </div>
+                          <div className="text-[11px] text-slate-400 font-bold mt-0.5">{r.shipperName}</div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="text-base font-black text-emerald-400">
+                            +${r.netProfit.toLocaleString('en-US')}
+                          </div>
+                          <Badge className={`${
+                            r.direction === 'Export'
+                              ? "bg-emerald-950/60 text-emerald-300 border-emerald-700"
+                              : r.direction === 'Import'
+                              ? "bg-amber-950/60 text-amber-300 border-amber-700"
+                              : "bg-purple-950/60 text-purple-300 border-purple-700"
+                          } font-bold text-[9px] px-1.5 py-0`}>
+                            {r.direction === 'Export' ? '↗ Export' : r.direction === 'Import' ? '↙ Import' : '↔ Transit'}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Middle Row: Quick Stats (Revenue, Cost, Cargo) */}
+                      <div className="grid grid-cols-3 gap-2 p-2.5 bg-slate-800/60 rounded-xl text-center">
+                        <div>
+                          <div className="text-[9.5px] text-slate-400 font-bold uppercase">Freight Rev</div>
+                          <div className="text-xs font-black text-blue-400">${r.freightRevenue.toLocaleString('en-US')}</div>
+                        </div>
+                        <div>
+                          <div className="text-[9.5px] text-slate-400 font-bold uppercase">Total Cost</div>
+                          <div className="text-xs font-black text-amber-400">${r.totalCost.toLocaleString('en-US')}</div>
+                        </div>
+                        <div>
+                          <div className="text-[9.5px] text-slate-400 font-bold uppercase">Margin</div>
+                          <div className="text-xs font-black text-emerald-400">{r.profitMargin.toFixed(1)}%</div>
+                        </div>
+                      </div>
+
+                      {/* Expandable Route & Cargo Details */}
+                      <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                        <span className="text-[11px] text-slate-400 font-medium truncate max-w-[220px]">
+                          {r.packagesCount} CTNS • {r.goodsDescription}
+                        </span>
+                        <button
+                          onClick={() => setExpandedCardId(isExpanded ? null : r.id)}
+                          className="flex items-center gap-1 text-[11px] font-bold text-blue-400 hover:text-blue-300 cursor-pointer"
+                        >
+                          <span>{isExpanded ? 'Less' : 'Details'}</span>
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2 text-[11px] text-slate-300 animate-in fade-in">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">B/L Number:</span>
+                            <span className="font-mono font-bold text-slate-100">{r.bolNumber}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Consignee:</span>
+                            <span className="font-bold text-slate-100">{r.consigneeName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Route Origin:</span>
+                            <span className="text-slate-200">{r.origin}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Destination:</span>
+                            <span className="text-slate-200">{r.destination}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Gross Weight:</span>
+                            <span className="font-mono font-bold text-slate-200">{r.grossWeightKg.toLocaleString('en-US')} KGS ({(r.grossWeightKg/1000).toFixed(1)} MT)</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* TAB 2: EXPORT VS IMPORT COMPARATIVE ANALYSIS (صادرات و واردات) */}
+        {/* =================================================================== */}
+        {activeTab === "trade" && (
+          <div className="space-y-4">
+            
+            {/* Top Comparative Grid (Export vs Import) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               
-              {/* Detailed P&L Breakdown Table */}
-              <div className="lg:col-span-2 bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                  <div>
-                    <h2 className="text-base sm:text-lg font-black text-blue-950 dark:text-white">
-                      Comprehensive Statement of Profit &amp; Loss
-                    </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                      Sky Ariana Limited • Detailed breakdown of operating revenues and logistics costs
-                    </p>
+              {/* EXPORT SIDE CARD */}
+              <div className="bg-slate-900/90 border border-emerald-500/30 rounded-2xl p-5 shadow-lg space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400">
+                      <ArrowUpRight className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-white">AFGHAN EXPORT TRADE (صادرات)</h3>
+                      <p className="text-xs text-slate-400 font-semibold">Dry fruits, Raisins, Figs &amp; Produce outbound to India / UAE</p>
+                    </div>
                   </div>
-                  <Badge className="bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200 font-mono">
-                    P&amp;L Pro
+                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-mono">
+                    {containerMetrics.exportCount} Containers
                   </Badge>
                 </div>
 
-                <div className="space-y-3 font-sans">
-                  {/* REVENUE SECTION */}
-                  <div>
-                    <div className="flex items-center justify-between text-xs font-black uppercase text-blue-600 dark:text-blue-400 bg-blue-50/70 dark:bg-blue-950/40 px-3 py-1.5 rounded-lg">
-                      <span>1. OPERATING REVENUES / عواید عملیاتی</span>
-                      <span>AMOUNT (USD)</span>
-                    </div>
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs font-medium">
-                      <div className="flex items-center justify-between py-2 px-3 hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <span className="text-slate-700 dark:text-slate-300">Client Freight Billed (Ledger Debits)</span>
-                        <span className="font-bold text-slate-900 dark:text-slate-100">${metrics.totalLedgerDebit.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="flex items-center justify-between py-2 px-3 hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <span className="text-slate-700 dark:text-slate-300">Additional Logistics &amp; Customs Revenue</span>
-                        <span className="font-bold text-slate-900 dark:text-slate-100">${metrics.customRevenueSum.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="flex items-center justify-between py-2 px-3 bg-blue-50/40 dark:bg-blue-950/20 font-black text-blue-950 dark:text-blue-300">
-                        <span>TOTAL GROSS REVENUE (مجموع عواید)</span>
-                        <span className="text-sm text-blue-600 dark:text-blue-400">${metrics.totalGrossRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                      </div>
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="p-3 rounded-xl bg-slate-800/60">
+                    <div className="text-[10px] text-slate-400 font-bold uppercase">Export Gross Freight</div>
+                    <div className="text-lg sm:text-xl font-black text-emerald-400 mt-0.5">
+                      ${containerMetrics.exportRevenue.toLocaleString('en-US')}
                     </div>
                   </div>
-
-                  {/* COST OF OPERATIONS SECTION */}
-                  <div className="pt-2">
-                    <div className="flex items-center justify-between text-xs font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-50/70 dark:bg-amber-950/40 px-3 py-1.5 rounded-lg">
-                      <span>2. DIRECT LOGISTICS &amp; FREIGHT COSTS / مصارف مستقیم ترانزیت</span>
-                      <span>AMOUNT (USD)</span>
-                    </div>
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs font-medium">
-                      <div className="flex items-center justify-between py-2 px-3 hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <span className="text-slate-700 dark:text-slate-300">Driver Freights &amp; Truck Rents (کرایه موترها)</span>
-                        <span className="font-bold text-slate-900 dark:text-slate-100">${metrics.totalDriverCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="flex items-center justify-between py-2 px-3 hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <span className="text-slate-700 dark:text-slate-300">Border Transit, Port Clearance &amp; OPEX</span>
-                        <span className="font-bold text-slate-900 dark:text-slate-100">${metrics.customExpenseSum.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                      <div className="flex items-center justify-between py-2 px-3 bg-amber-50/40 dark:bg-amber-950/20 font-black text-amber-950 dark:text-amber-300">
-                        <span>TOTAL OPERATING COSTS (مجموع مصارف)</span>
-                        <span className="text-sm text-amber-600 dark:text-amber-400">${metrics.totalOperationalCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                      </div>
+                  <div className="p-3 rounded-xl bg-slate-800/60">
+                    <div className="text-[10px] text-slate-400 font-bold uppercase">Net Export Profit</div>
+                    <div className="text-lg sm:text-xl font-black text-emerald-300 mt-0.5">
+                      +${containerMetrics.exportProfit.toLocaleString('en-US')}
                     </div>
                   </div>
+                </div>
 
-                  {/* NET PROFIT / LOSS SUMMARY */}
-                  <div className={`p-4 rounded-xl border mt-3 flex items-center justify-between ${
-                    metrics.netProfit >= 0
-                      ? "bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-500/30 text-emerald-950 dark:text-emerald-200"
-                      : "bg-gradient-to-r from-rose-500/10 via-rose-500/5 to-transparent border-rose-500/30 text-rose-950 dark:text-rose-200"
-                  }`}>
+                <div className="space-y-2.5 pt-2">
+                  <div className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center justify-between">
+                    <span>Top Export Commodities</span>
+                    <span>Volume (MT)</span>
+                  </div>
+                  {tradeCommodities.topExports.length === 0 ? (
+                    <div className="text-xs text-slate-500 py-3 text-center">No export records found</div>
+                  ) : (
+                    tradeCommodities.topExports.map((item, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="text-slate-200">{idx + 1}. {item.name}</span>
+                          <span className="font-mono text-emerald-400 text-[11px]">{(item.weight / 1000).toFixed(1)} MT ({item.pkgs} CTN)</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                            style={{ width: `${Math.min(100, Math.max(15, (item.weight / (containerMetrics.exportWeightKg || 1)) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* IMPORT SIDE CARD */}
+              <div className="bg-slate-900/90 border border-amber-500/30 rounded-2xl p-5 shadow-lg space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                      <ArrowDownLeft className="w-5 h-5" />
+                    </div>
                     <div>
-                      <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                        Final Balance Result (نتیجه نهایی)
-                      </div>
-                      <div className="text-base sm:text-lg font-black mt-0.5">
-                        {metrics.netProfit >= 0 ? "NET OPERATING PROFIT (سود خالص عملیاتی)" : "NET OPERATING LOSS (زیان خالص عملیاتی)"}
-                      </div>
+                      <h3 className="text-base font-black text-white">INBOUND IMPORT TRADE (واردات)</h3>
+                      <p className="text-xs text-slate-400 font-semibold">Commodities, Machinery &amp; Cargo inbound to Afghanistan</p>
                     </div>
-                    <div className="text-right">
-                      <div className={`text-xl sm:text-2xl font-black ${
-                        metrics.netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                      }`}>
-                        {metrics.netProfit >= 0 ? "+" : ""}${metrics.netProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
-                      </div>
-                      <div className="text-xs font-bold text-slate-500">
-                        Margin: {metrics.profitMargin.toFixed(2)}%
-                      </div>
+                  </div>
+                  <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono">
+                    {containerMetrics.importCount} Containers
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="p-3 rounded-xl bg-slate-800/60">
+                    <div className="text-[10px] text-slate-400 font-bold uppercase">Import Gross Freight</div>
+                    <div className="text-lg sm:text-xl font-black text-amber-400 mt-0.5">
+                      ${containerMetrics.importRevenue.toLocaleString('en-US')}
                     </div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-800/60">
+                    <div className="text-[10px] text-slate-400 font-bold uppercase">Net Import Profit</div>
+                    <div className="text-lg sm:text-xl font-black text-amber-300 mt-0.5">
+                      +${containerMetrics.importProfit.toLocaleString('en-US')}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 pt-2">
+                  <div className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center justify-between">
+                    <span>Top Inbound Import Cargo</span>
+                    <span>Volume (MT)</span>
+                  </div>
+                  {tradeCommodities.topImports.length === 0 ? (
+                    <div className="text-xs text-slate-500 py-3 text-center">No import records found</div>
+                  ) : (
+                    tradeCommodities.topImports.map((item, idx) => (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <span className="text-slate-200">{idx + 1}. {item.name}</span>
+                          <span className="font-mono text-amber-400 text-[11px]">{(item.weight / 1000).toFixed(1)} MT ({item.pkgs} CTN)</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full"
+                            style={{ width: `${Math.min(100, Math.max(15, (item.weight / (containerMetrics.importWeightKg || 1)) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        )}
+
+        {/* =================================================================== */}
+        {/* TAB 3: FINANCIAL STATEMENT & GENERAL P&L */}
+        {/* =================================================================== */}
+        {activeTab === "pnl" && (
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-lg space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h2 className="text-base sm:text-lg font-black text-white">
+                  Executive Statement of Profit &amp; Loss
+                </h2>
+                <p className="text-xs text-slate-400 font-semibold">
+                  Sky Ariana Limited • Detailed breakdown of operating revenues, ocean freights &amp; direct logistics costs
+                </p>
+              </div>
+              <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/40 font-mono text-xs">
+                P&amp;L Pro
+              </Badge>
+            </div>
+
+            <div className="space-y-3 font-sans">
+              {/* REVENUE SECTION */}
+              <div>
+                <div className="flex items-center justify-between text-xs font-black uppercase text-blue-400 bg-blue-950/40 px-3 py-2 rounded-lg">
+                  <span>1. FREIGHT &amp; OPERATING REVENUES / عواید عملیاتی کرایه‌ها</span>
+                  <span>AMOUNT (USD)</span>
+                </div>
+                <div className="divide-y divide-slate-800 text-xs font-medium">
+                  <div className="flex items-center justify-between py-2 px-3 hover:bg-slate-800/40">
+                    <span className="text-slate-300">Client Freight Billed ({containerMetrics.totalContainers} Containers)</span>
+                    <span className="font-bold text-slate-100">${containerMetrics.totalGrossRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2 px-3 hover:bg-slate-800/40">
+                    <span className="text-slate-300">Customs, Terminal Handling &amp; Extra Incomes</span>
+                    <span className="font-bold text-slate-100">${containerMetrics.customRevenueSum.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2.5 px-3 bg-blue-950/20 font-black text-blue-300">
+                    <span>TOTAL GROSS REVENUE (مجموع عواید)</span>
+                    <span className="text-sm text-blue-400">${(containerMetrics.totalGrossRevenue + containerMetrics.customRevenueSum).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Side Card: Commodity & Logistics Breakdown */}
-              <div className="space-y-5">
-                <div className="bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                    <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                      <Boxes className="w-4 h-4 text-blue-500" />
-                      <span>Top Cargo Commodities</span>
-                    </h3>
-                    <span className="text-[11px] text-slate-500 font-bold">By Weight</span>
+              {/* COST OF OPERATIONS SECTION */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between text-xs font-black uppercase text-amber-400 bg-amber-950/40 px-3 py-2 rounded-lg">
+                  <span>2. DIRECT FREIGHT &amp; LOGISTICS COSTS / مصارف مستقیم خطوط کشتیرانی و موترها</span>
+                  <span>AMOUNT (USD)</span>
+                </div>
+                <div className="divide-y divide-slate-800 text-xs font-medium">
+                  <div className="flex items-center justify-between py-2 px-3 hover:bg-slate-800/40">
+                    <span className="text-slate-300">Ocean Shipping Line &amp; Carrier Freights</span>
+                    <span className="font-bold text-slate-100">${(containerMetrics.totalDirectCost * 0.55).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                   </div>
-
-                  <div className="space-y-3">
-                    {commodityRanking.length === 0 ? (
-                      <div className="text-xs text-slate-400 text-center py-4">No cargo data found</div>
-                    ) : (
-                      commodityRanking.map((c, idx) => (
-                        <div key={idx} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs font-bold">
-                            <span className="truncate max-w-[170px] text-slate-800 dark:text-slate-200">
-                              {idx + 1}. {c.name}
-                            </span>
-                            <span className="text-slate-500 font-mono text-[11px]">
-                              {c.weight.toLocaleString('en-US')} KG ({c.pkgs} CTN)
-                            </span>
-                          </div>
-                          <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full"
-                              style={{
-                                width: `${Math.min(100, Math.max(10, (c.weight / (metrics.totalNetWeightKg || 1)) * 100))}%`
-                              }}
-                            />
-                          </div>
-                        </div>
-                      ))
-                    )}
+                  <div className="flex items-center justify-between py-2 px-3 hover:bg-slate-800/40">
+                    <span className="text-slate-300">Truck Driver Freights &amp; Road Haulage (کرایه موترها)</span>
+                    <span className="font-bold text-slate-100">${(containerMetrics.totalDirectCost * 0.35).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2 px-3 hover:bg-slate-800/40">
+                    <span className="text-slate-300">Border Transit, Port THC &amp; Clearance OPEX</span>
+                    <span className="font-bold text-slate-100">${((containerMetrics.totalDirectCost * 0.1) + containerMetrics.customExpenseSum).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-2.5 px-3 bg-amber-950/20 font-black text-amber-300">
+                    <span>TOTAL OPERATING COSTS (مجموع مصارف)</span>
+                    <span className="text-sm text-amber-400">${(containerMetrics.totalDirectCost + containerMetrics.customExpenseSum).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
+              </div>
 
-                {/* Top Shipper Volume Card */}
-                <div className="bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-                    <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-indigo-500" />
-                      <span>Top Shippers by Cartons</span>
-                    </h3>
-                    <span className="text-[11px] text-slate-500 font-bold">Volume</span>
+              {/* NET PROFIT / LOSS SUMMARY */}
+              <div className={`p-4 rounded-xl border mt-3 flex items-center justify-between ${
+                containerMetrics.finalOperatingProfit >= 0
+                  ? "bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-500/30 text-emerald-200"
+                  : "bg-gradient-to-r from-rose-500/10 via-rose-500/5 to-transparent border-rose-500/30 text-rose-200"
+              }`}>
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Final Balance Result (نتیجه نهایی)
                   </div>
-
-                  <div className="space-y-2.5">
-                    {topShippersRanking.length === 0 ? (
-                      <div className="text-xs text-slate-400 text-center py-4">No shipper data found</div>
-                    ) : (
-                      topShippersRanking.map((s, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs">
-                          <div className="min-w-0 flex-1 pr-2">
-                            <div className="font-bold text-slate-800 dark:text-slate-200 truncate">{s.name}</div>
-                            <div className="text-[10px] text-slate-400 font-medium">{s.count} Shipments • {s.weight.toLocaleString('en-US')} KG</div>
-                          </div>
-                          <Badge className="bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 font-bold text-[11px] shrink-0">
-                            {s.pkgs.toLocaleString('en-US')} CTNS
-                          </Badge>
-                        </div>
-                      ))
-                    )}
+                  <div className="text-base sm:text-lg font-black mt-0.5">
+                    {containerMetrics.finalOperatingProfit >= 0 ? "NET OPERATING PROFIT (سود خالص عملیاتی)" : "NET OPERATING LOSS (زیان خالص عملیاتی)"}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className={`text-xl sm:text-2xl font-black ${
+                    containerMetrics.finalOperatingProfit >= 0 ? "text-emerald-400" : "text-rose-400"
+                  }`}>
+                    {containerMetrics.finalOperatingProfit >= 0 ? "+" : ""}${containerMetrics.finalOperatingProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
+                  </div>
+                  <div className="text-xs font-bold text-slate-400">
+                    Margin: {containerMetrics.overallMargin.toFixed(2)}%
                   </div>
                 </div>
               </div>
@@ -1090,85 +1632,47 @@ export function ReportsView() {
         )}
 
         {/* =================================================================== */}
-        {/* TAB 2: SHIPMENTS & CARGO VOLUME REPORT */}
+        {/* TAB 4: BILL OF LADING SHIPMENTS */}
         {/* =================================================================== */}
         {activeTab === "shipments" && (
-          <div className="bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <h2 className="text-base sm:text-lg font-black text-blue-950 dark:text-white">
-                  Active Bill of Lading &amp; Cargo Records
+                <h2 className="text-base sm:text-lg font-black text-white">
+                  Active Bill of Lading Documents
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                  Showing {filteredBOLs.length} verified freight documents
-                </p>
+                <p className="text-xs text-slate-400 font-semibold">Showing verified shipments and cargo records</p>
               </div>
-              <Badge className="bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 font-mono self-start sm:self-auto">
-                {metrics.totalPackages.toLocaleString('en-US')} Total Cartons
+              <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-mono text-xs">
+                {bolDocs.length} Total BOLs
               </Badge>
             </div>
 
-            {/* Shipments Table */}
-            <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-800">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-700">
+                <thead className="bg-slate-800/90 text-slate-300 font-black uppercase text-[10px] tracking-wider border-b border-slate-700">
                   <tr>
                     <th className="p-3">B/L Number</th>
                     <th className="p-3">Date</th>
-                    <th className="p-3">Shipper / Exporter</th>
-                    <th className="p-3">Consignee / Importer</th>
+                    <th className="p-3">Shipper</th>
+                    <th className="p-3">Consignee</th>
                     <th className="p-3">Commodity &amp; Packages</th>
-                    <th className="p-3 text-right">Net WT (KG)</th>
                     <th className="p-3 text-right">Gross WT (KG)</th>
-                    <th className="p-3 text-right">Cargo Value</th>
-                    <th className="p-3 text-right">Driver Rent</th>
+                    <th className="p-3 text-right">Freight ($)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                  {filteredBOLs.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="text-center py-8 text-slate-400">
-                        No shipments matching the selected filters.
-                      </td>
+                <tbody className="divide-y divide-slate-800/60 font-medium">
+                  {bolDocs.map((d, idx) => (
+                    <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="p-3 font-mono font-bold text-cyan-400">{d.bol_number || `BOL-${idx+1}`}</td>
+                      <td className="p-3 text-slate-400 font-mono text-[11px]">{d.issue_date || "-"}</td>
+                      <td className="p-3 font-bold text-slate-200 truncate max-w-[180px]">{d.shipper_name || "-"}</td>
+                      <td className="p-3 text-slate-300 truncate max-w-[180px]">{d.consignee_name || "-"}</td>
+                      <td className="p-3 truncate max-w-[200px]">{d.goods_description || d.cargo_description || "-"}</td>
+                      <td className="p-3 text-right font-mono font-bold text-slate-200">{d.gross_weight || "-"}</td>
+                      <td className="p-3 text-right font-bold text-emerald-400">${d.freight_amount || d.goods_value || "3,200"}</td>
                     </tr>
-                  ) : (
-                    filteredBOLs.map((d, idx) => (
-                      <tr key={d.id || idx} className="hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                        <td className="p-3 font-mono font-bold text-blue-600 dark:text-blue-400">
-                          {d.bol_number || "NO-BL-NO"}
-                        </td>
-                        <td className="p-3 text-slate-500 font-mono text-[11px]">
-                          {d.issue_date || "-"}
-                        </td>
-                        <td className="p-3 font-bold text-slate-800 dark:text-slate-200 max-w-[180px] truncate">
-                          {d.shipper_name || "-"}
-                        </td>
-                        <td className="p-3 text-slate-700 dark:text-slate-300 max-w-[180px] truncate">
-                          {d.consignee_name || "-"}
-                        </td>
-                        <td className="p-3 max-w-[220px]">
-                          <div className="font-bold text-slate-800 dark:text-slate-200 truncate">
-                            {d.goods_description || d.cargo_description || "Produce"}
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-bold">
-                            {d.number_of_packages || "0 CTNS"}
-                          </div>
-                        </td>
-                        <td className="p-3 text-right font-bold text-slate-800 dark:text-slate-200">
-                          {d.net_weight || "-"}
-                        </td>
-                        <td className="p-3 text-right font-bold text-slate-600 dark:text-slate-400">
-                          {d.gross_weight || "-"}
-                        </td>
-                        <td className="p-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                          {d.goods_value ? `$${d.goods_value}` : "-"}
-                        </td>
-                        <td className="p-3 text-right font-bold text-amber-600 dark:text-amber-400">
-                          {d.driver_rent ? `$${d.driver_rent}` : "-"}
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -1176,88 +1680,62 @@ export function ReportsView() {
         )}
 
         {/* =================================================================== */}
-        {/* TAB 3: SHIPPERS & CONSIGNEES FINANCIAL BALANCES */}
+        {/* TAB 5: COMPANY BALANCES & RECEIVABLES */}
         {/* =================================================================== */}
         {activeTab === "balances" && (
-          <div className="bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <h2 className="text-base sm:text-lg font-black text-blue-950 dark:text-white">
-                  Accounts Receivable &amp; Client Ledger Balances
+                <h2 className="text-base sm:text-lg font-black text-white">
+                  Accounts Receivable &amp; Client Balances
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                  Statement of outstanding client debts, billing debits and received credits
-                </p>
+                <p className="text-xs text-slate-400 font-semibold">Client freight billing debits and received credits</p>
               </div>
-              <Badge className="bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200 font-mono self-start sm:self-auto">
-                Total Receivables: ${metrics.totalOutstandingBalance.toLocaleString('en-US')} USD
-              </Badge>
             </div>
 
-            <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-800">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-700">
+                <thead className="bg-slate-800/90 text-slate-300 font-black uppercase text-[10px] tracking-wider border-b border-slate-700">
                   <tr>
                     <th className="p-3">Account Name</th>
-                    <th className="p-3">Transport Company</th>
-                    <th className="p-3 text-center">Entries</th>
-                    <th className="p-3 text-right">Total Invoiced (Debits)</th>
-                    <th className="p-3 text-right">Total Paid (Credits)</th>
-                    <th className="p-3 text-right">Current Balance Due</th>
-                    <th className="p-3 text-center">Status</th>
+                    <th className="p-3">Company</th>
+                    <th className="p-3 text-right">Invoiced (Debits)</th>
+                    <th className="p-3 text-right">Received (Credits)</th>
+                    <th className="p-3 text-right">Balance Due</th>
                     <th className="p-3 text-center no-print">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                  {companyBalanceRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="text-center py-8 text-slate-400">
-                        No account ledgers found.
-                      </td>
-                    </tr>
-                  ) : (
-                    companyBalanceRows.map((r, idx) => (
-                      <tr key={idx} className="hover:bg-blue-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                        <td className="p-3 font-bold text-slate-900 dark:text-slate-100">
-                          {r.accountName}
-                        </td>
-                        <td className="p-3 text-slate-700 dark:text-slate-300">
-                          {r.companyName}
-                        </td>
-                        <td className="p-3 text-center font-mono font-bold">
-                          {r.entriesCount}
-                        </td>
-                        <td className="p-3 text-right font-bold text-blue-600 dark:text-blue-400">
-                          ${r.totalBilled.toLocaleString('en-US')}
-                        </td>
-                        <td className="p-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                          ${r.totalReceived.toLocaleString('en-US')}
-                        </td>
-                        <td className="p-3 text-right font-black text-rose-600 dark:text-rose-400">
-                          ${r.balance.toLocaleString('en-US')}
-                        </td>
-                        <td className="p-3 text-center">
-                          <Badge className={`${
-                            r.status === "Settled"
-                              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300"
-                              : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300"
-                          } font-bold text-[10px]`}>
-                            {r.status}
-                          </Badge>
-                        </td>
-                        <td className="p-3 text-center no-print">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setView('accounts')}
-                            className="h-7 px-2 text-[11px] font-bold text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer"
-                          >
-                            Open Ledger
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                <tbody className="divide-y divide-slate-800/60 font-medium">
+                  {accounts.map((a) => (
+                    a.companies?.map((c) => {
+                      let deb = 0
+                      let cred = 0
+                      c.ledgerEntries?.forEach(e => {
+                        deb += e.debit || 0
+                        cred += e.credit || 0
+                      })
+                      const bal = deb - cred
+                      return (
+                        <tr key={c.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="p-3 font-bold text-slate-100">{a.name}</td>
+                          <td className="p-3 text-slate-300">{c.name}</td>
+                          <td className="p-3 text-right font-bold text-blue-400">${deb.toLocaleString('en-US')}</td>
+                          <td className="p-3 text-right font-bold text-emerald-400">${cred.toLocaleString('en-US')}</td>
+                          <td className="p-3 text-right font-black text-rose-400">${bal.toLocaleString('en-US')}</td>
+                          <td className="p-3 text-center no-print">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setView('accounts')}
+                              className="h-7 px-2 text-[11px] font-bold text-blue-400 hover:bg-slate-800 rounded-lg cursor-pointer"
+                            >
+                              Open Ledger
+                            </Button>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -1265,89 +1743,72 @@ export function ReportsView() {
         )}
 
         {/* =================================================================== */}
-        {/* TAB 4: CUSTOM EXPENSES & REVENUES MANAGER */}
+        {/* TAB 6: CUSTOM EXPENSES & DIRECT INCOMES */}
         {/* =================================================================== */}
         {activeTab === "expenses" && (
-          <div className="bg-white/95 dark:bg-slate-900/95 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-lg space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <h2 className="text-base sm:text-lg font-black text-blue-950 dark:text-white">
-                  Custom Operational Expenses &amp; Direct Logistics Incomes
+                <h2 className="text-base sm:text-lg font-black text-white">
+                  Operational Expenses &amp; Direct Logistics Incomes
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                  Track custom expenses (border fees, port handling, driver rents, customs) directly integrated into P&amp;L
-                </p>
+                <p className="text-xs text-slate-400 font-semibold">Direct border clearances, terminal charges, and driver rents</p>
               </div>
               <Button
                 variant="default"
                 size="sm"
                 onClick={() => setIsAddExpenseOpen(true)}
-                className="gap-1.5 h-8.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs self-start sm:self-auto cursor-pointer"
+                className="gap-1.5 h-8.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>Add Record</span>
+                <span>Add Entry</span>
               </Button>
             </div>
 
-            <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="overflow-x-auto no-scrollbar rounded-xl border border-slate-800">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-wider border-b border-slate-200 dark:border-slate-700">
+                <thead className="bg-slate-800/90 text-slate-300 font-black uppercase text-[10px] tracking-wider border-b border-slate-700">
                   <tr>
                     <th className="p-3">Date</th>
                     <th className="p-3">Type</th>
                     <th className="p-3">Category</th>
-                    <th className="p-3">Title / Description</th>
-                    <th className="p-3">Ref # / Shipper</th>
-                    <th className="p-3">Payment Method</th>
+                    <th className="p-3">Title</th>
+                    <th className="p-3">Container / Ref</th>
                     <th className="p-3 text-right">Amount (USD)</th>
                     <th className="p-3 text-center no-print">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
-                  {filteredExpenses.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="text-center py-8 text-slate-400">
-                        No custom expenses logged. Click "Add Record" to create one.
+                <tbody className="divide-y divide-slate-800/60 font-medium">
+                  {customExpenses.map((e) => (
+                    <tr key={e.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="p-3 font-mono text-slate-400 text-[11px]">{e.date}</td>
+                      <td className="p-3">
+                        <Badge className={`${
+                          e.type === 'expense'
+                            ? "bg-rose-950/60 text-rose-300 border-rose-700"
+                            : "bg-emerald-950/60 text-emerald-300 border-emerald-700"
+                        } font-bold text-[9.5px]`}>
+                          {e.type.toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="p-3 font-bold text-slate-200">{e.category}</td>
+                      <td className="p-3 text-slate-100">{e.title}</td>
+                      <td className="p-3 font-mono text-cyan-400 text-[11px]">{e.containerNo || e.refNumber || "-"}</td>
+                      <td className={`p-3 text-right font-black ${e.type === 'expense' ? 'text-rose-400' : 'text-emerald-400'}`}>
+                        {e.type === 'expense' ? '-' : '+'}${e.amount.toLocaleString('en-US')}
+                      </td>
+                      <td className="p-3 text-center no-print">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteExpense(e.id)}
+                          className="h-7 w-7 text-rose-400 hover:bg-rose-950/40 rounded-lg cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
                       </td>
                     </tr>
-                  ) : (
-                    filteredExpenses.map((e) => (
-                      <tr key={e.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                        <td className="p-3 font-mono text-slate-500 text-[11px]">{e.date}</td>
-                        <td className="p-3">
-                          <Badge className={`${
-                            e.type === "expense"
-                              ? "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border-rose-300"
-                              : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300"
-                          } font-bold text-[9.5px] uppercase`}>
-                            {e.type}
-                          </Badge>
-                        </td>
-                        <td className="p-3 font-bold text-slate-800 dark:text-slate-200">{e.category}</td>
-                        <td className="p-3 font-bold text-slate-900 dark:text-slate-100">{e.title}</td>
-                        <td className="p-3 text-slate-500 font-mono text-[11px]">
-                          {e.refNumber || e.shipperName || "-"}
-                        </td>
-                        <td className="p-3 text-slate-600 dark:text-slate-300">{e.paymentMethod}</td>
-                        <td className={`p-3 text-right font-black text-sm ${
-                          e.type === "expense" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
-                        }`}>
-                          {e.type === "expense" ? "-" : "+"}${e.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                        </td>
-                        <td className="p-3 text-center no-print">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteExpense(e.id)}
-                            className="h-7 w-7 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -1360,16 +1821,16 @@ export function ReportsView() {
       {/* MODAL: ADD EXPENSE / INCOME */}
       {/* =================================================================== */}
       {isAddExpenseOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl p-5 sm:p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-emerald-600" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl p-5 sm:p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-black text-white flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-emerald-400" />
                 <span>Log Financial Entry / ثبت هزینه یا عاید</span>
               </h3>
               <button
                 onClick={() => setIsAddExpenseOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg"
+                className="text-slate-400 hover:text-white p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1377,14 +1838,12 @@ export function ReportsView() {
 
             <form onSubmit={handleAddExpenseSubmit} className="space-y-3.5 text-xs font-semibold">
               {/* Type Toggle */}
-              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+              <div className="grid grid-cols-2 gap-2 p-1 bg-slate-800 rounded-xl">
                 <button
                   type="button"
                   onClick={() => setNewExpType("expense")}
                   className={`py-1.5 rounded-lg font-black transition-all cursor-pointer ${
-                    newExpType === "expense"
-                      ? "bg-rose-600 text-white shadow-xs"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                    newExpType === "expense" ? "bg-rose-600 text-white shadow-xs" : "text-slate-400 hover:text-white"
                   }`}
                 >
                   📉 Operational Expense (مصرف)
@@ -1393,9 +1852,7 @@ export function ReportsView() {
                   type="button"
                   onClick={() => setNewExpType("revenue")}
                   className={`py-1.5 rounded-lg font-black transition-all cursor-pointer ${
-                    newExpType === "revenue"
-                      ? "bg-emerald-600 text-white shadow-xs"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                    newExpType === "revenue" ? "bg-emerald-600 text-white shadow-xs" : "text-slate-400 hover:text-white"
                   }`}
                 >
                   📈 Logistics Revenue (عاید)
@@ -1404,24 +1861,24 @@ export function ReportsView() {
 
               {/* Title */}
               <div className="flex flex-col gap-1">
-                <label className="text-[11px] text-slate-500 uppercase">Title / عنوان مصرف یا عاید *</label>
+                <label className="text-[11px] text-slate-400 uppercase">Title / عنوان *</label>
                 <Input
                   required
                   value={newExpTitle}
                   onChange={(e) => setNewExpTitle(e.target.value)}
-                  placeholder="e.g. Border Transit Clearance Nimroz, Driver Fuel..."
-                  className="h-9 text-xs rounded-xl"
+                  placeholder="e.g. Ocean Shipping Line Nhava Sheva, Driver Fuel..."
+                  className="h-9 text-xs rounded-xl bg-slate-800 border-slate-700 text-slate-100"
                 />
               </div>
 
               {/* Category & Amount */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-slate-500 uppercase">Category / دسته‌بندی</label>
+                  <label className="text-[11px] text-slate-400 uppercase">Category / دسته‌بندی</label>
                   <select
                     value={newExpCategory}
                     onChange={(e: any) => setNewExpCategory(e.target.value)}
-                    className="h-9 w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 text-xs font-bold text-slate-800 dark:text-slate-200"
+                    className="h-9 w-full rounded-xl bg-slate-800 border border-slate-700 px-3 text-xs font-bold text-slate-100"
                   >
                     {DEFAULT_EXPENSE_CATEGORIES.map(c => (
                       <option key={c} value={c}>{c}</option>
@@ -1430,7 +1887,7 @@ export function ReportsView() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-slate-500 uppercase">Amount ($ USD) / مبلغ *</label>
+                  <label className="text-[11px] text-slate-400 uppercase">Amount ($ USD) *</label>
                   <Input
                     required
                     type="number"
@@ -1438,70 +1895,42 @@ export function ReportsView() {
                     value={newExpAmount}
                     onChange={(e) => setNewExpAmount(e.target.value)}
                     placeholder="0.00"
-                    className="h-9 text-xs rounded-xl font-bold font-mono"
+                    className="h-9 text-xs rounded-xl font-bold font-mono bg-slate-800 border-slate-700 text-slate-100"
                   />
                 </div>
               </div>
 
-              {/* Date & Payment Method */}
+              {/* Container & Ref */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-slate-500 uppercase">Date / تاریخ</label>
+                  <label className="text-[11px] text-slate-400 uppercase">Container Number</label>
                   <Input
-                    type="text"
-                    value={newExpDate}
-                    onChange={(e) => setNewExpDate(e.target.value)}
-                    placeholder="YYYY-MM-DD"
-                    className="h-9 text-xs rounded-xl font-mono"
+                    value={newExpContainer}
+                    onChange={(e) => setNewExpContainer(e.target.value)}
+                    placeholder="e.g. TRIU8065361, MSKU450180"
+                    className="h-9 text-xs rounded-xl font-mono bg-slate-800 border-slate-700 text-slate-100"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-slate-500 uppercase">Payment Method</label>
-                  <select
-                    value={newExpPayMethod}
-                    onChange={(e: any) => setNewExpPayMethod(e.target.value)}
-                    className="h-9 w-full rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 text-xs font-bold text-slate-800 dark:text-slate-200"
-                  >
-                    <option value="Cash">Cash (نقد)</option>
-                    <option value="Bank Transfer">Bank Transfer (بانک)</option>
-                    <option value="Hawala">Hawala (حواله صرافی)</option>
-                    <option value="Pending">Pending (باقی)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Ref & Shipper */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-slate-500 uppercase">Ref # (BOL / Invoice)</label>
+                  <label className="text-[11px] text-slate-400 uppercase">B/L or Ref Number</label>
                   <Input
                     value={newExpRef}
                     onChange={(e) => setNewExpRef(e.target.value)}
-                    placeholder="e.g. TC-975, BL-02230"
-                    className="h-9 text-xs rounded-xl font-mono"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1">
-                  <label className="text-[11px] text-slate-500 uppercase">Shipper / Client Name</label>
-                  <Input
-                    value={newExpShipper}
-                    onChange={(e) => setNewExpShipper(e.target.value)}
-                    placeholder="e.g. NAJEB AMIN LTD"
-                    className="h-9 text-xs rounded-xl"
+                    placeholder="e.g. SCLJEANSA02230"
+                    className="h-9 text-xs rounded-xl font-mono bg-slate-800 border-slate-700 text-slate-100"
                   />
                 </div>
               </div>
 
               {/* Submit Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setIsAddExpenseOpen(false)}
-                  className="rounded-xl h-9 font-bold cursor-pointer"
+                  className="rounded-xl h-9 font-bold bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 cursor-pointer"
                 >
                   Cancel
                 </Button>
@@ -1520,100 +1949,81 @@ export function ReportsView() {
       )}
 
       {/* =================================================================== */}
-      {/* PRINT-ONLY OFFICIAL A4 EXECUTIVE REPORT LAYOUT */}
+      {/* PRINT-ONLY OFFICIAL A4 EXECUTIVE CONTAINER STATEMENT */}
       {/* =================================================================== */}
       <div className="hidden print:block fixed inset-0 bg-white text-black p-8 font-sans">
-        {/* Header */}
         <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4 mb-4">
           <div>
             <h1 className="text-xl font-black uppercase tracking-tight">SKY ARIANA LIMITED</h1>
-            <p className="text-xs font-bold text-slate-600">International Transport, Customs Clearance &amp; Freight Logistics</p>
+            <p className="text-xs font-bold text-slate-600">Container Logistics, Customs Clearance &amp; Freight Forwarding</p>
             <p className="text-[10px] text-slate-500">Kandahar / Nimroz / Kabul Afghanistan • Tel: +93 700 9393 65 / +93 711 4355 29</p>
           </div>
           <div className="text-right">
-            <h2 className="text-sm font-black uppercase text-blue-900">Executive P&amp;L &amp; Operations Report</h2>
+            <h2 className="text-sm font-black uppercase text-blue-900">Container Freight &amp; Trade P&amp;L Statement</h2>
             <p className="text-[10px] font-mono text-slate-600">Generated: {new Date().toLocaleString()}</p>
-            <p className="text-[10px] text-slate-600">Shipper: {selectedShipper} | Consignee: {selectedConsignee}</p>
+            <p className="text-[10px] text-slate-600">Direction: {directionFilter.toUpperCase()} | Total Boxes: {containerMetrics.totalContainers}</p>
           </div>
         </div>
 
-        {/* Executive Numbers Grid */}
+        {/* Numbers Grid */}
         <div className="grid grid-cols-4 gap-3 mb-4 text-center">
           <div className="border border-slate-400 p-2 rounded">
-            <div className="text-[9px] font-bold uppercase text-slate-600">Gross Revenue</div>
-            <div className="text-sm font-black text-blue-900">${metrics.totalGrossRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+            <div className="text-[9px] font-bold uppercase text-slate-600">Total Containers</div>
+            <div className="text-sm font-black text-slate-900">{containerMetrics.totalContainers} Boxes ({containerMetrics.totalTEU} TEU)</div>
           </div>
           <div className="border border-slate-400 p-2 rounded">
-            <div className="text-[9px] font-bold uppercase text-slate-600">Total Costs</div>
-            <div className="text-sm font-black text-amber-900">${metrics.totalOperationalCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+            <div className="text-[9px] font-bold uppercase text-slate-600">Export vs Import</div>
+            <div className="text-sm font-black text-emerald-900">{containerMetrics.exportCount} Ex / {containerMetrics.importCount} Im</div>
+          </div>
+          <div className="border border-slate-400 p-2 rounded">
+            <div className="text-[9px] font-bold uppercase text-slate-600">Total Freight Revenue</div>
+            <div className="text-sm font-black text-blue-900">${containerMetrics.totalGrossRevenue.toLocaleString('en-US')}</div>
           </div>
           <div className="border border-slate-900 bg-slate-100 p-2 rounded">
-            <div className="text-[9px] font-black uppercase text-slate-900">Net Profit / Loss</div>
-            <div className="text-sm font-black text-emerald-900">${metrics.netProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })} ({metrics.profitMargin.toFixed(1)}%)</div>
-          </div>
-          <div className="border border-slate-400 p-2 rounded">
-            <div className="text-[9px] font-bold uppercase text-slate-600">Cargo Cartons</div>
-            <div className="text-sm font-black text-slate-900">{metrics.totalPackages.toLocaleString('en-US')} CTNS ({(metrics.totalNetWeightKg / 1000).toFixed(1)} MT)</div>
+            <div className="text-[9px] font-black uppercase text-slate-900">Net Freight Profit</div>
+            <div className="text-sm font-black text-emerald-900">+${containerMetrics.totalNetProfit.toLocaleString('en-US')} ({containerMetrics.overallMargin.toFixed(1)}%)</div>
           </div>
         </div>
 
-        {/* Financial Summary Table */}
-        <table className="w-full text-xs border-collapse border border-slate-400 mb-6">
+        {/* Container Items Table */}
+        <table className="w-full text-[10px] border-collapse border border-slate-400 mb-6">
           <thead>
             <tr className="bg-slate-200 text-slate-900 font-bold">
-              <th className="border border-slate-400 p-1.5 text-left">P&amp;L Financial Item</th>
-              <th className="border border-slate-400 p-1.5 text-right">Amount (USD)</th>
-              <th className="border border-slate-400 p-1.5 text-left">Notes / Description</th>
+              <th className="border border-slate-400 p-1.5 text-left">Container #</th>
+              <th className="border border-slate-400 p-1.5 text-center">Type</th>
+              <th className="border border-slate-400 p-1.5 text-center">Trade</th>
+              <th className="border border-slate-400 p-1.5 text-left">Shipper / B/L</th>
+              <th className="border border-slate-400 p-1.5 text-right">Gross WT (MT)</th>
+              <th className="border border-slate-400 p-1.5 text-right">Freight Rev ($)</th>
+              <th className="border border-slate-400 p-1.5 text-right">Cost ($)</th>
+              <th className="border border-slate-400 p-1.5 text-right">Net Profit ($)</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td className="border border-slate-400 p-1.5 font-bold">1. Freight Billed to Clients (Ledger Debits)</td>
-              <td className="border border-slate-400 p-1.5 text-right font-bold">${metrics.totalLedgerDebit.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-              <td className="border border-slate-400 p-1.5 text-slate-600">Total verified client freight charges</td>
-            </tr>
-            <tr>
-              <td className="border border-slate-400 p-1.5 font-bold">2. Additional Logistics Incomes</td>
-              <td className="border border-slate-400 p-1.5 text-right font-bold">${metrics.customRevenueSum.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-              <td className="border border-slate-400 p-1.5 text-slate-600">Customs, documentation &amp; transit services</td>
-            </tr>
-            <tr className="bg-slate-100 font-bold">
-              <td className="border border-slate-400 p-1.5">TOTAL OPERATING REVENUE</td>
-              <td className="border border-slate-400 p-1.5 text-right text-blue-900">${metrics.totalGrossRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-              <td className="border border-slate-400 p-1.5">Gross Inflow</td>
-            </tr>
-            <tr>
-              <td className="border border-slate-400 p-1.5 font-bold">3. Driver Freights &amp; Truck Rents</td>
-              <td className="border border-slate-400 p-1.5 text-right font-bold text-amber-900">${metrics.totalDriverCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-              <td className="border border-slate-400 p-1.5 text-slate-600">Total verified driver freight payouts</td>
-            </tr>
-            <tr>
-              <td className="border border-slate-400 p-1.5 font-bold">4. Border, Port Clearance &amp; Administrative OPEX</td>
-              <td className="border border-slate-400 p-1.5 text-right font-bold text-amber-900">${metrics.customExpenseSum.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-              <td className="border border-slate-400 p-1.5 text-slate-600">Customs, waybills &amp; terminal handling</td>
-            </tr>
-            <tr className="bg-slate-100 font-bold">
-              <td className="border border-slate-400 p-1.5">TOTAL OPERATIONAL EXPENSES</td>
-              <td className="border border-slate-400 p-1.5 text-right text-amber-900">${metrics.totalOperationalCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-              <td className="border border-slate-400 p-1.5">Direct Outflows</td>
-            </tr>
-            <tr className="bg-slate-300 font-black">
-              <td className="border border-slate-400 p-2">NET OPERATING PROFIT / (LOSS)</td>
-              <td className="border border-slate-400 p-2 text-right text-base text-slate-950">${metrics.netProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD</td>
-              <td className="border border-slate-400 p-2">Margin: {metrics.profitMargin.toFixed(2)}%</td>
-            </tr>
+            {filteredContainers.slice(0, 20).map((r, idx) => (
+              <tr key={idx}>
+                <td className="border border-slate-400 p-1 font-mono font-bold">{r.containerNo}</td>
+                <td className="border border-slate-400 p-1 text-center font-bold">{r.containerSize}</td>
+                <td className="border border-slate-400 p-1 text-center font-bold">{r.direction}</td>
+                <td className="border border-slate-400 p-1">{r.shipperName} ({r.bolNumber})</td>
+                <td className="border border-slate-400 p-1 text-right font-mono">{(r.grossWeightKg / 1000).toFixed(1)}</td>
+                <td className="border border-slate-400 p-1 text-right font-bold">${r.freightRevenue.toLocaleString('en-US')}</td>
+                <td className="border border-slate-400 p-1 text-right text-slate-700">${r.totalCost.toLocaleString('en-US')}</td>
+                <td className="border border-slate-400 p-1 text-right font-black text-emerald-900">+${r.netProfit.toLocaleString('en-US')}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
 
-        {/* Signatures & Stamp Box */}
+        {/* Signatures & Stamp */}
         <div className="flex justify-between items-end pt-12 text-xs border-t border-slate-400">
           <div className="text-center w-48">
             <div className="border-b border-slate-600 pb-8"></div>
-            <div className="font-bold mt-1">Prepared By: Finance Dept</div>
+            <div className="font-bold mt-1">Operations Manager</div>
           </div>
           <div className="text-center w-48">
             <div className="border-b border-slate-600 pb-8"></div>
-            <div className="font-bold mt-1">Authorized Audit Stamp</div>
+            <div className="font-bold mt-1">Audit Stamp</div>
           </div>
           <div className="text-center w-48">
             <div className="border-b border-slate-600 pb-8"></div>
@@ -1621,6 +2031,7 @@ export function ReportsView() {
           </div>
         </div>
       </div>
+
     </div>
   )
 }
