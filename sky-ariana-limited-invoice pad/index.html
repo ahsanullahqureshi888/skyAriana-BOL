@@ -669,9 +669,9 @@
     }
 
     .border-inner {
-      border: 1px solid #1e293b;
+      border: 1.5px solid #1e293b;
       height: 100%;
-      padding: 5mm 5mm 3.5mm 5mm;
+      padding: 5.5mm 6mm 4mm 6mm;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -683,12 +683,12 @@
     /* Enlarged Centered Watermark */
     .watermark-bg {
       position: absolute;
-      top: 52%;
+      top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 480px;
-      height: 480px;
-      opacity: 0.045;
+      width: 520px;
+      height: 520px;
+      opacity: 0.04;
       pointer-events: none;
       z-index: 0;
       object-fit: contain;
@@ -709,12 +709,12 @@
       align-items: center;
       justify-content: space-between;
       position: relative;
-      margin-bottom: 3px;
+      margin-bottom: 4px;
     }
 
     .header-logo-box {
-      width: 70px;
-      height: 70px;
+      width: 76px;
+      height: 76px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -722,8 +722,8 @@
     }
 
     .header-logo-box img {
-      width: 68px;
-      height: 68px;
+      width: 74px;
+      height: 74px;
       object-fit: contain;
       filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.12));
     }
@@ -731,58 +731,58 @@
     .header-center {
       text-align: center;
       flex-grow: 1;
-      padding: 0 8px;
+      padding: 0 10px;
     }
 
     .country-title {
-      font-size: 11px;
+      font-size: 11.5px;
       font-weight: 700;
       font-style: italic;
       font-family: Georgia, 'Times New Roman', serif;
       color: #334155;
       letter-spacing: 0.5px;
-      margin-bottom: 1px;
+      margin-bottom: 2px;
     }
 
     .company-name-main {
-      font-size: 23px;
+      font-size: 24px;
       font-weight: 900;
       color: #0f172a;
       letter-spacing: 0.8px;
       line-height: 1.1;
-      margin-bottom: 2px;
+      margin-bottom: 3px;
       text-transform: uppercase;
     }
 
     .company-meta-line {
-      font-size: 9.5px;
+      font-size: 10px;
       font-weight: 600;
       color: #475569;
-      line-height: 1.25;
+      line-height: 1.3;
     }
 
     .company-email-line {
-      font-size: 9px;
+      font-size: 9.5px;
       color: #0284c7;
-      font-weight: 600;
-      line-height: 1.25;
+      font-weight: 700;
+      line-height: 1.3;
     }
 
     /* Dual-Tone Crimson & Navy Contact Ribbon */
     .crimson-bar {
       background: linear-gradient(90deg, #c81d25 0%, #991b1b 100%);
       color: #ffffff;
-      padding: 3.5px 14px;
+      padding: 4px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 800;
-      letter-spacing: 0.4px;
+      letter-spacing: 0.5px;
       margin-top: 3px;
-      margin-bottom: 5px;
-      border-radius: 2px;
-      box-shadow: 0 2px 4px rgba(200, 29, 37, 0.2);
+      margin-bottom: 6px;
+      border-radius: 3px;
+      box-shadow: 0 2px 5px rgba(200, 29, 37, 0.25);
     }
 
     /* Structured Metadata Grid Card */
@@ -790,19 +790,19 @@
       background: #f8fafc;
       border: 1.5px solid #cbd5e1;
       border-radius: 4px;
-      padding: 5px 8px;
-      margin-bottom: 4px;
+      padding: 6px 10px;
+      margin-bottom: 6px;
       display: flex;
       flex-direction: column;
-      gap: 3.5px;
+      gap: 4px;
     }
 
     .meta-grid-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 6px;
-      font-size: 8.5px;
+      gap: 8px;
+      font-size: 9px;
     }
 
     .meta-field {
@@ -812,12 +812,12 @@
     }
 
     .meta-label {
-      font-size: 7.8px;
+      font-size: 8px;
       font-weight: 800;
       color: #334155;
       text-transform: uppercase;
       white-space: nowrap;
-      letter-spacing: 0.2px;
+      letter-spacing: 0.25px;
     }
 
     .meta-input {
@@ -826,7 +826,7 @@
       background: transparent;
       outline: none;
       font-family: inherit;
-      font-size: 8.5px;
+      font-size: 9px;
       font-weight: 700;
       color: #0f172a;
       padding: 1px 3px;
@@ -841,7 +841,7 @@
     .meta-input.bill-highlight {
       color: #c81d25;
       font-weight: 900;
-      font-size: 9.5px;
+      font-size: 10px;
       letter-spacing: 0.4px;
     }
 
@@ -854,30 +854,30 @@
     .importer-card {
       background: #f8fafc;
       border: 1.5px solid #cbd5e1;
-      border-left: 4px solid #0284c7;
+      border-left: 4.5px solid #0284c7;
       border-radius: 4px;
-      padding: 5px 8px;
-      margin-bottom: 4px;
+      padding: 6px 10px;
+      margin-bottom: 6px;
     }
 
     .importer-header-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 3px;
+      margin-bottom: 3.5px;
     }
 
     .importer-tag {
-      font-size: 8px;
+      font-size: 8.5px;
       font-weight: 800;
       color: #0284c7;
       text-transform: uppercase;
-      letter-spacing: 0.4px;
+      letter-spacing: 0.5px;
       white-space: nowrap;
     }
 
     .importer-name-input {
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 900;
       color: #0f172a;
       width: 100%;
@@ -897,13 +897,13 @@
     .importer-grid {
       display: grid;
       grid-template-columns: 1.3fr 1fr;
-      gap: 3px 12px;
+      gap: 3px 14px;
     }
 
     .importer-addr-col {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 2.5px;
     }
 
     .importer-addr-row {
@@ -919,7 +919,7 @@
       background: transparent;
       outline: none;
       font-family: inherit;
-      font-size: 8px;
+      font-size: 8.5px;
       font-weight: 700;
       color: #1e293b;
       padding: 1px 2px;
@@ -933,9 +933,9 @@
     .importer-comp-col {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 2.5px;
       border-left: 1px solid #e2e8f0;
-      padding-left: 8px;
+      padding-left: 10px;
     }
 
     .importer-comp-row {
@@ -945,26 +945,31 @@
     }
 
     .comp-label {
-      font-size: 7.5px;
+      font-size: 8px;
       font-weight: 800;
       color: #64748b;
       white-space: nowrap;
-      width: 54px;
+      width: 58px;
       text-transform: uppercase;
     }
 
-    /* Structured Full-Grid Items Table */
+    /* Structured Full-Grid Items Table (Expands to Fill Middle) */
     .table-container {
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       border: 1.5px solid #0f172a;
       border-radius: 3px;
       overflow: hidden;
+      flex: 1;
+      min-height: 180px;
+      display: flex;
+      flex-direction: column;
     }
 
     .invoice-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 8.5px;
+      font-size: 9px;
+      flex: 1;
     }
 
     .invoice-table th {
@@ -972,10 +977,10 @@
       color: #ffffff;
       font-weight: 800;
       text-align: center;
-      padding: 4px 2px;
+      padding: 5px 3px;
       border-right: 1px solid #334155;
-      font-size: 7.5px;
-      letter-spacing: 0.3px;
+      font-size: 8px;
+      letter-spacing: 0.35px;
       text-transform: uppercase;
     }
 
@@ -984,11 +989,11 @@
     }
 
     .invoice-table td {
-      padding: 3.5px 2px;
+      padding: 4.5px 3px;
       border-bottom: 1px solid #cbd5e1;
       border-right: 1px solid #e2e8f0;
       vertical-align: middle;
-      font-size: 8.5px;
+      font-size: 9px;
       color: #0f172a;
     }
 
@@ -1004,7 +1009,7 @@
       width: 100%;
       border: none;
       outline: none;
-      font-size: 8.5px;
+      font-size: 9px;
       font-family: inherit;
       background: transparent;
       padding: 1px 2px;
@@ -1015,14 +1020,14 @@
       background-color: #fffbeb;
     }
 
-    .invoice-table .col-qty { width: 38px; text-align: center; font-weight: 800; }
-    .invoice-table .col-unit { width: 38px; text-align: center; font-weight: 700; }
-    .invoice-table .col-desc { width: 170px; text-align: left; font-weight: 800; }
-    .invoice-table .col-qual { width: 60px; text-align: center; }
-    .invoice-table .col-gw { width: 75px; text-align: right; }
-    .invoice-table .col-nw { width: 75px; text-align: right; font-weight: 800; color: #0284c7; }
-    .invoice-table .col-rate { width: 52px; text-align: right; font-weight: 800; color: #059669; }
-    .invoice-table .col-amount { width: 85px; text-align: right; font-weight: 900; color: #0f172a; }
+    .invoice-table .col-qty { width: 42px; text-align: center; font-weight: 800; }
+    .invoice-table .col-unit { width: 42px; text-align: center; font-weight: 700; }
+    .invoice-table .col-desc { width: 175px; text-align: left; font-weight: 800; }
+    .invoice-table .col-qual { width: 62px; text-align: center; }
+    .invoice-table .col-gw { width: 78px; text-align: right; }
+    .invoice-table .col-nw { width: 78px; text-align: right; font-weight: 800; color: #0284c7; }
+    .invoice-table .col-rate { width: 55px; text-align: right; font-weight: 800; color: #059669; }
+    .invoice-table .col-amount { width: 90px; text-align: right; font-weight: 900; color: #0f172a; }
     .invoice-table .col-action { width: 14px; text-align: center; }
 
     /* Summary Bar & Weight Breakdown */
@@ -1030,40 +1035,40 @@
       background: #f1f5f9;
       border: 1.5px solid #cbd5e1;
       border-radius: 3px;
-      padding: 3px 8px;
-      font-size: 8.5px;
+      padding: 4.5px 10px;
+      font-size: 9px;
       font-weight: 800;
       color: #1e3a8a;
       text-align: center;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     /* Words & Truck Box Grid */
     .words-and-truck-grid {
       display: grid;
       grid-template-columns: 2fr 1fr;
-      gap: 4px;
-      margin-bottom: 4px;
+      gap: 6px;
+      margin-bottom: 6px;
     }
 
     .amount-words-box {
       background: #fffbeb;
       border: 1.5px solid #fde68a;
       border-radius: 3px;
-      padding: 3px 6px;
-      font-size: 8px;
-      line-height: 1.25;
+      padding: 4.5px 8px;
+      font-size: 8.5px;
+      line-height: 1.3;
     }
 
     .amount-words-title {
-      font-size: 7.5px;
+      font-size: 8px;
       font-weight: 800;
       color: #b45309;
       text-transform: uppercase;
     }
 
     .amount-words-val {
-      font-size: 8px;
+      font-size: 8.5px;
       font-weight: 800;
       color: #78350f;
     }
@@ -1072,15 +1077,15 @@
       background: #f8fafc;
       border: 1.5px solid #cbd5e1;
       border-radius: 3px;
-      padding: 3px 6px;
-      font-size: 8px;
+      padding: 4.5px 8px;
+      font-size: 8.5px;
       display: flex;
       flex-direction: column;
       justify-content: center;
     }
 
     .truck-box-label {
-      font-size: 7.5px;
+      font-size: 8px;
       font-weight: 800;
       color: #475569;
       text-transform: uppercase;
@@ -1089,7 +1094,7 @@
     .truck-input {
       border: none;
       border-bottom: 1px dashed #cbd5e1;
-      font-size: 8.5px;
+      font-size: 9px;
       font-family: inherit;
       font-weight: 700;
       background: transparent;
@@ -1108,24 +1113,24 @@
       background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
       color: #ffffff;
       border-radius: 3px;
-      padding: 4px 10px;
+      padding: 5px 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 5px;
+      margin-bottom: 6px;
       box-shadow: 0 2px 6px rgba(15, 23, 42, 0.2);
     }
 
     .big-total-banner-title {
-      font-size: 9.5px;
+      font-size: 10px;
       font-weight: 800;
-      letter-spacing: 0.4px;
+      letter-spacing: 0.5px;
       text-transform: uppercase;
       color: #cbd5e1;
     }
 
     .big-total-banner-val {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 900;
       letter-spacing: 0.5px;
       color: #38bdf8;
@@ -1138,23 +1143,23 @@
       grid-template-columns: 1fr 1fr;
       gap: 20px;
       padding: 2px 10px 4px 10px;
-      margin-bottom: 2px;
+      margin-bottom: 4px;
     }
 
     .sig-box {
       border: 1px dashed #cbd5e1;
       border-radius: 3px;
-      padding: 3px 8px 2px 8px;
+      padding: 4px 10px 3px 10px;
       text-align: center;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      height: 38px;
+      height: 44px;
       background: #ffffff;
     }
 
     .sig-top-label {
-      font-size: 7.2pt;
+      font-size: 7.5pt;
       font-weight: 700;
       color: #64748b;
       text-transform: uppercase;
@@ -1163,8 +1168,8 @@
     .sig-line {
       border-top: 1px solid #0f172a;
       margin-top: auto;
-      padding-top: 1px;
-      font-size: 7.5pt;
+      padding-top: 1.5px;
+      font-size: 8pt;
       font-weight: 800;
       color: #0f172a;
     }
@@ -1172,11 +1177,11 @@
     /* Micro Footer Bar */
     .invoice-footer-bar {
       border-top: 1px solid #cbd5e1;
-      padding-top: 2px;
+      padding-top: 3px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 7.2pt;
+      font-size: 7.5pt;
       color: #64748b;
       font-weight: 600;
     }
