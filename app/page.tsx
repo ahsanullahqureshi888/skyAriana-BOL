@@ -97,7 +97,19 @@ function MainContent() {
                 if (k && !mergedMap.has(k)) mergedMap.set(k, d)
               }
 
-              const allMerged = Array.from(mergedMap.values())
+              const allMerged = Array.from(mergedMap.values()).filter((d: any) => {
+                const s = (d.shipper_name || "").trim().toLowerCase()
+                const hasShipper = s !== "" && s !== "no shipper" && s !== "no-shipper" && s !== "none"
+                const q = (d.number_of_packages || "").trim().toLowerCase()
+                const hasPkg = q !== "" && q !== "0" && q !== "0-ctns" && q !== "0 ctns"
+                const nw = (d.net_weight || "").trim()
+                const gw = (d.gross_weight || "").trim()
+                const val = (d.goods_value || "").trim()
+                const cName = (d.consignee_name || "").trim().toLowerCase()
+                const hasConsignee = cName !== "" && cName !== "no consignee"
+                const hasDesc = (d.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 5
+                return hasShipper || hasPkg || nw !== "" || gw !== "" || val !== "" || (hasConsignee && hasDesc)
+              })
               const jsonStr = JSON.stringify(allMerged)
               window.localStorage.setItem("sky-bol-browser-documents", jsonStr)
               window.localStorage.setItem("skybol:saved-documents", jsonStr)
@@ -160,7 +172,19 @@ function MainContent() {
                   if (k && !mergedMap.has(k)) mergedMap.set(k, d)
                 }
 
-                const allMerged = Array.from(mergedMap.values())
+                const allMerged = Array.from(mergedMap.values()).filter((d: any) => {
+                  const s = (d.shipper_name || "").trim().toLowerCase()
+                  const hasShipper = s !== "" && s !== "no shipper" && s !== "no-shipper" && s !== "none"
+                  const q = (d.number_of_packages || "").trim().toLowerCase()
+                  const hasPkg = q !== "" && q !== "0" && q !== "0-ctns" && q !== "0 ctns"
+                  const nw = (d.net_weight || "").trim()
+                  const gw = (d.gross_weight || "").trim()
+                  const val = (d.goods_value || "").trim()
+                  const cName = (d.consignee_name || "").trim().toLowerCase()
+                  const hasConsignee = cName !== "" && cName !== "no consignee"
+                  const hasDesc = (d.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 5
+                  return hasShipper || hasPkg || nw !== "" || gw !== "" || val !== "" || (hasConsignee && hasDesc)
+                })
                 const jsonStr = JSON.stringify(allMerged)
                 window.localStorage.setItem("sky-bol-browser-documents", jsonStr)
                 window.localStorage.setItem("skybol:saved-documents", jsonStr)

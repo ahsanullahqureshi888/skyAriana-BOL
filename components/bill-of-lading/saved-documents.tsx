@@ -420,6 +420,34 @@ const DocumentGridCard = memo(function DocumentGridCard({
   )
 })
 
+function parseBolSeq(bolNum: string): number {
+  if (!bolNum) return 0
+  const match = bolNum.match(/NSA(\d+)/i) || bolNum.match(/(\d+)\s*$/)
+  if (match && match[1]) {
+    const val = parseInt(match[1], 10)
+    return isNaN(val) ? 0 : val
+  }
+  return 0
+}
+
+export function isMeaningfulBOL(d: any): boolean {
+  if (!d) return false
+  const s = (d.shipper_name || "").trim().toLowerCase()
+  const hasShipper = s !== "" && s !== "no shipper" && s !== "no-shipper" && s !== "none"
+
+  const q = (d.number_of_packages || "").trim().toLowerCase()
+  const hasPkg = q !== "" && q !== "0" && q !== "0-ctns" && q !== "0 ctns"
+
+  const nw = (d.net_weight || "").trim()
+  const gw = (d.gross_weight || "").trim()
+  const val = (d.goods_value || "").trim()
+  const cName = (d.consignee_name || "").trim().toLowerCase()
+  const hasConsignee = cName !== "" && cName !== "no consignee"
+  const hasDesc = (d.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 5
+
+  return hasShipper || hasPkg || nw !== "" || gw !== "" || val !== "" || (hasConsignee && hasDesc)
+}
+
 export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "sidebar" }: SavedDocumentsProps) {
   const { currentUser } = useApp()
   const isShipper = currentUser?.role === "shipper"
@@ -442,16 +470,6 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   const [accountCompanyPdfs, setAccountCompanyPdfs] = useState<Record<string, AccountCompanyRecord>>({})
   const [customAccountCompanies, setCustomAccountCompanies] = useState<string[]>([])
   const [isCloudSyncModalOpen, setIsCloudSyncModalOpen] = useState(false)
-
-function parseBolSeq(bolNum: string): number {
-  if (!bolNum) return 0
-  const match = bolNum.match(/NSA(\d+)/i) || bolNum.match(/(\d+)\s*$/)
-  if (match && match[1]) {
-    const val = parseInt(match[1], 10)
-    return isNaN(val) ? 0 : val
-  }
-  return 0
-}
 
   const fetchDocuments = async () => {
     setIsLoading(true)
@@ -493,7 +511,20 @@ function parseBolSeq(bolNum: string): number {
         return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
       })
 
-      setDocuments(mergedList)
+      // Strict filter: purge any placeholder / draft BOLs without shipper or quantity
+      const validDocs = mergedList.filter(isMeaningfulBOL)
+
+      // If invalid empty BOLs exist in browser localStorage, clean them up immediately
+      if (validDocs.length < mergedList.length) {
+        try {
+          const jsonStr = JSON.stringify(validDocs)
+          window.localStorage.setItem("sky-bol-browser-documents", jsonStr)
+          window.localStorage.setItem("skybol:saved-documents", jsonStr)
+          window.localStorage.setItem("skybol:backup-documents", jsonStr)
+        } catch (e) {}
+      }
+
+      setDocuments(validDocs)
     } catch (error) {
       console.warn("Saved documents temporarily unavailable:", error)
     } finally {
@@ -530,20 +561,23 @@ function parseBolSeq(bolNum: string): number {
         if (key) mergedMap.set(key, doc)
       }
 
-      const allMerged = Array.from(mergedMap.values()).sort((a, b) => {
-        const dateA = new Date(a.created_at || a.issue_date || 0).getTime()
-        const dateB = new Date(b.created_at || b.issue_date || 0).getTime()
-        if (dateB !== dateA) return dateB - dateA
-        return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
-      })
+      const allMerged = Array.from(mergedMap.values())
+        .filter(isMeaningfulBOL)
+        .sort((a, b) => {
+          const dateA = new Date(a.created_at || a.issue_date || 0).getTime()
+          const dateB = new Date(b.created_at || b.issue_date || 0).getTime()
+          if (dateB !== dateA) return dateB - dateA
+          return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
+        })
 
       window.localStorage.setItem("sky-bol-browser-documents", JSON.stringify(allMerged))
       window.localStorage.setItem("skybol:saved-documents", JSON.stringify(allMerged))
+      window.localStorage.setItem("skybol:backup-documents", JSON.stringify(allMerged))
 
       setDocuments(allMerged)
       window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: {} }))
 
-      toast.success(`Recovered ${allMerged.length} saved BOL documents!`, { id: toastId })
+      toast.success(`Recovered ${allMerged.length} valid BOL documents!`, { id: toastId })
     } catch (err) {
       toast.error("Error recovering saved BOLs", { id: toastId })
     }
@@ -938,14 +972,27 @@ function parseBolSeq(bolNum: string): number {
       const response = await fetch(`/api/bol/${id}`, {
         method: "DELETE",
       })
-      if (response.ok) {
-        startTransition(() => {
-          setDocuments((prev) => prev.filter((doc) => doc.id !== id))
-        })
-        toast.success("Document deleted")
-      } else {
-        toast.error("Could not delete document")
-      }
+
+      // Immediately purge from all browser localStorage stores
+      try {
+        const keys = ["sky-bol-browser-documents", "skybol:saved-documents", "skybol:backup-documents"]
+        for (const k of keys) {
+          const raw = window.localStorage.getItem(k)
+          if (raw) {
+            const list = JSON.parse(raw)
+            if (Array.isArray(list)) {
+              const updated = list.filter((doc: any) => (doc.id || doc.bol_number) !== id && doc.bol_number !== id)
+              window.localStorage.setItem(k, JSON.stringify(updated))
+            }
+          }
+        }
+      } catch (e) {}
+
+      startTransition(() => {
+        setDocuments((prev) => prev.filter((doc) => (doc.id || doc.bol_number) !== id && doc.bol_number !== id))
+      })
+      window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: {} }))
+      toast.success("Document deleted")
     } catch (error) {
       console.error("Error deleting document:", error)
       toast.error("Could not delete document")
@@ -953,6 +1000,61 @@ function parseBolSeq(bolNum: string): number {
       setDeletingId(null)
     }
   }, [])
+
+  const handleDeleteEmptyBOLs = useCallback(async () => {
+    const emptyDocs = documents.filter((doc) => !isMeaningfulBOL(doc))
+    if (emptyDocs.length === 0) {
+      toast.info("No empty BOLs found. All documents have shipper or cargo details.")
+      return
+    }
+
+    if (!confirm(`Delete all ${emptyDocs.length} empty/draft BOLs that have no shipper or quantity?`)) {
+      return
+    }
+
+    const toastId = toast.loading(`Deleting ${emptyDocs.length} empty BOLs...`)
+    try {
+      const emptyIds = new Set(emptyDocs.map((d) => d.id || d.bol_number))
+      const emptyBolNumbers = new Set(emptyDocs.map((d) => d.bol_number).filter(Boolean))
+
+      // 1. Delete from backend APIs
+      for (const doc of emptyDocs) {
+        const targetId = doc.id || doc.bol_number
+        if (targetId) {
+          fetch(`/api/bol/${targetId}`, { method: "DELETE" }).catch(() => {})
+        }
+      }
+
+      // 2. Filter from localStorage stores
+      const keys = ["sky-bol-browser-documents", "skybol:saved-documents", "skybol:backup-documents"]
+      for (const k of keys) {
+        try {
+          const raw = window.localStorage.getItem(k)
+          if (raw) {
+            const list = JSON.parse(raw)
+            if (Array.isArray(list)) {
+              const nextList = list.filter((d: any) => {
+                const id = d.id || d.bol_number
+                const bolNum = d.bol_number
+                return !emptyIds.has(id) && (!bolNum || !emptyBolNumbers.has(bolNum)) && isMeaningfulBOL(d)
+              })
+              window.localStorage.setItem(k, JSON.stringify(nextList))
+            }
+          }
+        } catch (e) {}
+      }
+
+      // 3. Update React State
+      startTransition(() => {
+        setDocuments((prev) => prev.filter((d) => !emptyIds.has(d.id || d.bol_number) && isMeaningfulBOL(d)))
+      })
+      window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: {} }))
+
+      toast.success(`Successfully deleted ${emptyDocs.length} empty BOLs!`, { id: toastId })
+    } catch (err) {
+      toast.error("Error deleting empty BOLs", { id: toastId })
+    }
+  }, [documents])
 
   const handlePDFUpload = useCallback(async (doc: SavedDocument, file?: File | null) => {
     if (!file) return
@@ -1276,6 +1378,16 @@ function parseBolSeq(bolNum: string): number {
             >
               <Cloud className="h-3.5 w-3.5 text-blue-600 shrink-0" />
               <span>Cloud Sync / همگام‌سازی</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDeleteEmptyBOLs}
+              className="h-8.5 rounded-xl border-rose-300 bg-rose-50/90 px-2.5 text-xs font-black text-rose-800 hover:bg-rose-100 shadow-2xs cursor-pointer flex items-center gap-1"
+              title="Delete all empty/draft BOLs that have no shipper or quantity"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+              <span>Clean Empty Drafts / حذف بارنامه‌های خالی</span>
             </Button>
             <Button
               type="button"

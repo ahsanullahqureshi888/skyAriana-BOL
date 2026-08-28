@@ -368,8 +368,15 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         // Tier 1: Active Draft Instant Sync
         window.localStorage.setItem("skybol:active-form-draft", JSON.stringify(currentDocData))
 
-        // Tier 2: Update Saved Documents & Crash-Resistant Mirrors
-        if (bolNumber && bolNumber.trim().length >= 2) {
+        // Tier 2: Update Saved Documents & Crash-Resistant Mirrors (Only if shipper or quantity is entered)
+        const isMeaningfulDraft =
+          Boolean(formData.shipper_name?.trim() && formData.shipper_name.trim().toLowerCase() !== "no shipper") ||
+          Boolean(formData.number_of_packages?.trim() && formData.number_of_packages.trim() !== "0") ||
+          Boolean(formData.gross_weight?.trim()) ||
+          Boolean(formData.net_weight?.trim()) ||
+          Boolean(formData.consignee_name?.trim() && formData.consignee_name.trim().toLowerCase() !== "no consignee")
+
+        if (bolNumber && bolNumber.trim().length >= 2 && isMeaningfulDraft) {
           const storedLocal = window.localStorage.getItem("sky-bol-browser-documents")
           const currentList: any[] = storedLocal ? JSON.parse(storedLocal) : []
           const updatedList = [

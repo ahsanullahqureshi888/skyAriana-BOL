@@ -116,7 +116,19 @@ export async function GET(request: Request) {
       }
     }
 
-    let allBols = Array.from(mergedByNumber.values()).sort((a, b) => {
+    let allBols = Array.from(mergedByNumber.values()).filter((bol) => {
+      const s = (bol.shipper_name || "").trim().toLowerCase()
+      const hasShipper = s !== "" && s !== "no shipper" && s !== "no-shipper" && s !== "none"
+      const q = (bol.number_of_packages || "").trim().toLowerCase()
+      const hasPkg = q !== "" && q !== "0" && q !== "0-ctns" && q !== "0 ctns"
+      const nw = (bol.net_weight || "").trim()
+      const gw = (bol.gross_weight || "").trim()
+      const val = (bol.goods_value || "").trim()
+      const cName = (bol.consignee_name || "").trim().toLowerCase()
+      const hasConsignee = cName !== "" && cName !== "no consignee"
+      const hasDesc = (bol.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 5
+      return hasShipper || hasPkg || nw !== "" || gw !== "" || val !== "" || (hasConsignee && hasDesc)
+    }).sort((a, b) => {
       const dateA = new Date(a.created_at || a.updated_at || a.issue_date || 0).getTime()
       const dateB = new Date(b.created_at || b.updated_at || b.issue_date || 0).getTime()
       if (dateB !== dateA) return dateB - dateA
