@@ -974,7 +974,6 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     const targetDoc = docToDelete
     const id = targetDoc.id || targetDoc.bol_number
     const bolNum = targetDoc.bol_number || targetDoc.id
-    setDocToDelete(null)
 
     setDeletingId(id)
     try {
@@ -1007,6 +1006,24 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
         } catch (e) {}
       }
 
+      // Also remove associated record from Account Ledger
+      try {
+        const rawRecords = window.localStorage.getItem("skybol:account-ledgers") || window.localStorage.getItem("skybol_account_ledger_records")
+        if (rawRecords) {
+          const records = JSON.parse(rawRecords)
+          const updatedRecords: Record<string, any[]> = {}
+          for (const key in records) {
+            if (Array.isArray(records[key])) {
+              updatedRecords[key] = records[key].filter(
+                (row: any) => (row.barnamehNo || row.bolNo || "").trim() !== bolNum && (row.barnamehNo || row.bolNo || "").trim() !== id
+              )
+            }
+          }
+          window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(updatedRecords))
+          window.localStorage.setItem("skybol_account_ledger_records", JSON.stringify(updatedRecords))
+        }
+      } catch (e) {}
+
       // Also remove from document categories
       try {
         const catRaw = window.localStorage.getItem(DOCUMENT_CATEGORY_STORAGE_KEY)
@@ -1029,6 +1046,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
 
       window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: { deletedId: id, deletedBol: bolNum } }))
       toast.success(`Bill of Lading ${bolNum} deleted successfully`)
+      setDocToDelete(null)
     } catch (error) {
       console.error("Error deleting document:", error)
       toast.error("Could not delete document")
@@ -2087,72 +2105,89 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
 
       {/* Delete Confirmation Modal (Yes / No) */}
       {docToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3 text-red-600 pb-3 border-b border-slate-100">
-              <div className="p-3 rounded-2xl bg-red-50 text-red-600 border border-red-100 shrink-0">
-                <Trash2 className="w-6 h-6" />
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => !deletingId && setDocToDelete(null)}
+        >
+          <div 
+            className="w-full max-w-lg bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3.5 pb-4 border-b border-slate-100">
+              <div className="p-3.5 rounded-2xl bg-red-50 text-red-600 border border-red-200/80 shadow-sm shrink-0">
+                <Trash2 className="w-7 h-7 text-red-600" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-base font-black text-slate-900">Delete Bill of Lading?</h3>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">Delete Bill of Lading?</h3>
                 <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
-                  آیا مطمئن هستید که می‌خواهید این بارنامه را حذف کنید؟
+                  آیا از حذف این بارنامه اطمینان کامل دارید؟
                 </p>
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+            <div className="p-4 rounded-2xl bg-slate-50/90 border border-slate-200 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-bold">BOL Number:</span>
-                <span className="font-mono font-black text-blue-900 text-sm bg-white px-2.5 py-0.5 rounded-lg border border-slate-200 shadow-2xs">
+                <span className="text-xs text-slate-500 font-bold">BOL Number / شماره بارنامه:</span>
+                <span className="font-mono font-black text-blue-900 text-sm bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-xs">
                   {docToDelete.bol_number || docToDelete.id}
                 </span>
               </div>
               {docToDelete.shipper_name && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-bold">Shipper:</span>
-                  <span className="font-black text-slate-900 truncate max-w-[240px]">{docToDelete.shipper_name}</span>
+                  <span className="text-slate-500 font-bold">Shipper / ارسال کننده:</span>
+                  <span className="font-black text-slate-900 truncate max-w-[260px]">{docToDelete.shipper_name}</span>
                 </div>
               )}
               {docToDelete.consignee_name && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-bold">Consignee:</span>
-                  <span className="font-bold text-slate-800 truncate max-w-[240px]">{docToDelete.consignee_name}</span>
+                  <span className="text-slate-500 font-bold">Consignee / گیرنده:</span>
+                  <span className="font-bold text-slate-800 truncate max-w-[260px]">{docToDelete.consignee_name}</span>
                 </div>
               )}
               {docToDelete.issue_date && (
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-bold">Issue Date:</span>
-                  <span className="font-medium text-slate-700">{docToDelete.issue_date}</span>
+                  <span className="text-slate-500 font-bold">Issue Date / تاریخ صدور:</span>
+                  <span className="font-mono font-bold text-slate-700">{docToDelete.issue_date}</span>
                 </div>
               )}
             </div>
 
-            <p className="text-xs text-slate-600 font-medium leading-relaxed">
-              This will permanently delete this Bill of Lading from your database and local storage. This action cannot be undone.
-            </p>
+            <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-950 text-xs font-medium space-y-1">
+              <p className="font-bold text-amber-900 flex items-center gap-1.5">
+                <span>⚠️ Warning / هشدار</span>
+              </p>
+              <p className="text-[11.5px] leading-relaxed text-amber-800">
+                This document will be permanently removed from cloud database and offline storage.
+              </p>
+            </div>
 
-            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-3 pt-2">
               <Button
                 type="button"
                 variant="outline"
+                disabled={Boolean(deletingId)}
                 onClick={() => setDocToDelete(null)}
-                className="h-10 px-4 rounded-xl border-slate-300 font-bold text-xs cursor-pointer hover:bg-slate-50"
+                className="h-11 px-5 rounded-2xl border-slate-300 font-bold text-xs cursor-pointer hover:bg-slate-100 text-slate-700"
               >
-                Cancel / انصراف
+                ✕ No, Cancel / انصراف
               </Button>
               <Button
                 type="button"
                 onClick={confirmDeleteDocument}
-                disabled={deletingId === (docToDelete.id || docToDelete.bol_number)}
-                className="h-10 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs cursor-pointer shadow-md shadow-red-600/20 flex items-center gap-1.5"
+                disabled={Boolean(deletingId)}
+                className="h-11 px-6 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs cursor-pointer shadow-lg shadow-red-600/25 flex items-center gap-2"
               >
-                {deletingId === (docToDelete.id || docToDelete.bol_number) ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                {deletingId ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deleting / در حال حذف...</span>
+                  </>
                 ) : (
-                  <Trash2 className="w-4 h-4" />
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>✓ Yes, Delete / بله، حذف شود</span>
+                  </>
                 )}
-                <span>Yes, Delete / بله، حذف شود</span>
               </Button>
             </div>
           </div>

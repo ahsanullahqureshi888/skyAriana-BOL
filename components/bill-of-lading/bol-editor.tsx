@@ -3672,10 +3672,15 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   </span>
                 </div>
               )}
-              {lastAutoSavedTime && (
-                <div className="hidden xl:flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/90 px-2.5 py-0.5 text-xs text-emerald-800 font-bold shadow-2xs">
-                  <Cloud className="h-3 w-3 text-emerald-600" />
-                  <span>Auto-saved: {lastAutoSavedTime}</span>
+              {autoSaveStatus === "saving" ? (
+                <div className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50/90 px-2.5 py-0.5 text-xs text-amber-900 font-black shadow-2xs animate-pulse">
+                  <RefreshCw className="h-3 w-3 text-amber-600 animate-spin" />
+                  <span>Auto-saving...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/90 px-2.5 py-0.5 text-xs text-emerald-800 font-bold shadow-2xs">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                  <span>Auto-Saved {lastAutoSaveTime || lastAutoSavedTime || "Live"}</span>
                 </div>
               )}
             </div>

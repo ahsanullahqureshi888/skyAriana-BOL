@@ -43,16 +43,46 @@ export async function getAccountLedgerDatabase() {
 }
 
 export async function saveAccountLedgerDatabase(data: Partial<AccountLedgerDatabase>) {
+  const existing = await getAccountLedgerDatabase()
+
+  // Safely merge accounts and ledger entries without losing other companies
+  const mergedAccounts = Array.from(new Set([
+    ...(Array.isArray(existing.accounts) ? existing.accounts : []),
+    ...(Array.isArray(data.accounts) ? data.accounts : []),
+  ]))
+
+  const mergedLedgerEntries = {
+    ...(existing.ledgerEntries || {}),
+    ...(data.ledgerEntries || {}),
+  }
+
+  const mergedProfiles = {
+    ...(existing.ledgerProfiles || {}),
+    ...(data.ledgerProfiles || {}),
+  }
+
+  const mergedReceipts = {
+    ...(existing.receipts || {}),
+    ...(data.receipts || {}),
+  }
+
   const next: AccountLedgerDatabase = {
-    accounts: Array.isArray(data.accounts) ? data.accounts : [],
-    ledgerEntries: data.ledgerEntries && typeof data.ledgerEntries === "object" ? data.ledgerEntries : {},
-    ledgerProfiles: data.ledgerProfiles && typeof data.ledgerProfiles === "object" ? data.ledgerProfiles : {},
-    receipts: data.receipts && typeof data.receipts === "object" ? data.receipts : {},
+    accounts: mergedAccounts,
+    ledgerEntries: mergedLedgerEntries,
+    ledgerProfiles: mergedProfiles,
+    receipts: mergedReceipts,
     updated_at: new Date().toISOString(),
   }
 
   memoryCacheLedger = next
   lastLedgerCacheTime = Date.now()
+
+  // Write primary and backup files atomically
   await writeJsonFile(ledgerDatabaseFile, next)
+  const backupFile = path.join(process.cwd(), ".local-account-ledgers.backup.json")
+  try {
+    await writeJsonFile(backupFile, next)
+  } catch (e) {}
+
   return next
 }
