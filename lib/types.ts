@@ -60,6 +60,10 @@ export interface User {
   name: string
   role: UserRole
   email?: string
+  password?: string
+  clientId?: string
+  clientName?: string
+  status?: 'active' | 'disabled'
   avatar?: string
   createdAt?: string
   lastLogin?: string

@@ -80,6 +80,9 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
           setView("bank")
         } else if (e.key === "8") {
           e.preventDefault()
+          setView("sky-doc")
+        } else if (e.key === "9") {
+          e.preventDefault()
           setView("settings")
         }
       }
@@ -169,12 +172,24 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
         },
       },
       {
+        id: "nav-sky-doc",
+        title: "SKY DOC • Enterprise Document System",
+        subtitle: "Enterprise Operating System & Document Management Portal",
+        category: "Navigation",
+        icon: FileText,
+        badge: "Alt+8",
+        perform: () => {
+          setView("sky-doc")
+          onOpenChange(false)
+        },
+      },
+      {
         id: "nav-settings",
         title: "System Settings & Roles",
         subtitle: "Manage users, access permissions, backups & cloud sync",
         category: "Navigation",
         icon: Settings,
-        badge: "Alt+8",
+        badge: "Alt+9",
         perform: () => {
           setView("settings")
           onOpenChange(false)
