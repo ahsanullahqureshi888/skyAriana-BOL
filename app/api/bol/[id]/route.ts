@@ -148,10 +148,15 @@ export async function DELETE(
     try {
       const supabase = await createClient()
       
-      const { error } = await supabase
-        .from("bill_of_lading")
-        .delete()
-        .eq("id", id)
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+      let query = supabase.from("bill_of_lading").delete()
+      if (isUUID) {
+        query = query.or(`id.eq.${id},bol_number.eq.${id}`)
+      } else {
+        query = query.eq("bol_number", id)
+      }
+      
+      const { error } = await query
       
       if (error) {
         console.error("[v0] Error deleting BOL from Supabase:", error.message)

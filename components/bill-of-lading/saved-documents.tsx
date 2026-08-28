@@ -144,7 +144,7 @@ interface DocumentGridCardProps {
   onPreview: (doc: SavedDocument) => void
   onDuplicate: (doc: SavedDocument) => void
   onOpenPdf: (doc: SavedDocument) => void
-  onDelete: (id: string, e: MouseEvent) => void
+  onDelete: (doc: SavedDocument, e: React.MouseEvent) => void
   onCategoryAssign: (doc: SavedDocument, cat: Exclude<DocumentCategoryKey, "all" | "latest" | "with-pdf">) => void
   onFileInput: (doc: SavedDocument) => (e: ChangeEvent<HTMLInputElement>) => void
 }
@@ -403,12 +403,12 @@ const DocumentGridCard = memo(function DocumentGridCard({
           <Button
             type="button"
             variant="outline"
-            onClick={(event) => onDelete(doc.id, event)}
-            disabled={deletingId === doc.id}
+            onClick={(event) => onDelete(doc, event)}
+            disabled={deletingId === (doc.id || doc.bol_number) || deletingId === doc.bol_number}
             className="h-8 w-8 rounded-xl border border-red-200/80 bg-red-50/50 hover:bg-red-100/80 p-0 text-red-600 hover:text-red-700 cursor-pointer transition-all flex items-center justify-center"
-            title="Delete document"
+            title="Delete Bill of Lading"
           >
-            {deletingId === doc.id ? (
+            {deletingId === (doc.id || doc.bol_number) || deletingId === doc.bol_number ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Trash2 className="h-3.5 w-3.5" />
@@ -470,6 +470,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   const [accountCompanyPdfs, setAccountCompanyPdfs] = useState<Record<string, AccountCompanyRecord>>({})
   const [customAccountCompanies, setCustomAccountCompanies] = useState<string[]>([])
   const [isCloudSyncModalOpen, setIsCloudSyncModalOpen] = useState(false)
+  const [docToDelete, setDocToDelete] = useState<SavedDocument | null>(null)
 
   const fetchDocuments = async () => {
     setIsLoading(true)
@@ -963,43 +964,78 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     event.target.value = ""
   }
 
-  const handleDelete = useCallback(async (id: string, event: MouseEvent) => {
+  const handleDelete = useCallback((doc: SavedDocument, event: React.MouseEvent) => {
     event.stopPropagation()
-    if (!confirm("Delete this saved document?")) return
+    setDocToDelete(doc)
+  }, [])
+
+  const confirmDeleteDocument = useCallback(async () => {
+    if (!docToDelete) return
+    const targetDoc = docToDelete
+    const id = targetDoc.id || targetDoc.bol_number
+    const bolNum = targetDoc.bol_number || targetDoc.id
+    setDocToDelete(null)
 
     setDeletingId(id)
     try {
-      const response = await fetch(`/api/bol/${id}`, {
-        method: "DELETE",
-      })
-
-      // Immediately purge from all browser localStorage stores
+      // 1. Call backend API with both id and bol_number
       try {
-        const keys = ["sky-bol-browser-documents", "skybol:saved-documents", "skybol:backup-documents"]
-        for (const k of keys) {
+        if (id) await fetch(`/api/bol/${encodeURIComponent(id)}`, { method: "DELETE" })
+      } catch (e) {}
+      if (bolNum && bolNum !== id) {
+        try {
+          await fetch(`/api/bol/${encodeURIComponent(bolNum)}`, { method: "DELETE" })
+        } catch (e) {}
+      }
+
+      // 2. Immediately purge from all browser localStorage stores
+      const keys = ["sky-bol-browser-documents", "skybol:saved-documents", "skybol:backup-documents"]
+      for (const k of keys) {
+        try {
           const raw = window.localStorage.getItem(k)
           if (raw) {
             const list = JSON.parse(raw)
             if (Array.isArray(list)) {
-              const updated = list.filter((doc: any) => (doc.id || doc.bol_number) !== id && doc.bol_number !== id)
+              const updated = list.filter((doc: any) => {
+                const dId = doc.id || doc.bol_number
+                const dNum = doc.bol_number
+                return dId !== id && dNum !== id && dId !== bolNum && dNum !== bolNum
+              })
               window.localStorage.setItem(k, JSON.stringify(updated))
             }
           }
+        } catch (e) {}
+      }
+
+      // Also remove from document categories
+      try {
+        const catRaw = window.localStorage.getItem(DOCUMENT_CATEGORY_STORAGE_KEY)
+        if (catRaw) {
+          const cats = JSON.parse(catRaw)
+          delete cats[id]
+          if (bolNum) delete cats[bolNum]
+          window.localStorage.setItem(DOCUMENT_CATEGORY_STORAGE_KEY, JSON.stringify(cats))
         }
       } catch (e) {}
 
+      // 3. Update React state immediately
       startTransition(() => {
-        setDocuments((prev) => prev.filter((doc) => (doc.id || doc.bol_number) !== id && doc.bol_number !== id))
+        setDocuments((prev) => prev.filter((doc) => {
+          const dId = doc.id || doc.bol_number
+          const dNum = doc.bol_number
+          return dId !== id && dNum !== id && dId !== bolNum && dNum !== bolNum
+        }))
       })
-      window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: {} }))
-      toast.success("Document deleted")
+
+      window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: { deletedId: id, deletedBol: bolNum } }))
+      toast.success(`Bill of Lading ${bolNum} deleted successfully`)
     } catch (error) {
       console.error("Error deleting document:", error)
       toast.error("Could not delete document")
     } finally {
       setDeletingId(null)
     }
-  }, [])
+  }, [docToDelete])
 
   const handleDeleteEmptyBOLs = useCallback(async () => {
     const emptyDocs = documents.filter((doc) => !isMeaningfulBOL(doc))
@@ -1900,6 +1936,22 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                         >
                           <Eye className="w-3.5 h-3.5 mr-1" /> Preview
                         </Button>
+
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => handleDelete(doc, e)}
+                          disabled={deletingId === (doc.id || doc.bol_number)}
+                          className="h-9 w-9 p-0 rounded-xl border-red-200/80 bg-red-50 text-red-600 hover:bg-red-100 font-black text-xs cursor-pointer flex items-center justify-center"
+                          title="Delete Bill of Lading"
+                        >
+                          {deletingId === (doc.id || doc.bol_number) ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
                       </div>
                     </div>
                   )
@@ -1996,6 +2048,21 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                               >
                                 View
                               </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => handleDelete(doc, e)}
+                                disabled={deletingId === (doc.id || doc.bol_number)}
+                                className="h-8 w-8 p-0 rounded-lg border-red-200/80 bg-red-50 text-red-600 hover:bg-red-100 font-black text-[11px] cursor-pointer flex items-center justify-center"
+                                title="Delete Bill of Lading"
+                              >
+                                {deletingId === (doc.id || doc.bol_number) ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
+                              </Button>
                             </div>
                           </td>
                         </tr>
@@ -2017,6 +2084,80 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
         onOpenChange={setIsCloudSyncModalOpen}
         onSyncComplete={fetchDocuments}
       />
+
+      {/* Delete Confirmation Modal (Yes / No) */}
+      {docToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-red-600 pb-3 border-b border-slate-100">
+              <div className="p-3 rounded-2xl bg-red-50 text-red-600 border border-red-100 shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-black text-slate-900">Delete Bill of Lading?</h3>
+                <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                  آیا مطمئن هستید که می‌خواهید این بارنامه را حذف کنید؟
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-bold">BOL Number:</span>
+                <span className="font-mono font-black text-blue-900 text-sm bg-white px-2.5 py-0.5 rounded-lg border border-slate-200 shadow-2xs">
+                  {docToDelete.bol_number || docToDelete.id}
+                </span>
+              </div>
+              {docToDelete.shipper_name && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-bold">Shipper:</span>
+                  <span className="font-black text-slate-900 truncate max-w-[240px]">{docToDelete.shipper_name}</span>
+                </div>
+              )}
+              {docToDelete.consignee_name && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-bold">Consignee:</span>
+                  <span className="font-bold text-slate-800 truncate max-w-[240px]">{docToDelete.consignee_name}</span>
+                </div>
+              )}
+              {docToDelete.issue_date && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-bold">Issue Date:</span>
+                  <span className="font-medium text-slate-700">{docToDelete.issue_date}</span>
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-slate-600 font-medium leading-relaxed">
+              This will permanently delete this Bill of Lading from your database and local storage. This action cannot be undone.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDocToDelete(null)}
+                className="h-10 px-4 rounded-xl border-slate-300 font-bold text-xs cursor-pointer hover:bg-slate-50"
+              >
+                Cancel / انصراف
+              </Button>
+              <Button
+                type="button"
+                onClick={confirmDeleteDocument}
+                disabled={deletingId === (docToDelete.id || docToDelete.bol_number)}
+                className="h-10 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs cursor-pointer shadow-md shadow-red-600/20 flex items-center gap-1.5"
+              >
+                {deletingId === (docToDelete.id || docToDelete.bol_number) ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                <span>Yes, Delete / بله، حذف شود</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }

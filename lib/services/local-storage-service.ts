@@ -51,7 +51,12 @@ export async function storeLocalBOL(bolNumber: string, data: any): Promise<void>
  */
 export async function getLocalBOL(bolNumber: string): Promise<any | null> {
   const bols = await readAllBols()
-  const bol = bols.find(b => b.id === bolNumber)
+  const target = bolNumber.trim().toLowerCase()
+  const bol = bols.find(b => 
+    (b.id && String(b.id).trim().toLowerCase() === target) ||
+    (b.bol_number && String(b.bol_number).trim().toLowerCase() === target) ||
+    (b.bolNumber && String(b.bolNumber).trim().toLowerCase() === target)
+  )
   if (bol) {
     console.log(`[v0] Retrieved local BOL: ${bolNumber}`)
   }
@@ -72,7 +77,12 @@ export async function getAllLocalBOLs(): Promise<any[]> {
  */
 export async function updateLocalBOL(bolNumber: string, data: any): Promise<void> {
   const bols = await readAllBols()
-  const existingIndex = bols.findIndex(b => b.id === bolNumber)
+  const target = bolNumber.trim().toLowerCase()
+  const existingIndex = bols.findIndex(b => 
+    (b.id && String(b.id).trim().toLowerCase() === target) ||
+    (b.bol_number && String(b.bol_number).trim().toLowerCase() === target) ||
+    (b.bolNumber && String(b.bolNumber).trim().toLowerCase() === target)
+  )
   
   if (existingIndex >= 0) {
     bols[existingIndex] = {
@@ -90,7 +100,12 @@ export async function updateLocalBOL(bolNumber: string, data: any): Promise<void
  */
 export async function deleteLocalBOL(bolNumber: string): Promise<void> {
   const bols = await readAllBols()
-  const nextBols = bols.filter(b => b.id !== bolNumber)
+  const target = bolNumber.trim().toLowerCase()
+  const nextBols = bols.filter(b => 
+    !(b.id && String(b.id).trim().toLowerCase() === target) &&
+    !(b.bol_number && String(b.bol_number).trim().toLowerCase() === target) &&
+    !(b.bolNumber && String(b.bolNumber).trim().toLowerCase() === target)
+  )
   await writeAllBols(nextBols)
   console.log(`[v0] Deleted local BOL: ${bolNumber}`)
 }
