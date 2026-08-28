@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import { PWARegister } from '@/components/pwa-register'
+import { ChunkErrorHandler } from '@/components/chunk-error-handler'
 import './globals.css'
 
 const inter = { variable: 'font-sans' }
@@ -74,10 +75,10 @@ export default function RootLayout({
           <div className="absolute -bottom-40 right-1/3 h-80 w-80 rounded-full bg-indigo-200/30 blur-3xl" />
         </div>
         <PWARegister />
+        <ChunkErrorHandler />
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
   )
 }
-

@@ -1,6 +1,7 @@
 "use client"
 
 import dynamic from 'next/dynamic'
+import { safeLazy } from '@/lib/safe-lazy'
 import { AppProvider, useApp } from '@/lib/app-context'
 import { Header } from '@/components/header'
 import { LoginScreen } from '@/components/login-screen'
@@ -20,17 +21,17 @@ function ViewLoadingSkeleton() {
   )
 }
 
-const AccountsView = dynamic(() => import('@/components/accounts-view').then(m => m.AccountsView), { loading: ViewLoadingSkeleton })
-const CompaniesView = dynamic(() => import('@/components/companies-view').then(m => m.CompaniesView), { loading: ViewLoadingSkeleton })
-const LedgerView = dynamic(() => import('@/components/ledger-view').then(m => m.LedgerView), { loading: ViewLoadingSkeleton })
-const InvoiceView = dynamic(() => import('@/components/invoice-view').then(m => m.InvoiceView), { loading: ViewLoadingSkeleton })
-const BOLEditor = dynamic(() => import('@/components/bill-of-lading/bol-editor').then(m => m.BOLEditor), { loading: ViewLoadingSkeleton })
-const SettingsView = dynamic(() => import('@/components/settings-view').then(m => m.SettingsView), { loading: ViewLoadingSkeleton })
-const SkyBankView = dynamic(() => import('@/components/sky-bank-view').then(m => m.SkyBankView), { loading: ViewLoadingSkeleton })
-const InvoicePadView = dynamic(() => import('@/components/invoice-pad-view').then(m => m.InvoicePadView), { loading: ViewLoadingSkeleton })
-const SkyCmrView = dynamic(() => import('@/components/sky-cmr-view').then(m => m.SkyCmrView), { loading: ViewLoadingSkeleton })
-const SkyDocView = dynamic(() => import('@/components/sky-doc-view').then(m => m.SkyDocView), { loading: ViewLoadingSkeleton })
-const ShipperDashboardView = dynamic(() => import('@/components/shipper-dashboard').then(m => m.ShipperDashboardView), { loading: ViewLoadingSkeleton })
+const AccountsView = dynamic(safeLazy(() => import('@/components/accounts-view').then(m => m.AccountsView)), { loading: ViewLoadingSkeleton })
+const CompaniesView = dynamic(safeLazy(() => import('@/components/companies-view').then(m => m.CompaniesView)), { loading: ViewLoadingSkeleton })
+const LedgerView = dynamic(safeLazy(() => import('@/components/ledger-view').then(m => m.LedgerView)), { loading: ViewLoadingSkeleton })
+const InvoiceView = dynamic(safeLazy(() => import('@/components/invoice-view').then(m => m.InvoiceView)), { loading: ViewLoadingSkeleton })
+const BOLEditor = dynamic(safeLazy(() => import('@/components/bill-of-lading/bol-editor').then(m => m.BOLEditor)), { loading: ViewLoadingSkeleton })
+const SettingsView = dynamic(safeLazy(() => import('@/components/settings-view').then(m => m.SettingsView)), { loading: ViewLoadingSkeleton })
+const SkyBankView = dynamic(safeLazy(() => import('@/components/sky-bank-view').then(m => m.SkyBankView)), { loading: ViewLoadingSkeleton })
+const InvoicePadView = dynamic(safeLazy(() => import('@/components/invoice-pad-view').then(m => m.InvoicePadView)), { loading: ViewLoadingSkeleton })
+const SkyCmrView = dynamic(safeLazy(() => import('@/components/sky-cmr-view').then(m => m.SkyCmrView)), { loading: ViewLoadingSkeleton })
+const SkyDocView = dynamic(safeLazy(() => import('@/components/sky-doc-view').then(m => m.SkyDocView)), { loading: ViewLoadingSkeleton })
+const ShipperDashboardView = dynamic(safeLazy(() => import('@/components/shipper-dashboard').then(m => m.ShipperDashboardView)), { loading: ViewLoadingSkeleton })
 
 import { useEffect } from 'react'
 import { toast } from 'sonner'
