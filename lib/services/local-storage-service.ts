@@ -3,11 +3,24 @@ import { readJsonFile, writeJsonFile } from "./blob-db"
 
 const localBolsFile = path.join(process.cwd(), ".local-bols.json")
 
+let memoryCacheBols: any[] | null = null
+let lastCacheTime = 0
+const CACHE_TTL_MS = 5000
+
 async function readAllBols(): Promise<any[]> {
-  return await readJsonFile<any[]>(localBolsFile, [])
+  const now = Date.now()
+  if (memoryCacheBols && (now - lastCacheTime < CACHE_TTL_MS)) {
+    return memoryCacheBols
+  }
+  const loaded = await readJsonFile<any[]>(localBolsFile, [])
+  memoryCacheBols = loaded
+  lastCacheTime = now
+  return loaded
 }
 
 async function writeAllBols(bols: any[]): Promise<void> {
+  memoryCacheBols = bols
+  lastCacheTime = Date.now()
   await writeJsonFile<any[]>(localBolsFile, bols)
 }
 

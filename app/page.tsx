@@ -1,20 +1,36 @@
 "use client"
 
+import dynamic from 'next/dynamic'
 import { AppProvider, useApp } from '@/lib/app-context'
 import { Header } from '@/components/header'
-import { AccountsView } from '@/components/accounts-view'
-import { CompaniesView } from '@/components/companies-view'
-import { LedgerView } from '@/components/ledger-view'
-import { InvoiceView } from '@/components/invoice-view'
-import { BOLEditor } from '@/components/bill-of-lading/bol-editor'
 import { LoginScreen } from '@/components/login-screen'
-import { SettingsView } from '@/components/settings-view'
-import { SkyBankView } from '@/components/sky-bank-view'
-import { InvoicePadView } from '@/components/invoice-pad-view'
-import { SkyCmrView } from '@/components/sky-cmr-view'
-import { SkyDocView } from '@/components/sky-doc-view'
-import { ShipperDashboardView } from '@/components/shipper-dashboard'
 import { ErrorBoundary } from '@/components/error-boundary'
+
+function ViewLoadingSkeleton() {
+  return (
+    <div className="w-full h-full min-h-[60vh] flex flex-col items-center justify-center p-8 space-y-4 animate-in fade-in duration-150">
+      <div className="w-12 h-12 rounded-2xl bg-blue-900/20 border border-blue-500/30 flex items-center justify-center animate-pulse">
+        <img src="/logo.png" alt="Sky Ariana" className="w-8 h-8 object-contain" />
+      </div>
+      <div className="h-1.5 w-32 bg-slate-800 rounded-full overflow-hidden">
+        <div className="h-full bg-amber-400 rounded-full animate-[pulse_1s_ease-in-out_infinite]" />
+      </div>
+      <p className="text-[11px] font-bold text-slate-400">Loading module...</p>
+    </div>
+  )
+}
+
+const AccountsView = dynamic(() => import('@/components/accounts-view').then(m => m.AccountsView), { loading: ViewLoadingSkeleton })
+const CompaniesView = dynamic(() => import('@/components/companies-view').then(m => m.CompaniesView), { loading: ViewLoadingSkeleton })
+const LedgerView = dynamic(() => import('@/components/ledger-view').then(m => m.LedgerView), { loading: ViewLoadingSkeleton })
+const InvoiceView = dynamic(() => import('@/components/invoice-view').then(m => m.InvoiceView), { loading: ViewLoadingSkeleton })
+const BOLEditor = dynamic(() => import('@/components/bill-of-lading/bol-editor').then(m => m.BOLEditor), { loading: ViewLoadingSkeleton })
+const SettingsView = dynamic(() => import('@/components/settings-view').then(m => m.SettingsView), { loading: ViewLoadingSkeleton })
+const SkyBankView = dynamic(() => import('@/components/sky-bank-view').then(m => m.SkyBankView), { loading: ViewLoadingSkeleton })
+const InvoicePadView = dynamic(() => import('@/components/invoice-pad-view').then(m => m.InvoicePadView), { loading: ViewLoadingSkeleton })
+const SkyCmrView = dynamic(() => import('@/components/sky-cmr-view').then(m => m.SkyCmrView), { loading: ViewLoadingSkeleton })
+const SkyDocView = dynamic(() => import('@/components/sky-doc-view').then(m => m.SkyDocView), { loading: ViewLoadingSkeleton })
+const ShipperDashboardView = dynamic(() => import('@/components/shipper-dashboard').then(m => m.ShipperDashboardView), { loading: ViewLoadingSkeleton })
 
 import { useEffect } from 'react'
 import { toast } from 'sonner'

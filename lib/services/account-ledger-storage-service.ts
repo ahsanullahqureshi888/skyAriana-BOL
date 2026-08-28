@@ -18,8 +18,20 @@ const emptyDatabase: AccountLedgerDatabase = {
   receipts: {},
 }
 
+let memoryCacheLedger: AccountLedgerDatabase | null = null
+let lastLedgerCacheTime = 0
+const LEDGER_TTL_MS = 5000
+
 export async function getAccountLedgerDatabase() {
-  const database = await readJsonFile<AccountLedgerDatabase>(ledgerDatabaseFile, emptyDatabase)
+  const now = Date.now()
+  let database: AccountLedgerDatabase
+  if (memoryCacheLedger && (now - lastLedgerCacheTime < LEDGER_TTL_MS)) {
+    database = memoryCacheLedger
+  } else {
+    database = await readJsonFile<AccountLedgerDatabase>(ledgerDatabaseFile, emptyDatabase)
+    memoryCacheLedger = database
+    lastLedgerCacheTime = now
+  }
 
   return {
     accounts: Array.isArray(database.accounts) ? database.accounts : [],
@@ -39,6 +51,8 @@ export async function saveAccountLedgerDatabase(data: Partial<AccountLedgerDatab
     updated_at: new Date().toISOString(),
   }
 
+  memoryCacheLedger = next
+  lastLedgerCacheTime = Date.now()
   await writeJsonFile(ledgerDatabaseFile, next)
   return next
 }
