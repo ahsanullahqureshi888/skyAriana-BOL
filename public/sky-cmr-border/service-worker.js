@@ -1,20 +1,6 @@
-const CACHE_NAME = 'sky-cmr-v1';
-const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './cmr_page1.html',
-  './cmr_page2.html',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
-];
+const CACHE_NAME = 'sky-cmr-v5-nocache';
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
-  );
   self.skipWaiting();
 });
 
@@ -22,19 +8,18 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(
-        keys.map(key => {
-          if (key !== CACHE_NAME) return caches.delete(key);
-        })
+        keys.map(key => caches.delete(key))
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
+// Network-First: Always fetch latest from server
 self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then(response => {
-      return response || fetch(event.request);
-    })
+    fetch(event.request)
+      .then(response => response)
+      .catch(() => caches.match(event.request))
   );
 });

@@ -13,9 +13,15 @@ sys.stdout.reconfigure(encoding='utf-8')
 WORKDIR = r"e:\My-Softwares-+\SKY-CMR-BORDER"
 DB_PATH = os.path.join(WORKDIR, "cmr_database.db")
 
-# Initialize SQLite Database
+# Initialize SQLite Database Connection Helper
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH, timeout=30.0)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+    return conn
+
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     # Documents table
@@ -48,9 +54,61 @@ def init_db():
     )
     """)
 
-    # Pre-populate sample if database is brand new
-    cursor.execute("SELECT COUNT(*) FROM documents")
+    # App Settings (Sequential Counter & Config)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    )
+    """)
+
+    # Saved Entities (Shวิppers, Consignees, Commodities, Drivers, Trucks for Recommendations)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS saved_entities (
+        id TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        name TEXT NOT NULL,
+        details TEXT NOT NULL,
+        usage_count INTEGER DEFAULT 1,
+        updated_at TEXT NOT NULL
+    )
+    """)
+
+    # Ensure counter is initialized to 5 so next CMR is NO - 006
+    cursor.execute("SELECT value FROM app_settings WHERE key = 'cmr_serial_counter'")
+    if not cursor.fetchone():
+        cursor.execute("INSERT INTO app_settings (key, value) VALUES ('cmr_serial_counter', '5')")
+
+    # Pre-populate recommended entities if empty
+    cursor.execute("SELECT COUNT(*) FROM saved_entities")
     if cursor.fetchone()[0] == 0:
+        now_s = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        preset_entities = [
+            # Senders
+            ("ent_s_1", "consignor", "SABOOR ADEL TRADING COMPANY", '"SABOOR ADEL TRADING COMPANY"\nAdd: Afghanistan-Balkh Province Mazar Business Center 5th floor Office No: 07\nTel: +93780780288\nTIN: 1010411161', 10, now_s),
+            ("ent_s_2", "consignor", "NAJIB AMIN LTD", 'NAJIB AMIN LTD\nT.L 27-975 T.L SHORANDAM INDUSTRIAL AREA KANDAHAR AFGHANISTAN. TELL: +93700308086\nNOTIFY PARTY: PAYMENT HAS TO BE MADE TO YAAQOUB HAMDAN FOODSTUFF TRADING CO LLC SHOP NO:28 AL HAWAI BUILDING AL RAS STREET DEIRA DUBAI\nUAE TRN NO : 100340961000003', 8, now_s),
+            ("ent_s_3", "consignor", "SKY ARIANA EXPORT CO.", 'SKY ARIANA EXPORT & TRADING CO.\nKabul & Kandahar, Afghanistan\nTel: +93 700 939 565\nTIN: 1004829102', 5, now_s),
+            # Consignees
+            ("ent_c_1", "consignee", "MUHEB RAHMAN GLOBALTRADING LTD", 'MUHEB RAHMAN GLOBALTRADING LTD\nAdd: REPUBLIC OF UZBEKISTAN SURXONDARYA REGION TERMEZ CITY JAYHUN MFYAJ HAKIMAT-TERMIZY STREE\nTIN: 312034734', 10, now_s),
+            ("ent_c_2", "consignee", "JDM ENTERPRISES", 'JDM ENTERPRISES\n132 / B, BEHIND GEETA VIHAR HOTEL, NEAR SPENCER\'S GYM, SANTACRUZ (EAST) MUMBAI 400029 INDIA.\nFSSAI NO: 10018022007908\nGSTIN: 27BAAPA6587K1ZH\nIEC: BAAPA6587K\nPAN NO: BAAPA6587K', 8, now_s),
+            ("ent_c_3", "consignee", "RCA EXIM PRIVATE LIMITED", 'RCA EXIM PRIVATE LIMITED\n1112 2ND AND 3RD FLOOR GANDHI GALI FATEHPURI DELHI 110006 INDIA\nGSTIN: 07AABCR1234F1Z5\nIEC: 0511012345', 7, now_s),
+            ("ent_c_4", "consignee", "EURO-ASIA LOGISTICS GMBH", 'EURO-ASIA LOGISTICS GMBH\nHafenstrasse 45, Hamburg, Germany\nVAT: DE 298471902', 4, now_s),
+            # Carriers
+            ("ent_car_1", "carrier", "SKY ARIANA LIMITED", 'SKY ARIANA LIMITED\nImport & Export - International Transportation\nLicense: 2481-2198\nWebsite: www.skyariana.com\nEmails: info@skyariana.com, transport@skyariana.com\nPhones: +93 700 939 565, +93 711 435 529\nKandahar Office: 2nd Floor, 16 No. Office, Shahidano Chowk, Etimad Rahmi Market, Kandahar, Afghanistan\nKabul Office: Shahr-e-now, Haji Yaqoub Square', 10, now_s),
+            ("ent_car_2", "carrier", "MANDUZAY TRANSPORTATION", '“MANDUZAY TRANSPORTATION COMPANY”\nInternational Freight & Transit Services\nKabul - Mazar - Hairatan', 6, now_s),
+            # Commodities
+            ("ent_g_1", "commodity", "AFGHAN BROOM (360 BUNDLES 16000 PCS)", '1.   360 BUNDLES 16000 PCS 10000 KG AFGHAN BROOM', 10, now_s),
+            ("ent_g_2", "commodity", "BLACK RAISINS BEST (631 CTNS)", '1.   631 CTNS - BLACK-RAISNIS (BEST)', 8, now_s),
+            ("ent_g_3", "commodity", "GREEN RAISINS KANDAHAR (521 CTNS)", '1.   521 CTNS - GREEN RAISINS (KANDAHAR CHOICE)', 7, now_s),
+            ("ent_g_4", "commodity", "DRIED FIGS AAA (450 BAGS)", '1.   450 BAGS - DRIED FIGS AAA QUALITY', 5, now_s),
+            # Customs
+            ("ent_cus_1", "customs", "CUSTOM POST Termiz", 'CUSTOM POST "Termiz"\nCODE POST: 22005', 10, now_s),
+            ("ent_cus_2", "customs", "TOSHKENT AVIA YUKLAR", 'COUSTOM POST : TOSHKENT AVIA YUKLAR\nVED CODE:00102', 8, now_s),
+        ]
+        cursor.executemany("""
+        INSERT INTO saved_entities (id, type, name, details, usage_count, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, preset_entities)
         samples = [
             {
                 "id": "doc_sample_1",
@@ -204,7 +262,7 @@ def init_db():
         
         for s in samples:
             cursor.execute("""
-            INSERT INTO documents (id, cmr_number, consignor, origin, consignee, destination, commodity, gross_weight, declared_value, truck_plate, driver_name, status, full_data, created_at, updated_at)
+            INSERT OR IGNORE INTO documents (id, cmr_number, consignor, origin, consignee, destination, commodity, gross_weight, declared_value, truck_plate, driver_name, status, full_data, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 s["id"], s["cmr_number"], s["consignor"], s["origin"],
@@ -221,6 +279,15 @@ init_db()
 # Create FastAPI App
 app = FastAPI(title="Sky Ariana CMR Express Backend API", version="3.0.0")
 
+
+@app.middleware("http")
+async def add_no_cache_header(request, call_next):
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -233,6 +300,7 @@ app.add_middleware(
 class DocumentModel(BaseModel):
     id: Optional[str] = None
     cmr_number: str
+    pad_type: Optional[int] = 1
     consignor: Optional[str] = ""
     origin: Optional[str] = ""
     consignee: Optional[str] = ""
@@ -246,18 +314,126 @@ class DocumentModel(BaseModel):
     fullData: Dict[str, Any]
 
 class DraftModel(BaseModel):
-    cmr_top_number: Optional[str] = "CMR NO 0001"
+    cmr_top_number: Optional[str] = "NO - 001"
     saved_at: Optional[str] = None
     fields: Dict[str, Any]
+
+class EntityModel(BaseModel):
+    id: Optional[str] = None
+    type: str # consignor, consignee, carrier, commodity, customs, driver, truck
+    name: str
+    details: str
 
 # API Endpoints
 @app.get("/api/health")
 def health():
-    return {"status": "online", "database": "sqlite3", "version": "3.0.0"}
+    return {"status": "online", "database": "sqlite3", "version": "3.1.0"}
+
+# Sequential CMR Counter Endpoints
+@app.get("/api/counter")
+def get_cmr_counter():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM app_settings WHERE key = 'cmr_serial_counter'")
+    row = cursor.fetchone()
+    current_val = int(row[0]) if row else 5
+    conn.close()
+    
+    return {
+        "counter": current_val,
+        "current_formatted": f"NO - {str(current_val).zfill(3)}",
+        "next_counter": current_val + 1,
+        "next_formatted": f"NO - {str(current_val + 1).zfill(3)}"
+    }
+
+@app.post("/api/counter/increment")
+def increment_cmr_counter():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM app_settings WHERE key = 'cmr_serial_counter'")
+    row = cursor.fetchone()
+    current_val = int(row[0]) if row else 5
+    next_val = current_val + 1
+    
+    cursor.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('cmr_serial_counter', ?)", (str(next_val),))
+    conn.commit()
+    conn.close()
+    
+    return {
+        "counter": next_val,
+        "cmr_number": f"NO - {str(next_val).zfill(3)}"
+    }
+
+@app.post("/api/counter/set")
+def set_cmr_counter(value: int = Query(..., description="The counter value to set")):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('cmr_serial_counter', ?)", (str(value),))
+    conn.commit()
+    conn.close()
+    
+    return {
+        "counter": value,
+        "cmr_number": f"NO - {str(value).zfill(3)}"
+    }
+
+# Saved Entities & Recommendations Endpoints
+@app.get("/api/entities")
+def get_saved_entities(type: Optional[str] = None, q: Optional[str] = None):
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    query = "SELECT * FROM saved_entities WHERE 1=1"
+    params = []
+    if type:
+        query += " AND type = ?"
+        params.append(type)
+    if q:
+        query += " AND (name LIKE ? OR details LIKE ?)"
+        params.extend([f"%{q}%", f"%{q}%"])
+        
+    query += " ORDER BY usage_count DESC, updated_at DESC"
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [dict(r) for r in rows]
+
+@app.post("/api/entities")
+def save_entity(ent: EntityModel):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ent_id = ent.id or f"ent_{int(datetime.datetime.now().timestamp() * 1000)}"
+    
+    # Check if exists by name & type
+    cursor.execute("SELECT id, usage_count FROM saved_entities WHERE type = ? AND name = ?", (ent.type, ent.name))
+    existing = cursor.fetchone()
+    
+    if existing:
+        target_id = existing[0]
+        new_count = existing[1] + 1
+        cursor.execute("""
+        UPDATE saved_entities SET
+            details = ?,
+            usage_count = ?,
+            updated_at = ?
+        WHERE id = ?
+        """, (ent.details, new_count, now_str, target_id))
+    else:
+        cursor.execute("""
+        INSERT INTO saved_entities (id, type, name, details, usage_count, updated_at)
+        VALUES (?, ?, ?, ?, 1, ?)
+        """, (ent_id, ent.type, ent.name, ent.details, now_str))
+        
+    conn.commit()
+    conn.close()
+    return {"status": "saved", "id": ent_id, "name": ent.name}
 
 @app.get("/api/documents")
 def list_documents(q: Optional[str] = None, tag: Optional[str] = None):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
@@ -306,7 +482,7 @@ def list_documents(q: Optional[str] = None, tag: Optional[str] = None):
 
 @app.get("/api/documents/{doc_id}")
 def get_document(doc_id: str):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM documents WHERE id = ? OR cmr_number = ?", (doc_id, doc_id))
@@ -335,7 +511,7 @@ def get_document(doc_id: str):
 
 @app.post("/api/documents")
 def save_document(doc: DocumentModel):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     
     doc_id = doc.id or f"doc_{int(datetime.datetime.now().timestamp() * 1000)}"
@@ -387,7 +563,7 @@ def save_document(doc: DocumentModel):
 
 @app.delete("/api/documents/{doc_id}")
 def delete_document(doc_id: str):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
     deleted = cursor.rowcount
@@ -400,7 +576,7 @@ def delete_document(doc_id: str):
 
 @app.get("/api/draft")
 def get_active_draft():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT draft_data, updated_at FROM active_draft WHERE id = 1")
     row = cursor.fetchone()
@@ -412,7 +588,7 @@ def get_active_draft():
 
 @app.post("/api/draft")
 def save_active_draft(draft: DraftModel):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     cursor = conn.cursor()
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     draft_json = json.dumps(draft.dict())
@@ -432,7 +608,7 @@ def save_active_draft(draft: DraftModel):
 
 @app.get("/api/backup")
 def export_backup():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM documents ORDER BY updated_at DESC")
@@ -472,7 +648,7 @@ async def import_backup(file: UploadFile = File(...)):
         if not isinstance(data, list):
             raise HTTPException(status_code=400, detail="Invalid JSON backup structure")
         
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_db_connection()
         cursor = conn.cursor()
         count = 0
         for doc in data:
@@ -516,4 +692,4 @@ app.mount("/", StaticFiles(directory=WORKDIR, html=True), name="static")
 
 if __name__ == "__main__":
     print(f"🚀 Starting Sky Ariana CMR FastAPI Backend on http://127.0.0.1:3000")
-    uvicorn.run(app, host="127.0.0.1", port=3000, log_level="info")
+    uvicorn.run("backend_server:app", host="127.0.0.1", port=3000, log_level="warning")
