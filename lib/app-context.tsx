@@ -72,7 +72,7 @@ interface AppState {
   invoices: Invoice[]
   currentAccount: Account | null
   currentCompany: Company | null
-  view: 'accounts' | 'companies' | 'ledger' | 'invoice' | 'bol' | 'settings' | 'bank' | 'invoice-pad'
+  view: 'accounts' | 'companies' | 'ledger' | 'invoice' | 'bol' | 'settings' | 'bank' | 'invoice-pad' | 'sky-cmr' | 'sky-doc'
   isAuthenticated: boolean
   currentUser: User | null
   users: User[]

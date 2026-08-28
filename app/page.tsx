@@ -11,6 +11,8 @@ import { LoginScreen } from '@/components/login-screen'
 import { SettingsView } from '@/components/settings-view'
 import { SkyBankView } from '@/components/sky-bank-view'
 import { InvoicePadView } from '@/components/invoice-pad-view'
+import { SkyCmrView } from '@/components/sky-cmr-view'
+import { SkyDocView } from '@/components/sky-doc-view'
 import { ErrorBoundary } from '@/components/error-boundary'
 
 import { useEffect } from 'react'
@@ -177,10 +179,12 @@ function MainContent() {
     return <LoginScreen />
   }
 
+  const isFullBleedView = view === "bank" || view === "invoice-pad" || view === "sky-cmr" || view === "sky-doc"
+
   return (
-    <div className={view === "bank" || view === "invoice-pad" ? "h-screen w-full flex flex-col overflow-hidden bg-slate-950" : "min-h-screen flex flex-col"}>
-      <Header showBack={view !== 'accounts' && view !== 'settings' && view !== 'bank' && view !== 'invoice-pad'} />
-      <main className={view === "bank" || view === "invoice-pad" ? "flex-1 w-full h-full overflow-hidden flex flex-col min-h-0" : "flex-1"}>
+    <div className={isFullBleedView ? "h-screen w-full flex flex-col overflow-hidden bg-slate-950" : "min-h-screen flex flex-col"}>
+      <Header showBack={view !== 'accounts' && view !== 'settings' && !isFullBleedView} />
+      <main className={isFullBleedView ? "flex-1 w-full h-full overflow-hidden flex flex-col min-h-0" : "flex-1"}>
         {view === 'accounts' && <AccountsView />}
         {view === 'companies' && <CompaniesView />}
         {view === 'ledger' && <LedgerView />}
@@ -189,6 +193,8 @@ function MainContent() {
         {view === 'settings' && <SettingsView />}
         {view === 'bank' && <SkyBankView />}
         {view === 'invoice-pad' && <InvoicePadView />}
+        {view === 'sky-cmr' && <SkyCmrView />}
+        {view === 'sky-doc' && <SkyDocView />}
       </main>
     </div>
   )

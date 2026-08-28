@@ -38,6 +38,8 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
   const getTitle = () => {
     if (title) return title
+    if (view === 'sky-doc') return 'Sky Ariana Document System (SKY DOC)'
+    if (view === 'sky-cmr') return 'Sky CMR Express & Border Waybill'
     if (view === 'invoice-pad') return 'Commercial Invoice Pad'
     if (view === 'bank') return 'Sky Ariana Bank & Transactions'
     if (view === 'settings') return 'System Settings & Management'
@@ -50,6 +52,8 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
   const getSubtitle = () => {
     if (subtitle) return subtitle
+    if (view === 'sky-doc') return 'Enterprise Operating System & Document Management • سیستم جامع اسناد و عملیات'
+    if (view === 'sky-cmr') return 'International Consignment Note, Border Transit & Waybills • بارنامه بین‌المللی سی‌ام‌آر'
     if (view === 'invoice-pad') return 'Print-Ready A4 Commercial Invoices, Customs Valuations & Signatures • سیستم صدور فاکتور'
     if (view === 'bank') return 'Live Online Banking, Financial Ledgers & Transactions • پورتال معاملات بانکی'
     if (view === 'settings') return 'Users, Security Roles & Software Version'
@@ -61,6 +65,8 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   }
 
   const getViewBadge = () => {
+    if (view === 'sky-doc') return { label: 'Sky Doc', color: 'bg-cyan-100 text-cyan-950 border-cyan-400' }
+    if (view === 'sky-cmr') return { label: 'Sky CMR', color: 'bg-blue-100 text-blue-950 border-blue-400' }
     if (view === 'invoice-pad') return { label: 'Invoice Pad', color: 'bg-indigo-100 text-indigo-900 border-indigo-300' }
     if (view === 'bank') return { label: 'Bank Portal', color: 'bg-emerald-100 text-emerald-900 border-emerald-300' }
     if (view === 'bol') return { label: 'BOL System', color: 'bg-amber-100 text-amber-900 border-amber-300' }
@@ -155,6 +161,23 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ بارنامه</span>
             </Button>
 
+            {/* Sky CMR Navigation */}
+            <Button
+              variant={view === 'sky-cmr' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('sky-cmr')}
+              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                view === 'sky-cmr' 
+                  ? 'bg-gradient-to-r from-blue-600 via-sky-600 to-indigo-700 text-white border-transparent shadow-md shadow-blue-500/25' 
+                  : 'bg-white/90 border-blue-200/90 text-blue-900 hover:bg-blue-50 hover:border-blue-300'
+              }`}
+              title="Sky CMR International Consignment Note & Border Waybill"
+            >
+              <Truck className="h-3.5 w-3.5 text-blue-600 group-hover:text-blue-700" />
+              <span className="font-extrabold">Sky CMR</span>
+              <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ سی‌ام‌آر</span>
+            </Button>
+
             {/* Commercial Invoice Pad Navigation */}
             <Button
               variant={view === 'invoice-pad' ? 'default' : 'outline'}
@@ -187,6 +210,23 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               <Landmark className="h-3.5 w-3.5 text-emerald-600 group-hover:text-emerald-700" />
               <span className="font-extrabold">Sky Bank</span>
               <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ بانک</span>
+            </Button>
+
+            {/* Sky Doc Module Navigation */}
+            <Button
+              variant={view === 'sky-doc' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('sky-doc')}
+              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                view === 'sky-doc' 
+                  ? 'bg-gradient-to-r from-cyan-600 via-teal-600 to-blue-700 text-white border-transparent shadow-md shadow-cyan-500/25' 
+                  : 'bg-white/90 border-cyan-200/90 text-cyan-800 hover:bg-cyan-50 hover:border-cyan-300'
+              }`}
+              title="Sky Ariana Document Management System (SKY DOC)"
+            >
+              <FileText className="h-3.5 w-3.5 text-cyan-600 group-hover:text-cyan-700" />
+              <span className="font-extrabold">SKY DOC</span>
+              <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ اسناد</span>
             </Button>
 
             {/* Settings Navigation (Admins & Accountants only) */}

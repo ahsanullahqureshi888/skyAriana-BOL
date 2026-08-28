@@ -45,18 +45,79 @@ import {
   SlidersHorizontal,
   ChevronRight,
   ShieldAlert,
+  PenTool,
+  Palette,
+  Eraser,
+  RotateCw,
+  Type,
+  FileCheck,
+  Compass,
+  Maximize2,
+  FileSignature,
 } from "lucide-react"
 import { PWAInstallButton } from "@/components/pwa-install-prompt"
 import { CloudSyncModal } from "@/components/bill-of-lading/cloud-sync-modal"
 import {
   COMPANY_STAMP_SIGNATURE_SRC,
   COMPANY_STAMP_SIGNATURE_DATA_URL,
-  getStoredCompanyStamp,
-  getStoredCompanyStampScale,
+  DEFAULT_STAMP_CONFIG,
+  getStoredCompanyStampConfig,
+  saveStoredCompanyStampConfig,
   saveStoredCompanyStamp,
   resetStoredCompanyStamp,
+  getStoredCompanyStamp,
+  getStoredCompanyStampScale,
+  type CompanyStampConfig,
 } from "@/lib/company-stamp-data"
 import { toast } from "sonner"
+
+// Preset Official Company Stamps and Seals
+const PRESET_SEALS = [
+  {
+    id: "official-skyariana",
+    name: "Sky Ariana Registered Seal & Signature",
+    nameFa: "مهر رسمی و امضای اصلی سکای آریانا",
+    desc: "Authentic double-circle registered seal with official green signature",
+    src: COMPANY_STAMP_SIGNATURE_SRC,
+    badge: "Official Default",
+    color: "from-blue-900 to-indigo-900",
+    signatoryTitle: "FOR & ON BEHALF OF: SKY ARIANA LIMITED",
+    signatorySubtitle: "مهر و امضای مجاز شرکت",
+  },
+  {
+    id: "customs-red",
+    name: "International Customs & Transit Seal",
+    nameFa: "مهر سرخ گمرک و ترانزیت بین‌المللی",
+    desc: "Red high-security transit clearance seal for border customs & manifest",
+    src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320"><circle cx="160" cy="160" r="145" fill="none" stroke="%23c5221f" stroke-width="6" stroke-dasharray="8,4"/><circle cx="160" cy="160" r="132" fill="none" stroke="%23c5221f" stroke-width="4"/><path id="p1" d="M 40,160 A 120,120 0 1,1 280,160" fill="none"/><path id="p2" d="M 280,160 A 120,120 0 0,1 40,160" fill="none"/><text font-family="Arial, sans-serif" font-size="13.5" font-weight="900" fill="%23c5221f" letter-spacing="3"><textPath href="%23p1" startOffset="50%" text-anchor="middle">INTERNATIONAL TRANSIT CUSTOMS</textPath></text><text font-family="Arial, sans-serif" font-size="12.5" font-weight="bold" fill="%23c5221f" letter-spacing="2"><textPath href="%23p2" startOffset="50%" text-anchor="middle">★ OFFICIAL CLEARANCE DEPT ★</textPath></text><circle cx="160" cy="160" r="88" fill="none" stroke="%23c5221f" stroke-width="3"/><text x="160" y="135" font-family="Arial, sans-serif" font-size="14" font-weight="900" fill="%23c5221f" text-anchor="middle">CUSTOMS PASSED</text><text x="160" y="160" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="%23c5221f" text-anchor="middle">SKY ARIANA</text><text x="160" y="182" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="%23c5221f" text-anchor="middle">ISLAM QALA - B.ABBAS</text><text x="160" y="202" font-family="Arial, sans-serif" font-size="12" font-weight="900" fill="%23c5221f" text-anchor="middle">APPROVED</text></svg>`,
+    badge: "Customs Red",
+    color: "from-red-900 to-rose-900",
+    signatoryTitle: "CUSTOMS CLEARANCE & TRANSIT DIVISION",
+    signatorySubtitle: "بخش ترانزیت و ترخیص گمرکی",
+  },
+  {
+    id: "logistics-green",
+    name: "Authorized Logistics & Inspection Seal",
+    nameFa: "مهر سبز تاییدیه بازرسی و ترابری",
+    desc: "Emerald quality and inspection verified seal for commercial cargo",
+    src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320"><circle cx="160" cy="160" r="145" fill="none" stroke="%23047857" stroke-width="6"/><circle cx="160" cy="160" r="133" fill="none" stroke="%23047857" stroke-width="3" stroke-dasharray="6,3"/><path id="pg1" d="M 40,160 A 120,120 0 1,1 280,160" fill="none"/><path id="pg2" d="M 280,160 A 120,120 0 0,1 40,160" fill="none"/><text font-family="Arial, sans-serif" font-size="13" font-weight="900" fill="%23047857" letter-spacing="3"><textPath href="%23pg1" startOffset="50%" text-anchor="middle">AUTHORIZED LOGISTICS INSPECTION</textPath></text><text font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="%23047857" letter-spacing="2"><textPath href="%23pg2" startOffset="50%" text-anchor="middle">★ QUALITY & WEIGHT VERIFIED ★</textPath></text><circle cx="160" cy="160" r="88" fill="none" stroke="%23047857" stroke-width="3"/><text x="160" y="135" font-family="Arial, sans-serif" font-size="14" font-weight="900" fill="%23047857" text-anchor="middle">SECURITY SEAL</text><text x="160" y="160" font-family="Arial, sans-serif" font-size="18" font-weight="900" fill="%23047857" text-anchor="middle">SKY BALAM</text><text x="160" y="182" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="%23047857" text-anchor="middle">CARGO OPERATIONS</text><text x="160" y="202" font-family="Arial, sans-serif" font-size="12" font-weight="900" fill="%23047857" text-anchor="middle">VERIFIED & SIGNED</text></svg>`,
+    badge: "Logistics Green",
+    color: "from-emerald-900 to-teal-900",
+    signatoryTitle: "FOR & ON BEHALF OF: SKY BALAM LOGISTICS",
+    signatorySubtitle: "مهر و امضای شرکت حمل و نقل سکای بالام",
+  },
+  {
+    id: "blue-round-seal",
+    name: "Official Sky Ariana Round Seal Only",
+    nameFa: "مهر مدور شرکتی سکای آریانا (بدون امضا)",
+    desc: "Circular company seal for clean manual physical signing",
+    src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320"><circle cx="160" cy="160" r="145" fill="none" stroke="%231e3a8a" stroke-width="7"/><circle cx="160" cy="160" r="133" fill="none" stroke="%231e3a8a" stroke-width="3" stroke-dasharray="7,4"/><path id="pb1" d="M 40,160 A 120,120 0 1,1 280,160" fill="none"/><path id="pb2" d="M 280,160 A 120,120 0 0,1 40,160" fill="none"/><text font-family="Arial, sans-serif" font-size="14" font-weight="900" fill="%231e3a8a" letter-spacing="3"><textPath href="%23pb1" startOffset="50%" text-anchor="middle">SKY ARIANA LIMITED CO.</textPath></text><text font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="%231e3a8a" letter-spacing="2"><textPath href="%23pb2" startOffset="50%" text-anchor="middle">★ INTERNATIONAL TRANSPORT ★</textPath></text><circle cx="160" cy="160" r="88" fill="none" stroke="%231e3a8a" stroke-width="3"/><text x="160" y="135" font-family="Arial, sans-serif" font-size="13" font-weight="900" fill="%231e3a8a" text-anchor="middle">REG. 90021-AFG</text><text x="160" y="162" font-family="Arial, sans-serif" font-size="19" font-weight="900" fill="%231e3a8a" text-anchor="middle">SKY ARIANA</text><text x="160" y="185" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="%231e3a8a" text-anchor="middle">COMMERCIAL CARGO</text><text x="160" y="204" font-family="Arial, sans-serif" font-size="12" font-weight="900" fill="%231e3a8a" text-anchor="middle">OFFICIAL SEAL</text></svg>`,
+    badge: "Seal Only",
+    color: "from-blue-900 to-sky-900",
+    signatoryTitle: "FOR & ON BEHALF OF: SKY ARIANA LIMITED",
+    signatorySubtitle: "مهر و امضای مجاز شرکت",
+  },
+]
 
 export type SettingsTab = "users" | "stamp" | "company" | "cloud" | "security" | "updates"
 
@@ -153,10 +214,17 @@ export function SettingsView() {
   const [passMsg, setPassMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   // Stamp & Signature State
-  const [currentStamp, setCurrentStamp] = useState<string>(COMPANY_STAMP_SIGNATURE_SRC)
-  const [currentStampScale, setCurrentStampScale] = useState<number>(1.0)
+  const [stampConfig, setStampConfig] = useState<CompanyStampConfig>(DEFAULT_STAMP_CONFIG)
+  const [stampSubTab, setStampSubTab] = useState<"tuning" | "presets" | "draw" | "upload" | "text">("tuning")
   const [stampMsg, setStampMsg] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Signature Canvas Drawing Pad State
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [penColor, setPenColor] = useState("#0f3460") // Navy Blue default
+  const [penWidth, setPenWidth] = useState(3)
+  const [hasDrawn, setHasDrawn] = useState(false)
 
   // Company Profile Settings State
   const [companySettings, setCompanySettings] = useState({
@@ -178,8 +246,7 @@ export function SettingsView() {
   const [updateMsg, setUpdateMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    setCurrentStamp(getStoredCompanyStamp())
-    setCurrentStampScale(getStoredCompanyStampScale())
+    setStampConfig(getStoredCompanyStampConfig())
 
     // Load saved company settings if available
     try {
@@ -190,16 +257,21 @@ export function SettingsView() {
     } catch (e) {}
 
     const handleStampUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ dataUrl?: string; scale?: number }>
-      if (customEvent.detail?.dataUrl) {
-        setCurrentStamp(customEvent.detail.dataUrl)
+      const customEvent = e as CustomEvent<Partial<CompanyStampConfig>>
+      if (customEvent.detail) {
+        setStampConfig(prev => ({
+          ...prev,
+          ...customEvent.detail,
+          dataUrl: customEvent.detail?.dataUrl !== undefined ? customEvent.detail.dataUrl : prev.dataUrl,
+          scale: customEvent.detail?.scale !== undefined ? customEvent.detail.scale : prev.scale,
+          rotation: customEvent.detail?.rotation !== undefined ? customEvent.detail.rotation : prev.rotation,
+          opacity: customEvent.detail?.opacity !== undefined ? customEvent.detail.opacity : prev.opacity,
+          signatoryTitle: customEvent.detail?.signatoryTitle !== undefined ? customEvent.detail.signatoryTitle : prev.signatoryTitle,
+          signatorySubtitle: customEvent.detail?.signatorySubtitle !== undefined ? customEvent.detail.signatorySubtitle : prev.signatorySubtitle,
+          enabled: customEvent.detail?.enabled !== undefined ? customEvent.detail.enabled : prev.enabled,
+        }))
       } else {
-        setCurrentStamp(getStoredCompanyStamp())
-      }
-      if (customEvent.detail?.scale !== undefined) {
-        setCurrentStampScale(customEvent.detail.scale)
-      } else {
-        setCurrentStampScale(getStoredCompanyStampScale())
+        setStampConfig(getStoredCompanyStampConfig())
       }
     }
 
@@ -260,6 +332,53 @@ export function SettingsView() {
     }
   }
 
+  // Stamp Handlers
+  const handleScaleChange = (newScale: number) => {
+    setStampConfig(prev => ({ ...prev, scale: newScale }))
+    saveStoredCompanyStampConfig({ scale: newScale })
+  }
+
+  const handleRotationChange = (newRotation: number) => {
+    setStampConfig(prev => ({ ...prev, rotation: newRotation }))
+    saveStoredCompanyStampConfig({ rotation: newRotation })
+  }
+
+  const handleOpacityChange = (newOpacity: number) => {
+    setStampConfig(prev => ({ ...prev, opacity: newOpacity }))
+    saveStoredCompanyStampConfig({ opacity: newOpacity })
+  }
+
+  const handleToggleStampEnabled = () => {
+    const nextEnabled = !stampConfig.enabled
+    setStampConfig(prev => ({ ...prev, enabled: nextEnabled }))
+    saveStoredCompanyStampConfig({ enabled: nextEnabled })
+    if (nextEnabled) {
+      toast.success("Digital Stamp & Signature is now ACTIVE on all Bills of Lading.")
+      setStampMsg({ type: "success", text: "Digital Stamp & Signature is active across all document exports." })
+    } else {
+      toast.info("Digital Stamp & Signature is now DISABLED (Blank line for physical stamping).")
+      setStampMsg({ type: "error", text: "Digital Stamp is turned off. Documents will export with blank signature line." })
+    }
+  }
+
+  const handleSelectPreset = (preset: typeof PRESET_SEALS[0]) => {
+    setStampConfig(prev => ({
+      ...prev,
+      dataUrl: preset.src,
+      signatoryTitle: preset.signatoryTitle,
+      signatorySubtitle: preset.signatorySubtitle,
+      enabled: true,
+    }))
+    saveStoredCompanyStampConfig({
+      dataUrl: preset.src,
+      signatoryTitle: preset.signatoryTitle,
+      signatorySubtitle: preset.signatorySubtitle,
+      enabled: true,
+    })
+    toast.success(`Seal applied: ${preset.name}`)
+    setStampMsg({ type: "success", text: `Applied "${preset.name}". Live preview updated.` })
+  }
+
   const handleStampUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -275,10 +394,10 @@ export function SettingsView() {
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string
       if (dataUrl) {
-        saveStoredCompanyStamp(dataUrl, currentStampScale)
-        setCurrentStamp(dataUrl)
-        toast.success("Official Stamp & Signature updated across all Bills of Lading!")
-        setStampMsg({ type: "success", text: "Official Stamp & Signature successfully updated across the system!" })
+        setStampConfig(prev => ({ ...prev, dataUrl, enabled: true }))
+        saveStoredCompanyStampConfig({ dataUrl, enabled: true })
+        toast.success("Custom Stamp & Signature uploaded and active across all Bills of Lading!")
+        setStampMsg({ type: "success", text: "Custom stamp image successfully uploaded and activated!" })
       }
     }
     reader.onerror = () => {
@@ -289,16 +408,90 @@ export function SettingsView() {
 
   const handleResetStamp = () => {
     resetStoredCompanyStamp()
-    setCurrentStamp(COMPANY_STAMP_SIGNATURE_SRC)
-    setCurrentStampScale(1.0)
-    toast.success("Restored to official Sky Ariana seal and signature.")
-    setStampMsg({ type: "success", text: "Restored to official Sky Ariana Limited seal and signature." })
+    setStampConfig({ ...DEFAULT_STAMP_CONFIG })
+    toast.success("Restored to official factory Sky Ariana seal and signature.")
+    setStampMsg({ type: "success", text: "Restored to official Sky Ariana Limited seal and signature defaults." })
   }
 
-  const handleScaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newScale = parseFloat(e.target.value)
-    setCurrentStampScale(newScale)
-    saveStoredCompanyStamp(currentStamp, newScale)
+  const handleDownloadStampAsset = () => {
+    try {
+      const link = document.createElement("a")
+      link.href = stampConfig.dataUrl || COMPANY_STAMP_SIGNATURE_SRC
+      link.download = "sky_ariana_official_stamp_signature.png"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      toast.success("Downloaded official stamp asset.")
+    } catch {
+      toast.error("Failed to download stamp image.")
+    }
+  }
+
+  // Canvas Drawing Handlers
+  const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.strokeStyle = penColor
+    ctx.lineWidth = penWidth
+    ctx.lineCap = "round"
+    ctx.lineJoin = "round"
+    setIsDrawing(true)
+    setHasDrawn(true)
+  }
+
+  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+
+    ctx.lineTo(x, y)
+    ctx.stroke()
+  }
+
+  const stopDrawing = () => {
+    setIsDrawing(false)
+  }
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    setHasDrawn(false)
+  }
+
+  const handleApplySignaturePad = () => {
+    const canvas = canvasRef.current
+    if (!canvas || !hasDrawn) {
+      toast.error("Please draw a signature first before applying.")
+      return
+    }
+
+    try {
+      const dataUrl = canvas.toDataURL("image/png")
+      setStampConfig(prev => ({ ...prev, dataUrl, enabled: true }))
+      saveStoredCompanyStampConfig({ dataUrl, enabled: true })
+      toast.success("Your handwritten digital signature is now active across all Bills of Lading!")
+      setStampMsg({ type: "success", text: "Handwritten digital signature applied to document footer!" })
+    } catch {
+      toast.error("Failed to export drawn signature.")
+    }
   }
 
   const handleSaveCompanySettings = (e: React.FormEvent) => {
@@ -645,153 +838,645 @@ export function SettingsView() {
       {/* ========================================================================= */}
       {/* TAB 2: STAMP & SIGNATURE (مهر و امضا)                                     */}
       {/* ========================================================================= */}
+      {/* ========================================================================= */}
+      {/* TAB 2: STAMP & SIGNATURE STUDIO (استودیو مهر و امضای رسمی)                */}
+      {/* ========================================================================= */}
       {activeTab === "stamp" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in fade-in duration-300">
-          {/* Stamp Preview Card */}
-          <div className="lg:col-span-6 bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-7 space-y-5">
-            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 shadow-md shadow-blue-950/20">
-                <ShieldCheck className="w-6 h-6" />
+          {/* Left Column: Live Document Footer Preview */}
+          <div className="lg:col-span-6 bg-white/95 backdrop-blur-2xl rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/50 p-5 sm:p-7 space-y-5 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 shadow-md shadow-blue-950/20">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Active Stamp & Signature</h3>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        stampConfig.enabled ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-amber-100 text-amber-800 border border-amber-300"
+                      }`}>
+                        {stampConfig.enabled ? "Active / فعال" : "Disabled / غیرفعال"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                      پیش‌نمایش زنده مهر، امضا و تنظیمات چاپ در بارنامه
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={handleDownloadStampAsset}
+                    className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white text-slate-700 hover:text-blue-900 text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                    title="Download Official Stamp Image (PNG)"
+                  >
+                    <Download className="w-4 h-4 text-blue-700" />
+                    <span className="hidden sm:inline">PNG</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetStamp}
+                    className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-red-50 text-slate-700 hover:text-red-700 text-xs font-bold transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                    title="Reset to Factory Official Seal"
+                  >
+                    <RotateCcw className="w-4 h-4 text-slate-500 hover:text-red-600" />
+                    <span className="hidden sm:inline">Reset</span>
+                  </button>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Active Stamp & Signature</h3>
-                <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
-                  پیش‌نمایش زنده مهر و امضای رسمی شرکت
+
+              {stampMsg && (
+                <div
+                  className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2.5 animate-in fade-in duration-200 ${
+                    stampMsg.type === "success"
+                      ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                      : "bg-red-50 text-red-900 border border-red-200"
+                  }`}
+                >
+                  {stampMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
+                  <span>{stampMsg.text}</span>
+                </div>
+              )}
+
+              {/* Document Signature Live Preview Canvas */}
+              <div className="relative rounded-3xl border-2 border-dashed border-blue-200 bg-gradient-to-b from-blue-50/50 via-white to-slate-50/80 p-6 sm:p-8 flex flex-col items-center justify-center min-h-[260px] overflow-hidden shadow-inner">
+                <div className="absolute top-3 left-3 flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-900 bg-blue-100/90 border border-blue-200 px-2.5 py-0.5 rounded-full shadow-2xs">
+                    Live BOL Footer Preview (پیش‌نمایش در بارنامه)
+                  </span>
+                </div>
+
+                <div className="absolute top-3 right-3">
+                  <button
+                    type="button"
+                    onClick={handleToggleStampEnabled}
+                    className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full transition shadow-2xs cursor-pointer border ${
+                      stampConfig.enabled
+                        ? "bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600"
+                        : "bg-slate-200 text-slate-700 border-slate-300 hover:bg-slate-300"
+                    }`}
+                  >
+                    {stampConfig.enabled ? "✓ Digital Seal: ON" : "✕ Blank Line Mode"}
+                  </button>
+                </div>
+
+                {/* Stamp & Signature Display Area */}
+                <div className="relative flex items-center justify-center w-full h-[140px] my-2">
+                  {stampConfig.enabled ? (
+                    <div
+                      className="flex items-center justify-center transition-all duration-200"
+                      style={{
+                        transform: `scale(${stampConfig.scale}) rotate(${stampConfig.rotation}deg)`,
+                        opacity: stampConfig.opacity,
+                      }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={stampConfig.dataUrl || COMPANY_STAMP_SIGNATURE_SRC}
+                        alt="Company Stamp & Signature"
+                        className="max-h-[115px] w-auto object-contain drop-shadow-md"
+                        crossOrigin="anonymous"
+                        onError={(e) => {
+                          const target = e.currentTarget
+                          if (target.src !== COMPANY_STAMP_SIGNATURE_DATA_URL) {
+                            target.src = COMPANY_STAMP_SIGNATURE_DATA_URL
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center p-4 border border-dashed border-slate-300 rounded-2xl bg-white/60">
+                      <FileSignature className="w-8 h-8 text-slate-400 mb-1" />
+                      <span className="text-xs font-bold text-slate-500">Manual Physical Sign & Stamp Area</span>
+                      <span className="text-[11px] font-[vazirmatn] text-slate-400 font-bold" dir="rtl">محل مهر و امضای فیزیکی و دستی</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Official Signatory Baseline & Title */}
+                <div className="w-64 border-b-2 border-slate-800 my-1.5" />
+                <p className="text-xs sm:text-sm font-black text-blue-950 uppercase tracking-tight text-center">
+                  {stampConfig.signatoryTitle || "FOR & ON BEHALF OF: SKY ARIANA LIMITED"}
+                </p>
+                <p className="font-[vazirmatn] text-xs font-extrabold text-blue-900 mt-0.5 text-center" dir="rtl">
+                  {stampConfig.signatorySubtitle || "مهر و امضای مجاز شرکت"}
                 </p>
               </div>
             </div>
 
-            {stampMsg && (
-              <div
-                className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2.5 ${
-                  stampMsg.type === "success"
-                    ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
-                    : "bg-red-50 text-red-900 border border-red-200"
-                }`}
-              >
-                {stampMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
-                <span>{stampMsg.text}</span>
+            {/* Bottom Specs Indicator Ribbon */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-100 text-[11px] font-bold text-slate-600">
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center">
+                <span className="text-slate-400 block text-[9px] uppercase font-black">Status</span>
+                <span className={`font-black ${stampConfig.enabled ? "text-emerald-700" : "text-amber-700"}`}>
+                  {stampConfig.enabled ? "Active" : "Disabled"}
+                </span>
               </div>
-            )}
-
-            {/* Document Signature Preview Box */}
-            <div className="relative rounded-3xl border-2 border-dashed border-blue-200 bg-linear-to-b from-blue-50/40 via-white to-slate-50 p-6 flex flex-col items-center justify-center min-h-[240px] overflow-hidden">
-              <div className="absolute top-3 left-3 text-[10px] font-black uppercase tracking-wider text-blue-800 bg-blue-100 px-2.5 py-0.5 rounded-full">
-                Live BOL Footer Preview (پیش‌نمایش در بارنامه)
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center">
+                <span className="text-slate-400 block text-[9px] uppercase font-black">Scale</span>
+                <span className="font-mono font-black text-blue-900">{(stampConfig.scale * 100).toFixed(0)}%</span>
               </div>
-
-              {/* Signature Overlay */}
-              <div className="relative flex items-center justify-center w-full h-[130px] my-3">
-                <div
-                  className="flex items-center justify-center transition-transform duration-200"
-                  style={{ transform: `scale(${currentStampScale})` }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={currentStamp || COMPANY_STAMP_SIGNATURE_SRC}
-                    alt="Company Stamp & Signature"
-                    className="max-h-[110px] w-auto object-contain drop-shadow-md transform -rotate-2"
-                    crossOrigin="anonymous"
-                    onError={(e) => {
-                      const target = e.currentTarget
-                      if (target.src !== COMPANY_STAMP_SIGNATURE_DATA_URL) {
-                        target.src = COMPANY_STAMP_SIGNATURE_DATA_URL
-                      }
-                    }}
-                  />
-                </div>
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center">
+                <span className="text-slate-400 block text-[9px] uppercase font-black">Rotation</span>
+                <span className="font-mono font-black text-indigo-900">{stampConfig.rotation > 0 ? `+${stampConfig.rotation}°` : `${stampConfig.rotation}°`}</span>
               </div>
-
-              <div className="w-56 border-b-2 border-slate-800 my-1" />
-              <p className="text-xs font-black text-blue-950 uppercase tracking-tight">For & On Behalf of: SKY ARIANA LIMITED</p>
-              <p className="font-[vazirmatn] text-xs font-extrabold text-blue-900 mt-0.5" dir="rtl">مهر و امضای مجاز شرکت</p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-              <div className="flex items-center gap-1.5 font-bold">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>Applies automatically to all PDF Exports & A4 Prints</span>
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center">
+                <span className="text-slate-400 block text-[9px] uppercase font-black">Ink Density</span>
+                <span className="font-mono font-black text-purple-900">{(stampConfig.opacity * 100).toFixed(0)}%</span>
               </div>
-              <span className="text-xs font-mono font-black bg-white px-2.5 py-1 rounded-xl border border-slate-200 text-blue-900">
-                Scale: {(currentStampScale * 100).toFixed(0)}%
-              </span>
             </div>
           </div>
 
-          {/* Stamp Controls Card */}
-          <div className="lg:col-span-6 bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-7 space-y-5">
-            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-900 to-purple-900 text-amber-400 shadow-md shadow-indigo-950/20">
-                <Upload className="w-6 h-6" />
+          {/* Right Column: Interactive Stamp Studio & Controls */}
+          <div className="lg:col-span-6 bg-white/95 backdrop-blur-2xl rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/50 p-5 sm:p-7 space-y-5">
+            {/* Header & Sub-Tab Navigation */}
+            <div className="space-y-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-950 text-amber-400 shadow-md shadow-indigo-950/20">
+                  <SlidersHorizontal className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Stamp & Signature Studio</h3>
+                  <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                    تنظیمات پیشرفته مقیاس، مهرهای رسمی، رسم امضا و بارگذاری
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Upload & Scale Stamp</h3>
-                <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
-                  بارگذاری تصویر مهر و تنظیم اندازه
-                </p>
-              </div>
-            </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-2">
-                  Upload Custom Stamp (PNG / SVG / JPG) / بارگذاری مهر
-                </label>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="image/png, image/jpeg, image/webp, image/svg+xml"
-                  className="hidden"
-                  onChange={handleStampUpload}
-                />
+              {/* Sub-Tabs Pill Navigation */}
+              <div className="grid grid-cols-5 gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80">
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full h-12 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 hover:from-blue-950 hover:to-indigo-950 text-white font-black text-xs shadow-xl shadow-blue-950/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  onClick={() => setStampSubTab("tuning")}
+                  className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                    stampSubTab === "tuning"
+                      ? "bg-white text-blue-950 shadow-sm border border-slate-200"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  }`}
+                  title="Adjust size, tilt & ink opacity"
                 >
-                  <Upload className="w-4 h-4 text-amber-400" />
-                  <span>Choose Image File / انتخاب فایل مهر و امضا</span>
+                  <Sliders className="w-3.5 h-3.5 text-blue-700" />
+                  <span className="truncate">Tuning</span>
                 </button>
-                <p className="text-[11px] text-slate-500 mt-1.5 ml-1">
-                  Transparent PNG or SVG recommended for cleanest realistic print look.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setStampSubTab("presets")}
+                  className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                    stampSubTab === "presets"
+                      ? "bg-white text-blue-950 shadow-sm border border-slate-200"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  }`}
+                  title="Choose from official company seals"
+                >
+                  <Building2 className="w-3.5 h-3.5 text-indigo-700" />
+                  <span className="truncate">Presets</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStampSubTab("draw")}
+                  className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                    stampSubTab === "draw"
+                      ? "bg-white text-blue-950 shadow-sm border border-slate-200"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  }`}
+                  title="Draw signature with finger or mouse"
+                >
+                  <PenTool className="w-3.5 h-3.5 text-purple-700" />
+                  <span className="truncate">Draw Sign</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStampSubTab("upload")}
+                  className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                    stampSubTab === "upload"
+                      ? "bg-white text-blue-950 shadow-sm border border-slate-200"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  }`}
+                  title="Upload PNG / SVG file"
+                >
+                  <Upload className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="truncate">Upload</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStampSubTab("text")}
+                  className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                    stampSubTab === "text"
+                      ? "bg-white text-blue-950 shadow-sm border border-slate-200"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-white/60"
+                  }`}
+                  title="Customize signatory titles"
+                >
+                  <Type className="w-3.5 h-3.5 text-emerald-700" />
+                  <span className="truncate">Titles</span>
+                </button>
               </div>
-
-              {/* Stamp Scale Slider */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                  <div className="flex items-center gap-1.5">
-                    <ZoomIn className="w-4 h-4 text-blue-600" />
-                    <span>Stamp Size & Scaling (اندازه مهر):</span>
-                  </div>
-                  <span className="font-mono text-blue-900 font-black">{(currentStampScale * 100).toFixed(0)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.6"
-                  max="2.0"
-                  step="0.05"
-                  value={currentStampScale}
-                  onChange={handleScaleChange}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-700"
-                />
-                <div className="flex justify-between text-[10px] text-slate-400 font-bold">
-                  <span>Small (60%)</span>
-                  <span>Default (100%)</span>
-                  <span>Large (200%)</span>
-                </div>
-              </div>
-
-              {/* Reset to Default */}
-              <button
-                type="button"
-                onClick={handleResetStamp}
-                className="w-full h-11 rounded-2xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-xs shadow-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
-              >
-                <RotateCcw className="w-4 h-4 text-slate-500" />
-                <span>Reset to Official Sky Ariana Seal / بازنشانی به مهر اصلی</span>
-              </button>
             </div>
+
+            {/* SUB-TAB 1: TUNING (اندازه، زاویه و غلظت جوهر) */}
+            {stampSubTab === "tuning" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                {/* Stamp Scale Slider */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      <ZoomIn className="w-4 h-4 text-blue-700" />
+                      <span>Stamp Size & Scaling (اندازه مهر):</span>
+                    </div>
+                    <span className="font-mono text-blue-950 font-black text-sm bg-white px-2 py-0.5 rounded-lg border border-slate-200">
+                      {(stampConfig.scale * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.2"
+                    step="0.05"
+                    value={stampConfig.scale}
+                    onChange={(e) => handleScaleChange(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-800"
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 pt-1">
+                    {[0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((presetScale) => (
+                      <button
+                        key={presetScale}
+                        type="button"
+                        onClick={() => handleScaleChange(presetScale)}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-black transition cursor-pointer border ${
+                          Math.abs(stampConfig.scale - presetScale) < 0.03
+                            ? "bg-blue-900 text-white border-blue-950 shadow-xs"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        {(presetScale * 100).toFixed(0)}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Stamp Rotation Slider */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      <Compass className="w-4 h-4 text-indigo-700" />
+                      <span>Stamp Rotation & Tilt (زاویه چرخش مهر):</span>
+                    </div>
+                    <span className="font-mono text-indigo-950 font-black text-sm bg-white px-2 py-0.5 rounded-lg border border-slate-200">
+                      {stampConfig.rotation > 0 ? `+${stampConfig.rotation}°` : `${stampConfig.rotation}°`}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-10"
+                    max="10"
+                    step="0.5"
+                    value={stampConfig.rotation}
+                    onChange={(e) => handleRotationChange(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-800"
+                  />
+                  <div className="flex items-center justify-between gap-1.5 pt-1">
+                    {[
+                      { label: "-5° Tilt Left", val: -5 },
+                      { label: "-1.5° Realistic", val: -1.5 },
+                      { label: "0° Straight", val: 0 },
+                      { label: "+2° Tilt Right", val: 2 },
+                      { label: "+5° Angle", val: 5 },
+                    ].map((preset) => (
+                      <button
+                        key={preset.val}
+                        type="button"
+                        onClick={() => handleRotationChange(preset.val)}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-black transition cursor-pointer border ${
+                          Math.abs(stampConfig.rotation - preset.val) < 0.3
+                            ? "bg-indigo-900 text-white border-indigo-950 shadow-xs"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Ink Density / Opacity Slider */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      <Palette className="w-4 h-4 text-purple-700" />
+                      <span>Ink Opacity & Density (غلظت و شفافیت جوهر):</span>
+                    </div>
+                    <span className="font-mono text-purple-950 font-black text-sm bg-white px-2 py-0.5 rounded-lg border border-slate-200">
+                      {(stampConfig.opacity * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.4"
+                    max="1.0"
+                    step="0.05"
+                    value={stampConfig.opacity}
+                    onChange={(e) => handleOpacityChange(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-800"
+                  />
+                  <div className="flex items-center justify-between gap-1.5 pt-1">
+                    {[
+                      { label: "50% Soft", val: 0.5 },
+                      { label: "75% Medium", val: 0.75 },
+                      { label: "90% Clear", val: 0.9 },
+                      { label: "100% Solid Ink", val: 1.0 },
+                    ].map((preset) => (
+                      <button
+                        key={preset.val}
+                        type="button"
+                        onClick={() => handleOpacityChange(preset.val)}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-black transition cursor-pointer border ${
+                          Math.abs(stampConfig.opacity - preset.val) < 0.03
+                            ? "bg-purple-900 text-white border-purple-950 shadow-xs"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 2: PRESET OFFICIAL SEALS (مهرهای آماده رسمی) */}
+            {stampSubTab === "presets" && (
+              <div className="space-y-3 animate-in fade-in duration-200">
+                <p className="text-xs text-slate-600 font-bold">
+                  Select an official verified seal to automatically apply across all Bills of Lading:
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {PRESET_SEALS.map((preset) => {
+                    const isSelected = stampConfig.dataUrl === preset.src
+                    return (
+                      <div
+                        key={preset.id}
+                        onClick={() => handleSelectPreset(preset)}
+                        className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                          isSelected
+                            ? "border-blue-900 bg-blue-50/70 shadow-md ring-2 ring-blue-900/20"
+                            : "border-slate-200 bg-white hover:border-blue-300 hover:bg-slate-50/80"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0 shadow-xs">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={preset.src} alt={preset.name} className="max-h-8 max-w-8 object-contain" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-black text-slate-900 leading-tight">{preset.name}</div>
+                              <div className="text-[10px] text-slate-500 font-[vazirmatn] font-bold" dir="rtl">{preset.nameFa}</div>
+                            </div>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 text-blue-900 shrink-0 font-black" />}
+                        </div>
+
+                        <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
+                          {preset.desc}
+                        </p>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                          <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                            {preset.badge}
+                          </span>
+                          <span className="text-[10px] font-bold text-blue-900">
+                            {isSelected ? "Active Seal ✓" : "Click to Apply →"}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 3: DIGITAL SIGNATURE PAD (رسم امضا با قلم لمسی یا ماوس) */}
+            {stampSubTab === "draw" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-800 block">
+                      Draw Signature Pad (رسم امضای دیجیتال)
+                    </label>
+                    <p className="text-[11px] text-slate-500">
+                      Sign smoothly using your mouse, stylus, or touch screen.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearCanvas}
+                    className="px-2.5 py-1 text-xs font-bold text-red-700 hover:bg-red-50 rounded-xl border border-red-200 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Eraser className="w-3.5 h-3.5" />
+                    <span>Clear / پاک کردن</span>
+                  </button>
+                </div>
+
+                {/* Interactive Drawing Canvas */}
+                <div className="relative rounded-2xl border-2 border-slate-300 bg-white p-1 shadow-inner overflow-hidden flex items-center justify-center">
+                  <canvas
+                    ref={canvasRef}
+                    width={500}
+                    height={160}
+                    onPointerDown={startDrawing}
+                    onPointerMove={draw}
+                    onPointerUp={stopDrawing}
+                    onPointerLeave={stopDrawing}
+                    className="w-full h-[150px] touch-none cursor-crosshair bg-transparent"
+                  />
+                  {!hasDrawn && (
+                    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center text-slate-300">
+                      <PenTool className="w-8 h-8 opacity-40 mb-1" />
+                      <span className="text-xs font-bold uppercase tracking-widest opacity-60">Sign Your Name Here</span>
+                      <span className="text-[11px] font-[vazirmatn] font-bold opacity-60" dir="rtl">اینجا امضا کنید</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Color & Width Controls */}
+                <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700">Ink Color:</span>
+                    {[
+                      { color: "#0f3460", name: "Royal Navy" },
+                      { color: "#111827", name: "Carbon Black" },
+                      { color: "#b91c1c", name: "Crimson Red" },
+                      { color: "#047857", name: "Emerald Green" },
+                    ].map((item) => (
+                      <button
+                        key={item.color}
+                        type="button"
+                        onClick={() => setPenColor(item.color)}
+                        className={`w-6 h-6 rounded-full transition-transform cursor-pointer border-2 ${
+                          penColor === item.color ? "scale-125 border-amber-400 shadow-sm" : "border-white hover:scale-110"
+                        }`}
+                        style={{ backgroundColor: item.color }}
+                        title={item.name}
+                      />
+                    ))}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700">Stroke:</span>
+                    {[
+                      { width: 2, label: "Fine" },
+                      { width: 3, label: "Medium" },
+                      { width: 5, label: "Bold" },
+                    ].map((item) => (
+                      <button
+                        key={item.width}
+                        type="button"
+                        onClick={() => setPenWidth(item.width)}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-black cursor-pointer border ${
+                          penWidth === item.width
+                            ? "bg-slate-900 text-white border-slate-900"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleApplySignaturePad}
+                  disabled={!hasDrawn}
+                  className={`w-full h-11 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md ${
+                    hasDrawn
+                      ? "bg-gradient-to-r from-emerald-800 to-teal-900 hover:from-emerald-900 hover:to-teal-950 text-white shadow-emerald-950/20"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                  }`}
+                >
+                  <FileCheck className="w-4 h-4 text-amber-400" />
+                  <span>Apply As Official Signature / اعمال به عنوان امضای رسمی</span>
+                </button>
+              </div>
+            )}
+
+            {/* SUB-TAB 4: UPLOAD CUSTOM (بارگذاری فایل تصویر مهر) */}
+            {stampSubTab === "upload" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div>
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-2">
+                    Upload Custom Stamp or Seal (PNG / SVG / JPG)
+                  </label>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                    className="hidden"
+                    onChange={handleStampUpload}
+                  />
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-8 rounded-3xl border-2 border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/40 hover:bg-blue-50/70 transition-all flex flex-col items-center justify-center text-center gap-3 cursor-pointer group"
+                  >
+                    <div className="w-14 h-14 rounded-2xl bg-white text-blue-900 shadow-md flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Upload className="w-7 h-7 text-blue-800" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-black text-blue-950 block">
+                        Click or Drag Image File Here / انتخاب فایل مهر
+                      </span>
+                      <span className="text-xs text-slate-500 font-medium">
+                        Supports Transparent PNG, SVG, JPG, WEBP (Max 5MB)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-[11px] text-amber-900 flex items-center gap-2 mt-3 font-medium">
+                    <Info className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Transparent PNG or SVG is recommended for the cleanest realistic banknote print look.</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 5: SIGNATORY TEXT & TITLES (عناوین و متن مهر و امضا) */}
+            {stampSubTab === "text" && (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <div>
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                    Signatory Header Text (English) / عنوان امضا‌کننده
+                  </label>
+                  <input
+                    type="text"
+                    value={stampConfig.signatoryTitle}
+                    onChange={(e) => {
+                      const newTitle = e.target.value
+                      setStampConfig(prev => ({ ...prev, signatoryTitle: newTitle }))
+                      saveStoredCompanyStampConfig({ signatoryTitle: newTitle })
+                    }}
+                    placeholder="FOR & ON BEHALF OF: SKY ARIANA LIMITED"
+                    className="w-full h-11 px-4 text-xs font-bold text-slate-900 bg-slate-50 border border-slate-300 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
+                    Signatory Subtitle Text (Persian) / زیرعنوان فارسی
+                  </label>
+                  <input
+                    type="text"
+                    dir="rtl"
+                    value={stampConfig.signatorySubtitle}
+                    onChange={(e) => {
+                      const newSub = e.target.value
+                      setStampConfig(prev => ({ ...prev, signatorySubtitle: newSub }))
+                      saveStoredCompanyStampConfig({ signatorySubtitle: newSub })
+                    }}
+                    placeholder="مهر و امضای مجاز شرکت"
+                    className="w-full h-11 px-4 text-xs font-bold font-[vazirmatn] text-slate-900 bg-slate-50 border border-slate-300 rounded-2xl focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition"
+                  />
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-slate-100">
+                  <span className="text-[11px] font-bold text-slate-500 block">Quick Signatory Presets:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      {
+                        title: "FOR & ON BEHALF OF: SKY ARIANA LIMITED",
+                        sub: "مهر و امضای مجاز شرکت",
+                        label: "Sky Ariana Standard",
+                      },
+                      {
+                        title: "FOR & ON BEHALF OF: SKY BALAM LOGISTICS",
+                        sub: "مهر و امضای شرکت حمل و نقل بین‌المللی سکای بالام",
+                        label: "Sky Balam Logistics",
+                      },
+                      {
+                        title: "CUSTOMS TRANSIT & CLEARANCE DIVISION",
+                        sub: "بخش ترانزیت و ترخیص گمرکی",
+                        label: "Customs Clearance",
+                      },
+                    ].map((item, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setStampConfig(prev => ({ ...prev, signatoryTitle: item.title, signatorySubtitle: item.sub }))
+                          saveStoredCompanyStampConfig({ signatoryTitle: item.title, signatorySubtitle: item.sub })
+                          toast.success(`Applied title preset: ${item.label}`)
+                        }}
+                        className="px-2.5 py-1 rounded-xl text-[10px] font-black bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-900 border border-slate-200 transition cursor-pointer"
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

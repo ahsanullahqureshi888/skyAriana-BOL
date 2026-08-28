@@ -1,7 +1,7 @@
 "use client"
 
 import { useApp } from "@/lib/app-context"
-import { Building2, FileText, Landmark, Settings as SettingsIcon, Cloud, Receipt } from "lucide-react"
+import { Building2, FileText, Landmark, Settings as SettingsIcon, Cloud, Receipt, Truck } from "lucide-react"
 import { useState } from "react"
 import { CloudSyncModal } from "@/components/bill-of-lading/cloud-sync-modal"
 
@@ -22,11 +22,19 @@ export function MobileBottomNav() {
     },
     {
       id: "bol",
-      label: "BOL Editor",
+      label: "BOL",
       icon: FileText,
       activeClass: "text-amber-600 bg-amber-50 border-amber-200",
       activeIndicator: "bg-amber-500",
       onClick: () => setView("bol")
+    },
+    {
+      id: "sky-cmr",
+      label: "Sky CMR",
+      icon: Truck,
+      activeClass: "text-blue-600 bg-blue-50 border-blue-200",
+      activeIndicator: "bg-blue-600",
+      onClick: () => setView("sky-cmr")
     },
     {
       id: "invoice-pad",

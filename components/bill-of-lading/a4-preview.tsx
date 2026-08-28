@@ -30,8 +30,9 @@ import {
 import {
   COMPANY_STAMP_SIGNATURE_SRC,
   COMPANY_STAMP_SIGNATURE_DATA_URL,
-  getStoredCompanyStamp,
-  getStoredCompanyStampScale,
+  DEFAULT_STAMP_CONFIG,
+  getStoredCompanyStampConfig,
+  type CompanyStampConfig,
 } from "@/lib/company-stamp-data"
 
 interface A4PreviewProps {
@@ -1784,25 +1785,28 @@ export function A4Preview({
   onToggleStampSignature,
 }: A4PreviewProps) {
   const [internalStampActive, setInternalStampActive] = useState(true)
-  const isStampActive = showStampSignature !== undefined ? showStampSignature : internalStampActive
-  const [stampImageSrc, setStampImageSrc] = useState<string>(COMPANY_STAMP_SIGNATURE_SRC)
-  const [stampScale, setStampScale] = useState<number>(1.0)
+  const [stampConfig, setStampConfig] = useState<CompanyStampConfig>(DEFAULT_STAMP_CONFIG)
+  const isStampActive = showStampSignature !== undefined ? showStampSignature : (internalStampActive && stampConfig.enabled)
 
   useEffect(() => {
-    setStampImageSrc(getStoredCompanyStamp())
-    setStampScale(getStoredCompanyStampScale())
+    setStampConfig(getStoredCompanyStampConfig())
 
     const handleStampUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ dataUrl?: string; scale?: number }>
-      if (customEvent.detail?.dataUrl) {
-        setStampImageSrc(customEvent.detail.dataUrl)
+      const customEvent = e as CustomEvent<Partial<CompanyStampConfig>>
+      if (customEvent.detail) {
+        setStampConfig(prev => ({
+          ...prev,
+          ...customEvent.detail,
+          dataUrl: customEvent.detail?.dataUrl !== undefined ? customEvent.detail.dataUrl : prev.dataUrl,
+          scale: customEvent.detail?.scale !== undefined ? customEvent.detail.scale : prev.scale,
+          rotation: customEvent.detail?.rotation !== undefined ? customEvent.detail.rotation : prev.rotation,
+          opacity: customEvent.detail?.opacity !== undefined ? customEvent.detail.opacity : prev.opacity,
+          signatoryTitle: customEvent.detail?.signatoryTitle !== undefined ? customEvent.detail.signatoryTitle : prev.signatoryTitle,
+          signatorySubtitle: customEvent.detail?.signatorySubtitle !== undefined ? customEvent.detail.signatorySubtitle : prev.signatorySubtitle,
+          enabled: customEvent.detail?.enabled !== undefined ? customEvent.detail.enabled : prev.enabled,
+        }))
       } else {
-        setStampImageSrc(getStoredCompanyStamp())
-      }
-      if (customEvent.detail?.scale !== undefined) {
-        setStampScale(customEvent.detail.scale)
-      } else {
-        setStampScale(getStoredCompanyStampScale())
+        setStampConfig(getStoredCompanyStampConfig())
       }
     }
 
@@ -2179,14 +2183,18 @@ export function A4Preview({
                 {isStampActive ? (
                   <div
                     className="absolute -bottom-1 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10"
-                    style={{ transform: `scale(${stampScale})`, transformOrigin: "center bottom" }}
+                    style={{ transform: `scale(${stampConfig.scale})`, transformOrigin: "center bottom" }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       data-company-stamp-img="true"
-                      src={stampImageSrc || COMPANY_STAMP_SIGNATURE_SRC}
-                      alt="Sky Ariana Limited Official Stamp & Signature"
-                      className="h-[35mm] max-h-[36mm] w-auto max-w-[58mm] object-contain drop-shadow-sm transform -rotate-1"
+                      src={stampConfig.dataUrl || COMPANY_STAMP_SIGNATURE_SRC}
+                      alt="Company Official Stamp & Signature"
+                      className="h-[35mm] max-h-[36mm] w-auto max-w-[58mm] object-contain drop-shadow-sm transition-all duration-200"
+                      style={{
+                        transform: `rotate(${stampConfig.rotation}deg)`,
+                        opacity: stampConfig.opacity,
+                      }}
                       crossOrigin="anonymous"
                       onError={(e) => {
                         const target = e.currentTarget
@@ -2208,10 +2216,10 @@ export function A4Preview({
 
               {/* Authorized Labels */}
               <p className="text-[7pt] font-black text-blue-950 uppercase tracking-tight leading-tight">
-                For & On Behalf of: {companyTitle}
+                {stampConfig.signatoryTitle || `For & On Behalf of: ${companyTitle}`}
               </p>
               <p className="persian-text bol-persian-text font-[vazirmatn] text-[6.2pt] font-extrabold text-blue-900 leading-tight mt-0.2" dir="rtl">
-                {labels.companyStampSignFa || "مهر و امضای مجاز شرکت"}
+                {stampConfig.signatorySubtitle || labels.companyStampSignFa || "مهر و امضای مجاز شرکت"}
               </p>
             </div>
           </div>

@@ -20,6 +20,7 @@ import {
   Download,
   UploadCloud,
   CheckCircle2,
+  Truck,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
@@ -54,7 +55,7 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
         return
       }
 
-      // Alt + 1..7 Fast Navigation
+      // Alt + 1..8 Fast Navigation
       if (e.altKey && !e.ctrlKey && !e.metaKey) {
         if (e.key === "1") {
           e.preventDefault()
@@ -70,11 +71,14 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
           setView("bol")
         } else if (e.key === "5") {
           e.preventDefault()
-          setView("invoice-pad")
+          setView("sky-cmr")
         } else if (e.key === "6") {
           e.preventDefault()
-          setView("bank")
+          setView("invoice-pad")
         } else if (e.key === "7") {
+          e.preventDefault()
+          setView("bank")
+        } else if (e.key === "8") {
           e.preventDefault()
           setView("settings")
         }
@@ -129,12 +133,24 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
         },
       },
       {
+        id: "nav-sky-cmr",
+        title: "Sky CMR Border & International Consignment Note",
+        subtitle: "Create, edit, auto-calculate & print international CMR border waybills",
+        category: "Navigation",
+        icon: Truck,
+        badge: "Alt+5",
+        perform: () => {
+          setView("sky-cmr")
+          onOpenChange(false)
+        },
+      },
+      {
         id: "nav-invoice-pad",
         title: "Commercial Invoice Pad",
         subtitle: "Print-ready A4 commercial invoices, customs valuations & signatures",
         category: "Navigation",
         icon: Receipt,
-        badge: "Alt+5",
+        badge: "Alt+6",
         perform: () => {
           setView("invoice-pad")
           onOpenChange(false)
@@ -146,7 +162,7 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
         subtitle: "Live online banking, financial ledgers & currency transactions",
         category: "Navigation",
         icon: Landmark,
-        badge: "Alt+6",
+        badge: "Alt+7",
         perform: () => {
           setView("bank")
           onOpenChange(false)
@@ -158,7 +174,7 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
         subtitle: "Manage users, access permissions, backups & cloud sync",
         category: "Navigation",
         icon: Settings,
-        badge: "Alt+7",
+        badge: "Alt+8",
         perform: () => {
           setView("settings")
           onOpenChange(false)
@@ -231,6 +247,35 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
           )
         },
       })
+    }
+
+    // Append Saved CMR Waybills
+    if (typeof window !== "undefined") {
+      try {
+        const rawCmr = window.localStorage.getItem("cmr_saved_archive")
+        if (rawCmr) {
+          const cmrList = JSON.parse(rawCmr)
+          if (Array.isArray(cmrList)) {
+            for (const doc of cmrList.slice(0, 25)) {
+              const cmrNum = doc.cmr_number || doc.id || "CMR"
+              const consignor = doc.consignor || ""
+              const consignee = doc.consignee || ""
+              list.push({
+                id: `cmr-${doc.id || cmrNum}`,
+                title: `${cmrNum} • ${doc.commodity || "Waybill"}`,
+                subtitle: [consignor, consignee].filter(Boolean).join(" ➔ ") || "CMR International Waybill",
+                category: "Documents",
+                icon: Truck,
+                badge: "CMR",
+                perform: () => {
+                  setView("sky-cmr")
+                  onOpenChange(false)
+                },
+              })
+            }
+          }
+        }
+      } catch (e) {}
     }
 
     return list

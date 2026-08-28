@@ -1,0 +1,2518 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<title>CMR Consignment Note - Page 2</title>
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Vazirmatn:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
+
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #bfdbfe;
+  color: #1e3a8a;
+}
+
+:root {
+  --bg-app: #f1f5f9;
+  --bg-dots: rgba(148, 163, 184, 0.4);
+  --glass-header-bg: rgba(255, 255, 255, 0.75);
+  --glass-header-border: rgba(255, 255, 255, 0.85);
+  --glass-header-shadow: 0 16px 36px -8px rgba(15, 23, 42, 0.08), inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95);
+  --text-header: #0f172a;
+  --text-muted: #64748b;
+  --border-header: rgba(226, 232, 240, 0.8);
+  --btn-glass-bg: rgba(255, 255, 255, 0.8);
+  --btn-glass-border: rgba(255, 255, 255, 0.9);
+  --btn-glass-text: #334155;
+  --btn-glass-hover: rgba(255, 255, 255, 0.95);
+  --btn-glass-shadow: 0 2px 6px rgba(15, 23, 42, 0.04), inset 0 1px 1px rgba(255, 255, 255, 1);
+  --shadow-sheet: 0 30px 65px -15px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(255, 255, 255, 0.7);
+  --input-blue: #dbeafe;
+  --input-blue-focus: #bfdbfe;
+  --panel-bg: rgba(255, 255, 255, 0.88);
+  --card-bg: rgba(248, 250, 252, 0.75);
+}
+
+body.theme-dark {
+  --bg-app: #090d16;
+  --bg-dots: rgba(51, 65, 85, 0.45);
+  --glass-header-bg: rgba(15, 23, 42, 0.78);
+  --glass-header-border: rgba(255, 255, 255, 0.12);
+  --glass-header-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.6), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+  --text-header: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-header: rgba(51, 65, 85, 0.8);
+  --btn-glass-bg: rgba(30, 41, 59, 0.8);
+  --btn-glass-border: rgba(255, 255, 255, 0.08);
+  --btn-glass-text: #f1f5f9;
+  --btn-glass-hover: rgba(51, 65, 85, 0.9);
+  --btn-glass-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  --shadow-sheet: 0 35px 75px -15px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  --input-blue: #dbeafe;
+  --input-blue-focus: #bfdbfe;
+  --panel-bg: rgba(17, 24, 39, 0.92);
+  --card-bg: rgba(30, 41, 59, 0.7);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-app);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(124, 58, 237, 0.08) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%),
+    radial-gradient(var(--bg-dots) 1.2px, transparent 1.2px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px;
+  background-attachment: fixed;
+  font-family: 'Plus Jakarta Sans', 'Vazirmatn', Arial, sans-serif;
+  color: #000000;
+  font-size: 9.5px;
+  line-height: 1.2;
+  transition: background-color 0.25s ease;
+  min-height: 100vh;
+}
+
+/* LIQUID GLASS FLOATING HEADER */
+.app-header-container {
+  padding: 10px 18px 0 18px;
+  position: sticky;
+  top: 0;
+  z-index: 99999;
+}
+.app-header {
+  background: var(--glass-header-bg);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  color: var(--text-header);
+  padding: 0 16px;
+  height: 54px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--glass-header-shadow);
+  border-radius: 16px;
+  border: 1px solid var(--glass-header-border);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  transition: all 0.2s ease;
+}
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 13px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4), inset 0 1px 1px rgba(255,255,255,0.4);
+}
+.brand-text h1 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--text-header);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.brand-text .sub-title {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* LIQUID GLASS AUTO-SAVE BADGE WITH GLOWING AURA */
+.autosave-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  backdrop-filter: blur(8px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+body.theme-dark .autosave-badge {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pulseGreen 1.6s infinite;
+  flex-shrink: 0;
+}
+@keyframes pulseGreen {
+  0% { transform: scale(0.92); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.75); }
+  70% { transform: scale(1); box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.92); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+.autosave-badge.saving {
+  color: #d97706 !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  background: rgba(245, 158, 11, 0.15) !important;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.2) !important;
+}
+.autosave-badge.saving .pulse-dot {
+  background: #f59e0b;
+  animation: pulseAmber 1s infinite;
+}
+@keyframes pulseAmber {
+  0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.8); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+  100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+/* LIQUID GLASS BUTTONS & GROUPS */
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.btn-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.03);
+  padding: 2.5px;
+  border-radius: 9px;
+  border: 1px solid var(--border-header);
+}
+body.theme-dark .btn-group {
+  background: rgba(255, 255, 255, 0.04);
+}
+.btn {
+  background: var(--btn-glass-bg);
+  color: var(--btn-glass-text);
+  border: 1px solid var(--btn-glass-border);
+  padding: 5.5px 10.5px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  box-shadow: var(--btn-glass-shadow);
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+.btn:hover {
+  background: var(--btn-glass-hover);
+  border-color: #94a3b8;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1), inset 0 1px 1px rgba(255,255,255,1);
+}
+.btn:active {
+  transform: translateY(0);
+}
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af) !important;
+  box-shadow: 0 5px 15px rgba(37, 99, 235, 0.5) !important;
+}
+.btn-accent {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+  border-color: #8b5cf6 !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(124, 58, 237, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+}
+.btn-accent:hover {
+  background: linear-gradient(135deg, #6d28d9, #5b21b6) !important;
+  box-shadow: 0 5px 15px rgba(124, 58, 237, 0.5) !important;
+}
+.btn-success {
+  background: linear-gradient(135deg, #059669, #047857) !important;
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.3) !important;
+}
+.btn-success:hover {
+  background: linear-gradient(135deg, #047857, #065f46) !important;
+}
+.btn-danger {
+  background: #ef4444 !important;
+  border-color: #f87171 !important;
+  color: #ffffff !important;
+}
+.btn-danger:hover {
+  background: #dc2626 !important;
+}
+
+/* LIQUID GLASS PAGE SWITCHER DOCK */
+.doc-page-tabs {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  margin-bottom: -16px;
+  z-index: 10;
+}
+.page-tab-btn {
+  background: var(--glass-header-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-header-border);
+  padding: 6px 16px;
+  border-radius: 30px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.page-tab-btn:hover, .page-tab-btn.active {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border-color: #3b82f6;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+/* LIQUID GLASS FLOATING BOTTOM CONTROLLER */
+.floating-zoom-panel {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--glass-header-bg);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid var(--glass-header-border);
+  border-radius: 40px;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.15), inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.9);
+  z-index: 9999;
+  transition: all 0.2s ease;
+}
+body.theme-dark .floating-zoom-panel {
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+}
+.zoom-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-header);
+  font-size: 14px;
+  font-weight: 700;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.zoom-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+body.theme-dark .zoom-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.zoom-level {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-header);
+  padding: 0 6px;
+  min-width: 44px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+}
+.zoom-btn-action {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3.5px 9px;
+  border-radius: 14px;
+  background: var(--btn-glass-bg);
+  border: 1px solid var(--border-header);
+  color: var(--text-header);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.zoom-btn-action:hover {
+  background: var(--btn-glass-hover);
+  transform: translateY(-1px);
+}
+
+/* DOCUMENT CANVAS */
+.workspace-canvas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0 90px 0;
+  gap: 36px;
+  min-height: calc(100vh - 56px);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top center;
+}
+
+/* EXACT A4 PAGE SHEET FULLY OCCUPIED */
+.cmr-page-sheet {
+  width: 210mm;
+  height: 297mm;
+  min-height: 297mm;
+  max-height: 297mm;
+  padding: 6mm 8mm 5mm 8mm;
+  background: #ffffff;
+  box-shadow: var(--shadow-sheet);
+  border-radius: 4px;
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  overflow: hidden;
+  transition: box-shadow 0.25s ease;
+}
+
+@media print {
+  body {
+    background: transparent !important;
+    background-image: none !important;
+  }
+  .app-header-container, .modal-overlay, .toast-container, .floating-zoom-panel, .doc-page-tabs, .mobile-bottom-bar {
+    display: none !important;
+  }
+  .workspace-canvas {
+    padding: 0 !important;
+    gap: 0 !important;
+    background: transparent !important;
+    transform: none !important;
+  }
+  .cmr-page-sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 6mm 8mm 5mm 8mm !important;
+    page-break-after: always !important;
+    page-break-inside: avoid !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    border-radius: 0 !important;
+  }
+  .blue-field, .check-square {
+    background-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
+/* TOP HEADER TEXT */
+.top-meta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2px;
+  width: 100%;
+}
+.top-meta-left {
+  flex: 1;
+  text-align: right;
+  font-size: 7.5px;
+  line-height: 1.2;
+}
+.top-meta-left .fa-t {
+  font-weight: 700;
+  display: block;
+}
+.top-meta-left .en-t {
+  font-family: Arial, sans-serif;
+  font-size: 7px;
+  display: block;
+  color: #333;
+}
+.top-meta-right {
+  font-size: 9.5px;
+  font-weight: bold;
+  text-align: right;
+  white-space: nowrap;
+  padding-left: 14px;
+}
+
+/* TABLE BASE */
+.grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1.5px solid #000;
+  table-layout: fixed;
+}
+.grid-table td, .grid-table th {
+  border: 1px solid #000;
+  vertical-align: top;
+  padding: 3px 4px;
+  background: #fff;
+  overflow: hidden;
+}
+
+/* BOX LABELS */
+.box-lbl {
+  margin-bottom: 2px;
+  text-align: left;
+}
+.box-lbl .fa-title {
+  font-weight: 700;
+  font-size: 9.2px;
+  color: #000;
+  display: block;
+  line-height: 1.15;
+}
+.box-lbl .en-title {
+  font-family: Arial, sans-serif;
+  font-size: 8.2px;
+  font-weight: 600;
+  color: #222;
+  display: block;
+  line-height: 1.1;
+  padding-left: 8px;
+}
+
+/* LIGHT BLUE INPUT BOXES (STRICT OVERFLOW CONTROL) */
+.blue-field {
+  background-color: var(--input-blue);
+  outline: none;
+  font-size: 8.5px;
+  font-family: 'Plus Jakarta Sans', 'Vazirmatn', Arial, sans-serif;
+  color: #000;
+  min-height: 16px;
+  padding: 2px 4px;
+  border-radius: 2px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: hidden;
+  line-height: 1.25;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.blue-field:focus {
+  background-color: var(--input-blue-focus);
+  box-shadow: inset 0 0 0 1.5px #2563eb, 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+.blue-field.highlight-flash {
+  animation: flashYellow 1.5s ease-out;
+}
+@keyframes flashYellow {
+  0% { background-color: #fef08a; }
+  100% { background-color: #dbeafe; }
+}
+
+/* FULL-HEIGHT ROW SPECIFICATIONS ON PAGE 1 */
+.h-b1 { height: 96px; }
+.h-b2 { height: 96px; }
+.h-b3 { height: 72px; }
+.h-b4 { height: 95px; }
+.h-b5 { height: 50px; }
+.h-b16 { height: 96px; }
+.h-b17 { height: 72px; }
+.h-b18 { height: 145px; }
+
+/* CMR HEADER BLOCK (Top Right) */
+.cmr-header-box {
+  display: flex;
+  height: 100%;
+  gap: 4px;
+}
+.cmr-hdr-left {
+  flex: 1.35;
+  border-right: 1px solid #000;
+  padding-right: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.cmr-hdr-left .main-heading-fa {
+  font-weight: 800;
+  font-size: 9.8px;
+  line-height: 1.25;
+}
+.cmr-hdr-left .main-heading-en {
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 8.2px;
+  line-height: 1.15;
+}
+.cmr-hdr-left .clause-fa {
+  font-size: 7.2px;
+  line-height: 1.2;
+  text-align: justify;
+  font-weight: 500;
+}
+.cmr-hdr-right {
+  flex: 0.95;
+  padding-left: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.cmr-hdr-right .top-id-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: bold;
+  font-size: 9.8px;
+}
+.cmr-hdr-right .clause-en {
+  font-family: Arial, sans-serif;
+  font-size: 7.2px;
+  line-height: 1.2;
+  text-align: left;
+}
+
+/* GOODS TABLE (Boxes 6 - 12) FULL HEIGHT */
+.goods-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: -1px;
+  table-layout: fixed;
+}
+.goods-table th {
+  border: 1px solid #000;
+  padding: 4px 2px;
+  background: #fff;
+  vertical-align: top;
+  text-align: left;
+}
+.goods-table th .th-fa {
+  font-weight: 700;
+  font-size: 8.8px;
+  display: block;
+  line-height: 1.2;
+}
+.goods-table th .th-en {
+  font-family: Arial, sans-serif;
+  font-size: 7.8px;
+  display: block;
+  line-height: 1.15;
+}
+.goods-table td {
+  border: 1px solid #000;
+  padding: 2px 2px;
+  background: #fff;
+  vertical-align: top;
+  overflow: hidden;
+}
+.goods-row-main {
+  height: 65px;
+}
+.goods-row-sub {
+  height: 28px;
+}
+.adr-subgrid {
+  width: 100%;
+  border-collapse: collapse;
+}
+.adr-subgrid td {
+  border: 1px solid #000;
+  text-align: center;
+  font-size: 8px;
+  font-weight: bold;
+  padding: 3px 2px;
+  line-height: 1.2;
+}
+
+/* BOTTOM SECTION (Boxes 13 & 19) FULL HEIGHT */
+.bottom-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: -1px;
+  table-layout: fixed;
+}
+.bottom-table td {
+  border: 1px solid #000;
+  vertical-align: top;
+  padding: 4px 5px;
+  background: #fff;
+  overflow: hidden;
+}
+.b13-container {
+  height: 275px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.declared-value-container {
+  border-top: 1px solid #000;
+  padding-top: 4px;
+}
+.declared-val-row {
+  font-weight: bold;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.declared-disclaimer {
+  font-size: 7.5px;
+  line-height: 1.25;
+  margin-top: 4px;
+  color: #111;
+}
+
+/* CHARGES CALCULATION TABLE (Box 19) FULL HEIGHT */
+.calc-charges-grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+.calc-charges-grid th {
+  border: 1px solid #000;
+  padding: 4px 2px;
+  font-size: 8.2px;
+  font-weight: bold;
+  background: #fff;
+  text-align: center;
+}
+.calc-charges-grid td {
+  border: 1px solid #000;
+  padding: 2px 3px;
+  height: 38px;
+  font-size: 8.2px;
+}
+
+/* PAGE 2 FULL UNIFIED TABLE */
+.p2-master-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1.5px solid #000;
+  table-layout: fixed;
+}
+.p2-master-table td {
+  border: 1px solid #000;
+  vertical-align: top;
+  padding: 4px 6px;
+  background: #fff;
+  overflow: hidden;
+}
+.ruled-row-item {
+  border-bottom: 1px solid #000;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 1px 2px;
+}
+.box15-content {
+  height: 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.check-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.check-square {
+  width: 15px;
+  height: 15px;
+  border: 1.5px solid #000;
+  background: #dbeafe;
+  display: inline-block;
+  cursor: pointer;
+  text-align: center;
+  font-size: 12px;
+  line-height: 15px;
+  font-weight: bold;
+}
+.p2-col-content {
+  height: 320px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.sign-stamp-block {
+  margin-top: auto;
+  padding-top: 24px;
+  border-top: 1px dashed #aaa;
+  text-align: center;
+  font-weight: bold;
+  font-size: 9px;
+}
+.veh-entry-row {
+  display: flex;
+  align-items: center;
+  font-size: 9px;
+  margin-top: 8px;
+}
+.veh-entry-line {
+  flex: 1;
+  margin-left: 6px;
+  height: 24px;
+}
+.p2-note-footer {
+  font-size: 8px;
+  margin-top: 8px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+/* LIQUID GLASS MODALS */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(11, 15, 25, 0.65);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  z-index: 100000;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.modal-overlay.active {
+  display: flex;
+}
+.modal-box {
+  background: var(--panel-bg);
+  backdrop-filter: blur(30px) saturate(190%);
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+  border: 1px solid var(--glass-header-border);
+  border-radius: 20px;
+  max-width: 920px;
+  width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 35px 70px -15px rgba(0, 0, 0, 0.5), inset 0 1px 1.5px rgba(255, 255, 255, 0.9);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--text-header);
+  animation: modalFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.modal-box.modal-archive {
+  max-width: 1140px;
+  width: 95vw;
+}
+.modal-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-header);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card-bg);
+  border-radius: 20px 20px 0 0;
+}
+.modal-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.modal-body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.upload-dropzone {
+  border: 2px dashed #94a3b8;
+  border-radius: 14px;
+  padding: 22px;
+  text-align: center;
+  background: var(--card-bg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.upload-dropzone:hover {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.06);
+}
+.ocr-progress-bar {
+  display: none;
+  width: 100%;
+  background: var(--border-header);
+  border-radius: 999px;
+  height: 8px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+.ocr-progress-inner {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #2563eb, #7c3aed);
+  transition: width 0.3s ease;
+}
+.preset-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.preset-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--border-header);
+  padding: 7px 14px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--text-header);
+  backdrop-filter: blur(8px);
+}
+.preset-btn:hover, .preset-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+.input-textarea {
+  width: 100%;
+  height: 150px;
+  border: 1px solid var(--border-header);
+  border-radius: 12px;
+  padding: 14px;
+  font-family: 'JetBrains Mono', Consolas, monospace, sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+  resize: vertical;
+  outline: none;
+  background: var(--panel-bg);
+  color: var(--text-header);
+}
+.input-textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+.modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border-header);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card-bg);
+  border-radius: 0 0 20px 20px;
+}
+
+/* LIQUID GLASS ARCHIVE CARDS */
+.doc-search-box {
+  width: 100%;
+  padding: 9px 16px;
+  border: 1px solid var(--border-header);
+  border-radius: 9px;
+  font-size: 13px;
+  outline: none;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--panel-bg);
+  color: var(--text-header);
+}
+.doc-search-box:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+}
+.archive-card-row {
+  background: var(--card-bg);
+  border: 1px solid var(--border-header);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: 140px 1.4fr 1.4fr 1.2fr 180px;
+  gap: 14px;
+  align-items: center;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+.archive-card-row:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 8px 20px rgba(37,99,235,0.1);
+  transform: translateY(-1.5px);
+}
+.archive-badge-cmr {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: #2563eb;
+  background: rgba(37,99,235,0.1);
+  padding: 4px 8px;
+  border-radius: 7px;
+  display: inline-block;
+}
+.archive-status-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(16,185,129,0.12);
+  color: #059669;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+.route-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+.action-btn-group {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.archive-filter-tabs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  overflow-x: auto;
+}
+.filter-tab-pill {
+  background: var(--card-bg);
+  border: 1px solid var(--border-header);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.filter-tab-pill.active, .filter-tab-pill:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+
+/* TOAST NOTIFICATION CONTAINER */
+.toast-container {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 999999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.toast {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #f8fafc;
+  border-left: 4px solid #2563eb;
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+.toast.toast-success {
+  border-left-color: #10b981;
+}
+.toast.toast-danger {
+  border-left-color: #ef4444;
+}
+@keyframes toastSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* MOBILE BOTTOM BAR COMPONENT */
+.mobile-bottom-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--glass-header-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-top: 1px solid var(--glass-header-border);
+  padding: 6px 10px;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 99998;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+}
+.mobile-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  color: var(--text-header);
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+.mobile-nav-btn:active {
+  background: rgba(37, 99, 235, 0.12);
+  transform: scale(0.92);
+}
+.mobile-nav-btn .m-icon {
+  font-size: 18px;
+}
+
+/* MOBILE & TABLET RESPONSIVE STYLES */
+@media screen and (max-width: 900px) {
+  .app-header-container {
+    padding: 6px 8px 0 8px;
+  }
+  .app-header {
+    padding: 0 10px;
+  }
+  .app-brand .sub-title {
+    display: none;
+  }
+  .toolbar-actions {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .toolbar-actions::-webkit-scrollbar {
+    display: none;
+  }
+  .floating-zoom-panel {
+    bottom: 64px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .workspace-canvas {
+    padding: 12px 6px 120px 6px;
+    gap: 20px;
+    overflow-x: auto;
+    width: 100%;
+  }
+  .modal-overlay {
+    padding: 8px;
+    align-items: flex-end;
+  }
+  .modal-box {
+    max-height: 90vh;
+    border-radius: 20px 20px 0 0;
+  }
+  .mobile-bottom-bar {
+    display: flex !important;
+  }
+}
+
+</style>
+</head>
+<body>
+<div class="workspace-canvas" style="padding:0; background:transparent;">
+
+  <div class="cmr-page-sheet" id="page2">
+    <table class="p2-master-table">
+      <!-- ROW 1: BOX 14 AND TOP-RIGHT RULED LINES -->
+      <tr>
+        <td style="width: 30%; height: 230px; padding: 0;">
+          <div style="padding: 3px 5px;">
+            <div class="box-lbl">
+              <span class="en-title" style="padding-left:0; font-size:9.2px;">14. Cash on delivery</span>
+              <span class="fa-title" style="font-size:8.2px; color:#333;">بازپرداخت / پس‌کرایه</span>
+            </div>
+          </div>
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item" style="border-bottom: none;"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+        </td>
+
+        <td colspan="2" style="width: 70%; padding: 0;">
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+          <div class="ruled-row-item" style="border-bottom: none;"><div class="blue-field" contenteditable="true" style="width:100%;"></div></div>
+        </td>
+      </tr>
+
+      <!-- ROW 2: BOX 15 AND BOX 20 -->
+      <tr>
+        <td style="width: 40%;" colspan="1">
+          <div class="box15-content">
+            <div>
+              <div class="box-lbl">
+                <span class="en-title" style="padding-left:0; font-size:9.2px;">15. Instructions as to payment for carriage</span>
+                <span class="fa-title" style="font-size:8.2px; color:#333;">شرایط پرداخت کرایه</span>
+              </div>
+              <div style="margin-top: 14px;">
+                <div class="check-opt">
+                  <span class="check-square" onclick="this.innerText = this.innerText==='✓'?'':'✓'; triggerAutoSave();"></span>
+                  <div>
+                    <div style="font-size: 9px; font-weight: 700;">Carriage paid (فرانکو)</div>
+                    <div style="font-size: 8px; color: #444;">Freight prepaid by sender</div>
+                  </div>
+                </div>
+                <div class="check-opt">
+                  <span class="check-square" onclick="this.innerText = this.innerText==='✓'?'':'✓'; triggerAutoSave();"></span>
+                  <div>
+                    <div style="font-size: 9px; font-weight: 700;">Carriage forward (غیر فرانکو / پس‌کرایه)</div>
+                    <div style="font-size: 8px; color: #444;">Freight payable by consignee</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </td>
+
+        <td style="width: 60%; height: 140px;" colspan="2">
+          <div class="box-lbl">
+            <span class="en-title" style="padding-left:0; font-size:9.2px;">20. Special agreements</span>
+            <span class="fa-title" style="font-size:8.2px; color:#333;">شرایط و توافقات ویژه</span>
+          </div>
+          <div class="blue-field" contenteditable="true" style="height: 100px;" id="f_p2_special_agr"></div>
+        </td>
+      </tr>
+
+      <!-- ROW 3: ROW 21 (FULL WIDTH ROOMY CONTAINER) -->
+      <tr>
+        <td colspan="3" style="width: 100%; padding: 6px 10px;">
+          <div style="display: flex; gap: 20px; font-size: 9px; align-items: center;">
+            <div style="display: flex; gap: 6px; align-items: center; flex: 1.5;">
+              <span style="font-weight: bold; white-space: nowrap;">21. Established in / تنظیم شده در:</span>
+              <div class="blue-field" contenteditable="true" style="flex: 1; min-height: 20px; min-width: 160px;" id="f_est_in"></div>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center; flex: 1;">
+              <span style="font-weight: bold; white-space: nowrap;">Date / on:</span>
+              <div class="blue-field" contenteditable="true" style="flex: 1; min-height: 20px; min-width: 100px;" id="f_est_on"></div>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <!-- ROW 4: 3-COLUMN EXECUTION BLOCK (BOXES 22, 23, 24) -->
+      <tr>
+        <td style="width: 33.333%;">
+          <div class="p2-col-content">
+            <div>
+              <div class="box-lbl">
+                <span class="en-title" style="padding-left:0; font-size:9.2px;">22. Loading timing</span>
+                <span class="fa-title" style="font-size:8.2px; color:#333;">ورود و خروج بارگیری</span>
+              </div>
+              <div style="font-size: 8.5px; line-height: 1.5; margin-top: 8px;">
+                <div><strong>Arriving for loading:</strong></div>
+                <div style="display: flex; gap: 4px; align-items: center; margin-top: 3px;">
+                  <div class="blue-field" contenteditable="true" style="width: 36px; text-align: center;" id="f_load_arr_h"></div>
+                  <span>hour</span>
+                  <div class="blue-field" contenteditable="true" style="width: 36px; text-align: center;" id="f_load_arr_m"></div>
+                  <span>min</span>
+                </div>
+
+                <div style="margin-top: 10px;"><strong>Leaving:</strong></div>
+                <div style="display: flex; gap: 4px; align-items: center; margin-top: 3px;">
+                  <div class="blue-field" contenteditable="true" style="width: 36px; text-align: center;" id="f_load_dep_h"></div>
+                  <span>hour</span>
+                  <div class="blue-field" contenteditable="true" style="width: 36px; text-align: center;" id="f_load_dep_m"></div>
+                  <span>min</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sign-stamp-block">
+              <div style="font-size: 9px;">Stamp and signature of sender</div>
+              <div style="font-size: 7.8px; color:#444;">امضا و مهر فرستنده</div>
+            </div>
+          </div>
+        </td>
+
+        <td style="width: 33.333%;">
+          <div class="p2-col-content">
+            <div>
+              <div class="box-lbl">
+                <span class="en-title" style="padding-left:0; font-size:9.2px;">23. Routing list No.</span>
+                <span class="fa-title" style="font-size:8.2px; color:#333;">راهنامه / بارنامه شماره</span>
+              </div>
+              <div style="display: flex; gap: 4px; font-size: 8.5px; align-items: center; margin-top: 4px;">
+                <span>No.</span>
+                <div class="blue-field" contenteditable="true" style="width: 80px;" id="f_rout_no"></div>
+                <span>on</span>
+                <div class="blue-field" contenteditable="true" style="flex: 1;" id="f_rout_date"></div>
+                <span>20___</span>
+              </div>
+
+              <div style="margin-top: 12px; font-size: 8.5px;">
+                <div><strong>Name of drivers:</strong></div>
+                <div class="blue-field" contenteditable="true" style="height: 22px; margin-top: 4px;" id="f_driver_1"></div>
+                <div class="blue-field" contenteditable="true" style="height: 22px; margin-top: 4px;" id="f_driver_2"></div>
+              </div>
+            </div>
+
+            <div class="sign-stamp-block">
+              <div style="font-size: 9px;">Stamp and signature of carrier</div>
+              <div style="font-size: 7.8px; color:#444;">امضا و مهر متصدی حمل</div>
+            </div>
+          </div>
+        </td>
+
+        <td style="width: 33.333%;">
+          <div class="p2-col-content">
+            <div>
+              <div class="box-lbl">
+                <span class="en-title" style="padding-left:0; font-size:9.2px;">24. Load accepted</span>
+                <span class="fa-title" style="font-size:8.2px; color:#333;">کالا تحویل گرفته شد</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; margin-top: 4px; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 3px;">
+                  <span>Vehicle:</span>
+                  <div class="blue-field" contenteditable="true" style="width: 32px;" id="f_rec_truck"></div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 3px; flex: 1;">
+                  <span>Date:</span>
+                  <div class="blue-field" contenteditable="true" style="flex: 1;" id="f_rec_date"></div>
+                </div>
+              </div>
+
+              <div style="margin-top: 10px; font-size: 8.5px; line-height: 1.5;">
+                <div><strong>Arriving for unloading:</strong></div>
+                <div style="display: flex; gap: 4px; align-items: center; margin-top: 3px;">
+                  <div class="blue-field" contenteditable="true" style="width: 36px; text-align: center;" id="f_unl_arr_h"></div>
+                  <span>hour</span>
+                  <div class="blue-field" contenteditable="true" style="width: 36px; text-align: center;" id="f_unl_arr_m"></div>
+                  <span>min</span>
+                </div>
+
+                <div style="margin-top: 10px;"><strong>Leaving:</strong></div>
+                <div style="display: flex; gap: 4px; align-items: center; margin-top: 3px;">
+                  <div class="blue-field" contenteditable="true" style="width: 36px; text-align: center;" id="f_unl_dep_h"></div>
+                  <span>hour</span>
+                  <div class="blue-field" contenteditable="true" style="width: 36px; text-align: center;" id="f_unl_dep_m"></div>
+                  <span>min</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sign-stamp-block">
+              <div style="font-size: 9px;">Stamp and signature of consignee</div>
+              <div style="font-size: 7.8px; color:#444;">امضا و مهر گیرنده</div>
+            </div>
+          </div>
+        </td>
+      </tr>
+
+      <!-- ROW 5: BOXES 25 & 26 (SEPARATED REGISTRATION AND MAKE/TYPE) -->
+      <tr>
+        <td style="width: 50%;" colspan="1">
+          <div class="box-lbl">
+            <span class="en-title" style="padding-left:0; font-size:9.2px;">25. Registration No.</span>
+            <span class="fa-title" style="font-size:8.2px; color:#333;">شماره پلاک و ثبت</span>
+          </div>
+          <div class="veh-entry-row">
+            <span style="font-weight: bold; width: 85px;">Tractor:</span>
+            <div class="blue-field veh-entry-line" contenteditable="true" id="f_tractor_reg"></div>
+          </div>
+          <div class="veh-entry-row">
+            <span style="font-weight: bold; width: 85px;">Trailer:</span>
+            <div class="blue-field veh-entry-line" contenteditable="true" id="f_trailer_reg"></div>
+          </div>
+        </td>
+
+        <td style="width: 50%;" colspan="2">
+          <div class="box-lbl">
+            <span class="en-title" style="padding-left:0; font-size:9.2px;">26. Make / Type</span>
+            <span class="fa-title" style="font-size:8.2px; color:#333;">نوع و مدل</span>
+          </div>
+          <div class="veh-entry-row">
+            <span style="font-weight: bold; width: 85px;">Tractor:</span>
+            <div class="blue-field veh-entry-line" contenteditable="true" id="f_tractor_type"></div>
+          </div>
+          <div class="veh-entry-row">
+            <span style="font-weight: bold; width: 85px;">Trailer:</span>
+            <div class="blue-field veh-entry-line" contenteditable="true" id="f_trailer_type"></div>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="p2-note-footer">
+      <div style="text-align: left; font-size: 7.8px; color: #111;">
+        <strong>Note:</strong> Positions 1-15 and 21 are to be completed by the consignor; framed boxes (including 16-20, 22-26) are to be completed by the carrier and consignee.
+      </div>
+      <div style="text-align: justify; line-height: 1.45; font-size: 7.2px; color: #444; margin-top: 2px;">
+        <strong>یادداشت:</strong> خانه‌های ۱ تا ۱۵ و ۲۱ توسط فرستنده پر می‌شود؛ موقعیت‌های مشخص شده در کادر پررنگ (از جمله ۱۶ تا ۲۰، ۲۲ تا ۲۶) توسط متصدی حمل و گیرنده پر می‌شود.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TESSERACT OCR CDN -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<script>
+  let currentZoom = 1.0;
+
+  function adjustZoom(delta) {
+    currentZoom = Math.min(Math.max(0.4, currentZoom + delta), 1.6);
+    applyZoom();
+  }
+
+  function resetZoom() {
+    if (window.innerWidth <= 850) {
+      applyResponsiveScale();
+    } else {
+      currentZoom = 1.0;
+      applyZoom();
+    }
+  }
+
+  function applyZoom() {
+    const canvas = document.querySelector('.workspace-canvas');
+    if (canvas) {
+      canvas.style.transform = `scale(${currentZoom})`;
+      canvas.style.transformOrigin = 'top center';
+    }
+    const txt = document.getElementById('zoomLevelText');
+    if (txt) {
+      txt.innerText = Math.round(currentZoom * 100) + '%';
+    }
+  }
+
+  function applyResponsiveScale() {
+    const isMobile = window.innerWidth <= 850;
+    const canvas = document.querySelector('.workspace-canvas');
+    if (!canvas) return;
+    
+    if (isMobile) {
+      const screenWidth = window.innerWidth;
+      const targetWidth = 794; // approx A4 width in px (210mm)
+      const scale = Math.min(1.0, (screenWidth - 16) / targetWidth);
+      currentZoom = scale;
+      canvas.style.transform = `scale(${scale})`;
+      canvas.style.transformOrigin = 'top center';
+      const txt = document.getElementById('zoomLevelText');
+      if (txt) txt.innerText = Math.round(scale * 100) + '%';
+    } else {
+      applyZoom();
+    }
+  }
+
+  window.addEventListener('resize', applyResponsiveScale);
+  window.addEventListener('orientationchange', applyResponsiveScale);
+
+  // THEME MANAGEMENT (DEFAULT LIGHT)
+  function initTheme() {
+    const saved = localStorage.getItem('cmr_theme') || 'light';
+    if (saved === 'dark') {
+      document.body.classList.add('theme-dark');
+      updateThemeBtn(true);
+    } else {
+      document.body.classList.remove('theme-dark');
+      updateThemeBtn(false);
+    }
+  }
+
+  function toggleTheme() {
+    const isDark = document.body.classList.toggle('theme-dark');
+    localStorage.setItem('cmr_theme', isDark ? 'dark' : 'light');
+    updateThemeBtn(isDark);
+    showToast(isDark ? '🌙 Dark Theme Enabled' : '☀️ Light Theme Enabled', 'success');
+  }
+
+  function updateThemeBtn(isDark) {
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) {
+      btn.innerHTML = isDark ? '☀️ Light' : '🌙 Dark';
+    }
+  }
+
+  // TOAST NOTIFICATIONS
+  function showToast(message, type='success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.innerHTML = '<span>' + message + '</span>';
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(100%)';
+      toast.style.transition = 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+      setTimeout(() => toast.remove(), 300);
+    }, 3500);
+  }
+
+  // KEYSTROKE-LEVEL INSTANT AUTO-SAVING SYSTEM
+  let autoSaveTimeout = null;
+
+  function triggerAutoSave() {
+    const badge = document.getElementById('autosaveBadge');
+    if (badge) {
+      badge.classList.add('saving');
+      badge.innerHTML = '<span class="pulse-dot"></span> Syncing...';
+    }
+
+    clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = setTimeout(() => {
+      saveDraftToStorage();
+      if (badge) {
+        badge.classList.remove('saving');
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        badge.innerHTML = '<span class="pulse-dot"></span> Auto-Saved (' + timeStr + ')';
+      }
+    }, 150); // Fast 150ms keystroke debounce
+  }
+
+  function getFormData() {
+    const fields = document.querySelectorAll('.blue-field');
+    const data = {
+      cmr_top_number: document.getElementById('cmr_top_number')?.innerText || 'CMR NO 0001',
+      saved_at: new Date().toISOString(),
+      fields: {}
+    };
+    fields.forEach(el => {
+      if (el.id) data.fields[el.id] = el.innerText;
+    });
+    return data;
+  }
+
+  function setFormData(data) {
+    if (!data) return;
+    if (data.cmr_top_number) {
+      document.getElementById('cmr_top_number').innerText = data.cmr_top_number;
+    }
+    if (data.fields) {
+      for (let [id, val] of Object.entries(data.fields)) {
+        const el = document.getElementById(id);
+        if (el) el.innerText = val;
+      }
+    }
+    calculateTotals();
+  }
+
+  async function saveDraftToStorage() {
+    const data = getFormData();
+    try {
+      localStorage.setItem('cmr_active_draft', JSON.stringify(data));
+      // Sync to SQLite Backend API
+      fetch('/api/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }).catch(e => console.log('Backend sync offline/local mode'));
+    } catch(err) {
+      console.warn('LocalStorage full or restricted:', err);
+    }
+  }
+
+  async function loadDraftFromStorage() {
+    // 1. Try LocalStorage
+    const raw = localStorage.getItem('cmr_active_draft');
+    if (raw) {
+      try {
+        const data = JSON.parse(raw);
+        if (data && data.fields && Object.keys(data.fields).length > 0) {
+          setFormData(data);
+          return true;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // 2. Fallback to Backend SQLite
+    try {
+      const res = await fetch('/api/draft');
+      if (res.ok) {
+        const result = await res.json();
+        if (result.draft && result.draft.fields) {
+          setFormData(result.draft);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.log('Backend offline fallback');
+    }
+    return false;
+  }
+
+  // CMR NUMBER GENERATOR (INCREMENTS: CMR NO 0001 -> CMR NO 0002 -> CMR NO 0003...)
+  function generateCMRNumber() {
+    let lastNum = parseInt(localStorage.getItem('cmr_serial_counter') || '0');
+    lastNum += 1;
+    localStorage.setItem('cmr_serial_counter', lastNum.toString());
+
+    const formattedSerial = String(lastNum).padStart(4, '0');
+    const fullCmrCode = 'CMR NO ' + formattedSerial;
+
+    const elTop = document.getElementById('cmr_top_number');
+    if (elTop) {
+      elTop.innerText = fullCmrCode;
+      elTop.classList.add('highlight-flash');
+      setTimeout(() => elTop.classList.remove('highlight-flash'), 1500);
+    }
+
+    const elRout = document.getElementById('f_rout_no');
+    if (elRout) elRout.innerText = fullCmrCode;
+
+    triggerAutoSave();
+    showToast('✅ New CMR Number generated: ' + fullCmrCode, 'success');
+  }
+
+  // SAVED CMR DOCUMENTS ARCHIVE / HISTORY
+  let currentArchiveFilter = 'all';
+
+  function getSavedDocuments() {
+    try {
+      return JSON.parse(localStorage.getItem('cmr_saved_archive') || '[]');
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveSavedDocuments(list) {
+    localStorage.setItem('cmr_saved_archive', JSON.stringify(list));
+  }
+
+  async function syncArchiveFromBackend() {
+    try {
+      const res = await fetch('/api/documents');
+      if (res.ok) {
+        const docs = await res.json();
+        if (Array.isArray(docs) && docs.length > 0) {
+          saveSavedDocuments(docs);
+          renderSavedDocsTable();
+        }
+      }
+    } catch(e) {
+      console.log('Backend archive sync offline mode');
+    }
+  }
+
+  function openSavedDocsModal() {
+    syncArchiveFromBackend();
+    renderSavedDocsTable();
+    document.getElementById('savedDocsModal').classList.add('active');
+  }
+
+  function filterArchive(tag, evt) {
+    currentArchiveFilter = tag;
+    document.querySelectorAll('.filter-tab-pill').forEach(btn => btn.classList.remove('active'));
+    if (evt && evt.target) evt.target.classList.add('active');
+    renderSavedDocsTable();
+  }
+
+  async function saveCurrentCMRToArchive(forceNew = false) {
+    const data = getFormData();
+    const list = getSavedDocuments();
+    const cmrNo = data.cmr_top_number || 'CMR NO 0001';
+
+    const existingIndex = list.findIndex(d => d.cmr_number === cmrNo);
+    
+    const docRecord = {
+      id: (existingIndex !== -1 && !forceNew) ? list[existingIndex].id : ('doc_' + Date.now()),
+      cmr_number: cmrNo,
+      consignor: data.fields.f_consignor ? data.fields.f_consignor.split('\n')[0] : 'NAJEB AMIN LTD',
+      origin: data.fields.f_load_place ? (data.fields.f_load_place + (data.fields.f_load_country ? ', ' + data.fields.f_load_country : '')) : 'Kandahar, Afghanistan',
+      consignee: data.fields.f_consignee ? data.fields.f_consignee.split('\n')[0] : 'RCA EXIM PVT LTD',
+      destination: data.fields.f_unload_place ? (data.fields.f_unload_place + (data.fields.f_unload_country ? ', ' + data.fields.f_unload_country : '')) : 'New Delhi, India',
+      commodity: data.fields.f_desc_1 ? (data.fields.f_desc_1.split('\n')[0] + ' (' + (data.fields.f_pkg_1||'') + ')') : 'Export Goods',
+      gross_weight: data.fields.f_wt_1 || '9,013.30 KG',
+      value: data.fields.f_declared_val || '33,344.00 USD',
+      truck: data.fields.f_tractor_reg || 'کندهار 794',
+      driver: data.fields.f_driver_1 ? data.fields.f_driver_1.split('\n')[0] : 'غمی ولد حاجی شاه محمد',
+      status: '🟢 Dispatched',
+      saved_at: new Date().toLocaleString([], { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }),
+      fullData: data
+    };
+
+    if (existingIndex !== -1 && !forceNew) {
+      list[existingIndex] = docRecord;
+      showToast('💾 Updated existing archive record: ' + cmrNo, 'success');
+    } else {
+      list.unshift(docRecord);
+      showToast('💾 Document ' + cmrNo + ' saved to SQLite database & archive!', 'success');
+    }
+
+    saveSavedDocuments(list);
+    renderSavedDocsTable();
+
+    // Persist to Backend SQLite
+    try {
+      await fetch('/api/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(docRecord)
+      });
+    } catch(err) {
+      console.log('Backend SQLite sync error:', err);
+    }
+  }
+
+  function renderSavedDocsTable() {
+    const list = getSavedDocuments();
+    const container = document.getElementById('savedDocsContainer');
+    if (!container) return;
+
+    const filterText = (document.getElementById('docSearchInput')?.value || '').toLowerCase();
+    
+    container.innerHTML = '';
+    const filtered = list.filter(item => {
+      const matchText = (item.cmr_number + ' ' + item.consignor + ' ' + item.consignee + ' ' + (item.origin||'') + ' ' + (item.destination||'') + ' ' + item.commodity).toLowerCase();
+      const matchesSearch = matchText.includes(filterText);
+      if (!matchesSearch) return false;
+
+      if (currentArchiveFilter === 'kandahar') return (item.origin || item.consignor || '').toLowerCase().includes('kandahar');
+      if (currentArchiveFilter === 'india') return (item.destination || item.consignee || '').toLowerCase().includes('india') || (item.destination || '').toLowerCase().includes('delhi');
+      if (currentArchiveFilter === 'dispatched') return item.status.includes('Dispatched');
+      return true;
+    });
+
+    let totalValueUSD = 0;
+    filtered.forEach(doc => {
+      const match = (doc.value || '').replace(/,/g, '').match(/([0-9\.]+)/);
+      if (match && match[1]) {
+        totalValueUSD += parseFloat(match[1]) || 0;
+      }
+    });
+
+    const valStr = totalValueUSD > 0 ? ` • Total Cargo Value: $${totalValueUSD.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})} USD` : '';
+    document.getElementById('savedDocsCount').innerText = `${filtered.length} Saved Waybill${filtered.length === 1 ? '' : 's'}${valStr}`;
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div style="text-align:center; padding: 36px 16px; background:var(--card-bg); border-radius:14px; border:1px dashed var(--border-header);">
+          <div style="font-size:32px; margin-bottom:8px;">📂</div>
+          <div style="font-size:14px; font-weight:700; color:var(--text-header);">No matching documents found</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Click "Save Current Draft" above to archive your current waybill.</div>
+        </div>
+      `;
+      return;
+    }
+
+    filtered.forEach(doc => {
+      const card = document.createElement('div');
+      card.className = 'archive-card-row';
+      card.innerHTML = `
+        <!-- COL 1: CMR NUMBER & STATUS -->
+        <div>
+          <span class="archive-badge-cmr">${doc.cmr_number}</span>
+          <div class="archive-status-pill">${doc.status || '🟢 Saved'}</div>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">📅 ${doc.saved_at}</div>
+        </div>
+
+        <!-- COL 2: EXPORTER & ORIGIN -->
+        <div>
+          <div style="font-size:12px; font-weight:700; color:var(--text-header);">${doc.consignor}</div>
+          <div class="route-indicator">📍 Origin: <strong>${doc.origin || 'Kandahar, AF'}</strong></div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">🚛 Truck: <strong>${doc.truck || 'N/A'}</strong></div>
+        </div>
+
+        <!-- COL 3: IMPORTER & DESTINATION -->
+        <div>
+          <div style="font-size:12px; font-weight:700; color:var(--text-header);">${doc.consignee}</div>
+          <div class="route-indicator">🏁 Dest: <strong>${doc.destination || 'Delhi, IN'}</strong></div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">👤 Driver: <strong>${doc.driver || 'N/A'}</strong></div>
+        </div>
+
+        <!-- COL 4: CARGO & VALUE -->
+        <div>
+          <div style="font-size:11.5px; font-weight:600; color:var(--text-header);">${doc.commodity}</div>
+          <div style="font-size:12px; color:#059669; font-weight:800; margin-top:2px;">💰 ${doc.value}</div>
+          <div style="font-size:10.5px; color:var(--text-muted); margin-top:2px;">⚖️ ${doc.gross_weight || ''}</div>
+        </div>
+
+        <!-- COL 5: ACTIONS -->
+        <div class="action-btn-group">
+          <button class="btn btn-primary" style="font-size:11px; padding:4px 9px;" onclick="loadDocumentById('${doc.id}')" title="Open in CMR Editor">📂 Open</button>
+          <button class="btn" style="font-size:11px; padding:4px 8px;" onclick="downloadPDFForDoc('${doc.id}')" title="Download Vector PDF">📥 PDF</button>
+          <button class="btn" style="font-size:11px; padding:4px 8px;" onclick="duplicateDocumentById('${doc.id}')" title="Clone with new sequential CMR #">📋</button>
+          <button class="btn btn-danger" style="font-size:11px; padding:4px 7px;" onclick="deleteDocumentById('${doc.id}')" title="Delete from archive">🗑️</button>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  function loadDocumentById(id) {
+    const list = getSavedDocuments();
+    const doc = list.find(d => d.id === id);
+    if (doc && doc.fullData) {
+      setFormData(doc.fullData);
+      closeModal('savedDocsModal');
+      triggerAutoSave();
+      showToast('📂 Restored document: ' + doc.cmr_number, 'success');
+    }
+  }
+
+  function downloadPDFForDoc(id) {
+    const list = getSavedDocuments();
+    const doc = list.find(d => d.id === id);
+    if (doc && doc.fullData) {
+      const activeData = getFormData();
+      setFormData(doc.fullData);
+      downloadPDF();
+      setTimeout(() => setFormData(activeData), 500);
+      showToast('📥 Downloading PDF for ' + doc.cmr_number + '...', 'success');
+    }
+  }
+
+  function duplicateDocumentById(id) {
+    const list = getSavedDocuments();
+    const doc = list.find(d => d.id === id);
+    if (doc && doc.fullData) {
+      setFormData(doc.fullData);
+      generateCMRNumber();
+      closeModal('savedDocsModal');
+      triggerAutoSave();
+      showToast('📋 Duplicated as new CMR with next sequential number!', 'success');
+    }
+  }
+
+  async function deleteDocumentById(id) {
+    if (!confirm('Are you sure you want to delete this saved CMR document from your archive?')) return;
+    let list = getSavedDocuments();
+    list = list.filter(d => d.id !== id);
+    saveSavedDocuments(list);
+    renderSavedDocsTable();
+    showToast('🗑️ Document deleted from archive.', 'success');
+
+    try {
+      await fetch('/api/documents/' + id, { method: 'DELETE' });
+    } catch(e) {
+      console.log('Backend delete offline mode');
+    }
+  }
+
+  function exportAllArchiveJSON() {
+    const list = getSavedDocuments();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(list, null, 2));
+    const dl = document.createElement('a');
+    dl.setAttribute("href", dataStr);
+    dl.setAttribute("download", "SkyAriana_CMR_Archive_Backup_" + new Date().toISOString().slice(0,10) + ".json");
+    dl.click();
+    dl.remove();
+    showToast('📤 Complete archive backup exported (' + list.length + ' documents)', 'success');
+  }
+
+  function importArchiveJSON(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      try {
+        const imported = JSON.parse(evt.target.result);
+        if (Array.isArray(imported)) {
+          const existing = getSavedDocuments();
+          const map = new Map();
+          existing.forEach(d => map.set(d.id || d.cmr_number, d));
+          imported.forEach(d => map.set(d.id || d.cmr_number, d));
+          const merged = Array.from(map.values());
+          saveSavedDocuments(merged);
+          renderSavedDocsTable();
+          showToast('📥 Archive imported successfully! Total documents: ' + merged.length, 'success');
+        } else {
+          showToast('⚠️ Invalid archive backup JSON file.', 'danger');
+        }
+      } catch (err) {
+        showToast('❌ Error parsing backup JSON.', 'danger');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // PRESETS FOR ACCI INVOICE & PACKING LIST (INCLUDING SKY ARIANA PDF DOSSIER)
+  const PRESETS = {
+    sky_ariana_acci: `BILL OF LADING & ACCI COMMERCIAL INVOICE / PACKING LIST
+DOCUMENT NO: BOL-2026-NSA492
+ACCI INVOICE NO: 111 (ACCI Stamp: 154231)
+SAFTA CERTIFICATE OF ORIGIN: 24707
+DATE: 2026-08-22 (1405/05/31)
+
+CARRIER / TRANSPORTER:
+SKY ARIANA LIMITED
+Import & Export - International Transportation
+2nd Floor, 16 No. Office, Shahidano, Chowk, Etimad Rahmi Market, Kandahar, Afghanistan
+Licence: 2401-2198 | Tel: +93 700 939 365, +93 711 435 529
+Email: transport@skyariana.com | Web: www.skyariana.com
+
+EXPORTER / CONSIGNOR:
+NAJEB AMIN LTD
+T.L NO: 27-975
+Shorandam Industrial Area, Kandahar, Afghanistan
+Tel: +93 700 308 086
+
+IMPORTER / CONSIGNEE:
+RCA EXIM PRIVATE LIMITED
+1112 2ND AND 3RD FLOOR GANDHI GALI FATEHPURI DELHI 110006 INDIA
+FSSAI NO: 10017011004599 | IEC NO: 0512088365 | GST: 07AAFCR6407G1ZF
+Tel: +919999927864 | Email: im4ur_achit@mail.com
+
+NOTIFY PARTY:
+YAAQOUB HAMDAN FOODSTUFF TRADING CO LLC
+Shop No: 28 Al Hawai Building, Al Ras Street, Deira Dubai, UAE
+TRN NO: 100340961000003
+
+ROUTE & TRANSIT PATH:
+PLACE OF LOADING: Kandahar (Shorandam Industrial Area), Afghanistan (Date: 2026-08-22)
+TRANSIT BORDER: Hairatan, Afghanistan
+TRANSIT HUB: Tashkent, Uzbekistan
+PLACE OF UNLOADING / DESTINATION: New Delhi (DEL), Indira Gandhi Intl Airport, India
+
+CARGO DESCRIPTION & PACKING:
+MARKS & NUMBERS: 521 CTNS - GREEN-RAISNIS
+NUMBER OF PACKAGES: 521 CTNS
+METHOD OF PACKING: Export Cartons (16 KG Net per Carton)
+DESCRIPTION OF GOODS: GREEN RAISINS (BEST) - کشمش سبز درجه یک
+STATISTICAL / HS CODE: 0806.20.10 (ASYCUDA SAD: 08062000)
+NET WEIGHT: 8,336.00 KG
+GROSS WEIGHT: 9,013.30 KG
+VOLUME: 28.50 CBM (m3)
+
+RATE & GOODS VALUE:
+RATE PER KG: 4.00 USD
+DECLARED VALUE: 33,344.00 USD
+CARRIAGE CHARGES: 1,250.40 USD
+SUPPLEMENTARY CHARGES: 200.00 USD
+TOTAL FREIGHT: 1,450.40 USD
+
+INSTRUCTIONS & CUSTOMS DETAILS:
+ASYCUDA SAD Customs Declaration No: A00214932
+Phytosanitary Certificate No: 585660 (Date: 22-08-2026)
+Fumigation Certificate: NA-MB-KDR-2162 (Methyl Bromide 16G/M3)
+Transit Certificate No: A00003198 (Ministry of Industry & Commerce)
+Instructions: Via Road from Kandahar to Hairatan, transit to Tashkent and Air to Delhi. Keep dry and ventilated.
+
+VEHICLE & DRIVER DETAILS:
+Truck Number / Plate: کندهار 794 (Kandahar 794)
+Trailer / Container: AF-KDR-794
+Tractor Make / Type: Kamaz 6520 Heavy Cargo Truck
+Trailer Make / Type: Box Body Refrigerated Cargo
+Driver Name: غمی ولد حاجی شاه محمد (Ghami S/O Haji Shah Mohammad)
+Driver Contact: 0700029181
+Driver Rent: 52,000 AFN`,
+
+    acci_pistachio: `COMMERCIAL INVOICE & PACKING LIST
+CHAMBER OF COMMERCE (ACCI) APPROVED
+Invoice No: ACCI-EXP-2026/8940
+Invoice Date: 12/09/2026
+
+EXPORTER / CONSIGNOR:
+Pars Middle East Trading & Exporting Group
+No. 250, Shariati Ave, Tehran, Iran
+VAT/ID: IR-988342110
+
+IMPORTER / CONSIGNEE:
+EURO-ASIA LOGISTICS GMBH
+Hafenstrasse 45, D-20457 Hamburg, Germany
+EORI: DE-883921004
+
+CARRIER / TRANSPORTER:
+Silk Road International Transit Transport Ltd.
+Tehran Central Transit Logistics Center
+
+PLACE OF TAKING OVER / LOADING:
+Tehran West Customs Terminal, Iran (Date: 12.09.2026)
+
+PLACE OF UNLOADING / DISCHARGE:
+Hamburg Port Logistics Hub, Germany
+
+MARKS & NUMBERS: IR-HAM-2026/PST
+NUMBER OF PACKAGES: 920 Cartons on 24 Pallets
+METHOD OF PACKING: Standard Export Shrinkwrapped Cartons
+DESCRIPTION OF GOODS: Premium Iranian Roasted Pistachios Grade AAA (Pistacia vera)
+STATISTICAL / HS CODE: 0802.51.00
+GROSS WEIGHT: 23,450.00 KG
+NET WEIGHT: 22,080.00 KG
+VOLUME: 52.00 CBM (m3)
+
+DECLARED VALUE: 195,500.00 USD
+CARRIAGE CHARGES: 4,800.00 USD
+SUPPLEMENTARY CHARGES: 350.00 USD
+TOTAL FREIGHT: 5,150.00 USD
+
+CUSTOMS SEAL & INSTRUCTIONS:
+Customs Seal No: IR-CUSTOMS-889942
+Keep cargo dry and cool at +15C. TIR Carnet No: XF-902144
+
+VEHICLE / TRUCK SPECIFICATIONS:
+Tractor Plate: 34 ع 789 - ایران 22
+Trailer Plate: 67 ع 123 - ایران 22
+Tractor Make: Scania R500 Topline Highline
+Trailer Make: Schmitz Cargobull SKO 24 Reefer
+Driver 1: Hossein Rezaei (حسین رضایی)
+Driver 2: Mohammad Moradi (محمد مرادی)`,
+
+    acci_machinery: `ACCI EXPORT INVOICE & PACKING LIST
+Invoice No: ACCI-IND-2026/4102
+Date: 15/09/2026
+
+EXPORTER / CONSIGNOR:
+Tehran Heavy Industrial Manufacturing Co.
+Industrial City, Phase 3, Tehran, Iran
+
+IMPORTER / CONSIGNEE:
+ANATOLIA INDUSTRIAL TOOLS & MACHINERY INC.
+Organize Sanayi Bolgesi, Bursa, Turkey
+
+CARRIER:
+Trans-Eurasia Cargo Lines, Tehran
+
+LOADING PLACE: Tehran Industrial Hub, Iran
+LOADING DATE: 15.09.2026
+UNLOADING PLACE: Bursa Logistics Terminal, Turkey
+
+MARKS: IND-TR-4102
+PACKAGES: 18 Wooden Crates
+PACKING: Reinforced Wooden Crates with moisture barrier
+GOODS: CNC Precision Milling Equipment & Heavy Tooling Accessories
+HS CODE: 8459.61.00
+GROSS WEIGHT: 18,900.00 KG
+VOLUME: 44.50 CBM
+
+DECLARED VALUE: 340,000.00 USD
+CARRIAGE CHARGES: 3,200.00 USD
+SUPPLEMENTARY CHARGES: 200.00 USD
+TOTAL FREIGHT: 3,400.00 USD
+
+TRACTOR REG: 88 ع 456 - ایران 11
+TRAILER REG: 12 ع 789 - ایران 11
+TRACTOR TYPE: Volvo FH16 750
+TRAILER TYPE: Krone Mega Flatbed
+DRIVER 1: Alireza Ghasemi (علیرضا قاسمی)`,
+
+    acci_polymers: `ACCI PETROCHEMICAL COMMERCIAL INVOICE & PACKING SPECIFICATION
+Invoice No: ACCI-PETRO-2026/778
+Date: 18/09/2026
+
+CONSIGNOR:
+National Petrochemical Transit Trade Co., Tehran, Iran
+CONSIGNEE:
+BALKAN POLYMERS & CHEMICALS D.O.O., Belgrade, Serbia
+CARRIER:
+Parsian Border Transport Services Ltd.
+
+LOADING: Bandar Abbas Customs, Iran (Date: 18.09.2026)
+UNLOADING: Belgrade Customs Port, Serbia
+
+MARKS: PETRO-SRB-778
+PACKAGES: 1,000 Jumbo Bags
+PACKING: 25kg Polypropylene Bags on Pallets
+GOODS: High Density Polyethylene (HDPE) Film Grade Blow Molding
+HS CODE: 3901.20.00
+GROSS WEIGHT: 25,250.00 KG
+VOLUME: 60.00 CBM
+
+DECLARED VALUE: 128,000.00 USD
+CARRIAGE CHARGES: 5,400.00 USD
+TOTAL FREIGHT: 5,400.00 USD
+
+TRACTOR REG: 21 ع 987 - ایران 33
+TRAILER REG: 43 ع 654 - ایران 33
+TRACTOR: Mercedes-Benz Actros 1848
+TRAILER: Wielton Curtain Sider
+DRIVER 1: Reza Heydari (رضا حیدری)`
+  };
+
+  function openAutoFillModal() {
+    document.getElementById('autoFillModal').classList.add('active');
+    loadPreset('sky_ariana_acci');
+  }
+
+  function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('active');
+  }
+
+  function loadPreset(key, evt) {
+    document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+    if (evt && evt.target) {
+      evt.target.classList.add('active');
+    } else {
+      const el = document.getElementById('btn_preset_sky') || document.getElementById('btn_preset_1');
+      if (el) el.classList.add('active');
+    }
+    document.getElementById('rawInvoiceText').value = PRESETS[key] || '';
+  }
+
+  // IMAGE OCR HANDLER
+  async function handleImageOCRUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const pBar = document.getElementById('ocrProgress');
+    const pInner = document.getElementById('ocrProgressInner');
+    const pStatus = document.getElementById('ocrStatusText');
+
+    pBar.style.display = 'block';
+    pStatus.style.display = 'block';
+    pStatus.innerText = '⏳ Uploading and preprocessing invoice / packing list image...';
+    pInner.style.width = '20%';
+
+    try {
+      if (window.Tesseract) {
+        pStatus.innerText = '🔍 Running high-speed OCR text recognition...';
+        pInner.style.width = '50%';
+        const result = await Tesseract.recognize(
+          file,
+          'eng',
+          {
+            logger: m => {
+              if (m.status === 'recognizing text' && m.progress) {
+                pInner.style.width = (50 + Math.round(m.progress * 45)) + '%';
+                pStatus.innerText = '🔍 Recognizing OCR Text: ' + Math.round(m.progress * 100) + '%';
+              }
+            }
+          }
+        );
+
+        pInner.style.width = '100%';
+        pStatus.innerText = '✅ Text recognition completed successfully!';
+        document.getElementById('rawInvoiceText').value = result.data.text;
+        showToast('📸 Invoice text successfully recognized from image via OCR!', 'success');
+      } else {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          document.getElementById('rawInvoiceText').value = evt.target.result;
+          pBar.style.display = 'none';
+          pStatus.style.display = 'none';
+          showToast('📄 File loaded successfully.', 'success');
+        };
+        reader.readAsText(file);
+      }
+    } catch (err) {
+      console.error(err);
+      pStatus.innerText = '⚠️ OCR error. Please enter or paste text manually.';
+      showToast('⚠️ Image processing error. Please paste text directly.', 'danger');
+    }
+  }
+
+  // ACCURATE REGEX / NLP PARSER FOR ACCI INVOICE & PACKING LIST
+  function parseAndApplyInvoice() {
+    const text = document.getElementById('rawInvoiceText').value;
+    if (!text.trim()) {
+      showToast('⚠️ Please enter or upload invoice text/image first.', 'danger');
+      return;
+    }
+
+    const data = {};
+
+    function extract(regexes) {
+      for (let r of regexes) {
+        const m = text.match(r);
+        if (m && m[1]) return m[1].trim();
+      }
+      return '';
+    }
+
+    // 1. Consignor (NAJEB AMIN LTD)
+    data.f_consignor = extract([
+      /(?:EXPORTER\s*\/\s*CONSIGNOR|CONSIGNOR|EXPORTER|فرستنده)[:\s]+([\s\S]*?)(?=(?:IMPORTER|CONSIGNEE|CARRIER|گیرنده|متصدی|NOTIFY))/i,
+      /(?:Shipper)[:\s]+([\s\S]*?)(?=(?:Consignee|Carrier|Notify))/i
+    ]);
+
+    // 2. Consignee (RCA EXIM PRIVATE LIMITED)
+    data.f_consignee = extract([
+      /(?:IMPORTER\s*\/\s*CONSIGNEE|CONSIGNEE|IMPORTER|گیرنده)[:\s]+([\s\S]*?)(?=(?:NOTIFY PARTY|CARRIER|TRANSPORTER|متصدی|PLACE|LOADING|ROUTE))/i
+    ]);
+
+    // 16. Carrier (SKY ARIANA LIMITED)
+    data.f_carrier = extract([
+      /(?:CARRIER\s*\/\s*TRANSPORTER|CARRIER|TRANSPORTER|متصدی حمل)[:\s]+([\s\S]*?)(?=(?:EXPORTER|CONSIGNOR|IMPORTER|CONSIGNEE|PLACE|LOADING|MARKS|PACKAGES|محل))/i
+    ]);
+
+    // 3. Unloading Place & Country
+    const unloadRaw = extract([
+      /(?:PLACE OF UNLOADING\s*\/\s*DESTINATION|PLACE OF UNLOADING\s*\/\s*DISCHARGE|PLACE OF UNLOADING|DESTINATION|UNLOADING PLACE|UNLOADING|محل تخلیه)[:\s]+([^\n\r]+)/i
+    ]);
+    if (unloadRaw) {
+      const parts = unloadRaw.split(',');
+      data.f_unload_place = parts[0] ? parts[0].trim() : unloadRaw;
+      data.f_unload_country = parts[1] ? parts[1].trim() : (unloadRaw.includes('India')?'India':unloadRaw.includes('Germany')?'Germany':unloadRaw.includes('Turkey')?'Turkey':unloadRaw.includes('Serbia')?'Serbia':'');
+    }
+
+    // 4. Loading Place, Country, Date
+    const loadRaw = extract([
+      /(?:PLACE OF LOADING|PLACE OF TAKING OVER\s*\/\s*LOADING|PLACE OF TAKING OVER|ORIGIN|LOADING PLACE|LOADING|محل بارگیری)[:\s]+([^\n\r]+)/i
+    ]);
+    if (loadRaw) {
+      const parts = loadRaw.split(',');
+      data.f_load_place = parts[0] ? parts[0].trim() : loadRaw;
+      data.f_load_country = parts[1] ? parts[1].trim() : (loadRaw.includes('Afghanistan')?'Afghanistan':loadRaw.includes('Iran')?'Iran':'');
+    }
+    data.f_load_date = extract([
+      /(?:LOADING DATE|ISSUE DATE|Invoice Date|Date|تاریخ)[:\s]+([0-9\.\/\-]+)/i,
+      /Date:\s*([0-9\.\/\-]+)/i
+    ]);
+
+    // 17. Successive Carrier
+    data.f_successive_carrier = "Direct Transit via Hairatan & Tashkent";
+
+    // 18. Carrier reservations
+    data.f_carrier_reservations = "Goods received in apparent good order and condition. Seals intact.\nبارگیری در وضعیت سالم و پلمپ تحویل گرفته شد.";
+
+    // 5. Documents Attached
+    const invNo = extract([
+      /(?:ACCI INVOICE NO|Invoice No|Invoice\s*#|DOCUMENT NO|شماره فاکتور)[:\s]+([^\n\r]+)/i
+    ]);
+    const safta = extract([/(?:SAFTA CERTIFICATE OF ORIGIN|SAFTA)[:\s]+([^\n\r]+)/i]);
+    data.f_docs_attached = "Invoice #" + (invNo || "111") + (safta ? ", SAFTA #" + safta : "") + ", Packing List, Phytosanitary Cert, Customs SAD";
+
+    // 6-12 Goods Table
+    data.f_marks_1 = extract([/(?:MARKS\s*&\s*NUMBERS|MARKS|علائم)[:\s]+([^\n\r]+)/i]) || "521 CTNS";
+    data.f_pkg_1 = extract([/(?:NUMBER OF PACKAGES|NO\.\s*OF\s*PACKAGES|PACKAGES|تعداد بسته)[:\s]+([^\n\r]+)/i]) || "521 CTNS";
+    data.f_meth_1 = extract([/(?:METHOD OF PACKING|PACKING|نوع بسته)[:\s]+([^\n\r]+)/i]) || "Export Cartons";
+    data.f_desc_1 = extract([/(?:DESCRIPTION OF GOODS|COMMODITY|GOODS|شرح کالا)[:\s]+([^\n\r]+)/i]) || "GREEN RAISINS (BEST) - کشمش سبز";
+    data.f_stat_1 = extract([/(?:STATISTICAL\s*\/\s*HS CODE|HS CODE|شماره آماری)[:\s]+([^\n\r]+)/i]) || "0806.20.10";
+    data.f_wt_1 = extract([/(?:GROSS WEIGHT|GROSS WT|وزن ناخالص)[:\s]+([^\n\r]+)/i]) || "9,013.30 KG";
+    data.f_vol_1 = extract([/(?:VOLUME|حجم)[:\s]+([^\n\r]+)/i]) || "28.50 CBM";
+
+    // 13. Senders Instructions & Notify Party
+    const notify = extract([/(?:NOTIFY PARTY|NOTIFY)[:\s]+([\s\S]*?)(?=(?:ROUTE|CARGO|MARKS|RATE))/i]);
+    const instr = extract([/(?:INSTRUCTIONS\s*&\s*CUSTOMS DETAILS|CUSTOMS SEAL\s*&\s*INSTRUCTIONS|INSTRUCTIONS|CUSTOMS SEAL|پلمپ)[:\s]+([\s\S]*?)(?=(?:VEHICLE|TRACTOR|RATE|DECLARED))/i]);
+    
+    let box13Text = "";
+    if (notify) box13Text += "Notify: " + notify.replace(/\n+/g, ' ') + "\n";
+    if (instr) box13Text += instr.trim() + "\n";
+    if (!box13Text) box13Text = "Keep dry and ventilated. Customs clearance at designated border terminal.";
+    data.f_sender_inst = box13Text;
+
+    data.f_declared_val = extract([/(?:GOODS VALUE|DECLARED VALUE|ارزش اظهار شده)[:\s]+([^\n\r]+)/i]) || "33,344.00 USD";
+
+    // 19. Charges
+    const carriageCharge = extract([/(?:CARRIAGE CHARGES|CARRIAGE|FREIGHT)[:\s]+([^\n\r]+)/i]);
+    if (carriageCharge) {
+      const parts = carriageCharge.replace(/,/g, '').split(' ');
+      data.c_c_send = parts[0];
+      data.c_c_curr = parts[1] || 'USD';
+    }
+    const supCharge = extract([/(?:SUPPLEMENTARY CHARGES|OTHER CHARGES)[:\s]+([^\n\r]+)/i]);
+    if (supCharge) {
+      const parts = supCharge.replace(/,/g, '').split(' ');
+      data.c_sup_send = parts[0];
+      data.c_sup_curr = parts[1] || 'USD';
+    }
+    const totCharge = extract([/(?:TOTAL FREIGHT|TOTAL CHARGES|TOTAL)[:\s]+([^\n\r]+)/i]);
+    if (totCharge) {
+      const parts = totCharge.replace(/,/g, '').split(' ');
+      data.c_tot_send = parts[0];
+      data.c_tot_curr = parts[1] || 'USD';
+    }
+
+    // Page 2 fields
+    data.f_est_in = data.f_load_place || "Kandahar, Afghanistan";
+    data.f_est_on = data.f_load_date || "2026-08-22";
+    data.f_load_arr_h = "08";
+    data.f_load_arr_m = "00";
+    data.f_load_dep_h = "16";
+    data.f_load_dep_m = "30";
+
+    data.f_p2_special_agr = "Carriage strictly under CMR Convention and TIR regulations.\nحمل تحت کنوانسیون CMR و کارنه تیر صورت می‌پذیرد.";
+
+    // Box 25 (REGISTRATION PLATES ONLY)
+    data.f_tractor_reg = extract([/(?:Truck Number\s*\/\s*Plate|TRUCK NUMBER|Tractor Plate|TRACTOR REG|پلاک کشنده)[:\s]+([^\n\r]+)/i]) || "کندهار 794";
+    data.f_trailer_reg = extract([/(?:Trailer\s*\/\s*Container|Trailer Plate|TRAILER REG|پلاک تریلی)[:\s]+([^\n\r]+)/i]) || "AF-KDR-794";
+
+    // Box 26 (MAKE / TYPE ONLY)
+    data.f_tractor_type = extract([/(?:Tractor Make\s*\/\s*Type|TRACTOR TYPE|Tractor Make|نوع کشنده)[:\s]+([^\n\r]+)/i]) || "Kamaz 6520 Heavy Truck";
+    data.f_trailer_type = extract([/(?:Trailer Make\s*\/\s*Type|TRAILER TYPE|Trailer Make|نوع تریلی)[:\s]+([^\n\r]+)/i]) || "Box Body Cargo Carrier";
+
+    data.f_driver_1 = extract([/(?:Driver Name|Driver 1|DRIVER|نام راننده|راننده)[:\s]+([^\n\r]+)/i]) || "غمی ولد حاجی شاه محمد (Ghami S/O Haji Shah Mohammad)";
+    data.f_driver_2 = extract([/(?:Driver Contact|Driver 2|راننده دوم)[:\s]+([^\n\r]+)/i]) || "Tel: 0700029181";
+
+    data.f_rec_truck = data.f_tractor_reg || "کندهار 794";
+    data.f_rec_date = data.f_load_date || "2026-08-22";
+    data.f_unl_arr_h = "09";
+    data.f_unl_arr_m = "00";
+    data.f_unl_dep_h = "17";
+    data.f_unl_dep_m = "00";
+
+    // Auto-generate CMR number if checked
+    if (document.getElementById('chkAutoNumber').checked) {
+      let lastNum = parseInt(localStorage.getItem('cmr_serial_counter') || '0');
+      lastNum += 1;
+      localStorage.setItem('cmr_serial_counter', lastNum.toString());
+      const formattedSerial = String(lastNum).padStart(4, '0');
+      const fullCmrCode = 'CMR NO ' + formattedSerial;
+      document.getElementById('cmr_top_number').innerText = fullCmrCode;
+      data.f_rout_no = fullCmrCode;
+    }
+
+    // Apply into DOM with visual flash feedback
+    for (let [id, val] of Object.entries(data)) {
+      const el = document.getElementById(id);
+      if (el && val) {
+        el.innerText = val;
+        el.classList.add('highlight-flash');
+        setTimeout(() => el.classList.remove('highlight-flash'), 1800);
+      }
+    }
+
+    calculateTotals();
+    closeModal('autoFillModal');
+    triggerAutoSave();
+    showToast('⚡ All CMR fields successfully extracted and populated from invoice!', 'success');
+  }
+
+  function calculateTotals() {
+    const c1 = parseFloat((document.getElementById('c_c_send')?.innerText || '0').replace(/,/g, '')) || 0;
+    const c2 = parseFloat((document.getElementById('c_d_send')?.innerText || '0').replace(/,/g, '')) || 0;
+    const c3 = parseFloat((document.getElementById('c_sup_send')?.innerText || '0').replace(/,/g, '')) || 0;
+    const c4 = parseFloat((document.getElementById('c_oth_send')?.innerText || '0').replace(/,/g, '')) || 0;
+
+    const total = (c1 - c2 + c3 + c4);
+    const elTot = document.getElementById('c_tot_send');
+    if (elTot && total > 0) {
+      elTot.innerText = total.toLocaleString();
+    }
+  }
+
+  // SAVE & LOAD CMR AS JSON FILE
+  function saveCMRToFile() {
+    const saveData = getFormData();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(saveData, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute("href", dataStr);
+    dlAnchor.setAttribute("download", (saveData.fields.f_rout_no || saveData.cmr_top_number || "CMR-Document") + ".json");
+    dlAnchor.click();
+    dlAnchor.remove();
+    showToast('💾 CMR Document saved to JSON file successfully.', 'success');
+  }
+
+  function loadCMRFromFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      try {
+        const data = JSON.parse(evt.target.result);
+        setFormData(data);
+        triggerAutoSave();
+        showToast('📂 CMR Document restored successfully from JSON.', 'success');
+      } catch (err) {
+        showToast('❌ Error reading JSON file.', 'danger');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function clearForm() {
+    if (!confirm('Are you sure you want to clear all filled fields in the CMR note?')) return;
+    const fields = document.querySelectorAll('.blue-field');
+    fields.forEach(el => el.innerText = '');
+    triggerAutoSave();
+    showToast('🗑️ All form fields cleared.', 'success');
+  }
+
+  function toggleFieldHighlights() {
+    document.body.classList.toggle('clean-print');
+    const isClean = document.body.classList.contains('clean-print');
+    showToast(isClean ? '🎨 Print preview mode enabled (Clean paper view)' : '🎨 Interactive form highlights enabled', 'success');
+  }
+
+  function scrollToPage(id) {
+    document.querySelectorAll('.page-tab-btn').forEach(btn => btn.classList.remove('active'));
+    const activeTab = document.getElementById('tab_' + id);
+    if (activeTab) activeTab.classList.add('active');
+    
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function downloadPDF() {
+    const a = document.createElement('a');
+    a.href = 'CMR_International_Waybill_Bilingual.pdf';
+    a.download = (document.getElementById('cmr_top_number')?.innerText.replace(/[^a-zA-Z0-9_-]/g, '_') || 'CMR-Document') + '.pdf';
+    a.click();
+    showToast('📥 Downloading clean vector PDF...', 'success');
+  }
+
+  // ATTACH REAL-TIME EVENT LISTENERS FOR AUTO-SAVE & KEYBOARD SHORTCUTS
+  function setupFieldListeners() {
+    document.querySelectorAll('.blue-field').forEach(field => {
+      field.addEventListener('input', () => {
+        triggerAutoSave();
+      });
+      field.addEventListener('blur', () => {
+        triggerAutoSave();
+      });
+      field.addEventListener('keyup', () => {
+        triggerAutoSave();
+      });
+    });
+
+    // KEYBOARD SHORTCUTS
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveCurrentCMRToArchive();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        generateCMRNumber();
+      }
+    });
+  }
+
+  // INITIALIZE ON LOAD
+  window.addEventListener('DOMContentLoaded', () => {
+    initTheme();
+    setupFieldListeners();
+    applyResponsiveScale();
+
+    // Check if previous draft exists
+    const restored = loadDraftFromStorage();
+    if (!restored) {
+      // Default initial data populated cleanly
+      parseAndApplyInvoice();
+    }
+
+    // Pre-populate realistic archive samples if first time
+    if (getSavedDocuments().length === 0) {
+      saveSavedDocuments([
+        {
+          id: 'doc_sample_1',
+          cmr_number: 'CMR NO 0001',
+          consignor: 'NAJEB AMIN LTD',
+          origin: 'Kandahar, Afghanistan',
+          consignee: 'RCA EXIM PRIVATE LIMITED',
+          destination: 'New Delhi, India',
+          commodity: 'GREEN RAISINS (521 CTNS)',
+          gross_weight: '9,013.30 KG',
+          value: '33,344.00 USD',
+          truck: 'کندهار 794',
+          driver: 'غمی ولد حاجی شاه محمد',
+          status: '🟢 Dispatched',
+          saved_at: '2026-08-22 14:30',
+          fullData: getFormData()
+        },
+        {
+          id: 'doc_sample_2',
+          cmr_number: 'CMR NO 0002',
+          consignor: 'Pars Middle East Exporting Group',
+          origin: 'Tehran, Iran',
+          consignee: 'EURO-ASIA LOGISTICS GMBH',
+          destination: 'Hamburg Port, Germany',
+          commodity: 'ROASTED PISTACHIOS AAA (920 CTNS)',
+          gross_weight: '23,450.00 KG',
+          value: '195,500.00 USD',
+          truck: '34 ع 789 - ایران 22',
+          driver: 'حسین رضایی (Hossein Rezaei)',
+          status: '🟡 In Transit',
+          saved_at: '2026-08-24 10:15',
+          fullData: getFormData()
+        },
+        {
+          id: 'doc_sample_3',
+          cmr_number: 'CMR NO 0003',
+          consignor: 'Tehran Heavy Industrial Manufacturing',
+          origin: 'Tehran Industrial City, Iran',
+          consignee: 'ANATOLIA INDUSTRIAL TOOLS INC',
+          destination: 'Bursa Terminal, Turkey',
+          commodity: 'CNC PRECISION MILLING (18 CRATES)',
+          gross_weight: '18,900.00 KG',
+          value: '340,000.00 USD',
+          truck: '88 ع 456 - ایران 11',
+          driver: 'علیرضا قاسمی (Alireza Ghasemi)',
+          status: '🔵 Delivered',
+          saved_at: '2026-08-26 16:45',
+          fullData: getFormData()
+        }
+      ]);
+    }
+    
+    // Hash trigger to open archive if URL contains #open-archive
+    if (window.location.hash === '#open-archive') {
+      openSavedDocsModal();
+    }
+  });
+
+  // PWA INSTALL LOGIC
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const btn = document.getElementById('installAppBtn');
+    if (btn) btn.style.display = 'inline-flex';
+  });
+
+  function installPWAApp() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          showToast('📲 Sky Ariana CMR App installed successfully!', 'success');
+        }
+        deferredPrompt = null;
+      });
+    } else {
+      showToast('📲 Install via browser menu or use "Start-SkyCMR-App.bat"', 'success');
+    }
+  }
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch(err => console.log('SW:', err));
+    });
+  }
+</script>
+
+</body>
+</html>
