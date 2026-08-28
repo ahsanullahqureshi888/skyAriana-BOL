@@ -203,7 +203,7 @@ export function AccountsView() {
           </div>
 
           {/* Module Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             
             {/* 1. SKY DOC (Featured Flagship) */}
             <div 
@@ -272,7 +272,7 @@ export function AccountsView() {
                   BOL Editor
                 </h4>
                 <p className="text-[11px] text-slate-400 font-bold mt-0.5">
-                  Bills of Lading, Shipping Seals &amp; Stamps • بارنامه دریایی
+                  Bills of Lading, Seals &amp; Stamps • بارنامه
                 </p>
               </div>
               <div className="mt-3 flex items-center justify-between text-xs font-black text-amber-400">
@@ -296,10 +296,10 @@ export function AccountsView() {
                   </span>
                 </div>
                 <h4 className="text-sm font-black text-white group-hover:text-blue-300 transition-colors">
-                  Sky CMR Waybill
+                  Sky CMR
                 </h4>
                 <p className="text-[11px] text-slate-400 font-bold mt-0.5">
-                  International Border Consignment • بارنامه ترانزیت
+                  Border Transit Waybills • سی‌ام‌آر
                 </p>
               </div>
               <div className="mt-3 flex items-center justify-between text-xs font-black text-blue-400">
@@ -308,7 +308,7 @@ export function AccountsView() {
               </div>
             </div>
 
-            {/* 4. Invoice Pad & Bank */}
+            {/* 4. Commercial Invoice Pad */}
             <div 
               onClick={() => setView('invoice-pad')}
               className="bg-slate-900/90 hover:bg-slate-900 border border-indigo-500/30 hover:border-indigo-400/60 rounded-2xl p-4 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-lg group flex flex-col justify-between"
@@ -326,11 +326,38 @@ export function AccountsView() {
                   Invoice Pad
                 </h4>
                 <p className="text-[11px] text-slate-400 font-bold mt-0.5">
-                  A4 Commercial Invoices &amp; Auto-Parse • فاکتور تجاری
+                  Commercial Invoices • فاکتور
                 </p>
               </div>
               <div className="mt-3 flex items-center justify-between text-xs font-black text-indigo-400">
                 <span>Open Invoices</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </div>
+            </div>
+
+            {/* 5. Sky Bank */}
+            <div 
+              onClick={() => setView('bank')}
+              className="bg-slate-900/90 hover:bg-slate-900 border border-emerald-500/30 hover:border-emerald-400/60 rounded-2xl p-4 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-lg group flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="h-9 w-9 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
+                    <Landmark className="h-4.5 w-4.5" />
+                  </div>
+                  <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 uppercase">
+                    Banking
+                  </span>
+                </div>
+                <h4 className="text-sm font-black text-white group-hover:text-emerald-300 transition-colors">
+                  Sky Bank
+                </h4>
+                <p className="text-[11px] text-slate-400 font-bold mt-0.5">
+                  Transactions &amp; Ledgers • بانک
+                </p>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs font-black text-emerald-400">
+                <span>Open Bank</span>
                 <ArrowUpRight className="h-3.5 w-3.5" />
               </div>
             </div>
