@@ -1667,8 +1667,26 @@
         </div>
 
         <!-- 2. Invoice & Transit Details Forum Card -->
+        <!-- 2. Invoice & Transit Details Forum Card -->
         <div class="forum-section-card">
-          <div class="forum-card-title">📄 2. Invoice &amp; Transit Details</div>
+          <div class="forum-card-title">
+            <span>📄 2. Sender &amp; Transit Details</span>
+          </div>
+
+          <!-- All-in-One Sender Paste Box -->
+          <div style="background: var(--modal-bg); border: 1px solid rgba(2, 132, 199, 0.35); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="form-label" style="margin: 0; font-weight: 800; color: #38bdf8; display: flex; align-items: center; gap: 4px;">
+                📦 Sender All-in-One Paste Box (پیسټ باکس)
+              </label>
+              <div style="display: flex; gap: 4px;">
+                <button class="btn btn-blue" type="button" style="padding: 2px 8px; font-size: 10px;" onclick="parseAndApplySenderText(document.getElementById('f-sender-paste-box').value)">⚡ Auto-Fill</button>
+                <button class="btn btn-dark" type="button" style="padding: 2px 6px; font-size: 10px;" onclick="clearSenderBox()" title="Clear Sender Box">✕</button>
+              </div>
+            </div>
+            <textarea id="f-sender-paste-box" class="form-input" rows="3" style="font-size: 11px; line-height: 1.35; resize: vertical; width: 100%; font-family: monospace;" placeholder="Paste all Sender details in one box...&#10;e.g.:&#10;SENDER: NASIB OBID AKBARI LTD&#10;LIC NO: 33215&#10;TRANSIT NO: A00004750&#10;ORIGIN: RASTA BAZAAR, NIMROZ CENTER ZARANJ - NIMROZ&#10;COO: 132169&#10;PHYTO: 548172" oninput="parseAndApplySenderText(this.value)"></textarea>
+          </div>
+
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Invoice Date</label>
@@ -1725,7 +1743,24 @@
 
         <!-- 3. Importer / Consignee Forum Card -->
         <div class="forum-section-card">
-          <div class="forum-card-title">🏢 3. Importer / Consignee Details</div>
+          <div class="forum-card-title">
+            <span>🏢 3. Importer / Consignee Details</span>
+          </div>
+
+          <!-- All-in-One Importer Paste Box -->
+          <div style="background: var(--modal-bg); border: 1px solid rgba(2, 132, 199, 0.35); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label class="form-label" style="margin: 0; font-weight: 800; color: #38bdf8; display: flex; align-items: center; gap: 4px;">
+                🏢 Importer All-in-One Paste Box (پیسټ باکس)
+              </label>
+              <div style="display: flex; gap: 4px;">
+                <button class="btn btn-blue" type="button" style="padding: 2px 8px; font-size: 10px;" onclick="parseAndApplyImporterText(document.getElementById('f-imp-paste-box').value)">⚡ Auto-Fill</button>
+                <button class="btn btn-dark" type="button" style="padding: 2px 6px; font-size: 10px;" onclick="clearImporterBox()" title="Clear Importer Box">✕</button>
+              </div>
+            </div>
+            <textarea id="f-imp-paste-box" class="form-input" rows="3.5" style="font-size: 11px; line-height: 1.35; resize: vertical; width: 100%; font-family: monospace;" placeholder="Paste all Importer details in one box...&#10;e.g.:&#10;JDM ENTERPRISES&#10;132/B, BEHIND GEETA VIHAR HOTEL,&#10;NEAR SPENCER'S GYM, SANTACRUZ (EAST),&#10;MUMBAI -400029, INDIA&#10;FSSAI NO: 10018022007908&#10;GSTIN: 27BAAPA6587K1ZH&#10;IEC CODE: BAAPA6587K&#10;EMAIL: JDMENTERPRISES89@GMAIL.COM" oninput="parseAndApplyImporterText(this.value)"></textarea>
+          </div>
+
           <div class="form-group">
             <label class="form-label">Name of Importer</label>
             <input type="text" id="f-imp-name" class="form-input" value="JDM ENTERPRISES" oninput="syncForumToPad('impname', this.value)" />
@@ -2378,6 +2413,259 @@
       }
     }
 
+    let isParsingInternal = false;
+
+    function updateCombinedPasteBoxes() {
+      if (isParsingInternal) return;
+
+      const impBox = document.getElementById("f-imp-paste-box");
+      if (impBox) {
+        const name = document.getElementById("f-imp-name") ? document.getElementById("f-imp-name").value : "";
+        const a1 = document.getElementById("f-imp-addr1") ? document.getElementById("f-imp-addr1").value : "";
+        const a2 = document.getElementById("f-imp-addr2") ? document.getElementById("f-imp-addr2").value : "";
+        const a3 = document.getElementById("f-imp-addr3") ? document.getElementById("f-imp-addr3").value : "";
+        const fssai = document.getElementById("f-imp-fssai") ? document.getElementById("f-imp-fssai").value : "";
+        const gstin = document.getElementById("f-imp-gstin") ? document.getElementById("f-imp-gstin").value : "";
+        const iec = document.getElementById("f-imp-iec") ? document.getElementById("f-imp-iec").value : "";
+        const email = document.getElementById("f-imp-email") ? document.getElementById("f-imp-email").value : "";
+
+        const parts = [];
+        if (name) parts.push(name);
+        if (a1) parts.push(a1);
+        if (a2) parts.push(a2);
+        if (a3) parts.push(a3);
+        if (fssai) parts.push(`FSSAI NO: ${fssai}`);
+        if (gstin) parts.push(`GSTIN: ${gstin}`);
+        if (iec) parts.push(`IEC CODE: ${iec}`);
+        if (email) parts.push(`EMAIL: ${email}`);
+
+        impBox.value = parts.join("\n");
+      }
+
+      const senderBox = document.getElementById("f-sender-paste-box");
+      if (senderBox) {
+        const sender = document.getElementById("f-inv-sender") ? document.getElementById("f-inv-sender").value : "";
+        const lic = document.getElementById("f-inv-sender-lic") ? document.getElementById("f-inv-sender-lic").value : "";
+        const transit = document.getElementById("f-inv-transit") ? document.getElementById("f-inv-transit").value : "";
+        const origin = document.getElementById("f-inv-origin") ? document.getElementById("f-inv-origin").value : "";
+        const coo = document.getElementById("f-inv-coo") ? document.getElementById("f-inv-coo").value : "";
+        const phyto = document.getElementById("f-inv-phyto") ? document.getElementById("f-inv-phyto").value : "";
+        const via = document.getElementById("f-inv-via") ? document.getElementById("f-inv-via").value : "";
+        const tl = document.getElementById("f-inv-tl") ? document.getElementById("f-inv-tl").value : "";
+
+        const parts = [];
+        if (sender) parts.push(`SENDER: ${sender}`);
+        if (lic) parts.push(`LIC NO: ${lic}`);
+        if (transit) parts.push(`TRANSIT NO: ${transit}`);
+        if (origin) parts.push(`ORIGIN: ${origin}`);
+        if (coo) parts.push(`COO: ${coo}`);
+        if (phyto) parts.push(`PHYTO: ${phyto}`);
+        if (via) parts.push(`VIA: ${via}`);
+        if (tl) parts.push(`TL: ${tl}`);
+
+        senderBox.value = parts.join("\n");
+      }
+    }
+
+    function parseAndApplyImporterText(rawText) {
+      if (!rawText || !rawText.trim()) return;
+      isParsingInternal = true;
+      const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      if (lines.length === 0) {
+        isParsingInternal = false;
+        return;
+      }
+
+      let name = "";
+      let addrLines = [];
+      let fssai = "";
+      let gstin = "";
+      let iec = "";
+      let email = "";
+      let truck = "";
+
+      lines.forEach((line, index) => {
+        const lower = line.toLowerCase();
+        
+        if (lower.startsWith("fssai") || lower.includes("fssai no") || lower.includes("fssai:") || lower.includes("fssaino")) {
+          const match = line.replace(/^[^\d:]*[:\-]?\s*/i, '').trim();
+          fssai = match || line;
+        } else if (lower.startsWith("gstin") || lower.startsWith("gst") || lower.includes("gstin:") || lower.includes("gst1n")) {
+          const match = line.replace(/^[^\w:]*[:\-]?\s*/i, '').trim();
+          gstin = match || line;
+        } else if (lower.startsWith("iec") || lower.includes("iec code") || lower.includes("iec:")) {
+          const match = line.replace(/^[^\w:]*[:\-]?\s*/i, '').trim();
+          iec = match || line;
+        } else if (lower.includes("@") || lower.startsWith("email") || lower.includes("email id")) {
+          const emailMatch = line.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+          email = emailMatch ? emailMatch[0] : line.replace(/^[^\w:]*[:\-]?\s*/i, '').trim();
+        } else if (lower.startsWith("truck") || lower.startsWith("truck no") || lower.includes("truck:")) {
+          const match = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
+          truck = match || line;
+        } else if (!name && (index === 0 || lower.startsWith("name:") || lower.startsWith("importer:") || lower.startsWith("consignee:"))) {
+          name = line.replace(/^(name of importer|name|importer|consignee)[:\-]?\s*/i, '').trim();
+        } else {
+          const cleanAddr = line.replace(/^(address|addr)[:\-]?\s*/i, '').trim();
+          if (cleanAddr) addrLines.push(cleanAddr);
+        }
+      });
+
+      if (name) {
+        document.getElementById("imp-name").value = name;
+        document.getElementById("f-imp-name").value = name;
+      }
+      if (addrLines[0] !== undefined) {
+        document.getElementById("imp-addr1").value = addrLines[0];
+        document.getElementById("f-imp-addr1").value = addrLines[0];
+      }
+      if (addrLines[1] !== undefined) {
+        document.getElementById("imp-addr2").value = addrLines[1];
+        document.getElementById("f-imp-addr2").value = addrLines[1];
+      }
+      if (addrLines[2] !== undefined) {
+        const fullThird = addrLines.slice(2).join(', ');
+        document.getElementById("imp-addr3").value = fullThird;
+        document.getElementById("f-imp-addr3").value = fullThird;
+      }
+      if (fssai) {
+        document.getElementById("imp-fssai").value = fssai;
+        document.getElementById("f-imp-fssai").value = fssai;
+      }
+      if (gstin) {
+        document.getElementById("imp-gstin").value = gstin;
+        document.getElementById("f-imp-gstin").value = gstin;
+      }
+      if (iec) {
+        document.getElementById("imp-iec").value = iec;
+        document.getElementById("f-imp-iec").value = iec;
+      }
+      if (email) {
+        document.getElementById("imp-email").value = email;
+        document.getElementById("f-imp-email").value = email;
+      }
+      if (truck) {
+        document.getElementById("ship-truck").value = truck;
+        document.getElementById("f-ship-truck").value = truck;
+      }
+
+      isParsingInternal = false;
+      scheduleAutoSave();
+    }
+
+    function parseAndApplySenderText(rawText) {
+      if (!rawText || !rawText.trim()) return;
+      isParsingInternal = true;
+      const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      if (lines.length === 0) {
+        isParsingInternal = false;
+        return;
+      }
+
+      let sender = "";
+      let lic = "";
+      let transit = "";
+      let origin = "";
+      let coo = "";
+      let phyto = "";
+      let via = "";
+      let tl = "";
+      let date = "";
+      let bill = "";
+      let invNo = "";
+
+      lines.forEach((line, index) => {
+        const lower = line.toLowerCase();
+        
+        if (lower.startsWith("date:") || lower.includes("date:")) {
+          const match = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
+          if (match) date = match;
+        } else if (lower.startsWith("bill:") || lower.startsWith("bill no:") || lower.includes("bill no")) {
+          const match = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
+          if (match) bill = match;
+        } else if (lower.startsWith("invoice no:") || lower.startsWith("inv no:") || lower.startsWith("inv:")) {
+          const match = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
+          if (match) invNo = match;
+        } else if (lower.startsWith("sender:") || lower.startsWith("shipper:") || lower.includes("sender name")) {
+          sender = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
+        } else if (lower.startsWith("lic:") || lower.startsWith("lic no:") || lower.includes("sender lic") || lower.includes("license")) {
+          lic = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
+        } else if (lower.startsWith("transit:") || lower.startsWith("transit no:") || lower.includes("transit")) {
+          transit = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
+        } else if (lower.startsWith("origin:") || lower.startsWith("rasta") || lower.includes("bazaar") || lower.includes("origin")) {
+          origin = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
+        } else if (lower.startsWith("coo:") || lower.includes("certificate of origin") || lower.includes("coo no")) {
+          coo = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
+        } else if (lower.startsWith("phyto:") || lower.includes("phytosanitary")) {
+          phyto = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
+        } else if (lower.startsWith("via:") || lower.includes("transit route") || lower.startsWith("route:")) {
+          via = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
+        } else if (lower.startsWith("tl:") || lower.startsWith("tl no:") || lower.includes("tl number")) {
+          tl = line.replace(/^[^:]*[:\-]?\s*/i, '').trim();
+        } else if (!sender && index === 0) {
+          sender = line;
+        }
+      });
+
+      if (date) {
+        document.getElementById("inv-date").value = date;
+        document.getElementById("f-inv-date").value = date;
+      }
+      if (bill) {
+        document.getElementById("inv-bill").value = bill;
+        document.getElementById("f-inv-bill").value = bill;
+      }
+      if (invNo) {
+        document.getElementById("inv-no").value = invNo;
+        document.getElementById("f-inv-no").value = invNo;
+      }
+      if (sender) {
+        document.getElementById("inv-sender").value = sender;
+        document.getElementById("f-inv-sender").value = sender;
+      }
+      if (lic) {
+        document.getElementById("inv-sender-lic").value = lic;
+        document.getElementById("f-inv-sender-lic").value = lic;
+      }
+      if (transit) {
+        document.getElementById("inv-transit").value = transit;
+        document.getElementById("f-inv-transit").value = transit;
+      }
+      if (origin) {
+        document.getElementById("inv-origin").value = origin;
+        document.getElementById("f-inv-origin").value = origin;
+      }
+      if (coo) {
+        document.getElementById("inv-coo").value = coo;
+        document.getElementById("f-inv-coo").value = coo;
+      }
+      if (phyto) {
+        document.getElementById("inv-phyto").value = phyto;
+        document.getElementById("f-inv-phyto").value = phyto;
+      }
+      if (via) {
+        document.getElementById("inv-via").value = via;
+        document.getElementById("f-inv-via").value = via;
+      }
+      if (tl) {
+        document.getElementById("inv-tl").value = tl;
+        document.getElementById("f-inv-tl").value = tl;
+      }
+
+      isParsingInternal = false;
+      syncFooter();
+      scheduleAutoSave();
+    }
+
+    function clearSenderBox() {
+      const box = document.getElementById("f-sender-paste-box");
+      if (box) box.value = "";
+    }
+
+    function clearImporterBox() {
+      const box = document.getElementById("f-imp-paste-box");
+      if (box) box.value = "";
+    }
+
     function syncForumToPad(field, val) {
       if (field === 'date') document.getElementById("inv-date").value = val;
       if (field === 'bill') document.getElementById("inv-bill").value = val;
@@ -2401,6 +2689,7 @@
       if (field === 'impiec') document.getElementById("imp-iec").value = val;
       if (field === 'impemail') document.getElementById("imp-email").value = val;
 
+      updateCombinedPasteBoxes();
       syncFooter();
       const sayWordsEl = document.getElementById("say-usd-words");
       if (sayWordsEl) {
@@ -2432,6 +2721,7 @@
       if (field === 'impiec') document.getElementById("f-imp-iec").value = val;
       if (field === 'impemail') document.getElementById("f-imp-email").value = val;
 
+      updateCombinedPasteBoxes();
       syncFooter();
       const sayWordsEl = document.getElementById("say-usd-words");
       if (sayWordsEl) {
@@ -2463,6 +2753,8 @@
       document.getElementById("f-imp-gstin").value = getVal("imp-gstin");
       document.getElementById("f-imp-iec").value = getVal("imp-iec");
       document.getElementById("f-imp-email").value = getVal("imp-email");
+
+      updateCombinedPasteBoxes();
     }
 
     // ==========================================================================
