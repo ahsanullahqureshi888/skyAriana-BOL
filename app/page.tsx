@@ -31,6 +31,7 @@ const SkyBankView = dynamic(safeLazy(() => import('@/components/sky-bank-view').
 const InvoicePadView = dynamic(safeLazy(() => import('@/components/invoice-pad-view').then(m => m.InvoicePadView)), { loading: ViewLoadingSkeleton })
 const SkyCmrView = dynamic(safeLazy(() => import('@/components/sky-cmr-view').then(m => m.SkyCmrView)), { loading: ViewLoadingSkeleton })
 const SkyDocView = dynamic(safeLazy(() => import('@/components/sky-doc-view').then(m => m.SkyDocView)), { loading: ViewLoadingSkeleton })
+const ReportsView = dynamic(safeLazy(() => import('@/components/reports-view').then(m => m.ReportsView)), { loading: ViewLoadingSkeleton })
 const ShipperDashboardView = dynamic(safeLazy(() => import('@/components/shipper-dashboard').then(m => m.ShipperDashboardView)), { loading: ViewLoadingSkeleton })
 
 import { useEffect } from 'react'
@@ -241,6 +242,7 @@ function MainContent() {
         {view === 'invoice-pad' && <InvoicePadView />}
         {view === 'sky-cmr' && <SkyCmrView />}
         {view === 'sky-doc' && <SkyDocView />}
+        {view === 'reports' && <ReportsView />}
       </main>
     </div>
   )

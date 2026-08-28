@@ -21,6 +21,7 @@ import {
   UploadCloud,
   CheckCircle2,
   Truck,
+  TrendingUp,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
@@ -180,6 +181,18 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
         badge: "Alt+8",
         perform: () => {
           setView("sky-doc")
+          onOpenChange(false)
+        },
+      },
+      {
+        id: "nav-reports",
+        title: "Financial Reports & Profit/Loss (P&L)",
+        subtitle: "Executive Profit & Loss Statement, Cargo Volumes & Client Aging",
+        category: "Navigation",
+        icon: TrendingUp,
+        badge: "Reports",
+        perform: () => {
+          setView("reports")
           onOpenChange(false)
         },
       },

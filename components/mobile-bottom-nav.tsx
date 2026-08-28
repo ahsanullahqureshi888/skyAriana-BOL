@@ -1,7 +1,7 @@
 "use client"
 
 import { useApp } from "@/lib/app-context"
-import { Building2, FileText, Landmark, Settings as SettingsIcon, Cloud, Receipt, Truck } from "lucide-react"
+import { Building2, FileText, Landmark, Settings as SettingsIcon, Cloud, Receipt, Truck, TrendingUp } from "lucide-react"
 import { useState } from "react"
 import { CloudSyncModal } from "@/components/bill-of-lading/cloud-sync-modal"
 
@@ -46,11 +46,19 @@ export function MobileBottomNav() {
     },
     {
       id: "bank",
-      label: "Sky Bank",
+      label: "Bank",
       icon: Landmark,
       activeClass: "text-emerald-600 bg-emerald-50 border-emerald-200",
       activeIndicator: "bg-emerald-600",
       onClick: () => setView("bank")
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      icon: TrendingUp,
+      activeClass: "text-blue-700 bg-blue-50 border-blue-200",
+      activeIndicator: "bg-blue-600",
+      onClick: () => setView("reports")
     },
     ...(!isShipper ? [{
       id: "settings",

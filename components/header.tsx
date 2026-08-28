@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   Sparkles,
   ChevronRight,
-  Landmark
+  Landmark,
+  TrendingUp
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/lib/app-context'
@@ -37,7 +38,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
 
   const getTitle = () => {
-    if (title) return title
+    if (view === 'reports') return 'Financial Reports & Profit/Loss (P&L)'
     if (view === 'sky-doc') return 'Sky Ariana Document System (SKY DOC)'
     if (view === 'sky-cmr') return 'Sky CMR Express & Border Waybill'
     if (view === 'invoice-pad') return 'Commercial Invoice Pad'
@@ -52,6 +53,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
   const getSubtitle = () => {
     if (subtitle) return subtitle
+    if (view === 'reports') return 'Executive Profit & Loss Statement, Cargo Volumes & Financial Aging • گزارشات مالی، سود و زیان'
     if (view === 'sky-doc') return 'Enterprise Operating System & Document Management • سیستم جامع اسناد و عملیات'
     if (view === 'sky-cmr') return 'International Consignment Note, Border Transit & Waybills • بارنامه بین‌المللی سی‌ام‌آر'
     if (view === 'invoice-pad') return 'Print-Ready A4 Commercial Invoices, Customs Valuations & Signatures • سیستم صدور فاکتور'
@@ -65,6 +67,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   }
 
   const getViewBadge = () => {
+    if (view === 'reports') return { label: 'Reports', color: 'bg-emerald-100 text-emerald-950 border-emerald-400' }
     if (view === 'sky-doc') return { label: 'Sky Doc', color: 'bg-cyan-100 text-cyan-950 border-cyan-400' }
     if (view === 'sky-cmr') return { label: 'Sky CMR', color: 'bg-blue-100 text-blue-950 border-blue-400' }
     if (view === 'invoice-pad') return { label: 'Invoice Pad', color: 'bg-indigo-100 text-indigo-900 border-indigo-300' }
@@ -228,6 +231,23 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               <Landmark className="h-3.5 w-3.5 text-emerald-600 group-hover:text-emerald-700" />
               <span className="font-extrabold">Sky Bank</span>
               <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ بانک</span>
+            </Button>
+
+            {/* Reports & Profit/Loss Navigation */}
+            <Button
+              variant={view === 'reports' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('reports')}
+              className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                view === 'reports' 
+                  ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-700 text-white border-transparent shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40' 
+                  : 'bg-white/90 border-emerald-200/90 text-emerald-900 hover:bg-emerald-50 hover:border-emerald-300'
+              }`}
+              title="Financial Reports & Profit/Loss Analytics"
+            >
+              <TrendingUp className="h-3.5 w-3.5 text-emerald-600 group-hover:text-emerald-700" />
+              <span className="font-extrabold">Reports</span>
+              <span className="hidden md:inline font-[vazirmatn] text-[10px] font-bold opacity-90">/ گزارشات</span>
             </Button>
 
             {/* Settings Navigation (Admins & Accountants only) */}
