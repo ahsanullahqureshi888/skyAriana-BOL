@@ -1899,7 +1899,7 @@ export function A4Preview({
       data-bol-a4="true"
       data-pdf-export={pdfMode ? "true" : undefined}
       data-color-strip={includeColorStrip ? "true" : "false"}
-      className="mx-auto flex min-h-[297mm] w-[210mm] max-w-[210mm] h-[297mm] max-h-[297mm] flex-col overflow-hidden text-slate-950 shadow-2xl shadow-blue-200/50 ring-1 ring-blue-100 print:m-0 print:p-0 print:h-[297mm] print:min-h-[297mm] print:max-h-[297mm] print:w-[210mm] print:max-w-[210mm] print:shadow-none print:ring-0 relative box-border"
+      className="mx-auto flex min-h-[297mm] w-[210mm] max-w-[210mm] h-[297mm] max-h-[297mm] flex-col overflow-hidden text-slate-950 shadow-2xl shadow-blue-200/50 ring-1 ring-blue-100 print:m-0 print:p-0 print:h-[296.5mm] print:min-h-0 print:max-h-[296.5mm] print:w-[210mm] print:max-w-[210mm] print:shadow-none print:ring-0 print:overflow-hidden relative box-border"
       style={pdfMode ? { ...a4ShellStyle, width: "210mm", minHeight: "297mm", height: "297mm", maxHeight: "297mm", overflow: "hidden", boxSizing: "border-box" } : a4ShellStyle}
     >
       <div data-bol-page="true" className="relative flex h-full flex-col p-[1.8mm] print:p-[1.6mm] gap-[0.6mm] print:gap-[0.4mm] overflow-hidden box-border">

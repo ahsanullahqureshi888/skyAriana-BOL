@@ -1468,8 +1468,8 @@
 
 @media print {
   @page {
-    size: A4 landscape !important;
-    margin: 4mm 5mm !important;
+    size: A4 portrait;
+    margin: 0;
   }
 
   [data-ledger-print-hidden="true"] {
@@ -4374,6 +4374,11 @@
 
 /* Print styles for Bill of Lading, Invoices, and Ledgers */
 @media print {
+  @page {
+    size: A4 portrait !important;
+    margin: 0 !important;
+  }
+
   /* Dedicated A4 Landscape setup for Account Ledger printing */
   body.ledger-landscape-active,
   html[data-print-mode="ledger-landscape"],
@@ -4390,13 +4395,16 @@
 
   /* Reset heights & position on global containers to prevent blank page spillover */
   html, body {
-    height: auto !important;
+    height: 100% !important;
     min-height: 0 !important;
+    max-height: 297mm !important;
     margin: 0 !important;
     padding: 0 !important;
     position: static !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     background: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* 3. CRITICAL: Hide all non-portaled body children (main React tree) except print portals! */
@@ -4432,22 +4440,42 @@
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
-    position: static !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
     width: 210mm !important;
     max-width: 210mm !important;
-    height: 297mm !important;
-    min-height: 297mm !important;
-    max-height: 297mm !important;
-    margin: 0 auto !important;
+    height: 296.5mm !important;
+    min-height: 0 !important;
+    max-height: 296.5mm !important;
+    margin: 0 !important;
     padding: 0 !important;
     overflow: hidden !important;
     background: #ffffff !important;
     box-shadow: none !important;
+    border: none !important;
     page-break-inside: avoid !important;
     page-break-before: avoid !important;
     page-break-after: avoid !important;
     break-inside: avoid !important;
     break-before: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .print-wrapper,
+  .print-page {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 296.5mm !important;
+    max-height: 296.5mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-inside: avoid !important;
     break-after: avoid !important;
   }
 
@@ -4479,9 +4507,9 @@
   [data-bol-a4="true"] {
     width: 210mm !important;
     max-width: 210mm !important;
-    height: 297mm !important;
-    min-height: 297mm !important;
-    max-height: 297mm !important;
+    height: 296.5mm !important;
+    min-height: 0 !important;
+    max-height: 296.5mm !important;
     margin: 0 auto !important;
     padding: 0 !important;
     box-sizing: border-box !important;
@@ -4501,10 +4529,10 @@
   [data-bol-page="true"] {
     width: 100% !important;
     height: 100% !important;
-    max-height: 100% !important;
+    max-height: 296.5mm !important;
     box-sizing: border-box !important;
-    padding: 1.6mm 2mm !important;
-    gap: 0.5mm !important;
+    padding: 1.4mm 1.8mm !important;
+    gap: 0.4mm !important;
     overflow: hidden !important;
   }
 
@@ -4512,7 +4540,7 @@
     flex: 1 1 auto !important;
     min-height: 0 !important;
     overflow: hidden !important;
-    gap: 0.5mm !important;
+    gap: 0.4mm !important;
   }
 
   [data-bol-footer="true"] {
