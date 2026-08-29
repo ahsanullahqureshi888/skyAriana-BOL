@@ -1899,10 +1899,10 @@ export function A4Preview({
       data-bol-a4="true"
       data-pdf-export={pdfMode ? "true" : undefined}
       data-color-strip={includeColorStrip ? "true" : "false"}
-      className="mx-auto flex min-h-[297mm] w-[210mm] max-w-[210mm] h-[297mm] max-h-[297mm] flex-col overflow-hidden text-slate-950 shadow-2xl shadow-blue-200/50 ring-1 ring-blue-100 print:m-0 print:p-0 print:h-full print:min-h-0 print:max-h-[285mm] print:w-[210mm] print:max-w-[210mm] print:shadow-none print:ring-0 print:overflow-hidden relative box-border"
+      className="mx-auto flex min-h-[297mm] w-[210mm] max-w-[210mm] h-[297mm] max-h-[297mm] flex-col justify-between overflow-hidden text-slate-950 shadow-2xl shadow-blue-200/50 ring-1 ring-blue-100 print:m-0 print:p-0 print:h-full print:min-h-0 print:max-h-[297mm] print:w-[210mm] print:max-w-[210mm] print:shadow-none print:ring-0 print:overflow-hidden relative box-border"
       style={pdfMode ? { ...a4ShellStyle, width: "210mm", minHeight: "297mm", height: "297mm", maxHeight: "297mm", overflow: "hidden", boxSizing: "border-box" } : a4ShellStyle}
     >
-      <div data-bol-page="true" className="relative flex h-full flex-col p-[1.8mm] print:p-[1.6mm] gap-[0.6mm] print:gap-[0.4mm] overflow-hidden box-border">
+      <div data-bol-page="true" className="relative flex h-full flex-col justify-between p-[2mm] print:p-[2mm] gap-[0.8mm] print:gap-[0.6mm] overflow-hidden box-border">
         {/* Technical Blueprint & Mountain Scenery Background Overlay */}
         {backgroundImageUrl && (
           <div
@@ -2179,7 +2179,7 @@ export function A4Preview({
             {/* Right side: Authorized Signature & Official Seal Block (NO ENCLOSING BOX) */}
             <div className="relative flex flex-col items-center justify-center min-w-[55mm] max-w-[68mm] text-center">
               {/* Official Stamp & Signature Overlay - Balanced size identical in A4 preview and print */}
-              <div className="relative w-full h-[18mm] flex items-center justify-center">
+              <div className="relative w-full h-[16mm] flex items-center justify-center">
                 {isStampActive ? (
                   <div
                     className="absolute -bottom-1 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10"
@@ -2190,7 +2190,7 @@ export function A4Preview({
                       data-company-stamp-img="true"
                       src={stampConfig.dataUrl || COMPANY_STAMP_SIGNATURE_SRC}
                       alt="Company Official Stamp & Signature"
-                      className="h-[35mm] max-h-[36mm] w-auto max-w-[58mm] object-contain drop-shadow-sm transition-all duration-200"
+                      className="h-[28mm] max-h-[30mm] w-auto max-w-[52mm] object-contain drop-shadow-sm transition-all duration-200"
                       style={{
                         transform: `rotate(${stampConfig.rotation}deg)`,
                         opacity: stampConfig.opacity,

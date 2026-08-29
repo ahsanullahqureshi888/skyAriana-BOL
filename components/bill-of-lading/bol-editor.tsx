@@ -58,14 +58,9 @@ function PrintPreviewPortal({ children }: { children: ReactNode }) {
 
     root.id = "bol-print-preview-root"
     root.dataset.printRoot = "true"
-    root.style.position = "fixed"
-    root.style.top = "0"
-    root.style.left = "0"
-    root.style.width = "100%"
-    root.style.height = "100%"
-    root.style.zIndex = "2147483646"
-    root.style.pointerEvents = "none"
-    document.body.appendChild(root)
+    if (!existing) {
+      document.body.appendChild(root)
+    }
     setContainer(root)
 
     return () => {
@@ -8800,7 +8795,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           <div
             id="bol-print-preview"
             data-print-root="true"
-            className="hidden print:block print:h-full print:max-h-[285mm] print:w-[210mm] print:max-w-[210mm] print:overflow-hidden print:m-0 print:p-0"
+            className="hidden print:block print:h-full print:max-h-[297mm] print:w-[210mm] print:max-w-[210mm] print:overflow-hidden print:m-0 print:p-0 print:box-border"
           >
             <PrintSafeBOL>
               <A4Preview

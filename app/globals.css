@@ -4433,7 +4433,29 @@
   }
 
   /* 5. Portrait Printable Portal positioning for BOL & Invoice */
-  #bol-print-preview-root,
+  #bol-print-preview-root {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: static !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-inside: avoid !important;
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    break-inside: avoid !important;
+    break-before: avoid !important;
+    break-after: avoid !important;
+  }
+
   .invoice-print-root,
   #sky-invoice-print-root {
     display: block !important;
@@ -4461,45 +4483,33 @@
     break-after: avoid !important;
   }
 
-  #bol-print-preview {
-    display: block !important;
+  #bol-print-preview,
+  .print-wrapper,
+  .print-page,
+  [data-bol-a4="true"] {
+    display: flex !important;
+    flex-direction: column !important;
     visibility: visible !important;
     opacity: 1 !important;
     position: static !important;
     width: 210mm !important;
     max-width: 210mm !important;
-    height: 285mm !important;
-    max-height: 285mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    min-height: 0 !important;
     margin: 0 auto !important;
     padding: 0 !important;
+    box-sizing: border-box !important;
     overflow: hidden !important;
     background: #ffffff !important;
     box-shadow: none !important;
     border: none !important;
-    transform: scale(0.955) !important;
-    transform-origin: top center !important;
+    transform: none !important;
     page-break-inside: avoid !important;
     page-break-before: avoid !important;
     page-break-after: avoid !important;
     break-inside: avoid !important;
     break-before: avoid !important;
-    break-after: avoid !important;
-  }
-
-  .print-wrapper,
-  .print-page {
-    width: 210mm !important;
-    max-width: 210mm !important;
-    height: 100% !important;
-    max-height: 285mm !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-    overflow: hidden !important;
-    page-break-inside: avoid !important;
-    page-break-after: avoid !important;
-    break-inside: avoid !important;
     break-after: avoid !important;
   }
 
@@ -4528,49 +4538,41 @@
     break-inside: auto !important;
   }
 
-  [data-bol-a4="true"] {
-    width: 210mm !important;
-    max-width: 210mm !important;
-    height: 100% !important;
-    max-height: 285mm !important;
-    margin: 0 auto !important;
-    padding: 0 !important;
-    box-sizing: border-box !important;
-    overflow: hidden !important;
-    page-break-inside: avoid !important;
-    page-break-before: avoid !important;
-    page-break-after: avoid !important;
-    break-inside: avoid !important;
-    break-before: avoid !important;
-    break-after: avoid !important;
-    box-shadow: none !important;
-    border: none !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
   [data-bol-page="true"] {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
     width: 100% !important;
     height: 100% !important;
-    max-height: 285mm !important;
+    max-height: 297mm !important;
     box-sizing: border-box !important;
-    padding: 1.2mm 1.6mm !important;
-    gap: 0.3mm !important;
+    padding: 2mm 3mm 1.5mm 3mm !important;
+    gap: 0.5mm !important;
     overflow: hidden !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   [data-bol-content="true"] {
+    display: flex !important;
     flex: 1 1 auto !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
     min-height: 0 !important;
+    width: 100% !important;
+    margin-top: 0.3mm !important;
+    gap: 0.5mm !important;
     overflow: hidden !important;
-    gap: 0.4mm !important;
   }
 
   [data-bol-footer="true"] {
+    flex: 0 0 auto !important;
+    position: relative !important;
+    bottom: 0 !important;
+    width: 100% !important;
     margin-top: auto !important;
-    shrink: 0 !important;
-    page-break-inside: avoid !important;
-    break-inside: avoid !important;
+    page-break-before: avoid !important;
+    break-before: avoid !important;
   }
 
   [data-company-stamp-img="true"],
@@ -4579,11 +4581,11 @@
   [data-pdf-export="true"] img[data-company-stamp-img="true"] {
     display: block !important;
     visibility: visible !important;
-    height: 35mm !important;
-    max-height: 36mm !important;
-    min-height: 35mm !important;
+    height: 28mm !important;
+    max-height: 30mm !important;
+    min-height: 24mm !important;
     width: auto !important;
-    max-width: 58mm !important;
+    max-width: 52mm !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     image-rendering: -webkit-optimize-contrast !important;
@@ -4600,6 +4602,8 @@
     print-color-adjust: exact !important;
     text-rendering: optimizeLegibility !important;
     -webkit-font-smoothing: antialiased !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   [data-bol-a4="true"] img {
@@ -4825,7 +4829,7 @@
     width: 100% !important;
     max-width: 100% !important;
     height: 100% !important;
-    max-height: 100vh !important;
+    max-height: 297mm !important;
     min-height: 0 !important;
     overflow: hidden !important;
     margin: 0 auto !important;
@@ -4857,13 +4861,16 @@
 
   [data-bol-content="true"] {
     display: flex !important;
-    flex: 1 1 0 !important;
+    flex: 1 1 auto !important;
     flex-direction: column !important;
+    justify-content: flex-start !important;
     min-height: 0 !important;
     width: 100% !important;
-    margin-top: 1mm !important;
-    gap: 1mm !important;
+    margin-top: 0.3mm !important;
+    gap: 0.5mm !important;
     overflow: hidden !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   [data-bol-footer="true"] {
@@ -5366,22 +5373,30 @@
   [data-bol-a4="true"] {
     display: flex !important;
     flex-direction: column !important;
+    justify-content: space-between !important;
     position: relative !important;
-    width: 100% !important;
-    max-width: 100% !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
     min-width: 0 !important;
-    height: 100% !important;
-    max-height: 100vh !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
     min-height: 0 !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
     overflow: hidden !important;
     background: #ffffff !important;
     transform: none !important;
-    transform-origin: top left !important;
+    transform-origin: top center !important;
     border: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     ring-width: 0 !important;
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    break-after: avoid !important;
   }
 
   .print-page [data-bol-a4="true"] {
@@ -5389,21 +5404,26 @@
     min-width: 0 !important;
     max-width: 100% !important;
     height: 100% !important;
-    max-height: 100vh !important;
+    max-height: 297mm !important;
     min-height: 0 !important;
   }
 
   [data-bol-page="true"] {
     display: flex !important;
     flex-direction: column !important;
+    justify-content: space-between !important;
     position: relative !important;
     width: 100% !important;
     height: 100% !important;
-    max-height: 100vh !important;
+    max-height: 297mm !important;
     min-height: 0 !important;
-    padding: 0 !important;
-    overflow: visible !important;
+    box-sizing: border-box !important;
+    padding: 2mm 3mm 1.5mm 3mm !important;
+    gap: 0.5mm !important;
+    overflow: hidden !important;
     background: #ffffff !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   [data-bol-header="true"] {
@@ -5426,16 +5446,17 @@
 
   [data-bol-header="true"] > div {
     display: grid !important;
-    grid-template-columns: 36mm minmax(0, 1fr) 50mm !important;
-    column-gap: 3mm !important;
+    grid-template-columns: 32mm minmax(0, 1fr) 46mm !important;
+    column-gap: 2mm !important;
     align-items: center !important;
+    padding: 1mm 1.5mm !important;
   }
 
   [data-bol-header="true"] img {
     display: block !important;
     visibility: visible !important;
-    max-width: 35mm !important;
-    max-height: 26mm !important;
+    max-width: 30mm !important;
+    max-height: 20mm !important;
     height: auto !important;
     width: auto !important;
     object-fit: contain !important;
@@ -5446,7 +5467,7 @@
   [data-print-root="true"] .bol-title-card,
   [data-pdf-export="true"] .bol-title-card {
     border: 0.25mm solid #93c5fd !important;
-    border-radius: 2.8mm !important;
+    border-radius: 2.5mm !important;
     box-shadow: none !important;
     overflow: hidden !important;
   }
@@ -5454,7 +5475,7 @@
   [data-print-root="true"] .bol-company-name,
   [data-pdf-export="true"] .bol-company-name {
     display: block !important;
-    font-size: 15pt !important;
+    font-size: 14.5pt !important;
     line-height: 1.1 !important;
     font-weight: 900 !important;
     letter-spacing: -0.01em !important;
@@ -5478,14 +5499,14 @@
   [data-print-root="true"] .bol-title-box,
   [data-pdf-export="true"] .bol-title-box {
     background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
-    min-height: 16mm !important;
-    padding: 2.3mm 2mm !important;
+    min-height: 12mm !important;
+    padding: 1.5mm 1.5mm !important;
     text-align: center !important;
   }
 
   [data-print-root="true"] .bol-title-en,
   [data-pdf-export="true"] .bol-title-en {
-    font-size: 12.2pt !important;
+    font-size: 10.5pt !important;
     font-weight: 800 !important;
     line-height: 1.08 !important;
     text-align: center !important;
@@ -5495,7 +5516,7 @@
   [data-print-root="true"] .bol-title-fa,
   [data-pdf-export="true"] .bol-title-fa {
     direction: rtl !important;
-    font-size: 12.2pt !important;
+    font-size: 10.5pt !important;
     font-weight: 800 !important;
     line-height: 1.12 !important;
     text-align: center !important;
@@ -5509,8 +5530,8 @@
     border-top: 0.25mm solid #bfdbfe !important;
     display: flex !important;
     justify-content: space-between !important;
-    min-height: 8.4mm !important;
-    padding: 1.5mm 2mm !important;
+    min-height: 7mm !important;
+    padding: 1mm 1.5mm !important;
   }
 
   [data-print-root="true"] .bol-number-text,
@@ -5518,7 +5539,7 @@
     color: #1e3a8a !important;
     display: block !important;
     font-family: "NotoSans", Arial, Helvetica, sans-serif !important;
-    font-size: 8.6pt !important;
+    font-size: 8pt !important;
     font-weight: 900 !important;
     line-height: 1.1 !important;
     text-align: center !important;
@@ -5529,11 +5550,14 @@
     display: flex !important;
     flex: 1 1 auto !important;
     flex-direction: column !important;
+    justify-content: flex-start !important;
     min-height: 0 !important;
     width: 100% !important;
-    margin-top: 1mm !important;
-    gap: 1mm !important;
+    margin-top: 0.3mm !important;
+    gap: 0.5mm !important;
     overflow: hidden !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   [data-bol-footer="true"] {
@@ -5558,7 +5582,7 @@
     display: block !important;
     overflow: hidden !important;
     border: 0.2mm solid #bfdbfe !important;
-    border-radius: 2.5mm !important;
+    border-radius: 2.2mm !important;
     background: #ffffff !important;
     box-shadow: none !important;
   }
@@ -5567,9 +5591,9 @@
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    height: 7mm !important;
-    min-height: 7mm !important;
-    padding: 1mm 2mm !important;
+    height: 5.6mm !important;
+    min-height: 5.6mm !important;
+    padding: 0.6mm 2mm !important;
     overflow: hidden !important;
     background: linear-gradient(
       90deg,
@@ -5578,11 +5602,11 @@
       #0891b2 100%
     ) !important;
     color: #ffffff !important;
-    border-radius: 2.3mm 2.3mm 0 0 !important;
+    border-radius: 2mm 2mm 0 0 !important;
   }
 
   [data-print-section] > div:last-child {
-    padding: 1.5mm !important;
+    padding: 0.8mm !important;
   }
 
   [data-print-section] .grid {
@@ -5593,20 +5617,20 @@
   [data-print-section="contacts"] .grid-cols-2,
   [data-print-section="contacts"] .mt-1\.5.grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 0.8mm !important;
+    gap: 0.6mm !important;
   }
 
   [data-print-section="shipment"] .grid-cols-6,
   [data-print-section="shipment"] .grid-cols-5,
   [data-print-section="shipment"] .grid-cols-4 {
     grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
-    gap: 0.6mm !important;
+    gap: 0.5mm !important;
   }
 
   [data-print-section="cargo"] .grid-cols-5,
   [data-print-section="cargo"] .grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 0.8mm !important;
+    gap: 0.6mm !important;
   }
 
   [data-print-root="true"] .rounded-lg,
