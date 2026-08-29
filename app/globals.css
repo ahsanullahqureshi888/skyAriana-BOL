@@ -4434,7 +4434,6 @@
 
   /* 5. Portrait Printable Portal positioning for BOL & Invoice */
   #bol-print-preview-root,
-  #bol-print-preview,
   .invoice-print-root,
   #sky-invoice-print-root {
     display: block !important;
@@ -4445,10 +4444,10 @@
     left: 0 !important;
     width: 210mm !important;
     max-width: 210mm !important;
-    height: 296.5mm !important;
+    height: 285mm !important;
     min-height: 0 !important;
-    max-height: 296.5mm !important;
-    margin: 0 !important;
+    max-height: 285mm !important;
+    margin: 0 auto !important;
     padding: 0 !important;
     overflow: hidden !important;
     background: #ffffff !important;
@@ -4462,12 +4461,37 @@
     break-after: avoid !important;
   }
 
+  #bol-print-preview {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: static !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 285mm !important;
+    max-height: 285mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    transform: scale(0.955) !important;
+    transform-origin: top center !important;
+    page-break-inside: avoid !important;
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    break-inside: avoid !important;
+    break-before: avoid !important;
+    break-after: avoid !important;
+  }
+
   .print-wrapper,
   .print-page {
     width: 210mm !important;
     max-width: 210mm !important;
-    height: 296.5mm !important;
-    max-height: 296.5mm !important;
+    height: 100% !important;
+    max-height: 285mm !important;
     margin: 0 !important;
     padding: 0 !important;
     border: none !important;
@@ -4507,9 +4531,8 @@
   [data-bol-a4="true"] {
     width: 210mm !important;
     max-width: 210mm !important;
-    height: 296.5mm !important;
-    min-height: 0 !important;
-    max-height: 296.5mm !important;
+    height: 100% !important;
+    max-height: 285mm !important;
     margin: 0 auto !important;
     padding: 0 !important;
     box-sizing: border-box !important;
@@ -4529,10 +4552,10 @@
   [data-bol-page="true"] {
     width: 100% !important;
     height: 100% !important;
-    max-height: 296.5mm !important;
+    max-height: 285mm !important;
     box-sizing: border-box !important;
-    padding: 1.4mm 1.8mm !important;
-    gap: 0.4mm !important;
+    padding: 1.2mm 1.6mm !important;
+    gap: 0.3mm !important;
     overflow: hidden !important;
   }
 

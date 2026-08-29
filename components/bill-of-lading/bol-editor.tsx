@@ -8800,7 +8800,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           <div
             id="bol-print-preview"
             data-print-root="true"
-            className="hidden print:block print:min-h-[297mm] print:w-[210mm] print:overflow-visible"
+            className="hidden print:block print:h-full print:max-h-[285mm] print:w-[210mm] print:max-w-[210mm] print:overflow-hidden print:m-0 print:p-0"
           >
             <PrintSafeBOL>
               <A4Preview
