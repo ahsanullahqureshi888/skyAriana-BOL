@@ -488,26 +488,37 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       try {
         const storedLocal1 = window.localStorage.getItem("sky-bol-browser-documents")
         const storedLocal2 = window.localStorage.getItem("skybol:saved-documents")
+        const storedLocal3 = window.localStorage.getItem("skybol:backup-documents")
         const list1: SavedDocument[] = storedLocal1 ? JSON.parse(storedLocal1) : []
         const list2: SavedDocument[] = storedLocal2 ? JSON.parse(storedLocal2) : []
-        clientLocalDocs = [...list1, ...list2]
+        const list3: SavedDocument[] = storedLocal3 ? JSON.parse(storedLocal3) : []
+        clientLocalDocs = [...list1, ...list2, ...list3]
       } catch (e) {
         console.error("Error reading browser local documents:", e)
       }
 
       const mergedMap = new Map<string, SavedDocument>()
-      for (const d of serverDocs) {
-        const key = d.bol_number || d.id
-        if (key) mergedMap.set(key, d)
-      }
-      for (const d of clientLocalDocs) {
-        const key = d.bol_number || d.id
-        if (key) mergedMap.set(key, d)
+      const addOrUpdate = (d: SavedDocument) => {
+        const key = (d.bol_number || d.id || "").trim()
+        if (!key) return
+        const existing = mergedMap.get(key)
+        if (!existing) {
+          mergedMap.set(key, d)
+        } else {
+          const timeExisting = new Date((existing as any).updated_at || existing.created_at || (existing as any).issue_date || 0).getTime()
+          const timeNew = new Date((d as any).updated_at || d.created_at || (d as any).issue_date || 0).getTime()
+          if (timeNew >= timeExisting) {
+            mergedMap.set(key, d)
+          }
+        }
       }
 
+      for (const d of serverDocs) addOrUpdate(d)
+      for (const d of clientLocalDocs) addOrUpdate(d)
+
       const mergedList = Array.from(mergedMap.values()).sort((a, b) => {
-        const dateA = new Date(a.created_at || a.issue_date || 0).getTime()
-        const dateB = new Date(b.created_at || b.issue_date || 0).getTime()
+        const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
+        const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
         if (dateB !== dateA) return dateB - dateA
         return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
       })
@@ -565,8 +576,8 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       const allMerged = Array.from(mergedMap.values())
         .filter(isMeaningfulBOL)
         .sort((a, b) => {
-          const dateA = new Date(a.created_at || a.issue_date || 0).getTime()
-          const dateB = new Date(b.created_at || b.issue_date || 0).getTime()
+          const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
+          const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
           if (dateB !== dateA) return dateB - dateA
           return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
         })
@@ -588,18 +599,46 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     void fetchDocuments()
 
     const handleRefresh = (event?: CustomEvent) => {
-      if (event?.detail && event.detail.bol_number) {
+      if (event?.detail && (event.detail.bol_number || event.detail.id)) {
+        const updatedDoc = event.detail
+        const targetId = updatedDoc.id || updatedDoc.bol_number
+        const targetNum = updatedDoc.bol_number || updatedDoc.id
+
         try {
-          const storedLocal = window.localStorage.getItem("sky-bol-browser-documents")
-          const currentList: SavedDocument[] = storedLocal ? JSON.parse(storedLocal) : []
-          const updatedList = [
-            event.detail,
-            ...currentList.filter((d) => (d.bol_number || d.id) !== (event.detail.bol_number || event.detail.id)),
-          ]
-          window.localStorage.setItem("sky-bol-browser-documents", JSON.stringify(updatedList))
+          const keys = ["sky-bol-browser-documents", "skybol:saved-documents", "skybol:backup-documents"]
+          for (const k of keys) {
+            const raw = window.localStorage.getItem(k)
+            const currentList: SavedDocument[] = raw ? JSON.parse(raw) : []
+            const updatedList = [
+              updatedDoc,
+              ...currentList.filter((d: any) => {
+                const dId = d.id || d.bol_number
+                const dNum = d.bol_number
+                return dId !== targetId && dNum !== targetId && dId !== targetNum && dNum !== targetNum
+              }),
+            ]
+            window.localStorage.setItem(k, JSON.stringify(updatedList))
+          }
         } catch (e) {
           console.error("Error storing local doc update:", e)
         }
+
+        // Instantly update React state so user doesn't even have to wait for network fetch
+        startTransition(() => {
+          setDocuments((prev) => {
+            const filtered = prev.filter((d: any) => {
+              const dId = d.id || d.bol_number
+              const dNum = d.bol_number
+              return dId !== targetId && dNum !== targetId && dId !== targetNum && dNum !== targetNum
+            })
+            return [updatedDoc, ...filtered].sort((a, b) => {
+              const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
+              const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
+              if (dateB !== dateA) return dateB - dateA
+              return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
+            })
+          })
+        })
       }
       void fetchDocuments()
     }
@@ -1258,7 +1297,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       document.title = buildBolSmartFileName(doc, doc.bol_number || doc.id, "")
     }
     startTransition(() => {
-      onLoadDocument(doc.id, "preview")
+      onLoadDocument(doc.id || doc.bol_number, "preview")
       window.dispatchEvent(new CustomEvent("skybol:editor-action", { detail: { action: "preview", tab: "preview" } }))
     })
     toast.success("BOL preview opened", {
@@ -1271,7 +1310,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       document.title = buildBolSmartFileName(doc, doc.bol_number || doc.id, "")
     }
     startTransition(() => {
-      onLoadDocument(doc.id, "form")
+      onLoadDocument(doc.id || doc.bol_number, "form")
       window.dispatchEvent(new CustomEvent("skybol:editor-action", { detail: { action: "form", tab: "form" } }))
     })
   }, [onLoadDocument])

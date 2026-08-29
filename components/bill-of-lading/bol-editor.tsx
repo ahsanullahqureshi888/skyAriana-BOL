@@ -3192,14 +3192,26 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
         // Save directly to browser local storage for 100% instant UI sync
         try {
-          const storedLocal = window.localStorage.getItem("sky-bol-browser-documents")
-          const currentList: any[] = storedLocal ? JSON.parse(storedLocal) : []
-          const updatedList = [
-            updatedFormData,
-            ...currentList.filter((d) => (d.bol_number || d.id) !== (updatedFormData.bol_number || updatedFormData.id)),
-          ]
-          window.localStorage.setItem("sky-bol-browser-documents", JSON.stringify(updatedList))
-          window.localStorage.setItem("skybol:saved-documents", JSON.stringify(updatedList))
+          const filterOut = (d: any) => {
+            const dId = d.id || d.bol_number
+            const dNum = d.bol_number
+            return (
+              dId !== updatedFormData.id &&
+              dNum !== updatedFormData.id &&
+              dId !== updatedFormData.bol_number &&
+              dNum !== updatedFormData.bol_number &&
+              dId !== validEditId &&
+              dNum !== validEditId
+            )
+          }
+
+          const keys = ["sky-bol-browser-documents", "skybol:saved-documents", "skybol:backup-documents"]
+          for (const k of keys) {
+            const raw = window.localStorage.getItem(k)
+            const currentList: any[] = raw ? JSON.parse(raw) : []
+            const updatedList = [updatedFormData, ...currentList.filter(filterOut)]
+            window.localStorage.setItem(k, JSON.stringify(updatedList))
+          }
         } catch (e) {
           console.error("Browser local storage error:", e)
         }

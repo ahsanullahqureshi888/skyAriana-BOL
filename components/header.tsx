@@ -38,6 +38,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
 
   const getTitle = () => {
+    if (view === 'shipper-portal') return 'Sky Ariana Shipper Portal'
     if (view === 'reports') return 'Financial Reports & Profit/Loss (P&L)'
     if (view === 'sky-doc') return 'Sky Ariana Document System (SKY DOC)'
     if (view === 'sky-cmr') return 'Sky CMR Express & Border Waybill'
@@ -53,6 +54,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
   const getSubtitle = () => {
     if (subtitle) return subtitle
+    if (view === 'shipper-portal') return 'Verified Client Consignments, Live Container Milestones & Ledger • پورتال مشتریان'
     if (view === 'reports') return 'Executive Profit & Loss Statement, Cargo Volumes & Financial Aging • گزارشات مالی، سود و زیان'
     if (view === 'sky-doc') return 'Enterprise Operating System & Document Management • سیستم جامع اسناد و عملیات'
     if (view === 'sky-cmr') return 'International Consignment Note, Border Transit & Waybills • بارنامه بین‌المللی سی‌ام‌آر'
@@ -67,6 +69,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   }
 
   const getViewBadge = () => {
+    if (view === 'shipper-portal') return { label: 'Shipper Portal', color: 'bg-amber-100 text-amber-950 border-amber-400' }
     if (view === 'reports') return { label: 'Reports', color: 'bg-emerald-100 text-emerald-950 border-emerald-400' }
     if (view === 'sky-doc') return { label: 'Sky Doc', color: 'bg-cyan-100 text-cyan-950 border-cyan-400' }
     if (view === 'sky-cmr') return { label: 'Sky CMR', color: 'bg-blue-100 text-blue-950 border-blue-400' }

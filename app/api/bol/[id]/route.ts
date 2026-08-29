@@ -2,6 +2,11 @@ import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import * as localStorage from "@/lib/services/local-storage-service"
 
+const isUUID = (str?: string | null): boolean => {
+  if (!str) return false
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim())
+}
+
 // GET: Fetch a single BOL by ID
 export async function GET(
   request: Request,
@@ -12,11 +17,14 @@ export async function GET(
   try {
     const supabase = await createClient()
     
-    const { data, error } = await supabase
-      .from("bill_of_lading")
-      .select("*")
-      .or(`id.eq.${id},bol_number.eq.${id}`)
-      .single()
+    let query = supabase.from("bill_of_lading").select("*")
+    if (isUUID(id)) {
+      query = query.or(`id.eq.${id},bol_number.eq.${id}`)
+    } else {
+      query = query.eq("bol_number", id)
+    }
+    
+    const { data, error } = await query.maybeSingle()
     
     let resultDoc = data
     if (error || !resultDoc) {
@@ -66,13 +74,18 @@ export async function PUT(
   
   try {
     const body = await request.json()
+    const targetBolNumber = body.bol_number || id
     
-    // Always update local storage as well
+    // Always update local storage first
     await localStorage.updateLocalBOL(id, body)
+    if (targetBolNumber !== id) {
+      await localStorage.updateLocalBOL(targetBolNumber, body)
+    }
 
     let savedData = {
       id,
       ...body,
+      bol_number: targetBolNumber,
       updated_at: new Date().toISOString(),
     }
     let savedToSupabase = false
@@ -80,34 +93,59 @@ export async function PUT(
     try {
       const supabase = await createClient()
 
-      // Try updating by UUID or by bol_number
-      let { data, error } = await supabase
-        .from("bill_of_lading")
-        .update({
-          ...body,
-          updated_at: new Date().toISOString(),
-        })
-        .or(`id.eq.${id},bol_number.eq.${id}`)
-        .select()
-        .maybeSingle()
+      // Sanitize payload: strip non-UUID id so PostgreSQL never throws invalid UUID error
+      const { id: rawId, ...cleanBody } = body
+      const updatePayload: Record<string, any> = {
+        ...cleanBody,
+        bol_number: targetBolNumber,
+        updated_at: new Date().toISOString(),
+      }
+      if (isUUID(rawId)) {
+        updatePayload.id = rawId
+      }
 
-      // If no row existed to update in Supabase, insert it as a new record
-      if (!data && (!error || error.code === "PGRST116")) {
-        const { id: rawId, ...cleanBody } = body
-        const insertPayload = {
-          bol_number: body.bol_number || id,
+      // 1. Try updating by UUID or bol_number
+      let updateQuery = supabase.from("bill_of_lading").update(updatePayload)
+      if (isUUID(id)) {
+        updateQuery = updateQuery.or(`id.eq.${id},bol_number.eq.${targetBolNumber}`)
+      } else {
+        updateQuery = updateQuery.eq("bol_number", id)
+      }
+      let { data, error } = await updateQuery.select().maybeSingle()
+
+      // 2. If no match by id, try updating by targetBolNumber
+      if (!data && targetBolNumber !== id) {
+        const res2 = await supabase
+          .from("bill_of_lading")
+          .update(updatePayload)
+          .eq("bol_number", targetBolNumber)
+          .select()
+          .maybeSingle()
+        if (res2.data) {
+          data = res2.data
+          error = res2.error
+        }
+      }
+
+      // 3. If no row existed in Supabase, insert it as a new record
+      if (!data) {
+        const insertPayload: Record<string, any> = {
+          ...updatePayload,
           issue_date: body.issue_date || new Date().toISOString().split("T")[0],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          ...cleanBody,
+          created_at: body.created_at || new Date().toISOString(),
+        }
+        if (isUUID(rawId)) {
+          insertPayload.id = rawId
         }
         const insertRes = await supabase
           .from("bill_of_lading")
           .insert(insertPayload)
           .select()
-          .single()
-        data = insertRes.data
-        error = insertRes.error
+          .maybeSingle()
+        if (insertRes.data) {
+          data = insertRes.data
+          error = insertRes.error
+        }
       }
 
       if (error) {
@@ -115,10 +153,10 @@ export async function PUT(
       } else if (data) {
         savedData = data
         savedToSupabase = true
-        console.log("[v0] BOL updated/upserted in Supabase:", data.id)
+        console.log("[v0] BOL updated/upserted in Supabase:", data.id || data.bol_number)
       }
     } catch (supabaseErr) {
-      console.error("[v0] Supabase connection failed, updating locally:", 
+      console.error("[v0] Supabase connection failed, updated locally:", 
         supabaseErr instanceof Error ? supabaseErr.message : String(supabaseErr))
     }
     
