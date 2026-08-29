@@ -38,6 +38,10 @@ import {
   Receipt,
   FileSpreadsheet,
   Cloud,
+  CheckSquare,
+  FileCode2,
+  Package,
+  Coins,
 } from "lucide-react"
 import { generateBOLPDFBlob, savePDFToDevice, buildBolSmartFileName } from "@/lib/utils/pdf-upload"
 import { CloudSyncModal } from "./cloud-sync-modal"
@@ -147,6 +151,9 @@ interface DocumentGridCardProps {
   onDelete: (doc: SavedDocument, e: React.MouseEvent) => void
   onCategoryAssign: (doc: SavedDocument, cat: Exclude<DocumentCategoryKey, "all" | "latest" | "with-pdf">) => void
   onFileInput: (doc: SavedDocument) => (e: ChangeEvent<HTMLInputElement>) => void
+  isSelected?: boolean
+  onToggleSelect?: (id: string) => void
+  onSendToCMR?: (doc: SavedDocument) => void
 }
 
 const DocumentGridCard = memo(function DocumentGridCard({
@@ -166,11 +173,18 @@ const DocumentGridCard = memo(function DocumentGridCard({
   onDelete,
   onCategoryAssign,
   onFileInput,
+  isSelected = false,
+  onToggleSelect,
+  onSendToCMR,
 }: DocumentGridCardProps) {
+  const docKey = doc.id || doc.bol_number
+
   return (
     <article
       style={{ contentVisibility: "auto", containIntrinsicSize: "380px" }}
-      className="group relative flex min-h-[360px] flex-col rounded-[22px] sm:rounded-[26px] border border-slate-200/90 bg-white/95 p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-400 hover:bg-white hover:shadow-md overflow-hidden"
+      className={`group relative flex min-h-[360px] flex-col rounded-[22px] sm:rounded-[26px] border ${
+        isSelected ? "border-blue-500 ring-2 ring-blue-500/30 bg-blue-50/20" : "border-slate-200/90 bg-white/95"
+      } p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-400 hover:bg-white hover:shadow-md overflow-hidden`}
     >
       {/* Top Accent Gradient Line */}
       <div className={`absolute top-0 left-0 right-0 h-1.5 ${isLatest ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 shadow-sm shadow-amber-500/50" : "bg-gradient-to-r from-[#0a2540] via-blue-600 to-indigo-500"}`} />
@@ -178,6 +192,15 @@ const DocumentGridCard = memo(function DocumentGridCard({
       {/* Top Header Row */}
       <div className="flex items-center justify-between gap-1.5 pt-1 relative z-10 flex-wrap">
         <div className="flex items-center gap-1.5 min-w-0 max-w-[72%] flex-wrap">
+          {onToggleSelect && (
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onToggleSelect(docKey)}
+              className="w-4 h-4 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
+              title="Select document for batch actions"
+            />
+          )}
           <div className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#0a2540] via-blue-900 to-[#1d4ed8] px-2.5 py-1 text-[11px] font-black font-mono tracking-tight text-white shadow-sm shadow-blue-950/20 truncate">
             <FileText className="h-3.5 w-3.5 shrink-0 text-blue-200" />
             <span className="truncate" title={doc.bol_number}>{doc.bol_number || "BOL"}</span>
@@ -219,138 +242,112 @@ const DocumentGridCard = memo(function DocumentGridCard({
         <div className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100/80 border border-slate-200/70 rounded-lg px-2 py-0.5 relative z-10 truncate">
           <MapPin className="h-3 w-3 text-blue-600 shrink-0" />
           <span className="truncate">
-            {doc.port_of_loading || doc.origin_country || "Origin"} ➔ {doc.port_of_discharge || doc.destination_country || "Destination"}
+            {doc.port_of_loading || doc.origin_country} ➔ {doc.port_of_discharge || doc.destination_country}
           </span>
         </div>
       )}
 
       {/* Cargo & Weight Details Box */}
-      {(doc.number_of_packages || doc.net_weight || doc.gross_weight || doc.goods_value || doc.rate_per_kgs) && (
-        <div className="mt-2 rounded-xl bg-gradient-to-br from-blue-50/90 to-indigo-50/70 border border-blue-200/80 p-2.5 text-[10.5px] space-y-1.5 relative z-10 shadow-2xs">
-          {/* Row 1: Packages & Weights */}
-          <div className="flex items-start justify-between gap-1.5 text-slate-800 font-extrabold flex-wrap">
-            {doc.number_of_packages && (
-              <div className="flex items-center gap-1 font-mono text-blue-950 font-black text-[10.5px]">
-                <Boxes className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-                <span className="break-words">{doc.number_of_packages}</span>
-              </div>
-            )}
-            {(doc.net_weight || doc.gross_weight) && (
-              <div className="flex items-center gap-1 font-mono text-slate-900 font-extrabold text-[10px] bg-white/90 border border-blue-100/90 px-1.5 py-0.5 rounded-md shrink-0 shadow-2xs ml-auto">
-                <Scale className="h-3 w-3 text-indigo-600 shrink-0" />
-                <span>{doc.net_weight ? `Net: ${doc.net_weight}` : `Gross: ${doc.gross_weight}`}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Row 2: Goods Value & Rate */}
-          {(doc.goods_value || doc.rate_per_kgs) && (
-            <div className="flex items-center justify-between gap-1 text-[10px] text-emerald-950 border-t border-blue-200/60 pt-1.5 font-bold flex-wrap">
-              {doc.goods_value && (
-                <div className="flex items-center gap-0.5 font-mono font-black text-emerald-900">
-                  <DollarSign className="h-3 w-3 text-emerald-600 shrink-0" />
-                  <span className="break-words">{doc.goods_value}</span>
-                </div>
-              )}
-              {doc.rate_per_kgs && (
-                <div className="font-mono text-slate-600 text-[9.5px] bg-white/80 border border-slate-200/70 px-1.5 py-0.5 rounded shrink-0 ml-auto">
-                  Rate: <span className="font-bold text-slate-900">{doc.rate_per_kgs}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Date & Truck */}
-      <div className="mt-2 grid grid-cols-2 gap-1.5 text-[11px] text-slate-600 relative z-10">
-        <div className="flex items-center gap-1.5 rounded-xl bg-white/90 px-2 py-1 border border-slate-200/60 shadow-2xs">
-          <Calendar className="h-3 w-3 text-blue-600 shrink-0" />
-          <span className="font-bold text-slate-800 truncate">
-            {doc.issue_date
-              ? new Date(doc.issue_date).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })
-              : "No date"}
+      <div className="mt-2 rounded-2xl bg-gradient-to-br from-blue-50/60 via-indigo-50/40 to-slate-50 border border-blue-100/80 p-2.5 text-xs text-slate-700 space-y-1.5 relative z-10">
+        <div className="flex items-center justify-between gap-1 text-[11px] font-extrabold text-blue-950">
+          <span className="flex items-center gap-1 truncate" title="Quantity / Packages">
+            <Package className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+            <span className="truncate">{doc.number_of_packages || "0 CTNS"}</span>
+          </span>
+          <span className="flex items-center gap-1 text-slate-900 font-black shrink-0 font-mono text-[10.5px]">
+            <Scale className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+            <span>{doc.net_weight ? `Net: ${doc.net_weight}` : (doc.gross_weight || "—")}</span>
           </span>
         </div>
-        <div className="flex items-center gap-1.5 rounded-xl bg-white/90 px-2 py-1 border border-slate-200/60 shadow-2xs">
-          <Truck className="h-3 w-3 text-indigo-600 shrink-0" />
-          <span className="truncate font-bold text-slate-800">{doc.truck_number || "No truck #"}</span>
+
+        {/* Goods Value (if present) */}
+        {doc.goods_value && (
+          <div className="flex items-center justify-between text-[11px] font-black text-emerald-800 bg-emerald-50/80 px-2 py-0.5 rounded-lg border border-emerald-200/70">
+            <span className="text-emerald-700 font-bold text-[10px] flex items-center gap-1">
+              <Coins className="h-3 w-3" />
+              <span>Goods Value</span>
+            </span>
+            <span className="font-mono">{doc.goods_value}</span>
+          </div>
+        )}
+
+        {/* Date & Truck Number */}
+        <div className="flex items-center justify-between text-[10.5px] font-bold text-slate-700 pt-0.5 border-t border-blue-100/60">
+          <span className="flex items-center gap-1">
+            <Calendar className="h-3 w-3 text-slate-600 shrink-0" />
+            <span>{doc.issue_date ? new Date(doc.issue_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "No date"}</span>
+          </span>
+          <span className="flex items-center gap-1 text-slate-800 font-extrabold">
+            <Truck className="h-3 w-3 text-slate-600 shrink-0" />
+            <span className="truncate max-w-[90px]">{doc.truck_number || "No truck #"}</span>
+          </span>
         </div>
       </div>
 
-      {/* Driver & Rent (if present) */}
-      {(doc.driver_name || doc.driver_rent) && (
-        <div className="mt-1.5 flex items-center justify-between gap-1 text-[10px] text-slate-800 font-bold bg-amber-50/85 border border-amber-200/80 rounded-xl px-2.5 py-1.5 relative z-10 shadow-2xs flex-wrap">
-          {doc.driver_name && (
-            <div className="flex items-center gap-1 text-slate-950 font-extrabold min-w-0" dir="auto">
-              <User className="h-3.5 w-3.5 text-amber-700 shrink-0" />
-              <span className="truncate">{doc.driver_name}</span>
-            </div>
-          )}
-          {doc.driver_rent && (
-            <div className="font-mono text-amber-950 font-black text-[10px] bg-amber-100/90 border border-amber-300/80 px-2 py-0.5 rounded-lg shrink-0 ml-auto">
-              {doc.driver_rent}
-            </div>
-          )}
+      {/* Category Pills & Assignment */}
+      <div className="mt-2 flex items-center justify-between gap-1 relative z-10">
+        <div className="flex items-center gap-1">
+          {(["account", "export", "import"] as const).map((cat) => {
+            const isAssigned = assignedCategory === cat
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => onCategoryAssign(doc, cat)}
+                className={`rounded-lg px-2 py-0.5 text-[9.5px] font-black uppercase transition-all cursor-pointer ${
+                  isAssigned
+                    ? cat === "account"
+                      ? "bg-amber-500 text-slate-950 shadow-xs"
+                      : cat === "export"
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "bg-purple-600 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+                title={`Mark as ${cat}`}
+              >
+                {cat}
+              </button>
+            )
+          })}
         </div>
-      )}
-
-      {/* Category Tag Buttons */}
-      <div className="mt-2 flex flex-wrap gap-1 relative z-10">
-        {(["account", "export", "import"] as const).map((category) => (
-          <button
-            key={category}
-            type="button"
-            onClick={() => onCategoryAssign(doc, category)}
-            className={`rounded-lg border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer ${
-              assignedCategory === category
-                ? "border-blue-600 bg-blue-600 text-white shadow-2xs"
-                : "border-slate-200/80 bg-white/70 text-slate-600 hover:border-blue-300 hover:text-blue-700 hover:bg-white"
-            }`}
-          >
-            {category}
-          </button>
-        ))}
       </div>
 
-      {/* Action Buttons */}
-      <div className="mt-auto grid gap-1.5 pt-3 border-t border-slate-100 relative z-10">
-        {/* Primary Actions Row */}
+      {/* Action Buttons Matrix */}
+      <div className="mt-auto pt-3 space-y-1.5 relative z-10 border-t border-slate-100">
+        {/* Primary Row: Edit & Download */}
         <div className="grid grid-cols-2 gap-1.5">
           <Button
             type="button"
+            size="sm"
             onClick={() => onEdit(doc)}
-            className="h-9 rounded-xl bg-gradient-to-r from-[#0a2540] to-[#1d4ed8] hover:from-[#001428] hover:to-[#1e40af] text-white font-black text-[11.5px] shadow-sm shadow-blue-900/20 cursor-pointer transition-all active:scale-95 px-2 flex items-center justify-center gap-1.5"
+            className="h-8.5 rounded-xl bg-gradient-to-r from-[#0a2540] via-blue-900 to-[#1d4ed8] hover:from-blue-900 hover:to-blue-700 text-white font-black text-xs cursor-pointer shadow-md shadow-blue-950/20 transition-all flex items-center justify-center gap-1"
           >
-            <Pencil className="h-3.5 w-3.5 shrink-0" />
+            <Pencil className="h-3.5 w-3.5" />
             <span>Edit BOL</span>
           </Button>
 
           <Button
             type="button"
+            size="sm"
             variant="outline"
             onClick={() => onDownload(doc)}
-            className="h-9 rounded-xl border border-amber-300/80 bg-amber-100/90 hover:bg-amber-200 text-amber-950 font-black text-[11px] cursor-pointer shadow-2xs transition-all active:scale-95 px-2 flex items-center justify-center gap-1.5"
+            className="h-8.5 rounded-xl border-amber-300 bg-amber-50/90 hover:bg-amber-100/90 text-amber-950 font-black text-xs cursor-pointer shadow-2xs transition-all flex items-center justify-center gap-1"
           >
-            <FileDown className="h-3.5 w-3.5 text-amber-700 shrink-0" />
+            <FileDown className="h-3.5 w-3.5 text-amber-700" />
             <span>Download</span>
           </Button>
         </div>
 
-        {/* Secondary Quick Actions Row */}
-        <div className="grid grid-cols-3 gap-1">
+        {/* Secondary Quick Actions Row: Preview, Duplicate, File PDF, Send to CMR */}
+        <div className="grid grid-cols-4 gap-1">
           <Button
             type="button"
             variant="outline"
             onClick={() => onPreview(doc)}
-            className="h-7.5 rounded-lg border border-blue-200/80 bg-blue-50/70 hover:bg-blue-100/80 text-blue-700 font-bold text-[10px] cursor-pointer transition-all flex items-center justify-center px-1"
+            className="h-7.5 rounded-lg border border-blue-200/80 bg-blue-50/70 hover:bg-blue-100/80 text-blue-700 font-bold text-[9.5px] cursor-pointer transition-all flex items-center justify-center px-0.5"
             title="Preview A4 Document"
           >
-            <Eye className="h-3 w-3 mr-1 shrink-0 text-blue-600" />
+            <Eye className="h-3 w-3 mr-0.5 shrink-0 text-blue-600" />
             <span>Preview</span>
           </Button>
 
@@ -358,10 +355,10 @@ const DocumentGridCard = memo(function DocumentGridCard({
             type="button"
             variant="outline"
             onClick={() => onDuplicate(doc)}
-            className="h-7.5 rounded-lg border border-purple-200/80 bg-purple-50/70 hover:bg-purple-100/80 text-purple-700 font-bold text-[10px] cursor-pointer transition-all flex items-center justify-center px-1"
+            className="h-7.5 rounded-lg border border-purple-200/80 bg-purple-50/70 hover:bg-purple-100/80 text-purple-700 font-bold text-[9.5px] cursor-pointer transition-all flex items-center justify-center px-0.5"
             title="Clone document with new BOL number"
           >
-            <Copy className="h-3 w-3 mr-1 text-purple-600 shrink-0" />
+            <Copy className="h-3 w-3 mr-0.5 text-purple-600 shrink-0" />
             <span>Duplicate</span>
           </Button>
 
@@ -370,12 +367,25 @@ const DocumentGridCard = memo(function DocumentGridCard({
             variant="outline"
             onClick={() => onOpenPdf(doc)}
             disabled={!hasUploadedPdf || openingPdfId === doc.id}
-            className="h-7.5 rounded-lg border border-emerald-200/80 bg-emerald-50/70 hover:bg-emerald-100/80 text-emerald-700 font-bold text-[10px] disabled:border-slate-100 disabled:bg-slate-50/60 disabled:text-slate-300 cursor-pointer transition-all flex items-center justify-center px-1"
+            className="h-7.5 rounded-lg border border-emerald-200/80 bg-emerald-50/70 hover:bg-emerald-100/80 text-emerald-700 font-bold text-[9.5px] disabled:border-slate-100 disabled:bg-slate-50/60 disabled:text-slate-300 cursor-pointer transition-all flex items-center justify-center px-0.5"
             title={hasUploadedPdf ? "Open uploaded PDF file" : "No uploaded PDF available"}
           >
-            <ExternalLink className="h-3 w-3 mr-1 shrink-0" />
-            <span>File PDF</span>
+            <ExternalLink className="h-3 w-3 mr-0.5 shrink-0" />
+            <span>PDF</span>
           </Button>
+
+          {onSendToCMR && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onSendToCMR(doc)}
+              className="h-7.5 rounded-lg border border-indigo-200/80 bg-indigo-50/70 hover:bg-indigo-100/80 text-indigo-700 font-bold text-[9.5px] cursor-pointer transition-all flex items-center justify-center px-0.5"
+              title="Bridge to International CMR Waybill"
+            >
+              <Truck className="h-3 w-3 mr-0.5 text-indigo-600 shrink-0" />
+              <span>CMR</span>
+            </Button>
+          )}
         </div>
 
         {/* Attach PDF & Delete Row */}
@@ -464,6 +474,10 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   const [query, setQuery] = useState("")
   const [newCompanyName, setNewCompanyName] = useState("")
   const [activeCategory, setActiveCategory] = useState<DocumentCategoryKey>("all")
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "7days" | "month">("all")
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([])
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("grid")
   const [sortBy, setSortBy] = useState<SortOption>("latest")
   const [documentCategories, setDocumentCategories] = useState<Record<string, Exclude<DocumentCategoryKey, "all" | "latest" | "with-pdf">>>({})
@@ -750,6 +764,10 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   // Sorted and Filtered Documents (Bringing Latest First by Default)
   const filteredDocuments = useMemo(() => {
     const cleanQuery = query.trim().toLowerCase()
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const sevenDaysAgo = startOfToday - 7 * 24 * 60 * 60 * 1000
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
 
     const filtered = documents.filter((doc) => {
       if (isShipper) {
@@ -761,20 +779,31 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       }
 
       const matchesSearch = !cleanQuery || getDocumentSearchText(doc).includes(cleanQuery)
-      return matchesSearch && matchesCategory(doc, activeCategory)
+      if (!matchesSearch || !matchesCategory(doc, activeCategory)) return false
+
+      if (dateFilter !== "all") {
+        const dTime = new Date(doc.issue_date || doc.created_at || 0).getTime()
+        if (dTime > 0) {
+          if (dateFilter === "today" && dTime < startOfToday) return false
+          if (dateFilter === "7days" && dTime < sevenDaysAgo) return false
+          if (dateFilter === "month" && dTime < startOfMonth) return false
+        }
+      }
+
+      return true
     })
 
     // Apply Sorting (Bringing Latest First by Default, tie-breaker by BOL sequence)
     return filtered.sort((a, b) => {
       if (sortBy === "latest") {
-        const dateA = new Date(a.created_at || a.issue_date || 0).getTime()
-        const dateB = new Date(b.created_at || b.issue_date || 0).getTime()
+        const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
+        const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
         if (dateB !== dateA) return dateB - dateA
         return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
       }
       if (sortBy === "oldest") {
-        const dateA = new Date(a.created_at || a.issue_date || 0).getTime()
-        const dateB = new Date(b.created_at || b.issue_date || 0).getTime()
+        const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
+        const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
         if (dateA !== dateB) return dateA - dateB
         return parseBolSeq(a.bol_number || "") - parseBolSeq(b.bol_number || "")
       }
@@ -786,7 +815,39 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       }
       return 0
     })
-  }, [documents, query, activeCategory, sortBy, documentCategories, isShipper, currentUser])
+  }, [documents, query, activeCategory, dateFilter, sortBy, documentCategories, isShipper, currentUser])
+
+  // Real-time Summary Analytics Ribbon
+  const summaryStats = useMemo(() => {
+    let totalPkgs = 0
+    let totalWeightKg = 0
+    let totalValueUsd = 0
+
+    for (const doc of filteredDocuments) {
+      const pkgMatch = (doc.number_of_packages || "").match(/[\d,.]+/)
+      if (pkgMatch) {
+        const val = parseFloat(pkgMatch[0].replace(/,/g, ""))
+        if (!isNaN(val)) totalPkgs += val
+      }
+      const wtMatch = (doc.net_weight || doc.gross_weight || "").match(/[\d,.]+/)
+      if (wtMatch) {
+        const val = parseFloat(wtMatch[0].replace(/,/g, ""))
+        if (!isNaN(val)) totalWeightKg += val
+      }
+      const valMatch = (doc.goods_value || "").match(/[\d,.]+/)
+      if (valMatch) {
+        const val = parseFloat(valMatch[0].replace(/,/g, ""))
+        if (!isNaN(val)) totalValueUsd += val
+      }
+    }
+
+    return {
+      count: filteredDocuments.length,
+      totalPkgs,
+      totalWeightKg,
+      totalValueUsd,
+    }
+  }, [filteredDocuments])
 
   // Get Top 6 Latest BOLs for the Top Feature Banner
   const latestTopBOLs = useMemo(() => {
@@ -1397,6 +1458,103 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     })
   }, [filteredDocuments])
 
+  const toggleSelectDoc = useCallback((id: string) => {
+    setSelectedDocIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]))
+  }, [])
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedDocIds.length === filteredDocuments.length) {
+      setSelectedDocIds([])
+    } else {
+      setSelectedDocIds(filteredDocuments.map((d) => d.id || d.bol_number))
+    }
+  }, [selectedDocIds, filteredDocuments])
+
+  const handleBulkExportJSON = useCallback(() => {
+    const selected = filteredDocuments.filter((d) => selectedDocIds.includes(d.id || d.bol_number))
+    if (selected.length === 0) return
+    const blob = new Blob([JSON.stringify(selected, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `sky-bol-bulk-export-${new Date().toISOString().split("T")[0]}.json`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+    toast.success(`Exported ${selected.length} documents as JSON!`)
+  }, [filteredDocuments, selectedDocIds])
+
+  const handleBulkDeleteConfirm = useCallback(async () => {
+    if (selectedDocIds.length === 0) return
+    setIsBulkDeleting(true)
+    const toastId = toast.loading(`Deleting ${selectedDocIds.length} documents...`)
+    try {
+      for (const id of selectedDocIds) {
+        fetch(`/api/bol/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {})
+      }
+      const keys = ["sky-bol-browser-documents", "skybol:saved-documents", "skybol:backup-documents"]
+      for (const k of keys) {
+        try {
+          const raw = window.localStorage.getItem(k)
+          if (raw) {
+            const list = JSON.parse(raw)
+            if (Array.isArray(list)) {
+              const nextList = list.filter((d: any) => {
+                const target = d.id || d.bol_number
+                return !selectedDocIds.includes(target) && !selectedDocIds.includes(d.bol_number)
+              })
+              window.localStorage.setItem(k, JSON.stringify(nextList))
+            }
+          }
+        } catch (e) {}
+      }
+
+      startTransition(() => {
+        setDocuments((prev) =>
+          prev.filter((d) => !selectedDocIds.includes(d.id || d.bol_number) && !selectedDocIds.includes(d.bol_number))
+        )
+      })
+
+      const count = selectedDocIds.length
+      setSelectedDocIds([])
+      setIsBulkDeleteModalOpen(false)
+      window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: {} }))
+      toast.success(`${count} documents permanently deleted!`, { id: toastId })
+    } catch (e) {
+      toast.error("Failed to delete selected documents", { id: toastId })
+    } finally {
+      setIsBulkDeleting(false)
+    }
+  }, [selectedDocIds])
+
+  const handleSendToCMR = useCallback((doc: SavedDocument) => {
+    try {
+      const cmrData = {
+        cmr_number: doc.bol_number || `CMR-${Date.now()}`,
+        shipper_name: doc.shipper_name || "",
+        shipper_address: (doc as any).shipper_address || "",
+        consignee_name: doc.consignee_name || "",
+        consignee_address: (doc as any).consignee_address || "",
+        place_delivery: doc.place_of_delivery || doc.port_of_discharge || "",
+        place_taking_over: doc.port_of_loading || (doc as any).origin_country || "",
+        goods_description: doc.cargo_description || (doc as any).description_of_goods || "",
+        number_of_packages: doc.number_of_packages || "",
+        gross_weight: doc.gross_weight || doc.net_weight || "",
+        truck_number: doc.truck_number || "",
+        driver_name: doc.driver_name || "",
+        date: doc.issue_date || new Date().toISOString().split("T")[0],
+      }
+      window.localStorage.setItem("sky_cmr_current_draft", JSON.stringify(cmrData))
+      window.dispatchEvent(new CustomEvent("skybol:navigate-tab", { detail: { tab: "cmr", data: cmrData } }))
+      toast.success(`BOL ${doc.bol_number} sent to International CMR! 🚚`, {
+        description: "Pre-filled cargo and truck details.",
+      })
+    } catch (e) {
+      toast.error("Failed to bridge to CMR")
+    }
+  }, [])
+
   return (
     <Card className={`flex h-full flex-col overflow-hidden rounded-[32px] border border-white/80 bg-white/70 shadow-[0_20px_60px_-15px_rgba(37,99,235,0.1)] backdrop-blur-2xl text-slate-900 ${variant === "sidebar" ? "w-full" : "md:w-96"}`}>
       
@@ -1428,6 +1586,26 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
           </div>
         </div>
 
+        {/* Live Summary Analytics Metrics Ribbon */}
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="rounded-2xl bg-linear-to-br from-blue-500/10 to-indigo-500/5 border border-blue-200/80 p-2.5">
+            <p className="text-[10.5px] font-black uppercase text-blue-700">Total BOLs</p>
+            <p className="text-lg font-black text-slate-950 mt-0.5">{summaryStats.count}</p>
+          </div>
+          <div className="rounded-2xl bg-linear-to-br from-indigo-500/10 to-purple-500/5 border border-indigo-200/80 p-2.5">
+            <p className="text-[10.5px] font-black uppercase text-indigo-700">Total Packages</p>
+            <p className="text-lg font-black text-slate-950 mt-0.5">{summaryStats.totalPkgs ? `${summaryStats.totalPkgs.toLocaleString()} CTNS` : "—"}</p>
+          </div>
+          <div className="rounded-2xl bg-linear-to-br from-amber-500/10 to-orange-500/5 border border-amber-200/80 p-2.5">
+            <p className="text-[10.5px] font-black uppercase text-amber-800">Total Weight</p>
+            <p className="text-lg font-black text-slate-950 mt-0.5">{summaryStats.totalWeightKg ? `${summaryStats.totalWeightKg.toLocaleString()} KG` : "—"}</p>
+          </div>
+          <div className="rounded-2xl bg-linear-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-200/80 p-2.5">
+            <p className="text-[10.5px] font-black uppercase text-emerald-800">Total Goods Value</p>
+            <p className="text-lg font-black text-slate-950 mt-0.5">{summaryStats.totalValueUsd ? `$${summaryStats.totalValueUsd.toLocaleString()}` : "—"}</p>
+          </div>
+        </div>
+
         {/* Search & View Control Options */}
         <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           {/* Search Box */}
@@ -1450,6 +1628,31 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
             )}
           </div>
 
+          {/* Date Filter Quick Pills */}
+          <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 text-xs font-bold">
+            {(
+              [
+                { id: "all", label: "All Time" },
+                { id: "today", label: "Today" },
+                { id: "7days", label: "7 Days" },
+                { id: "month", label: "This Month" },
+              ] as const
+            ).map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setDateFilter(f.id)}
+                className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
+                  dateFilter === f.id
+                    ? "bg-blue-600 text-white font-black shadow-xs"
+                    : "text-slate-600 hover:text-slate-950"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
           {/* View Mode, Sort Selector, CSV Export & Recover Button */}
           <div className="flex items-center gap-2 flex-wrap">
             <Button
@@ -1470,7 +1673,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
               title="Cloud Sync: Upload/Download all 58 BOLs and ledgers across all devices & browsers"
             >
               <Cloud className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-              <span>Cloud Sync / همگام‌سازی</span>
+              <span>Cloud Sync</span>
             </Button>
             <Button
               type="button"
@@ -1894,7 +2097,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                   <div className="grid gap-3 sm:gap-3.5 lg:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6">
                     {filteredDocuments.map((doc, idx) => (
                       <DocumentGridCard
-                        key={doc.id}
+                        key={doc.id || doc.bol_number}
                         doc={doc}
                         isLatest={idx < 2 && sortBy === "latest"}
                         hasUploadedPdf={Boolean(doc.pdf_url)}
@@ -1911,6 +2114,9 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                         onDelete={handleDelete}
                         onCategoryAssign={assignDocumentCategory}
                         onFileInput={handleFileInput}
+                        isSelected={selectedDocIds.includes(doc.id || doc.bol_number)}
+                        onToggleSelect={toggleSelectDoc}
+                        onSendToCMR={handleSendToCMR}
                       />
                     ))}
               </div>
@@ -2225,6 +2431,121 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                   <>
                     <Trash2 className="w-4 h-4" />
                     <span>✓ Yes, Delete / بله، حذف شود</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Bulk Actions Ribbon (When items are selected) */}
+      {selectedDocIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 sm:gap-3 bg-slate-900/95 text-white px-4 sm:px-6 py-3 rounded-full border border-blue-500/40 shadow-2xl shadow-blue-950/60 backdrop-blur-xl animate-in slide-in-from-bottom-5">
+          <div className="flex items-center gap-2 font-mono text-xs font-black bg-blue-600/40 border border-blue-400/40 px-3 py-1 rounded-full text-blue-200">
+            <CheckSquare className="w-4 h-4 text-blue-400" />
+            <span>{selectedDocIds.length} Selected</span>
+          </div>
+
+          <Button
+            type="button"
+            size="sm"
+            onClick={toggleSelectAll}
+            className="h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 cursor-pointer"
+          >
+            {selectedDocIds.length === filteredDocuments.length ? "Deselect All" : "Select All"}
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleExportToCSV}
+            className="h-8 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-3 cursor-pointer flex items-center gap-1.5"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Export CSV</span>
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleBulkExportJSON}
+            className="h-8 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs px-3 cursor-pointer flex items-center gap-1.5"
+          >
+            <FileCode2 className="w-3.5 h-3.5" />
+            <span>Export JSON</span>
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setIsBulkDeleteModalOpen(true)}
+            className="h-8 rounded-full bg-red-600 hover:bg-red-700 text-white font-black text-xs px-3 cursor-pointer flex items-center gap-1.5 shadow-md shadow-red-600/30"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete ({selectedDocIds.length})</span>
+          </Button>
+        </div>
+      )}
+
+      {/* Bulk Delete Modal */}
+      {isBulkDeleteModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => !isBulkDeleting && setIsBulkDeleteModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-lg bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3.5 pb-4 border-b border-slate-100">
+              <div className="p-3.5 rounded-2xl bg-red-50 text-red-600 border border-red-200/80 shadow-sm shrink-0">
+                <Trash2 className="w-7 h-7 text-red-600" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                  Delete {selectedDocIds.length} Selected BOLs?
+                </h3>
+                <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                  آیا از حذف گروهی {selectedDocIds.length} بارنامه انتخاب شده مطمئن هستید؟
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-red-50/80 border border-red-200 text-red-950 text-xs font-medium space-y-1">
+              <p className="font-bold text-red-900 flex items-center gap-1.5">
+                <span>⚠️ Permanent Action</span>
+              </p>
+              <p className="text-[11.5px] leading-relaxed text-red-800">
+                All {selectedDocIds.length} chosen Bills of Lading will be permanently removed from cloud database and all local caches.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isBulkDeleting}
+                onClick={() => setIsBulkDeleteModalOpen(false)}
+                className="h-11 px-5 rounded-2xl border-slate-300 font-bold text-xs cursor-pointer hover:bg-slate-100 text-slate-700"
+              >
+                ✕ Cancel / انصراف
+              </Button>
+              <Button
+                type="button"
+                onClick={handleBulkDeleteConfirm}
+                disabled={isBulkDeleting}
+                className="h-11 px-6 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs cursor-pointer shadow-lg shadow-red-600/25 flex items-center gap-2"
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Deleting {selectedDocIds.length}...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>✓ Delete All {selectedDocIds.length}</span>
                   </>
                 )}
               </Button>

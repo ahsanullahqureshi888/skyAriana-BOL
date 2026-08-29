@@ -161,7 +161,7 @@ const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; i
 }
 
 export function SettingsView() {
-  const { users, addUser, updateUserRole, deleteUser, changePassword, currentUser, isSyncing, syncCloudData, accounts, toggleUserStatus, resetUserPassword } = useApp()
+  const { users, addUser, updateUserRole, deleteUser, changePassword, currentUser, isSyncing, syncCloudData, accounts, toggleUserStatus, resetUserPassword, setView } = useApp()
   const [activeTab, setActiveTab] = useState<SettingsTab>("users")
   const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false)
 

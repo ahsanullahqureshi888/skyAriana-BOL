@@ -21,13 +21,17 @@ interface SyncPayload {
 
 // In-memory fallback cache for fast multi-device transfers
 let inMemorySnapshot: any = null
+let lastMasterSnapshotCache: { data: any; time: number } | null = null
 const inMemorySyncCodes = new Map<string, { data: any; expiresAt: number }>()
 
-// Global cloud relay helpers
+// Global cloud relay helpers with fast timeout
 async function saveToGlobalRelay(key: string, data: any): Promise<boolean> {
   try {
     const url = `https://cl1p.net/${encodeURIComponent(key)}`
     const bodyStr = new URLSearchParams({ content: JSON.stringify(data) }).toString()
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 1500)
+
     const res = await fetch(url, {
       method: "POST",
       headers: {
@@ -36,7 +40,9 @@ async function saveToGlobalRelay(key: string, data: any): Promise<boolean> {
       },
       body: bodyStr,
       cache: "no-store",
+      signal: controller.signal,
     })
+    clearTimeout(timeoutId)
     return res.ok
   } catch (e) {
     return false
@@ -46,10 +52,15 @@ async function saveToGlobalRelay(key: string, data: any): Promise<boolean> {
 async function fetchFromGlobalRelay(key: string): Promise<any | null> {
   try {
     const url = `https://cl1p.net/${encodeURIComponent(key)}`
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 1200)
+
     const res = await fetch(url, {
       headers: { "User-Agent": "SkyArianaLogistics/3.2" },
       cache: "no-store",
+      signal: controller.signal,
     })
+    clearTimeout(timeoutId)
     if (!res.ok) return null
     const html = await res.text()
 
@@ -176,13 +187,23 @@ export async function GET(request: Request) {
     }
 
     // 2. Default: Return master snapshot of all BOLs, accounts, and ledgers
+    const nowMs = Date.now()
+    if (lastMasterSnapshotCache && nowMs - lastMasterSnapshotCache.time < 3000) {
+      return NextResponse.json({
+        success: true,
+        data: lastMasterSnapshotCache.data,
+      })
+    }
+
     let masterData: any = null
 
-    // Check global master relay first
-    const relayMaster = await fetchFromGlobalRelay("sky-relay-v3-master")
-    if (relayMaster && Array.isArray(relayMaster.documents) && relayMaster.documents.length > 0) {
-      masterData = relayMaster
-    }
+    // Check global master relay first (with timeout)
+    try {
+      const relayMaster = await fetchFromGlobalRelay("sky-relay-v3-master")
+      if (relayMaster && Array.isArray(relayMaster.documents) && relayMaster.documents.length > 0) {
+        masterData = relayMaster
+      }
+    } catch (_) {}
 
     const allBols = await localStorage.getAllLocalBOLs()
     const ledgerDb = await getBolAccountLedgerDatabase()
@@ -221,19 +242,23 @@ export async function GET(request: Request) {
       ...(ledgerDb.ledgerRecords || {}),
     }
 
+    const responseData = {
+      documents: Array.from(docMap.values()),
+      customCompanies: mergedCompanies,
+      ledgerRecords: mergedLedgers,
+      companySettings: snapshot.companySettings || masterData?.companySettings || null,
+      routePresets: snapshot.routePresets || masterData?.routePresets || [],
+      savedShippers: snapshot.savedShippers || masterData?.savedShippers || [],
+      savedConsignees: snapshot.savedConsignees || masterData?.savedConsignees || [],
+      savedNotifyParties: snapshot.savedNotifyParties || masterData?.savedNotifyParties || [],
+      updated_at: masterData?.updated_at || new Date().toISOString(),
+    }
+
+    lastMasterSnapshotCache = { data: responseData, time: nowMs }
+
     return NextResponse.json({
       success: true,
-      data: {
-        documents: Array.from(docMap.values()),
-        customCompanies: mergedCompanies,
-        ledgerRecords: mergedLedgers,
-        companySettings: snapshot.companySettings || masterData?.companySettings || null,
-        routePresets: snapshot.routePresets || masterData?.routePresets || [],
-        savedShippers: snapshot.savedShippers || masterData?.savedShippers || [],
-        savedConsignees: snapshot.savedConsignees || masterData?.savedConsignees || [],
-        savedNotifyParties: snapshot.savedNotifyParties || masterData?.savedNotifyParties || [],
-        updated_at: masterData?.updated_at || new Date().toISOString(),
-      },
+      data: responseData,
     })
   } catch (error) {
     return NextResponse.json(
