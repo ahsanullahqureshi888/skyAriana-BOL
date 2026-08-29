@@ -197,6 +197,18 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
         },
       },
       {
+        id: "nav-shipper-portal",
+        title: "Sky Ariana Shipper Portal (پورتال مشتریان)",
+        subtitle: "Live client consignments, container milestone tracking & ledger statement",
+        category: "Navigation",
+        icon: Building2,
+        badge: "Portal",
+        perform: () => {
+          setView("shipper-portal")
+          onOpenChange(false)
+        },
+      },
+      {
         id: "nav-settings",
         title: "System Settings & Roles",
         subtitle: "Manage users, access permissions, backups & cloud sync",

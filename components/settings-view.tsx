@@ -934,17 +934,29 @@ export function SettingsView() {
 
                       <div className="flex items-center gap-1">
                         {u.role === "shipper" && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setResetModalUser(u)
-                              setResetModalNewPass("")
-                            }}
-                            className="px-2 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition"
-                            title="Reset password for this shipper"
-                          >
-                            🔑 Password
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setView("shipper-portal")
+                              }}
+                              className="px-2.5 py-1 text-[11px] font-black text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                              title="Open & Preview Shipper Portal"
+                            >
+                              👁️ Open Portal
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setResetModalUser(u)
+                                setResetModalNewPass("")
+                              }}
+                              className="px-2 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition"
+                              title="Reset password for this shipper"
+                            >
+                              🔑 Password
+                            </button>
+                          </>
                         )}
 
                         {!isSuper && (
