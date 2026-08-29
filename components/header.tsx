@@ -25,6 +25,7 @@ import { PWAInstallButton } from '@/components/pwa-install-prompt'
 import { CloudSyncModal } from '@/components/bill-of-lading/cloud-sync-modal'
 import { CommandPalette } from '@/components/command-palette'
 import { Command, Search } from 'lucide-react'
+import { preloadView } from '@/app/page'
 
 interface HeaderProps {
   showBack?: boolean
@@ -141,6 +142,9 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant={view === 'accounts' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setView('accounts')}
+              onMouseEnter={() => preloadView('accounts')}
+              onTouchStart={() => preloadView('accounts')}
+              onFocus={() => preloadView('accounts')}
               className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 view === 'accounts' 
                   ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 border-transparent' 
@@ -156,6 +160,9 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant={view === 'sky-doc' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setView('sky-doc')}
+              onMouseEnter={() => preloadView('sky-doc')}
+              onTouchStart={() => preloadView('sky-doc')}
+              onFocus={() => preloadView('sky-doc')}
               className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-3 sm:px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs ${
                 view === 'sky-doc' 
                   ? 'bg-gradient-to-r from-cyan-600 via-teal-600 to-blue-700 text-white border-transparent shadow-md shadow-cyan-500/35 ring-2 ring-cyan-400/40' 
@@ -174,6 +181,9 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant={view === 'bol' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setView('bol')}
+              onMouseEnter={() => preloadView('bol')}
+              onTouchStart={() => preloadView('bol')}
+              onFocus={() => preloadView('bol')}
               className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 view === 'bol' 
                   ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-transparent shadow-md shadow-amber-500/25' 
@@ -190,6 +200,9 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant={view === 'sky-cmr' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setView('sky-cmr')}
+              onMouseEnter={() => preloadView('sky-cmr')}
+              onTouchStart={() => preloadView('sky-cmr')}
+              onFocus={() => preloadView('sky-cmr')}
               className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 view === 'sky-cmr' 
                   ? 'bg-gradient-to-r from-blue-600 via-sky-600 to-indigo-700 text-white border-transparent shadow-md shadow-blue-500/25' 
@@ -207,6 +220,9 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant={view === 'invoice-pad' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setView('invoice-pad')}
+              onMouseEnter={() => preloadView('invoice-pad')}
+              onTouchStart={() => preloadView('invoice-pad')}
+              onFocus={() => preloadView('invoice-pad')}
               className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 view === 'invoice-pad' 
                   ? 'bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 text-white border-transparent shadow-md shadow-indigo-500/25' 
@@ -224,6 +240,9 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant={view === 'bank' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setView('bank')}
+              onMouseEnter={() => preloadView('bank')}
+              onTouchStart={() => preloadView('bank')}
+              onFocus={() => preloadView('bank')}
               className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 view === 'bank' 
                   ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white border-transparent shadow-md shadow-emerald-500/25' 
@@ -241,6 +260,9 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant={view === 'reports' ? 'default' : 'outline'}
               size="sm"
               onClick={() => setView('reports')}
+              onMouseEnter={() => preloadView('reports')}
+              onTouchStart={() => preloadView('reports')}
+              onFocus={() => preloadView('reports')}
               className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 view === 'reports' 
                   ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-700 text-white border-transparent shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40' 
@@ -259,6 +281,9 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
                 variant={view === 'settings' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setView('settings')}
+                onMouseEnter={() => preloadView('settings')}
+                onTouchStart={() => preloadView('settings')}
+                onFocus={() => preloadView('settings')}
                 className={`gap-1 sm:gap-1.5 h-8.5 sm:h-9 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   view === 'settings' 
                     ? 'bg-gradient-to-r from-purple-700 to-indigo-800 text-white border-transparent shadow-md shadow-purple-500/25' 

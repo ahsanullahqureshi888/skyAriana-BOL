@@ -1,15 +1,17 @@
 "use client"
 
+import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { safeLazy } from '@/lib/safe-lazy'
 import { AppProvider, useApp } from '@/lib/app-context'
 import { Header } from '@/components/header'
 import { LoginScreen } from '@/components/login-screen'
 import { ErrorBoundary } from '@/components/error-boundary'
+import { toast } from 'sonner'
 
 function ViewLoadingSkeleton() {
   return (
-    <div className="w-full h-full min-h-[60vh] flex flex-col items-center justify-center p-8 space-y-4 animate-in fade-in duration-150">
+    <div className="w-full h-full min-h-[60vh] flex flex-col items-center justify-center p-8 space-y-4 animate-in fade-in duration-100">
       <div className="w-12 h-12 rounded-2xl bg-blue-900/20 border border-blue-500/30 flex items-center justify-center animate-pulse">
         <img src="/logo.png" alt="Sky Ariana" className="w-8 h-8 object-contain" />
       </div>
@@ -19,6 +21,49 @@ function ViewLoadingSkeleton() {
       <p className="text-[11px] font-bold text-slate-400">Loading module...</p>
     </div>
   )
+}
+
+// Dynamic loaders with safe lazy wrappers
+const viewLoaders: Record<string, () => Promise<any>> = {
+  accounts: () => import('@/components/accounts-view'),
+  companies: () => import('@/components/companies-view'),
+  ledger: () => import('@/components/ledger-view'),
+  invoice: () => import('@/components/invoice-view'),
+  bol: () => import('@/components/bill-of-lading/bol-editor'),
+  settings: () => import('@/components/settings-view'),
+  bank: () => import('@/components/sky-bank-view'),
+  'invoice-pad': () => import('@/components/invoice-pad-view'),
+  'sky-cmr': () => import('@/components/sky-cmr-view'),
+  'sky-doc': () => import('@/components/sky-doc-view'),
+  reports: () => import('@/components/reports-view'),
+  'shipper-portal': () => import('@/components/shipper-dashboard'),
+}
+
+export function preloadView(viewName: string) {
+  try {
+    const loader = viewLoaders[viewName]
+    if (loader) {
+      void loader()
+    }
+  } catch (_) {}
+}
+
+export function preloadAllViews() {
+  if (typeof window === 'undefined') return
+  const views = Object.keys(viewLoaders)
+  const schedulePreload = () => {
+    views.forEach((v, index) => {
+      setTimeout(() => {
+        preloadView(v)
+      }, index * 40)
+    })
+  }
+
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    (window as any).requestIdleCallback(schedulePreload, { timeout: 1500 })
+  } else {
+    setTimeout(schedulePreload, 100)
+  }
 }
 
 const AccountsView = dynamic(safeLazy(() => import('@/components/accounts-view').then(m => m.AccountsView)), { loading: ViewLoadingSkeleton })
@@ -34,11 +79,26 @@ const SkyDocView = dynamic(safeLazy(() => import('@/components/sky-doc-view').th
 const ReportsView = dynamic(safeLazy(() => import('@/components/reports-view').then(m => m.ReportsView)), { loading: ViewLoadingSkeleton })
 const ShipperDashboardView = dynamic(safeLazy(() => import('@/components/shipper-dashboard').then(m => m.ShipperDashboardView)), { loading: ViewLoadingSkeleton })
 
-import { useEffect } from 'react'
-import { toast } from 'sonner'
-
 function MainContent() {
   const { view, isAuthenticated, currentUser } = useApp()
+  const [visitedViews, setVisitedViews] = useState<Set<string>>(() => new Set(['accounts']))
+
+  // Track visited views to keep them alive and ready
+  useEffect(() => {
+    if (view) {
+      setVisitedViews(prev => {
+        if (prev.has(view)) return prev
+        const next = new Set(prev)
+        next.add(view)
+        return next
+      })
+    }
+  }, [view])
+
+  // Instant background preloading for all modules
+  useEffect(() => {
+    preloadAllViews()
+  }, [])
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -231,18 +291,80 @@ function MainContent() {
   return (
     <div className={isFullBleedView ? "h-screen w-full flex flex-col overflow-hidden bg-slate-950" : "min-h-screen flex flex-col"}>
       <Header showBack={view !== 'accounts' && view !== 'settings' && !isFullBleedView} />
-      <main className={isFullBleedView ? "flex-1 w-full h-full overflow-hidden flex flex-col min-h-0" : "flex-1"}>
-        {view === 'accounts' && <AccountsView />}
-        {view === 'companies' && <CompaniesView />}
-        {view === 'ledger' && <LedgerView />}
-        {view === 'invoice' && <InvoiceView />}
-        {view === 'bol' && <BOLEditor />}
-        {view === 'settings' && <SettingsView />}
-        {view === 'bank' && <SkyBankView />}
-        {view === 'invoice-pad' && <InvoicePadView />}
-        {view === 'sky-cmr' && <SkyCmrView />}
-        {view === 'sky-doc' && <SkyDocView />}
-        {view === 'reports' && <ReportsView />}
+      <main className={isFullBleedView ? "flex-1 w-full h-full overflow-hidden flex flex-col min-h-0 relative" : "flex-1 relative"}>
+        {/* Accounts View */}
+        {visitedViews.has('accounts') && (
+          <div className={view === 'accounts' ? 'w-full' : 'hidden'}>
+            <AccountsView />
+          </div>
+        )}
+
+        {/* Companies View */}
+        {visitedViews.has('companies') && (
+          <div className={view === 'companies' ? 'w-full' : 'hidden'}>
+            <CompaniesView />
+          </div>
+        )}
+
+        {/* Ledger View */}
+        {visitedViews.has('ledger') && (
+          <div className={view === 'ledger' ? 'w-full' : 'hidden'}>
+            <LedgerView />
+          </div>
+        )}
+
+        {/* Invoice View */}
+        {visitedViews.has('invoice') && (
+          <div className={view === 'invoice' ? 'w-full' : 'hidden'}>
+            <InvoiceView />
+          </div>
+        )}
+
+        {/* Bill of Lading (BOL) Editor */}
+        {visitedViews.has('bol') && (
+          <div className={view === 'bol' ? 'w-full' : 'hidden'}>
+            <BOLEditor />
+          </div>
+        )}
+
+        {/* Settings View */}
+        {visitedViews.has('settings') && (
+          <div className={view === 'settings' ? 'w-full' : 'hidden'}>
+            <SettingsView />
+          </div>
+        )}
+
+        {/* Reports View */}
+        {visitedViews.has('reports') && (
+          <div className={view === 'reports' ? 'w-full' : 'hidden'}>
+            <ReportsView />
+          </div>
+        )}
+
+        {/* Full-bleed Iframes: Keep mounted to avoid reconnect/re-render lag */}
+        {visitedViews.has('bank') && (
+          <div className={view === 'bank' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
+            <SkyBankView />
+          </div>
+        )}
+
+        {visitedViews.has('invoice-pad') && (
+          <div className={view === 'invoice-pad' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
+            <InvoicePadView />
+          </div>
+        )}
+
+        {visitedViews.has('sky-cmr') && (
+          <div className={view === 'sky-cmr' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
+            <SkyCmrView />
+          </div>
+        )}
+
+        {visitedViews.has('sky-doc') && (
+          <div className={view === 'sky-doc' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
+            <SkyDocView />
+          </div>
+        )}
       </main>
     </div>
   )

@@ -13,9 +13,15 @@ const nextConfig = {
     optimizePackageImports: [
       'lucide-react',
       'date-fns',
-      'framer-motion',
+      'date-fns-jalali',
+      'recharts',
       'clsx',
       'tailwind-merge',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-select',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-popover',
     ],
   },
   async headers() {
