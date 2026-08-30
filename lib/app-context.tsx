@@ -64,6 +64,7 @@ export interface DeletedLedgerEntryItem {
   entry: LedgerEntry
   accountId: string
   companyId: string
+  companyName?: string
   deletedAt: string
 }
 
@@ -450,6 +451,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     let apiDocs: any[] = []
     let serverLedgerRecords: Record<string, any[]> = {}
     let serverCustomCompanies: string[] = []
+    let serverDeletedEntries: DeletedLedgerEntryItem[] = []
 
     try {
       const [bolRes, accountLedgerRes, bolLedgerRes] = await Promise.allSettled([
@@ -472,6 +474,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (Array.isArray(data?.accounts)) {
           serverCustomCompanies.push(...data.accounts.map((a: any) => typeof a === "string" ? a : (a.name || "")))
         }
+        if (Array.isArray(data?.deletedLedgerEntries)) {
+          serverDeletedEntries.push(...data.deletedLedgerEntries)
+        }
       }
 
       if (bolLedgerRes.status === "fulfilled" && bolLedgerRes.value.ok) {
@@ -482,6 +487,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         if (Array.isArray(data?.customCompanies)) {
           serverCustomCompanies.push(...data.customCompanies)
+        }
+        if (Array.isArray(data?.deletedLedgerEntries)) {
+          serverDeletedEntries.push(...data.deletedLedgerEntries)
         }
       }
     } catch (e) {
@@ -505,6 +513,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const comp2 = raw2 ? JSON.parse(raw2) : []
       localCustomCompanies = [...comp1, ...comp2]
     } catch (e) {}
+
+    let localDeletedEntries: DeletedLedgerEntryItem[] = []
+    try {
+      const rawDeleted = window.localStorage.getItem("skybol:deleted-ledger-entries")
+      if (rawDeleted) {
+        const parsed = JSON.parse(rawDeleted)
+        if (Array.isArray(parsed)) localDeletedEntries = parsed
+      }
+    } catch (e) {}
+
+    const deletedMap = new Map<string, DeletedLedgerEntryItem>()
+    for (const d of [...serverDeletedEntries, ...localDeletedEntries]) {
+      const key = d.entry?.id || `${d.companyId || d.accountId}_${d.entry?.barnamehNo || (d.entry as any)?.bolNo || d.entry?.sNo}`
+      if (key && !deletedMap.has(key)) {
+        deletedMap.set(key, d)
+      }
+    }
+    const mergedDeletedEntries = Array.from(deletedMap.values())
 
     const customCompanies = Array.from(new Set([...serverCustomCompanies, ...localCustomCompanies].filter(Boolean)))
 
@@ -581,9 +607,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         let runningBalance = 0
         const ledgerEntries: LedgerEntry[] = []
 
-        // 1. Process BOL documents
+        // 1. Process BOL documents (excluding any explicitly deleted by the user)
         bolList.forEach((doc, idx) => {
           const bolNo = (doc.bol_number || "").trim()
+
+          const isDeleted = mergedDeletedEntries.some((d) => {
+            const dBolNo = (d.entry?.barnamehNo || (d.entry as any)?.bolNo || "").trim()
+            const dId = d.entry?.id
+            const dCompName = (d.companyName || "").trim().toLowerCase()
+            const dCompId = d.companyId || ""
+            const isMatchingComp = !dCompName || dCompName === shipperName.toLowerCase() || dCompId === `company-${companyKey}`
+            return (dId === doc.id || (bolNo && dBolNo === bolNo)) && isMatchingComp
+          })
+
+          if (isDeleted) {
+            return
+          }
+
           const existingRow = storedRows.find(
             (r: any) => (r.barnamehNo && r.barnamehNo.trim() === bolNo) || (r.bolNo && r.bolNo.trim() === bolNo)
           )
@@ -596,7 +636,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
           ledgerEntries.push({
             id: existingRow?.id || doc.id || `bol-${idx}`,
-            sNo: idx + 1,
+            sNo: ledgerEntries.length + 1,
             date: existingRow?.date || doc.issue_date || new Date().toISOString().split("T")[0],
             shipperDescription: doc.shipper_name || shipperName,
             invoiceNo: parsedInvoice,
@@ -615,9 +655,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
           })
         })
 
-        // 2. Include non-BOL stored rows (e.g. manual payment / receipt rows)
+        // 2. Include non-BOL stored rows (e.g. manual payment / receipt rows, excluding deleted)
         storedRows.forEach((row: any) => {
           const rBol = (row.barnamehNo || row.bolNo || "").trim()
+
+          const isDeleted = mergedDeletedEntries.some((d) => {
+            const dBolNo = (d.entry?.barnamehNo || (d.entry as any)?.bolNo || "").trim()
+            const dId = d.entry?.id
+            const dCompName = (d.companyName || "").trim().toLowerCase()
+            const dCompId = d.companyId || ""
+            const isMatchingComp = !dCompName || dCompName === shipperName.toLowerCase() || dCompId === `company-${companyKey}`
+            return (dId === row.id || (rBol && dBolNo === rBol)) && isMatchingComp
+          })
+
+          if (isDeleted) {
+            return
+          }
+
           if (!rBol || !bolList.some((doc) => (doc.bol_number || "").trim() === rBol)) {
             const debitVal = Number(row.debit) || 0
             const creditVal = Number(row.credit) || 0
@@ -848,42 +902,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
         
         state.accounts.forEach(account => {
           account.companies.forEach(company => {
-            companyNames.push(company.name)
-            if (company.ledgerEntries && company.ledgerEntries.length > 0) {
-               const companyKey = company.id.replace('company-', '')
-               
-               if (company.name !== 'Acme Corp' && company.name !== 'Global Logistics') {
-                   const rows = company.ledgerEntries.map(entry => ({
-                      id: entry.id,
-                      date: entry.date,
-                      description: entry.shipperDescription,
-                      shipperDescription: entry.shipperDescription,
-                      invoiceNo: entry.invoiceNo,
-                      shipDate: entry.dateOfShip,
-                      dateOfShip: entry.dateOfShip,
-                      barnamehNo: entry.barnamehNo,
-                      bolNo: entry.barnamehNo,
-                      driverFreight: entry.driverFreight,
-                      driverRent: entry.driverFreight,
-                      billOfLanding: entry.billOfLanding,
-                      surrenderedBL: entry.surrenderedBL,
-                      containerNo: entry.containerNo,
-                      consignee: entry.consignee,
-                      quantity: entry.quantity,
-                      debit: entry.debit,
-                      credit: entry.credit,
-                      pdfFile: entry.pdfPathname,
-                      pdfPathname: entry.pdfPathname,
-                   }))
-                   records[companyKey] = rows
-                   records[company.name.toLowerCase()] = rows
-               }
+            if (!companyNames.includes(company.name)) companyNames.push(company.name)
+            const companyKey = company.id.replace('company-', '')
+            const cleanNameKey = company.name.toLowerCase().replace(/[^a-z0-9]/g, "-")
+            
+            if (company.name !== 'Acme Corp' && company.name !== 'Global Logistics') {
+                const rows = company.ledgerEntries.map(entry => ({
+                  id: entry.id,
+                  sNo: entry.sNo,
+                  date: entry.date,
+                  description: entry.shipperDescription,
+                  shipperDescription: entry.shipperDescription,
+                  invoiceNo: entry.invoiceNo,
+                  shipDate: entry.dateOfShip,
+                  dateOfShip: entry.dateOfShip,
+                  barnamehNo: entry.barnamehNo,
+                  bolNo: entry.barnamehNo,
+                  driverFreight: entry.driverFreight,
+                  driverRent: entry.driverFreight,
+                  billOfLanding: entry.billOfLanding,
+                  surrenderedBL: entry.surrenderedBL,
+                  containerNo: entry.containerNo,
+                  consignee: entry.consignee,
+                  quantity: entry.quantity,
+                  debit: entry.debit,
+                  credit: entry.credit,
+                  pdfFile: entry.pdfPathname,
+                  pdfPathname: entry.pdfPathname,
+                }))
+                records[companyKey] = rows
+                records[cleanNameKey] = rows
+                records[company.name.toLowerCase()] = rows
             }
           })
         })
 
         window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(records))
         window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(companyNames))
+        window.localStorage.setItem("skybol:deleted-ledger-entries", JSON.stringify(state.deletedLedgerEntries || []))
 
         // Background server persistence for multi-device sync
         fetch("/api/account-ledgers", {
@@ -892,6 +948,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({
             accounts: companyNames,
             ledgerEntries: records,
+            deletedLedgerEntries: state.deletedLedgerEntries || [],
           }),
         }).catch(() => {})
 
@@ -901,6 +958,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           body: JSON.stringify({
             customCompanies: companyNames,
             ledgerRecords: records,
+            deletedLedgerEntries: state.deletedLedgerEntries || [],
           }),
         }).catch(() => {})
       } catch (e) {
@@ -909,7 +967,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [state.accounts])
+  }, [state.accounts, state.deletedLedgerEntries])
 
   const updateLedgerEntry = useCallback((accountId: string, companyId: string, entryId: string, entry: Partial<LedgerEntry>) => {
     setState(prev => {
@@ -958,6 +1016,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 entry: { ...target },
                 accountId,
                 companyId,
+                companyName: c.name,
                 deletedAt: new Date().toISOString(),
               }
             }
@@ -968,11 +1027,77 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })
 
       const updatedDeleted = deletedItem
-        ? [deletedItem, ...prev.deletedLedgerEntries.filter(i => i.entry.id !== entryId)]
+        ? [deletedItem, ...prev.deletedLedgerEntries.filter(i => i.entry.id !== entryId && (!deletedItem?.entry.barnamehNo || i.entry.barnamehNo !== deletedItem.entry.barnamehNo))]
         : prev.deletedLedgerEntries
 
       try {
         window.localStorage.setItem("skybol:deleted-ledger-entries", JSON.stringify(updatedDeleted))
+      } catch (e) {}
+
+      // Immediately write updated records to storage & server
+      try {
+        const raw = window.localStorage.getItem("skybol:account-ledgers") || "{}"
+        const records = JSON.parse(raw)
+        const companyNames: string[] = []
+
+        updatedAccounts.forEach(account => {
+          account.companies.forEach(company => {
+            if (!companyNames.includes(company.name)) companyNames.push(company.name)
+            const companyKey = company.id.replace('company-', '')
+            const cleanNameKey = company.name.toLowerCase().replace(/[^a-z0-9]/g, "-")
+            const rows = company.ledgerEntries.map(entry => ({
+              id: entry.id,
+              sNo: entry.sNo,
+              date: entry.date,
+              description: entry.shipperDescription,
+              shipperDescription: entry.shipperDescription,
+              invoiceNo: entry.invoiceNo,
+              shipDate: entry.dateOfShip,
+              dateOfShip: entry.dateOfShip,
+              barnamehNo: entry.barnamehNo,
+              bolNo: entry.barnamehNo,
+              driverFreight: entry.driverFreight,
+              driverRent: entry.driverFreight,
+              billOfLanding: entry.billOfLanding,
+              surrenderedBL: entry.surrenderedBL,
+              containerNo: entry.containerNo,
+              consignee: entry.consignee,
+              quantity: entry.quantity,
+              debit: entry.debit,
+              credit: entry.credit,
+              pdfFile: entry.pdfPathname,
+              pdfPathname: entry.pdfPathname,
+            }))
+            records[companyKey] = rows
+            records[cleanNameKey] = rows
+            records[company.name.toLowerCase()] = rows
+          })
+        })
+
+        window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(records))
+        window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(companyNames))
+
+        fetch("/api/account-ledgers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accounts: companyNames,
+            ledgerEntries: records,
+            deletedLedgerEntries: updatedDeleted,
+          }),
+          keepalive: true,
+        }).catch(() => {})
+
+        fetch("/api/bol-account-ledgers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customCompanies: companyNames,
+            ledgerRecords: records,
+            deletedLedgerEntries: updatedDeleted,
+          }),
+          keepalive: true,
+        }).catch(() => {})
       } catch (e) {}
 
       const updatedCurrentAccount = prev.currentAccount?.id === accountId
@@ -1014,6 +1139,72 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const updatedDeleted = prev.deletedLedgerEntries.filter(i => i.entry.id !== entryId)
       try {
         window.localStorage.setItem("skybol:deleted-ledger-entries", JSON.stringify(updatedDeleted))
+      } catch (e) {}
+
+      // Immediately write restored state to server
+      try {
+        const raw = window.localStorage.getItem("skybol:account-ledgers") || "{}"
+        const records = JSON.parse(raw)
+        const companyNames: string[] = []
+
+        updatedAccounts.forEach(account => {
+          account.companies.forEach(company => {
+            if (!companyNames.includes(company.name)) companyNames.push(company.name)
+            const companyKey = company.id.replace('company-', '')
+            const cleanNameKey = company.name.toLowerCase().replace(/[^a-z0-9]/g, "-")
+            const rows = company.ledgerEntries.map(e => ({
+              id: e.id,
+              sNo: e.sNo,
+              date: e.date,
+              description: e.shipperDescription,
+              shipperDescription: e.shipperDescription,
+              invoiceNo: e.invoiceNo,
+              shipDate: e.dateOfShip,
+              dateOfShip: e.dateOfShip,
+              barnamehNo: e.barnamehNo,
+              bolNo: e.barnamehNo,
+              driverFreight: e.driverFreight,
+              driverRent: e.driverFreight,
+              billOfLanding: e.billOfLanding,
+              surrenderedBL: e.surrenderedBL,
+              containerNo: e.containerNo,
+              consignee: e.consignee,
+              quantity: e.quantity,
+              debit: e.debit,
+              credit: e.credit,
+              pdfFile: e.pdfPathname,
+              pdfPathname: e.pdfPathname,
+            }))
+            records[companyKey] = rows
+            records[cleanNameKey] = rows
+            records[company.name.toLowerCase()] = rows
+          })
+        })
+
+        window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(records))
+        window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(companyNames))
+
+        fetch("/api/account-ledgers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accounts: companyNames,
+            ledgerEntries: records,
+            deletedLedgerEntries: updatedDeleted,
+          }),
+          keepalive: true,
+        }).catch(() => {})
+
+        fetch("/api/bol-account-ledgers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customCompanies: companyNames,
+            ledgerRecords: records,
+            deletedLedgerEntries: updatedDeleted,
+          }),
+          keepalive: true,
+        }).catch(() => {})
       } catch (e) {}
 
       const updatedCurrentAccount = prev.currentAccount?.id === accountId
@@ -1176,6 +1367,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const updatedEntries = calculateBalances([...comp.ledgerEntries, ...missingEntries])
 
+      // Remove recovered BOLs from deleted list so they aren't filtered out again
+      const recoveredBolSet = new Set(missingEntries.map(e => (e.barnamehNo || '').toLowerCase().trim()).filter(Boolean))
+      const updatedDeleted = prev.deletedLedgerEntries.filter(
+        d => !d.entry?.barnamehNo || !recoveredBolSet.has((d.entry.barnamehNo || '').toLowerCase().trim())
+      )
+      try {
+        window.localStorage.setItem("skybol:deleted-ledger-entries", JSON.stringify(updatedDeleted))
+      } catch (e) {}
+
       const updatedAccounts = prev.accounts.map(a => {
         if (a.id !== accountId) return a
         return {
@@ -1198,6 +1398,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         accounts: updatedAccounts,
         currentAccount: updatedCurrentAccount,
         currentCompany: updatedCurrentCompany,
+        deletedLedgerEntries: updatedDeleted,
       }
     })
 
