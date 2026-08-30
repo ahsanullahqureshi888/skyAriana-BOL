@@ -786,12 +786,12 @@ export function ReportsView() {
 
     // Sort by field
     return filtered.sort((a, b) => {
-      let aVal = a[sortField]
-      let bVal = b[sortField]
+      let aVal = a[sortField] ?? ""
+      let bVal = b[sortField] ?? ""
 
       if (typeof aVal === "string") {
         aVal = aVal.toLowerCase()
-        bVal = (bVal as string).toLowerCase()
+        bVal = String(bVal).toLowerCase()
       }
 
       if (aVal < bVal) return sortOrder === "asc" ? -1 : 1

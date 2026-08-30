@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, memo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History, Eye, Download, ZoomIn, ZoomOut, Maximize2, BookOpen, LayoutGrid, LayoutList, SlidersHorizontal, ArrowUpDown } from 'lucide-react'
+import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History, Eye, Download, ZoomIn, ZoomOut, Maximize2, BookOpen, LayoutGrid, LayoutList, SlidersHorizontal, ArrowUpDown, Layers } from 'lucide-react'
 import { saveFinancialsForEntry } from '@/lib/services/ledger-sync-utils'
 import { DescriptionPresetSelector } from './description-preset-selector'
 import { Button } from '@/components/ui/button'
