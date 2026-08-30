@@ -246,11 +246,15 @@ export const LedgerView = memo(function LedgerView() {
     document.body.classList.add('ledger-landscape-active')
     document.body.setAttribute('data-print-mode', 'ledger-landscape')
     document.documentElement.setAttribute('data-print-mode', 'ledger-landscape')
+    document.body.setAttribute('data-print-active', 'ledger')
+    document.documentElement.setAttribute('data-print-active', 'ledger')
 
     const cleanup = () => {
       document.body.classList.remove('ledger-landscape-active')
       document.body.removeAttribute('data-print-mode')
       document.documentElement.removeAttribute('data-print-mode')
+      document.body.removeAttribute('data-print-active')
+      document.documentElement.removeAttribute('data-print-active')
       const el = document.getElementById('sky-ledger-dynamic-print-style')
       if (el) el.remove()
       window.removeEventListener('afterprint', cleanup)

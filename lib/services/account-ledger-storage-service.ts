@@ -6,6 +6,7 @@ export type AccountLedgerDatabase = {
   ledgerEntries: Record<string, any[]>
   ledgerProfiles: Record<string, any>
   receipts: Record<string, any>
+  deletedLedgerEntries?: any[]
   updated_at?: string
 }
 
@@ -16,11 +17,12 @@ const emptyDatabase: AccountLedgerDatabase = {
   ledgerEntries: {},
   ledgerProfiles: {},
   receipts: {},
+  deletedLedgerEntries: [],
 }
 
 let memoryCacheLedger: AccountLedgerDatabase | null = null
 let lastLedgerCacheTime = 0
-const LEDGER_TTL_MS = 5000
+const LEDGER_TTL_MS = 3000
 
 export async function getAccountLedgerDatabase() {
   const now = Date.now()
@@ -38,6 +40,7 @@ export async function getAccountLedgerDatabase() {
     ledgerEntries: database.ledgerEntries && typeof database.ledgerEntries === "object" ? database.ledgerEntries : {},
     ledgerProfiles: database.ledgerProfiles && typeof database.ledgerProfiles === "object" ? database.ledgerProfiles : {},
     receipts: database.receipts && typeof database.receipts === "object" ? database.receipts : {},
+    deletedLedgerEntries: Array.isArray(database.deletedLedgerEntries) ? database.deletedLedgerEntries : [],
     updated_at: database.updated_at || null,
   }
 }
@@ -66,11 +69,16 @@ export async function saveAccountLedgerDatabase(data: Partial<AccountLedgerDatab
     ...(data.receipts || {}),
   }
 
+  const mergedDeleted = Array.isArray(data.deletedLedgerEntries)
+    ? data.deletedLedgerEntries
+    : (Array.isArray(existing.deletedLedgerEntries) ? existing.deletedLedgerEntries : [])
+
   const next: AccountLedgerDatabase = {
     accounts: mergedAccounts,
     ledgerEntries: mergedLedgerEntries,
     ledgerProfiles: mergedProfiles,
     receipts: mergedReceipts,
+    deletedLedgerEntries: mergedDeleted,
     updated_at: new Date().toISOString(),
   }
 

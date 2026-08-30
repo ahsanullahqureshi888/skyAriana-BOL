@@ -687,9 +687,10 @@ async def import_backup(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Mount Static Files for direct frontend serving
-app.mount("/", StaticFiles(directory=WORKDIR, html=True), name="static")
+# Mount Static Files for direct frontend serving (Master index.html in WORKDIR)
+STATIC_DIR = WORKDIR
+app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
 if __name__ == "__main__":
     print(f"🚀 Starting Sky Ariana CMR FastAPI Backend on http://127.0.0.1:3000")
-    uvicorn.run("backend_server:app", host="127.0.0.1", port=3000, log_level="warning")
+    uvicorn.run(app, host="127.0.0.1", port=3000, log_level="info")

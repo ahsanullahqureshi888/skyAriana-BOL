@@ -3416,13 +3416,32 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       if (smartTitle) {
         document.title = smartTitle
       }
+
+      // Explicitly set BOL active print mode and clear any ledger/invoice styles
+      document.body.classList.remove("ledger-landscape-active")
+      document.body.removeAttribute("data-print-mode")
+      document.documentElement.removeAttribute("data-print-mode")
+      document.body.setAttribute("data-print-active", "bol")
+      document.documentElement.setAttribute("data-print-active", "bol")
+
       const previewEl = document.getElementById("bol-print-preview")
       if (previewEl) {
         previewEl.setAttribute("data-print-quality", "standard")
         previewEl.setAttribute("data-color-strip", "true")
         previewEl.setAttribute("data-fit-to-page", "true")
       }
-      window.print()
+
+      const cleanup = () => {
+        document.body.removeAttribute("data-print-active")
+        document.documentElement.removeAttribute("data-print-active")
+        window.removeEventListener("afterprint", cleanup)
+      }
+      window.addEventListener("afterprint", cleanup)
+
+      setTimeout(() => {
+        window.print()
+        setTimeout(cleanup, 2500)
+      }, 50)
     }
   }
 
@@ -3437,6 +3456,20 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         document.title = smartTitle
       }
 
+      // Explicitly set BOL active print mode and clear any ledger/invoice styles
+      document.body.classList.remove("ledger-landscape-active")
+      document.body.removeAttribute("data-print-mode")
+      document.documentElement.removeAttribute("data-print-mode")
+      document.body.setAttribute("data-print-active", "bol")
+      document.documentElement.setAttribute("data-print-active", "bol")
+
+      const cleanup = () => {
+        document.body.removeAttribute("data-print-active")
+        document.documentElement.removeAttribute("data-print-active")
+        window.removeEventListener("afterprint", cleanup)
+      }
+      window.addEventListener("afterprint", cleanup)
+
       if (options.quality !== "high-quality") {
         if (typeof window !== "undefined" && typeof window.print === "function") {
           const previewEl = document.getElementById("bol-print-preview")
@@ -3445,8 +3478,11 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             previewEl.setAttribute("data-color-strip", options.includeColorStrip ? "true" : "false")
             previewEl.setAttribute("data-fit-to-page", options.fitToPage ? "true" : "false")
           }
-          window.print()
-          setIsSaving(false)
+          setTimeout(() => {
+            window.print()
+            setIsSaving(false)
+            setTimeout(cleanup, 2500)
+          }, 50)
           return
         }
       }
@@ -3478,6 +3514,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       })
       await printPDFBlobInWindow(pdfBlob, fileName, printWindow)
       toast.dismiss(toastId)
+      cleanup()
     } catch (error) {
       console.error("Error preparing print:", error)
       if (typeof window !== "undefined" && typeof window.print === "function") {

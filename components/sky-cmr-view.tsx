@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { Truck, Printer, RefreshCw, Maximize2, Minimize2, ArrowUpRight, FileCheck, Layers, Sparkles, ShieldCheck } from "lucide-react"
+import { Truck, Printer, RefreshCw, Maximize2, Minimize2, ArrowUpRight, FileCheck, Layers, Sparkles, Receipt, SlidersHorizontal } from "lucide-react"
 
 export function SkyCmrView() {
-  const [currentPath, setCurrentPath] = useState("/sky-cmr-border/index.html")
+  const [currentPath, setCurrentPath] = useState("/sky-cmr-border/react/index.html")
   const [isLoading, setIsLoading] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -52,33 +52,50 @@ export function SkyCmrView() {
   return (
     <div className={`w-full overflow-hidden bg-[#090d16] flex flex-col ${isFullscreen ? "fixed inset-0 z-[99999] h-screen w-screen" : "flex-1 w-full h-full min-h-0"}`}>
       {/* Floating Executive Glass Ribbon */}
-      <div className="absolute top-2.5 right-3.5 z-30 flex items-center gap-1.5 bg-slate-900/92 hover:bg-slate-900 backdrop-blur-2xl border border-blue-500/30 p-1.5 rounded-2xl shadow-2xl shadow-blue-950/50 transition-all">
+      <div className="absolute top-2.5 right-3.5 z-30 flex items-center gap-1.5 bg-slate-900/95 hover:bg-slate-900 backdrop-blur-2xl border border-blue-500/30 p-1.5 rounded-2xl shadow-2xl shadow-blue-950/60 transition-all max-w-[95vw] overflow-x-auto no-scrollbar">
         {/* Status Indicator */}
-        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-950/70 border border-blue-500/30 text-blue-300 text-[11px] font-black mr-1 shadow-inner">
+        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-950/80 border border-blue-500/40 text-blue-300 text-[11px] font-black mr-1 shadow-inner shrink-0">
           <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
           <Truck className="h-3.5 w-3.5 text-blue-400" />
-          <span>Sky CMR Border</span>
-          <span className="text-[9.5px] bg-blue-500/20 text-blue-300 px-1.5 py-0.2 rounded-md font-mono border border-blue-400/20">
-            Express
+          <span>Sky CMR Suite</span>
+          <span className="text-[9px] bg-blue-500/25 text-blue-200 px-1.5 py-0.2 rounded-md font-mono border border-blue-400/30">
+            v3.2 PRO
           </span>
         </div>
 
         {/* Route / View Switcher */}
-        <div className="flex items-center gap-1 bg-slate-800/90 p-0.5 rounded-xl border border-slate-700/80">
+        <div className="flex items-center gap-1 bg-slate-800/90 p-0.5 rounded-xl border border-slate-700/80 shrink-0">
+          {/* React App View (Modern Pad 1, Pad 2, Invoice & AI Autofill) */}
+          <button
+            type="button"
+            onClick={() => handleNavigate("/sky-cmr-border/react/index.html")}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+              currentPath.includes("react/index.html")
+                ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-md shadow-blue-500/30 ring-1 ring-blue-400/40 font-extrabold"
+                : "text-slate-300 hover:text-white hover:bg-slate-700/60"
+            }`}
+            title="Complete React Suite (Pad 1, Pad 2, Commercial Invoice & AI Autofill)"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
+            <span>Interactive App</span>
+          </button>
+
+          {/* Standalone Main CMR View */}
           <button
             type="button"
             onClick={() => handleNavigate("/sky-cmr-border/index.html")}
             className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
-              currentPath.includes("index.html")
+              currentPath === "/sky-cmr-border/index.html"
                 ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md font-extrabold"
                 : "text-slate-300 hover:text-white hover:bg-slate-700/60"
             }`}
-            title="Complete International CMR Editor & Saved Archive"
+            title="Standalone Full CMR Consignment Sheet"
           >
             <FileCheck className="h-3.5 w-3.5 text-blue-300" />
-            <span className="hidden sm:inline">Main CMR</span>
+            <span className="hidden sm:inline">Main Sheet</span>
           </button>
 
+          {/* Page 1 (Consignment Waybill) */}
           <button
             type="button"
             onClick={() => handleNavigate("/sky-cmr-border/cmr_page1.html")}
@@ -87,12 +104,13 @@ export function SkyCmrView() {
                 ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md font-extrabold"
                 : "text-slate-300 hover:text-white hover:bg-slate-700/60"
             }`}
-            title="CMR Waybill Page 1 (Consignment & Shipper / Consignee)"
+            title="CMR Waybill Page 1 (Consignment, Shipper & Consignee)"
           >
             <Layers className="h-3.5 w-3.5 text-indigo-300" />
             <span className="hidden sm:inline">Page 1</span>
           </button>
 
+          {/* Page 2 (Border & Customs Transit) */}
           <button
             type="button"
             onClick={() => handleNavigate("/sky-cmr-border/cmr_page2.html")}
@@ -112,8 +130,8 @@ export function SkyCmrView() {
         <button
           type="button"
           onClick={handlePrint}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-md cursor-pointer active:scale-95 transition-all"
-          title="Print CMR Waybill"
+          className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow-md cursor-pointer active:scale-95 transition-all shrink-0"
+          title="Print active CMR or Commercial Invoice document"
         >
           <Printer className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Print</span>
@@ -123,8 +141,8 @@ export function SkyCmrView() {
         <button
           type="button"
           onClick={handleRefresh}
-          className="flex items-center justify-center h-7.5 w-7.5 rounded-xl bg-slate-800/90 hover:bg-blue-900/60 text-blue-300 border border-slate-700 hover:border-blue-500/50 shadow-xs transition-all cursor-pointer active:scale-95"
-          title="Reload CMR Module"
+          className="flex items-center justify-center h-7.5 w-7.5 rounded-xl bg-slate-800/90 hover:bg-blue-900/60 text-blue-300 border border-slate-700 hover:border-blue-500/50 shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
+          title="Reload active view"
         >
           <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin text-blue-400" : ""}`} />
         </button>
@@ -133,7 +151,7 @@ export function SkyCmrView() {
         <button
           type="button"
           onClick={toggleFullscreen}
-          className="flex items-center justify-center h-7.5 w-7.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow-xs transition-all cursor-pointer active:scale-95"
+          className="flex items-center justify-center h-7.5 w-7.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow-xs transition-all cursor-pointer active:scale-95 shrink-0"
           title={isFullscreen ? "Exit Fullscreen" : "Fullscreen View"}
         >
           {isFullscreen ? <Minimize2 className="h-3.5 w-3.5 text-amber-400" /> : <Maximize2 className="h-3.5 w-3.5 text-slate-300" />}
@@ -143,7 +161,7 @@ export function SkyCmrView() {
         <button
           type="button"
           onClick={handleOpenExternal}
-          className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black shadow-lg shadow-blue-500/25 transition-all cursor-pointer active:scale-95"
+          className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-black shadow-lg shadow-blue-500/25 transition-all cursor-pointer active:scale-95 shrink-0"
           title="Open Sky CMR in a new browser tab"
         >
           <ArrowUpRight className="h-4 w-4 stroke-[2.5]" />
@@ -160,8 +178,8 @@ export function SkyCmrView() {
               <Truck className="h-7 w-7 text-blue-400 animate-pulse" />
             </div>
           </div>
-          <span className="mt-4 text-sm font-black text-white tracking-wide">Connecting to Sky CMR Border Waybill...</span>
-          <span className="text-xs text-blue-400 font-semibold mt-1">International Consignment Note & Border Waybill System</span>
+          <span className="mt-4 text-sm font-black text-white tracking-wide">Loading Sky CMR International Suite...</span>
+          <span className="text-xs text-blue-400 font-semibold mt-1">Border Waybill, Consignment Note & Commercial Invoice System</span>
         </div>
       )}
 

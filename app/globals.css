@@ -1296,51 +1296,7 @@
   width: 100%;
 }
 
-@media print {
-  .ledger-scroll {
-    max-height: none !important;
-    overflow: visible !important;
-  }
 
-  .ledger-table {
-    direction: rtl !important;
-    min-width: 100% !important;
-    table-layout: fixed !important;
-    width: 100% !important;
-  }
-
-  .ledger-table thead,
-  .ledger-table tbody {
-    display: table-row-group !important;
-  }
-
-  .ledger-table thead {
-    display: table-header-group !important;
-  }
-
-  .ledger-table thead tr,
-  .ledger-table .ledger-data-row {
-    display: table-row !important;
-  }
-
-  .ledger-table thead {
-    display: table-header-group !important;
-  }
-
-  .ledger-table tr {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-  }
-
-  .ledger-table th,
-  .ledger-table td {
-    border: 1px solid #d4af37 !important;
-    display: table-cell !important;
-    box-shadow: none !important;
-    font-size: 8px !important;
-    padding: 3px !important;
-  }
-}
 
 /* Draggable window styles */
 .draggable-window {
@@ -1466,94 +1422,7 @@
   }
 }
 
-@media print {
-  @page {
-    size: A4 portrait;
-    margin: 0;
-  }
 
-  [data-ledger-print-hidden="true"] {
-    display: none !important;
-  }
-
-  [data-ledger-print-preview="true"] {
-    background: #ffffff !important;
-    inset: auto !important;
-    padding: 0 !important;
-    position: static !important;
-  }
-
-  [data-ledger-print-sheet="true"] {
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    min-height: 0 !important;
-    width: 100% !important;
-  }
-
-  .invoice-print-root {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-height: 0 !important;
-    margin: 0 auto !important;
-    overflow: visible !important;
-    page-break-inside: avoid !important;
-    page-break-after: auto !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  .invoice-print-root table {
-    page-break-inside: auto !important;
-    width: 100% !important;
-  }
-
-  .invoice-print-root tr {
-    page-break-inside: avoid !important;
-    page-break-after: auto !important;
-  }
-
-  .invoice-print-root thead {
-    display: table-header-group !important;
-  }
-
-  .charge-row:empty,
-  .empty-print-field,
-  [data-empty="true"] {
-    display: none !important;
-  }
-
-  input::placeholder,
-  textarea::placeholder {
-    color: transparent !important;
-  }
-
-  input,
-  textarea,
-  [contenteditable="true"] {
-    border: none !important;
-    outline: none !important;
-    box-shadow: none !important;
-    caret-color: transparent !important;
-  }
-
-  [data-import-trucks-print-hidden="true"] {
-    display: none !important;
-  }
-
-  [data-import-trucks-print-preview="true"] {
-    background: #ffffff !important;
-    inset: auto !important;
-    padding: 0 !important;
-    position: static !important;
-  }
-
-  [data-import-trucks-print-sheet="true"] {
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    min-height: 100vh !important;
-    width: 100% !important;
-  }
-}
 
 .file-center-primary-button,
 .file-center-secondary-button,
@@ -4407,8 +4276,16 @@
     print-color-adjust: exact !important;
   }
 
-  /* 3. CRITICAL: Hide all non-portaled body children (main React tree) except print portals! */
-  body > *:not(.ledger-print-root, .invoice-print-root, [data-print-root="true"], #sky-ledger-print-root, #sky-invoice-print-root, #bol-print-preview-root) {
+  /* Dedicated landscape body override */
+  body.ledger-landscape-active,
+  body[data-print-active="ledger"] {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* 3. Hide all non-portaled body children except print portals (and in-tree reports view) */
+  body:not([data-print-active="reports"]) > *:not(.ledger-print-root, .invoice-print-root, [data-print-root="true"], #sky-ledger-print-root, #sky-invoice-print-root, #bol-print-preview-root) {
     display: none !important;
     height: 0 !important;
     max-height: 0 !important;
@@ -4432,8 +4309,121 @@
     padding: 0 !important;
   }
 
-  /* 5. Portrait Printable Portal positioning for BOL & Invoice */
-  #bol-print-preview-root {
+  /* =========================================================================
+     PORTAL MUTUAL EXCLUSION:
+     By default, Ledger and Invoice portals are HIDDEN to prevent leaking into BOL
+     ========================================================================= */
+  #sky-ledger-print-root,
+  .ledger-print-root,
+  #sky-invoice-print-root,
+  .invoice-print-root {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* LEDGER PRINT MODE: Exclusively show Ledger, hide BOL & Invoice */
+  body[data-print-active="ledger"] #sky-ledger-print-root,
+  body[data-print-active="ledger"] .ledger-print-root,
+  body.ledger-landscape-active #sky-ledger-print-root,
+  body.ledger-landscape-active .ledger-print-root,
+  html[data-print-mode="ledger-landscape"] #sky-ledger-print-root,
+  html[data-print-mode="ledger-landscape"] .ledger-print-root {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  body[data-print-active="ledger"] #bol-print-preview-root,
+  body[data-print-active="ledger"] #bol-print-preview,
+  body.ledger-landscape-active #bol-print-preview-root,
+  body.ledger-landscape-active #bol-print-preview,
+  html[data-print-mode="ledger-landscape"] #bol-print-preview-root,
+  html[data-print-mode="ledger-landscape"] #bol-print-preview {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* INVOICE PRINT MODE: Exclusively show Invoice, hide BOL & Ledger */
+  body[data-print-active="invoice"] #sky-invoice-print-root,
+  body[data-print-active="invoice"] .invoice-print-root {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    height: 285mm !important;
+    min-height: 0 !important;
+    max-height: 285mm !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  body[data-print-active="invoice"] #bol-print-preview-root,
+  body[data-print-active="invoice"] #bol-print-preview,
+  body[data-print-active="invoice"] #sky-ledger-print-root,
+  body[data-print-active="invoice"] .ledger-print-root {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* REPORTS PRINT MODE: Hide all background portals */
+  body[data-print-active="reports"] #bol-print-preview-root,
+  body[data-print-active="reports"] #bol-print-preview,
+  body[data-print-active="reports"] #sky-ledger-print-root,
+  body[data-print-active="reports"] .ledger-print-root,
+  body[data-print-active="reports"] #sky-invoice-print-root,
+  body[data-print-active="reports"] .invoice-print-root {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* BOL PRINT MODE & DEFAULT PORTRAIT: Show BOL */
+  body:not([data-print-active="ledger"]):not([data-print-active="invoice"]):not([data-print-active="reports"]):not(.ledger-landscape-active) #bol-print-preview-root,
+  body[data-print-active="bol"] #bol-print-preview-root {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -4456,37 +4446,8 @@
     break-after: avoid !important;
   }
 
-  .invoice-print-root,
-  #sky-invoice-print-root {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 210mm !important;
-    max-width: 210mm !important;
-    height: 285mm !important;
-    min-height: 0 !important;
-    max-height: 285mm !important;
-    margin: 0 auto !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-    background: #ffffff !important;
-    box-shadow: none !important;
-    border: none !important;
-    page-break-inside: avoid !important;
-    page-break-before: avoid !important;
-    page-break-after: avoid !important;
-    break-inside: avoid !important;
-    break-before: avoid !important;
-    break-after: avoid !important;
-  }
-
-  #bol-print-preview,
-  .print-wrapper,
-  .print-page,
-  [data-bol-a4="true"] {
+  body:not([data-print-active="ledger"]):not([data-print-active="invoice"]):not([data-print-active="reports"]):not(.ledger-landscape-active) #bol-print-preview,
+  body[data-print-active="bol"] #bol-print-preview {
     display: flex !important;
     flex-direction: column !important;
     visibility: visible !important;
@@ -4511,31 +4472,6 @@
     break-inside: avoid !important;
     break-before: avoid !important;
     break-after: avoid !important;
-  }
-
-  /* 5b. Landscape Printable Portal for Account Ledger */
-  .ledger-print-root,
-  #sky-ledger-print-root,
-  .print-wrapper.ledger-print-root,
-  [data-print-root="true"].ledger-print-root {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    position: static !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    height: auto !important;
-    max-height: none !important;
-    min-height: 0 !important;
-    margin: 0 auto !important;
-    padding: 0 !important;
-    overflow: visible !important;
-    background: #ffffff !important;
-    box-shadow: none !important;
-    border: none !important;
-    page-break-inside: auto !important;
-    break-inside: auto !important;
   }
 
   [data-bol-page="true"] {
