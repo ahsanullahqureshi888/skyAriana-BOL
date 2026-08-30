@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect, memo, type ReactNode } from '
 import { createPortal } from 'react-dom'
 import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History, Eye, Download, ZoomIn, ZoomOut, Maximize2, BookOpen } from 'lucide-react'
 import { saveFinancialsForEntry } from '@/lib/services/ledger-sync-utils'
+import { DescriptionPresetSelector } from './description-preset-selector'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -1316,12 +1317,11 @@ export const LedgerView = memo(function LedgerView() {
                 className="bg-white/50 border-white/30"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Shipper/Description / لیږدونکی/تفصیل</label>
-              <Input
-                value={newEntry.shipperDescription}
-                onChange={e => setNewEntry({ ...newEntry, shipperDescription: e.target.value })}
-                className="bg-white/50 border-white/30"
+            <div className="space-y-1">
+              <DescriptionPresetSelector
+                value={newEntry.shipperDescription || ''}
+                onChange={val => setNewEntry({ ...newEntry, shipperDescription: val })}
+                showQuickChips={true}
               />
             </div>
             <div className="space-y-2">

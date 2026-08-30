@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, Upload, FileText, Trash2, Paperclip } from 'lucide-react'
 import { LedgerEntry } from '@/lib/types'
+import { DescriptionPresetSelector } from './description-preset-selector'
 
 interface EditLedgerEntryDialogProps {
   open: boolean
@@ -200,13 +201,10 @@ export function EditLedgerEntryDialog({
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-blue-900 block mb-1">Description / Shipper / تفصیل</label>
-                <Input
-                  name="shipperDescription"
+                <DescriptionPresetSelector
                   value={formData.shipperDescription || ''}
-                  onChange={handleChange}
-                  placeholder="1476 CTNS: GOLDEN RAISINS"
-                  className="bg-white border-blue-200 focus:border-blue-500 text-xs font-semibold h-9 text-blue-950"
+                  onChange={(newVal) => setFormData(prev => ({ ...prev, shipperDescription: newVal }))}
+                  showQuickChips={true}
                 />
               </div>
 
