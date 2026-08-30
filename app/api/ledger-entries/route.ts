@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { getAccountLedgerDatabase, saveAccountLedgerDatabase } from "@/lib/services/account-ledger-storage-service"
 import { getBolAccountLedgerDatabase, saveBolAccountLedgerDatabase } from "@/lib/services/bol-account-ledger-storage-service"
 import * as localStorage from "@/lib/services/local-storage-service"
@@ -369,8 +369,16 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    await saveAccountLedgerDatabase({ ledgerEntries: newDbEntries })
-    await saveBolAccountLedgerDatabase({ ledgerRecords: newBolRecords })
+    const newDeleted = [
+      ...(Array.isArray(db.deletedLedgerEntries) ? db.deletedLedgerEntries : []),
+      {
+        entry: { id: id || undefined, barnamehNo: barnamehNo || undefined },
+        deletedAt: new Date().toISOString(),
+      }
+    ]
+
+    await saveAccountLedgerDatabase({ ledgerEntries: newDbEntries, deletedLedgerEntries: newDeleted })
+    await saveBolAccountLedgerDatabase({ ledgerRecords: newBolRecords, deletedLedgerEntries: newDeleted })
 
     return NextResponse.json({ success: true, message: "Entry deleted successfully" })
   } catch (error) {
