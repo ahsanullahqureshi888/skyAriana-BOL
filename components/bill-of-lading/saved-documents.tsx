@@ -1345,8 +1345,24 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
         console.error("Failed to download PDF:", err)
         if (typeof document !== "undefined") {
           document.title = buildBolSmartFileName(doc, doc.bol_number || doc.id, "")
+          document.body.classList.remove("ledger-landscape-active")
+          document.body.removeAttribute("data-print-mode")
+          document.documentElement.removeAttribute("data-print-mode")
+          document.body.setAttribute("data-print-active", "bol")
+          document.documentElement.setAttribute("data-print-active", "bol")
+          const cleanup = () => {
+            document.body.removeAttribute("data-print-active")
+            document.documentElement.removeAttribute("data-print-active")
+            window.removeEventListener("afterprint", cleanup)
+          }
+          window.addEventListener("afterprint", cleanup)
+          setTimeout(() => {
+            window.print()
+            setTimeout(cleanup, 2500)
+          }, 50)
+        } else {
+          window.print()
         }
-        window.print()
       } finally {
         setDownloadingPdfId(null)
       }

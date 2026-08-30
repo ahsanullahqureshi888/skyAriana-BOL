@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     const data = await saveBolAccountLedgerDatabase({
       customCompanies: Array.isArray(body.customCompanies) ? body.customCompanies : [],
       ledgerRecords: body.ledgerRecords && typeof body.ledgerRecords === "object" ? body.ledgerRecords : {},
+      deletedLedgerEntries: Array.isArray(body.deletedLedgerEntries) ? body.deletedLedgerEntries : undefined,
     })
 
     return NextResponse.json({ success: true, data, source: "local-file" })

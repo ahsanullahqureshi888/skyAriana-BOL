@@ -16,6 +16,7 @@ interface SyncPayload {
   savedShippers?: any[]
   savedConsignees?: any[]
   savedNotifyParties?: any[]
+  deletedLedgerEntries?: any[]
   syncCode?: string
 }
 
@@ -251,6 +252,7 @@ export async function GET(request: Request) {
       savedShippers: snapshot.savedShippers || masterData?.savedShippers || [],
       savedConsignees: snapshot.savedConsignees || masterData?.savedConsignees || [],
       savedNotifyParties: snapshot.savedNotifyParties || masterData?.savedNotifyParties || [],
+      deletedLedgerEntries: Array.isArray(ledgerDb.deletedLedgerEntries) ? ledgerDb.deletedLedgerEntries : (snapshot.deletedLedgerEntries || []),
       updated_at: masterData?.updated_at || new Date().toISOString(),
     }
 
@@ -324,6 +326,7 @@ export async function POST(request: Request) {
       await saveBolAccountLedgerDatabase({
         customCompanies: mergedCompanies,
         ledgerRecords: mergedRecords,
+        deletedLedgerEntries: Array.isArray(payload.deletedLedgerEntries) ? payload.deletedLedgerEntries : undefined,
       })
     }
 
@@ -332,6 +335,7 @@ export async function POST(request: Request) {
       documents: payload.documents || [],
       accounts: payload.accounts || [],
       ledgerRecords: payload.ledgerRecords || {},
+      deletedLedgerEntries: payload.deletedLedgerEntries || [],
       companySettings: payload.companySettings || null,
       routePresets: payload.routePresets || [],
       savedShippers: payload.savedShippers || [],

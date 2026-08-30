@@ -311,7 +311,23 @@ export function ShipperDashboardView() {
 
   // Handle printing ledger statement
   const handlePrintLedger = () => {
-    window.print()
+    document.body.classList.remove('ledger-landscape-active')
+    document.body.removeAttribute('data-print-mode')
+    document.documentElement.removeAttribute('data-print-mode')
+    document.body.setAttribute('data-print-active', 'shipper-portal')
+    document.documentElement.setAttribute('data-print-active', 'shipper-portal')
+
+    const cleanup = () => {
+      document.body.removeAttribute('data-print-active')
+      document.documentElement.removeAttribute('data-print-active')
+      window.removeEventListener('afterprint', cleanup)
+    }
+    window.addEventListener('afterprint', cleanup)
+
+    setTimeout(() => {
+      window.print()
+      setTimeout(cleanup, 2500)
+    }, 50)
   }
 
   // Handle Booking Submission
@@ -1511,7 +1527,21 @@ export function ShipperDashboardView() {
               <Button
                 onClick={() => {
                   toast.success("Printing invoice statement...")
-                  window.print()
+                  document.body.classList.remove('ledger-landscape-active')
+                  document.body.removeAttribute('data-print-mode')
+                  document.documentElement.removeAttribute('data-print-mode')
+                  document.body.setAttribute('data-print-active', 'shipper-portal')
+                  document.documentElement.setAttribute('data-print-active', 'shipper-portal')
+                  const cleanup = () => {
+                    document.body.removeAttribute('data-print-active')
+                    document.documentElement.removeAttribute('data-print-active')
+                    window.removeEventListener('afterprint', cleanup)
+                  }
+                  window.addEventListener('afterprint', cleanup)
+                  setTimeout(() => {
+                    window.print()
+                    setTimeout(cleanup, 2500)
+                  }, 50)
                 }}
                 className="gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl cursor-pointer"
               >

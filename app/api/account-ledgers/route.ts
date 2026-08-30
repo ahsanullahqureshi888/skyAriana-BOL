@@ -64,6 +64,7 @@ export async function POST(request: Request) {
       ledgerEntries: body.ledgerEntries && typeof body.ledgerEntries === "object" ? body.ledgerEntries : {},
       ledgerProfiles: body.ledgerProfiles && typeof body.ledgerProfiles === "object" ? body.ledgerProfiles : {},
       receipts: body.receipts && typeof body.receipts === "object" ? body.receipts : {},
+      deletedLedgerEntries: Array.isArray(body.deletedLedgerEntries) ? body.deletedLedgerEntries : undefined,
     })
 
     return NextResponse.json({ success: true, data, source: "local-file" })

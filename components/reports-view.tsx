@@ -881,7 +881,23 @@ export function ReportsView() {
 
   // Print Official A4 Report
   const handlePrintReport = () => {
-    window.print()
+    document.body.classList.remove('ledger-landscape-active')
+    document.body.removeAttribute('data-print-mode')
+    document.documentElement.removeAttribute('data-print-mode')
+    document.body.setAttribute('data-print-active', 'reports')
+    document.documentElement.setAttribute('data-print-active', 'reports')
+
+    const cleanup = () => {
+      document.body.removeAttribute('data-print-active')
+      document.documentElement.removeAttribute('data-print-active')
+      window.removeEventListener('afterprint', cleanup)
+    }
+    window.addEventListener('afterprint', cleanup)
+
+    setTimeout(() => {
+      window.print()
+      setTimeout(cleanup, 2500)
+    }, 50)
   }
 
   return (

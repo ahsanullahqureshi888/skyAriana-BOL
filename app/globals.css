@@ -4284,8 +4284,8 @@
     overflow: visible !important;
   }
 
-  /* 3. Hide all non-portaled body children except print portals (and in-tree reports view) */
-  body:not([data-print-active="reports"]) > *:not(.ledger-print-root, .invoice-print-root, [data-print-root="true"], #sky-ledger-print-root, #sky-invoice-print-root, #bol-print-preview-root) {
+  /* 3. Hide all non-portaled body children except print portals (and in-tree reports/shipper views) */
+  body:not([data-print-active="reports"]):not([data-print-active="shipper-portal"]) > *:not(.ledger-print-root, .invoice-print-root, [data-print-root="true"], #sky-ledger-print-root, #sky-invoice-print-root, #bol-print-preview-root) {
     display: none !important;
     height: 0 !important;
     max-height: 0 !important;
