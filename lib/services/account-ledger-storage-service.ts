@@ -1,4 +1,4 @@
-import path from "path"
+﻿import path from "path"
 import { readJsonFile, writeJsonFile } from "./blob-db"
 
 export type AccountLedgerDatabase = {
@@ -22,7 +22,60 @@ const emptyDatabase: AccountLedgerDatabase = {
 
 let memoryCacheLedger: AccountLedgerDatabase | null = null
 let lastLedgerCacheTime = 0
-const LEDGER_TTL_MS = 3000
+const LEDGER_TTL_MS = 1000
+
+export function mergeLedgerRows(existingRows: any[] = [], incomingRows: any[] = []): any[] {
+  if (!Array.isArray(existingRows)) existingRows = []
+  if (!Array.isArray(incomingRows)) incomingRows = []
+
+  const rowMap = new Map<string, any>()
+  const getKey = (r: any) => {
+    const bol = (r.barnamehNo || r.bolNo || "").trim().toLowerCase()
+    return bol ? `bol:${bol}` : (r.id ? `id:${r.id}` : `desc:${(r.description || r.shipperDescription || "").trim().toLowerCase()}_${r.date || ""}`)
+  }
+
+  // Populate map with existing rows
+  for (const row of existingRows) {
+    const key = getKey(row)
+    if (key) {
+      rowMap.set(key, {
+        ...row,
+        debit: Number(row.debit) || 0,
+        credit: Number(row.credit) || 0,
+      })
+    }
+  }
+
+  // Merge incoming rows intelligently
+  for (const row of incomingRows) {
+    const key = getKey(row)
+    const existing = key ? rowMap.get(key) : null
+
+    const incomingDebit = row.debit !== undefined && row.debit !== "" ? Number(row.debit) || 0 : undefined
+    const incomingCredit = row.credit !== undefined && row.credit !== "" ? Number(row.credit) || 0 : undefined
+
+    const mergedDebit = incomingDebit !== undefined ? incomingDebit : (existing ? (Number(existing.debit) || 0) : 0)
+    const mergedCredit = incomingCredit !== undefined ? incomingCredit : (existing ? (Number(existing.credit) || 0) : 0)
+
+    const merged = {
+      ...(existing || {}),
+      ...row,
+      debit: mergedDebit,
+      credit: mergedCredit,
+      driverFreight: row.driverFreight || row.driverRent || existing?.driverFreight || existing?.driverRent || "",
+      driverRent: row.driverFreight || row.driverRent || existing?.driverFreight || existing?.driverRent || "",
+      pdfFile: row.pdfFile || row.pdfPathname || existing?.pdfFile || existing?.pdfPathname || undefined,
+      pdfPathname: row.pdfFile || row.pdfPathname || existing?.pdfFile || existing?.pdfPathname || undefined,
+      surrenderedBL: row.surrenderedBL !== undefined ? Boolean(row.surrenderedBL) : Boolean(existing?.surrenderedBL),
+    }
+
+    if (key) {
+      rowMap.set(key, merged)
+    }
+  }
+
+  return Array.from(rowMap.values())
+}
 
 export async function getAccountLedgerDatabase() {
   const now = Date.now()
@@ -48,15 +101,22 @@ export async function getAccountLedgerDatabase() {
 export async function saveAccountLedgerDatabase(data: Partial<AccountLedgerDatabase>) {
   const existing = await getAccountLedgerDatabase()
 
-  // Safely merge accounts and ledger entries without losing other companies
+  // Safely merge accounts
   const mergedAccounts = Array.from(new Set([
     ...(Array.isArray(existing.accounts) ? existing.accounts : []),
     ...(Array.isArray(data.accounts) ? data.accounts : []),
   ]))
 
-  const mergedLedgerEntries = {
-    ...(existing.ledgerEntries || {}),
-    ...(data.ledgerEntries || {}),
+  // Smart row-by-row merge for each company key
+  const mergedLedgerEntries: Record<string, any[]> = { ...(existing.ledgerEntries || {}) }
+  if (data.ledgerEntries && typeof data.ledgerEntries === "object") {
+    for (const [key, rows] of Object.entries(data.ledgerEntries)) {
+      if (Array.isArray(rows)) {
+        mergedLedgerEntries[key] = mergeLedgerRows(mergedLedgerEntries[key] || [], rows)
+      } else {
+        mergedLedgerEntries[key] = rows
+      }
+    }
   }
 
   const mergedProfiles = {

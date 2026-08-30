@@ -255,9 +255,12 @@ function syncBolToAccountLedger(data: BillOfLadingFormData & { bol_number?: stri
   const records = JSON.parse(rawRecords) as AccountLedgerRecords
   const existingRow = Object.values(records)
     .flat()
-    .find((row) => (row.barnamehNo && row.barnamehNo.trim() === bolNo) || (row.bolNo && row.bolNo.trim() === bolNo))
+    .find((row) => (row.barnamehNo && row.barnamehNo.trim().toLowerCase() === bolNo.toLowerCase()) || (row.bolNo && row.bolNo.trim().toLowerCase() === bolNo.toLowerCase()))
   
-  const driverRentVal = data.driver_rent?.trim() || ""
+  const driverRentVal = data.driver_rent?.trim() || existingRow?.driverFreight || existingRow?.driverRent || ""
+  const debitVal = existingRow?.debit !== undefined && existingRow?.debit !== "" ? Number(existingRow.debit) || 0 : ((data as any)?.debit ? Number((data as any).debit) || 0 : 0)
+  const creditVal = existingRow?.credit !== undefined && existingRow?.credit !== "" ? Number(existingRow.credit) || 0 : ((data as any)?.credit ? Number((data as any).credit) || 0 : 0)
+
   const nextRow: AccountLedgerEntry = {
     id: existingRow?.id || crypto.randomUUID(),
     date: existingRow?.date || data.issue_date || new Date().toISOString().split("T")[0],
@@ -266,26 +269,27 @@ function syncBolToAccountLedger(data: BillOfLadingFormData & { bol_number?: stri
     shipDate: existingRow?.shipDate || data.issue_date || "",
     barnamehNo: bolNo,
     bolNo: bolNo,
-    truckNo: data.truck_number || "",
-    containerNo: data.container_numbers || "",
-    consignee: data.consignee_name || "",
-    quantity: data.number_of_packages || "",
+    truckNo: data.truck_number || existingRow?.truckNo || "",
+    containerNo: data.container_numbers || existingRow?.containerNo || "",
+    consignee: data.consignee_name || existingRow?.consignee || "",
+    quantity: data.number_of_packages || existingRow?.quantity || "",
     driverRent: driverRentVal,
     driverFreight: driverRentVal,
-    debit: existingRow?.debit || "",
-    credit: existingRow?.credit || "",
+    debit: debitVal as any,
+    credit: creditVal as any,
     pdfFile: existingRow?.pdfFile || "",
   }
 
   const nextRecords = Object.fromEntries(
     Object.entries(records).map(([key, rows]) => [
       key, 
-      rows.filter((row) => (row.barnamehNo || row.bolNo || "").trim() !== bolNo)
+      rows.filter((row) => (row.barnamehNo || row.bolNo || "").trim().toLowerCase() !== bolNo.toLowerCase())
     ])
   ) as AccountLedgerRecords
 
   const companyRows = nextRecords[companyKey] || []
   nextRecords[companyKey] = [nextRow, ...companyRows]
+  nextRecords[shipperName.toLowerCase()] = [nextRow, ...companyRows]
 
   window.localStorage.setItem(ACCOUNT_LEDGER_STORAGE_KEY, JSON.stringify(nextRecords))
   window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(nextRecords))
@@ -298,7 +302,29 @@ function syncBolToAccountLedger(data: BillOfLadingFormData & { bol_number?: stri
       accounts: updatedCompanies,
       ledgerEntries: nextRecords,
     }),
+    keepalive: true,
   }).catch((err) => console.warn("Background ledger sync to API:", err))
+
+  fetch("/api/bol-account-ledgers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      customCompanies: updatedCompanies,
+      ledgerRecords: nextRecords,
+    }),
+    keepalive: true,
+  }).catch(() => {})
+
+  fetch("/api/ledger-entries", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      barnamehNo: bolNo,
+      companyId: companyKey,
+      ...nextRow,
+    }),
+    keepalive: true,
+  }).catch(() => {})
 
   window.dispatchEvent(
     new CustomEvent("skybol:account-ledger-updated", {

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo, useCallback } from "react"
+import { createPortal } from "react-dom"
 import {
   TrendingUp,
   TrendingDown,
@@ -48,7 +49,10 @@ import {
   Moon,
   ArrowDown,
   ArrowUp,
-  SlidersHorizontal
+  SlidersHorizontal,
+  FileSpreadsheet,
+  FileDown,
+  Loader2
 } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { Button } from "@/components/ui/button"
@@ -57,6 +61,36 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import * as XLSX from "xlsx"
+
+/**
+ * Dedicated Portal for Report Printing
+ * Mounts #sky-reports-print-root directly on document.body for clean, unclipped print output
+ */
+function ReportPrintPortal({ children }: { children: React.ReactNode }) {
+  const [container, setContainer] = useState<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const existing = document.getElementById("sky-reports-print-root") as HTMLDivElement | null
+    const root = existing || document.createElement("div")
+
+    root.id = "sky-reports-print-root"
+    root.className = "reports-print-root"
+    root.setAttribute("data-print-root", "true")
+    if (!existing) {
+      document.body.appendChild(root)
+    }
+    setContainer(root)
+
+    return () => {
+      if (!existing && root.parentElement === document.body) {
+        document.body.removeChild(root)
+      }
+    }
+  }, [])
+
+  if (!container) return null
+  return createPortal(children, container)
+}
 
 export interface CustomExpenseEntry {
   id: string
@@ -228,14 +262,27 @@ export function ReportsView() {
   // Direction Filter: All, Export (صادرات), Import (واردات), Transit (ترانزیت)
   const [directionFilter, setDirectionFilter] = useState<"all" | "Export" | "Import" | "Transit">("all")
   
-  // Container Size Filter: All, 20FT, 40FT, 40HQ
-  const [sizeFilter, setSizeFilter] = useState<"all" | "20FT" | "40FT" | "40HQ">("all")
+  // Container Size Filter: All, 20FT, 40FT, 40HQ, 40RF
+  const [sizeFilter, setSizeFilter] = useState<"all" | "20FT" | "40FT" | "40HQ" | "40RF">("all")
+
+  // Profitability Status Filter: All, Profitable, Loss, Break-Even
+  const [statusFilter, setStatusFilter] = useState<"all" | "Profitable" | "Loss" | "Break-Even">("all")
 
   // Date Filter & Selection
-  const [dateFilter, setDateFilter] = useState<"all" | "today" | "week" | "month" | "last_month" | "year">("all")
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "week" | "month" | "last_month" | "year" | "custom">("all")
+  const [customStartDate, setCustomStartDate] = useState<string>("")
+  const [customEndDate, setCustomEndDate] = useState<string>("")
   const [selectedShipper, setSelectedShipper] = useState<string>("all")
   const [selectedConsignee, setSelectedConsignee] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
+
+  // Print & PDF Export Configuration State
+  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
+  const [printScope, setPrintScope] = useState<"active" | "all_containers" | "trade_summary" | "pnl_statement" | "bbl_manifest" | "company_balances" | "opex_expenses">("active")
+  const [printOrientation, setPrintOrientation] = useState<"landscape" | "portrait">("landscape")
+  const [includeKpis, setIncludeKpis] = useState(true)
+  const [includeSignatures, setIncludeSignatures] = useState(true)
+  const [isExportingPDF, setIsExportingPDF] = useState(false)
 
   // Column Sorting State for Containers table
   const [sortField, setSortField] = useState<keyof ContainerFreightRecord>("date")
@@ -613,6 +660,10 @@ export function ReportsView() {
       if (sizeFilter !== "all" && r.containerSize !== sizeFilter) {
         return false
       }
+      // Status Filter
+      if (statusFilter !== "all" && r.status !== statusFilter) {
+        return false
+      }
       // Shipper Filter
       if (selectedShipper !== "all" && !r.shipperName.toLowerCase().includes(selectedShipper.toLowerCase())) {
         return false
@@ -620,6 +671,11 @@ export function ReportsView() {
       // Consignee Filter
       if (selectedConsignee !== "all" && !r.consigneeName.toLowerCase().includes(selectedConsignee.toLowerCase())) {
         return false
+      }
+      // Custom Date Range
+      if (dateFilter === "custom") {
+        if (customStartDate && r.date < customStartDate) return false
+        if (customEndDate && r.date > customEndDate) return false
       }
       // Text Search
       if (searchQuery.trim()) {
@@ -651,7 +707,7 @@ export function ReportsView() {
       if (aVal > bVal) return sortOrder === "asc" ? 1 : -1
       return 0
     })
-  }, [allContainerRecords, directionFilter, sizeFilter, selectedShipper, selectedConsignee, searchQuery, sortField, sortOrder])
+  }, [allContainerRecords, directionFilter, sizeFilter, statusFilter, dateFilter, customStartDate, customEndDate, selectedShipper, selectedConsignee, searchQuery, sortField, sortOrder])
 
   // Handle Sort Toggle
   const handleSort = (field: keyof ContainerFreightRecord) => {
@@ -696,6 +752,9 @@ export function ReportsView() {
     let totalNetWeightKg = 0
     let totalGrossWeightKg = 0
     let totalPackages = 0
+    let shippingLineCostSum = 0
+    let driverFreightCostSum = 0
+    let borderHandlingCostSum = 0
 
     filteredContainers.forEach(r => {
       totalContainers += 1
@@ -705,6 +764,9 @@ export function ReportsView() {
       totalNetWeightKg += r.netWeightKg
       totalGrossWeightKg += r.grossWeightKg
       totalPackages += r.packagesCount
+      shippingLineCostSum += r.shippingCost || 0
+      driverFreightCostSum += r.driverCost || 0
+      borderHandlingCostSum += r.handlingCost || 0
 
       // Sizes
       if (r.containerSize === '20FT') total20ft += 1
@@ -785,6 +847,9 @@ export function ReportsView() {
       totalNetWeightKg,
       totalGrossWeightKg,
       totalPackages,
+      shippingLineCostSum,
+      driverFreightCostSum,
+      borderHandlingCostSum,
       customExpenseSum,
       customRevenueSum
     }
@@ -819,7 +884,9 @@ export function ReportsView() {
     return { topExports, topImports }
   }, [filteredContainers])
 
-  // Export to Excel Spreadsheet (.xlsx)
+  // =========================================================================
+  // EXPORT TO EXCEL SPREADSHEET (.xlsx)
+  // =========================================================================
   const handleExportExcel = () => {
     try {
       const wb = XLSX.utils.book_new()
@@ -850,13 +917,13 @@ export function ReportsView() {
         "P&L Status": r.status
       }))
       const wsContainers = XLSX.utils.json_to_sheet(containerRows)
-      XLSX.utils.book_append_sheet(wb, wsContainers, "Container P&L")
+      XLSX.utils.book_append_sheet(wb, wsContainers, "Container Manifest")
 
       // 2. Executive Trade Summary Worksheet
       const summaryData = [
         ["SKY ARIANA LIMITED - EXECUTIVE CONTAINER & TRADE REPORT"],
         ["Report Date", new Date().toLocaleString()],
-        ["Direction Filter", directionFilter],
+        ["Direction Filter", directionFilter.toUpperCase()],
         [],
         ["METRIC", "TOTAL", "EXPORT (صادرات)", "IMPORT (واردات)", "TRANSIT (ترانزیت)"],
         ["Container Count", containerMetrics.totalContainers, containerMetrics.exportCount, containerMetrics.importCount, containerMetrics.transitCount],
@@ -869,7 +936,22 @@ export function ReportsView() {
         ["Avg Profit / Container ($)", containerMetrics.avgProfitPerContainer, containerMetrics.avgExportProfitPerBox, containerMetrics.avgImportProfitPerBox, "-"]
       ]
       const wsSummary = XLSX.utils.aoa_to_sheet(summaryData)
-      XLSX.utils.book_append_sheet(wb, wsSummary, "Trade Summary")
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Executive Summary")
+
+      // 3. Operational Expenses Sheet
+      const expRows = customExpenses.map(e => ({
+        "Date": e.date,
+        "Type": e.type.toUpperCase(),
+        "Category": e.category,
+        "Title": e.title,
+        "Amount ($)": e.amount,
+        "Container #": e.containerNo || "-",
+        "Ref / B/L #": e.refNumber || "-",
+        "Payment Method": e.paymentMethod,
+        "Notes": e.notes || "-"
+      }))
+      const wsExp = XLSX.utils.json_to_sheet(expRows)
+      XLSX.utils.book_append_sheet(wb, wsExp, "Expenses & OPEX")
 
       XLSX.writeFile(wb, `SkyAriana_Container_Freight_Report_${new Date().toISOString().slice(0, 10)}.xlsx`)
       toast.success("Container Excel report exported successfully!")
@@ -879,17 +961,94 @@ export function ReportsView() {
     }
   }
 
-  // Print Official A4 Report
-  const handlePrintReport = () => {
+  // =========================================================================
+  // EXPORT TO CSV (.csv)
+  // =========================================================================
+  const handleExportCSV = () => {
+    try {
+      const headers = [
+        "Container No",
+        "Size",
+        "Trade Direction",
+        "B/L No",
+        "Invoice No",
+        "Date",
+        "Shipper",
+        "Consignee",
+        "Origin",
+        "Destination",
+        "Commodity",
+        "Packages",
+        "Net Wt (KG)",
+        "Gross Wt (KG)",
+        "Freight Revenue ($)",
+        "Shipping Line Cost ($)",
+        "Driver Rent ($)",
+        "Handling Cost ($)",
+        "Total Direct Cost ($)",
+        "Net Profit ($)",
+        "Margin (%)",
+        "Status"
+      ]
+
+      const rows = filteredContainers.map(r => [
+        `"${r.containerNo}"`,
+        `"${r.containerSize}"`,
+        `"${r.direction}"`,
+        `"${r.bolNumber}"`,
+        `"${r.invoiceNumber}"`,
+        `"${r.date}"`,
+        `"${(r.shipperName || "").replace(/"/g, '""')}"`,
+        `"${(r.consigneeName || "").replace(/"/g, '""')}"`,
+        `"${(r.origin || "").replace(/"/g, '""')}"`,
+        `"${(r.destination || "").replace(/"/g, '""')}"`,
+        `"${(r.goodsDescription || "").replace(/"/g, '""')}"`,
+        r.packagesCount,
+        r.netWeightKg,
+        r.grossWeightKg,
+        r.freightRevenue,
+        r.shippingCost,
+        r.driverCost,
+        r.handlingCost,
+        r.totalCost,
+        r.netProfit,
+        `"${r.profitMargin.toFixed(1)}%"`,
+        `"${r.status}"`
+      ])
+
+      const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n")
+      const encodedUri = encodeURI(csvContent)
+      const link = document.createElement("a")
+      link.setAttribute("href", encodedUri)
+      link.setAttribute("download", `SkyAriana_Container_Manifest_${new Date().toISOString().slice(0, 10)}.csv`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      toast.success("CSV file exported successfully!")
+    } catch (e) {
+      console.error(e)
+      toast.error("Failed to export CSV")
+    }
+  }
+
+  // =========================================================================
+  // PRINT & HIGH-RES PDF EXPORT ENGINES
+  // =========================================================================
+  const handleDirectPrint = (orientation: "landscape" | "portrait" = printOrientation) => {
     document.body.classList.remove('ledger-landscape-active')
     document.body.removeAttribute('data-print-mode')
     document.documentElement.removeAttribute('data-print-mode')
+    
     document.body.setAttribute('data-print-active', 'reports')
     document.documentElement.setAttribute('data-print-active', 'reports')
+    document.body.setAttribute('data-print-orientation', orientation)
+    document.documentElement.setAttribute('data-print-orientation', orientation)
 
     const cleanup = () => {
       document.body.removeAttribute('data-print-active')
       document.documentElement.removeAttribute('data-print-active')
+      document.body.removeAttribute('data-print-orientation')
+      document.documentElement.removeAttribute('data-print-orientation')
       window.removeEventListener('afterprint', cleanup)
     }
     window.addEventListener('afterprint', cleanup)
@@ -897,7 +1056,82 @@ export function ReportsView() {
     setTimeout(() => {
       window.print()
       setTimeout(cleanup, 2500)
-    }, 50)
+    }, 60)
+  }
+
+  const handleExportPDF = async () => {
+    setIsExportingPDF(true)
+    try {
+      const printContainer = document.querySelector('#sky-reports-print-root') || document.querySelector('.reports-print-root')
+      if (!printContainer) throw new Error('Print container not found')
+
+      const { default: html2canvas } = await import('html2canvas')
+      // @ts-ignore
+      const { jsPDF } = await import('jspdf/dist/jspdf.es.min.js')
+
+      const isLandscape = printOrientation === 'landscape'
+      const canvas = await html2canvas(printContainer as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: isLandscape ? 1400 : 1000,
+      })
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.98)
+      const pdf = new jsPDF({
+        orientation: isLandscape ? 'landscape' : 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      })
+
+      const pdfWidth = isLandscape ? 297 : 210
+      const pdfHeight = isLandscape ? 210 : 297
+      const imgProps = pdf.getImageProperties(imgData)
+      const canvasHeightMM = (imgProps.height * pdfWidth) / imgProps.width
+
+      let heightLeft = canvasHeightMM
+      let position = 0
+
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'FAST')
+      heightLeft -= pdfHeight
+
+      while (heightLeft > 0) {
+        position = heightLeft - canvasHeightMM
+        pdf.addPage()
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'FAST')
+        heightLeft -= pdfHeight
+      }
+
+      pdf.save(`SkyAriana_Report_${printScope}_${new Date().toISOString().slice(0, 10)}.pdf`)
+      toast.success("High-res PDF exported successfully!")
+      setIsPrintDialogOpen(false)
+    } catch (e) {
+      console.error("PDF Export Error:", e)
+      toast.error("Failed to export PDF")
+    } finally {
+      setIsExportingPDF(false)
+    }
+  }
+
+  // Active Report Scope Title for Print & UI
+  const getActiveReportTitle = (scope: string) => {
+    switch (scope) {
+      case "trade_summary":
+        return "Export vs. Import Comparative Trade Analysis (تحلیل صادرات و واردات)"
+      case "pnl_statement":
+        return "Executive Financial Statement of Profit & Loss (صورتحساب سود و زیان مالی)"
+      case "bbl_manifest":
+        return "Bill of Lading Shipments & Manifest (بارنامه‌ها و اسناد حمل)"
+      case "company_balances":
+        return "Accounts Receivable & Client Balance Summary (بیلانس حساب‌های مشتریان)"
+      case "opex_expenses":
+        return "Operational Logistics OPEX & Direct Expenses (مصارف عملیاتی و لجستیکی)"
+      case "all_containers":
+      default:
+        return "Container Freight & Direct Profit/Loss Statement (گزارش کانتینرها و سود کرایه‌ها)"
+    }
   }
 
   return (
@@ -998,19 +1232,35 @@ export function ReportsView() {
                   ? "bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100"
                   : "bg-blue-950/40 text-blue-300 border-blue-700 hover:bg-blue-900/60"
               }`}
+              title="Download Excel Workbook with multiple sheets"
             >
-              <Download className="w-3.5 h-3.5 text-blue-600" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
               <span>Export Excel</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              className={`gap-1.5 h-9 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
+                isLight
+                  ? "bg-cyan-50 text-cyan-800 border-cyan-300 hover:bg-cyan-100"
+                  : "bg-cyan-950/40 text-cyan-300 border-cyan-700 hover:bg-cyan-900/60"
+              }`}
+              title="Download clean CSV table"
+            >
+              <FileDown className="w-3.5 h-3.5 text-cyan-600" />
+              <span>CSV</span>
             </Button>
 
             <Button
               variant="default"
               size="sm"
-              onClick={handlePrintReport}
+              onClick={() => setIsPrintDialogOpen(true)}
               className="gap-1.5 h-9 rounded-xl text-xs font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md hover:from-blue-700 hover:to-indigo-700 shrink-0 cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print A4</span>
+              <span>Print A4 / PDF</span>
             </Button>
           </div>
         </div>
@@ -1089,7 +1339,7 @@ export function ReportsView() {
               <span className={`text-[11px] font-bold mr-1 hidden sm:inline ${
                 isLight ? "text-slate-500" : "text-slate-400"
               }`}>Size:</span>
-              {(['all', '20FT', '40FT', '40HQ'] as const).map(sz => (
+              {(['all', '20FT', '40FT', '40HQ', '40RF'] as const).map(sz => (
                 <button
                   key={sz}
                   onClick={() => setSizeFilter(sz)}
@@ -1110,7 +1360,7 @@ export function ReportsView() {
           </div>
 
           {/* Search, Shipper & Consignee Filter Grid */}
-          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1 border-t ${
+          <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1 border-t ${
             isLight ? "border-slate-200" : "border-slate-800"
           }`}>
             {/* Live Search */}
@@ -1121,7 +1371,7 @@ export function ReportsView() {
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search Container #, B/L #, Shipper, Cargo..."
+                placeholder="Search Container #, B/L, Shipper..."
                 className={`h-9 pl-9 text-xs rounded-xl ${
                   isLight
                     ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:bg-white"
@@ -1134,6 +1384,22 @@ export function ReportsView() {
                 </button>
               )}
             </div>
+
+            {/* Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e: any) => setStatusFilter(e.target.value)}
+              className={`h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
+                isLight
+                  ? "bg-slate-50 border border-slate-300 text-slate-800"
+                  : "bg-slate-800/80 border border-slate-700 text-slate-200"
+              }`}
+            >
+              <option value="all">⚡ All Statuses / تمام وضعیت‌ها</option>
+              <option value="Profitable">🟢 Profitable / سودده (&gt; $0)</option>
+              <option value="Loss">🔴 Loss / زیان‌ده (&lt; $0)</option>
+              <option value="Break-Even">⚪ Break-Even / سر‌به‌سر ($0)</option>
+            </select>
 
             {/* Shipper Selector */}
             <select
@@ -1174,11 +1440,12 @@ export function ReportsView() {
               }`}>
                 Showing <strong className={isLight ? "text-blue-700 font-black" : "text-cyan-400"}>{filteredContainers.length}</strong> containers
               </span>
-              {(directionFilter !== 'all' || sizeFilter !== 'all' || selectedShipper !== 'all' || selectedConsignee !== 'all' || searchQuery) && (
+              {(directionFilter !== 'all' || sizeFilter !== 'all' || statusFilter !== 'all' || selectedShipper !== 'all' || selectedConsignee !== 'all' || searchQuery) && (
                 <button
                   onClick={() => {
                     setDirectionFilter('all')
                     setSizeFilter('all')
+                    setStatusFilter('all')
                     setSelectedShipper('all')
                     setSelectedConsignee('all')
                     setSearchQuery('')
@@ -2510,90 +2777,608 @@ export function ReportsView() {
       )}
 
       {/* =================================================================== */}
-      {/* PRINT-ONLY OFFICIAL A4 EXECUTIVE CONTAINER STATEMENT */}
+      {/* MODAL: PRINT & PDF EXPORT STUDIO */}
       {/* =================================================================== */}
-      <div className="hidden print:block fixed inset-0 bg-white text-black p-8 font-sans">
-        <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4 mb-4">
-          <div>
-            <h1 className="text-xl font-black uppercase tracking-tight">SKY ARIANA LIMITED</h1>
-            <p className="text-xs font-bold text-slate-600">Container Logistics, Customs Clearance &amp; Freight Forwarding</p>
-            <p className="text-[10px] text-slate-500">Kandahar / Nimroz / Kabul Afghanistan • Tel: +93 700 9393 65 / +93 711 4355 29</p>
-          </div>
-          <div className="text-right">
-            <h2 className="text-sm font-black uppercase text-blue-900">Container Freight &amp; Trade P&amp;L Statement</h2>
-            <p className="text-[10px] font-mono text-slate-600">Generated: {new Date().toLocaleString()}</p>
-            <p className="text-[10px] text-slate-600">Direction: {directionFilter.toUpperCase()} | Total Boxes: {containerMetrics.totalContainers}</p>
+      {isPrintDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in no-print">
+          <div className={`border rounded-2xl w-full max-w-xl shadow-2xl p-5 sm:p-6 space-y-5 ${
+            isLight
+              ? "bg-white border-slate-200 text-slate-900"
+              : "bg-slate-900 border-slate-800 text-slate-100"
+          }`}>
+            {/* Header */}
+            <div className={`flex items-center justify-between border-b pb-3.5 ${
+              isLight ? "border-slate-200" : "border-slate-800"
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-600">
+                  <Printer className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className={`text-base font-black ${isLight ? "text-slate-900" : "text-white"}`}>
+                    Report Print &amp; PDF Export Studio
+                  </h3>
+                  <p className={`text-xs ${isLight ? "text-slate-500" : "text-slate-400"}`}>
+                    Customize print layout, page orientation, and data scope
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPrintDialogOpen(false)}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  isLight ? "text-slate-400 hover:text-slate-700 hover:bg-slate-100" : "text-slate-400 hover:text-white hover:bg-slate-800"
+                }`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scope Selection */}
+            <div className="space-y-2">
+              <label className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-slate-700" : "text-slate-300"}`}>
+                1. Select Report Section / انتخاب بخش گزارش
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {[
+                  { id: "all_containers", label: "Container Manifest & P&L", desc: `${filteredContainers.length} containers with costs & profit` },
+                  { id: "trade_summary", label: "Executive Trade Summary", desc: "Export vs Import, TEU & Top Commodities" },
+                  { id: "company_balances", label: "Client Receivables & Balances", desc: "Shipper & consignee financial ledgers" },
+                  { id: "opex_expenses", label: "Logistics OPEX & Direct Costs", desc: `${customExpenses.length} logged expense items` },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setPrintScope(s.id as any)}
+                    className={`p-3 rounded-xl text-left border transition-all cursor-pointer ${
+                      printScope === s.id
+                        ? isLight
+                          ? "bg-blue-50/80 border-blue-500 text-blue-900 ring-2 ring-blue-500/20"
+                          : "bg-blue-950/40 border-blue-500 text-blue-200 ring-2 ring-blue-500/20"
+                        : isLight
+                        ? "border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-800"
+                        : "border-slate-800 hover:border-slate-700 hover:bg-slate-800/50 text-slate-300"
+                    }`}
+                  >
+                    <div className="font-black text-xs">{s.label}</div>
+                    <div className={`text-[11px] mt-0.5 ${isLight ? "text-slate-500" : "text-slate-400"}`}>{s.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Page Orientation */}
+            <div className="space-y-2">
+              <label className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-slate-700" : "text-slate-300"}`}>
+                2. Page Orientation / جهت صفحه
+              </label>
+              <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setPrintOrientation("landscape")}
+                  className={`p-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                    printOrientation === "landscape"
+                      ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/25"
+                      : isLight
+                      ? "border-slate-200 text-slate-700 hover:bg-slate-50"
+                      : "border-slate-800 text-slate-300 hover:bg-slate-800"
+                  }`}
+                >
+                  <div className="w-5 h-3.5 border-2 border-current rounded-sm"></div>
+                  <span>Landscape (افقی - Recommended)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrintOrientation("portrait")}
+                  className={`p-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                    printOrientation === "portrait"
+                      ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/25"
+                      : isLight
+                      ? "border-slate-200 text-slate-700 hover:bg-slate-50"
+                      : "border-slate-800 text-slate-300 hover:bg-slate-800"
+                  }`}
+                >
+                  <div className="w-3.5 h-5 border-2 border-current rounded-sm"></div>
+                  <span>Portrait (عمودی)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Options Checkboxes */}
+            <div className="space-y-2">
+              <label className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-slate-700" : "text-slate-300"}`}>
+                3. Print Options / تنظیمات اضافی
+              </label>
+              <div className="flex flex-wrap gap-4 text-xs font-semibold">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeKpis}
+                    onChange={(e) => setIncludeKpis(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                  />
+                  <span>Include Executive KPI Summary Tiles</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={includeSignatures}
+                    onChange={(e) => setIncludeSignatures(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                  />
+                  <span>Include Official Signature &amp; Stamp Footer</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className={`flex flex-wrap items-center justify-end gap-2.5 pt-3 border-t ${
+              isLight ? "border-slate-200" : "border-slate-800"
+            }`}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsPrintDialogOpen(false)}
+                className={`rounded-xl text-xs font-bold ${
+                  isLight ? "border-slate-300 text-slate-700" : "border-slate-700 text-slate-300"
+                }`}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+                disabled={isExportingPDF}
+                className={`gap-1.5 rounded-xl text-xs font-bold ${
+                  isLight ? "border-blue-300 text-blue-700 bg-blue-50/50 hover:bg-blue-100" : "border-blue-700 text-blue-300 bg-blue-950/30 hover:bg-blue-900/50"
+                }`}
+              >
+                {isExportingPDF ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                <span>Download PDF</span>
+              </Button>
+
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  handleDirectPrint(printOrientation)
+                  setIsPrintDialogOpen(false)
+                }}
+                className="gap-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md hover:from-blue-700 hover:to-indigo-700"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print Document Now</span>
+              </Button>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Numbers Grid */}
-        <div className="grid grid-cols-4 gap-3 mb-4 text-center">
-          <div className="border border-slate-400 p-2 rounded">
-            <div className="text-[9px] font-bold uppercase text-slate-600">Total Containers</div>
-            <div className="text-sm font-black text-slate-900">{containerMetrics.totalContainers} Boxes ({containerMetrics.totalTEU} TEU)</div>
+      {/* =================================================================== */}
+      {/* PORTAL-BASED OFFICIAL MULTI-PAGE PRINTABLE REPORT */}
+      {/* =================================================================== */}
+      <ReportPrintPortal>
+        <div className="reports-print-document font-sans text-slate-900 bg-white p-6 max-w-full">
+          
+          {/* 1. Official Letterhead Header */}
+          <div className="flex items-start justify-between border-b-2 border-slate-900 pb-3 mb-4">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-950 text-white font-black flex items-center justify-center text-sm tracking-wider">
+                  SKY
+                </div>
+                <div>
+                  <h1 className="text-lg font-black tracking-tight text-slate-950 uppercase leading-none">
+                    SKY ARIANA LOGISTICS &amp; FREIGHT FORWARDING LIMITED
+                  </h1>
+                  <p className="text-[10px] font-bold text-slate-700 tracking-wide mt-0.5">
+                    شرکت خدمات ترانسپورت بین‌المللی و بارچلانی هوایی و زمینی اسکای آریانا
+                  </p>
+                </div>
+              </div>
+              <p className="text-[9.5px] text-slate-600 font-medium pt-1">
+                Customs Clearance, Border Transit, Ocean &amp; Multimodal Freight Forwarding • Regional Logistics Hub
+              </p>
+              <p className="text-[9px] text-slate-500 font-mono">
+                Kandahar / Nimroz / Kabul Afghanistan • Tel: +93 700 9393 65 / +93 711 4355 29 • Web: skyariana.com
+              </p>
+            </div>
+
+            <div className="text-right shrink-0 space-y-1">
+              <div className="inline-block bg-slate-900 text-white px-2.5 py-1 rounded font-black text-[11px] uppercase tracking-wider">
+                OFFICIAL REPORT
+              </div>
+              <div className="text-[10px] font-bold text-blue-950 uppercase">
+                {getActiveReportTitle(printScope)}
+              </div>
+              <div className="text-[9px] font-mono text-slate-600 space-y-0.5">
+                <div>Date: <strong>{new Date().toLocaleDateString("en-GB")} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></div>
+                <div>Filter Scope: <strong>{directionFilter.toUpperCase()}</strong> | Size: <strong>{sizeFilter.toUpperCase()}</strong></div>
+                <div>Currency: <strong>USD ($)</strong></div>
+              </div>
+            </div>
           </div>
-          <div className="border border-slate-400 p-2 rounded">
-            <div className="text-[9px] font-bold uppercase text-slate-600">Export vs Import</div>
-            <div className="text-sm font-black text-emerald-900">{containerMetrics.exportCount} Ex / {containerMetrics.importCount} Im</div>
+
+          {/* 2. Executive KPI Highlights Grid */}
+          {includeKpis && (
+            <div className="grid grid-cols-6 gap-2 mb-4">
+              <div className="border border-slate-300 bg-slate-50/80 p-2 rounded text-center">
+                <div className="text-[8.5px] font-bold uppercase text-slate-600">Total Containers</div>
+                <div className="text-xs font-black text-slate-900">{containerMetrics.totalContainers} Boxes</div>
+                <div className="text-[8px] font-mono text-slate-500">{containerMetrics.totalTEU} TEU</div>
+              </div>
+
+              <div className="border border-slate-300 bg-slate-50/80 p-2 rounded text-center">
+                <div className="text-[8.5px] font-bold uppercase text-slate-600">Export vs Import</div>
+                <div className="text-xs font-black text-emerald-800">{containerMetrics.exportCount} Ex / {containerMetrics.importCount} Im</div>
+                <div className="text-[8px] font-mono text-slate-500">{containerMetrics.transitCount} Transit</div>
+              </div>
+
+              <div className="border border-slate-300 bg-slate-50/80 p-2 rounded text-center">
+                <div className="text-[8.5px] font-bold uppercase text-slate-600">Gross Weight</div>
+                <div className="text-xs font-black text-slate-900">{(containerMetrics.totalGrossWeightKg / 1000).toFixed(1)} MT</div>
+                <div className="text-[8px] font-mono text-slate-500">{(containerMetrics.totalNetWeightKg / 1000).toFixed(1)} Net MT</div>
+              </div>
+
+              <div className="border border-slate-300 bg-blue-50/50 p-2 rounded text-center">
+                <div className="text-[8.5px] font-bold uppercase text-blue-900">Freight Revenue</div>
+                <div className="text-xs font-black text-blue-950">{formatUSD(containerMetrics.totalGrossRevenue, false, 0)}</div>
+                <div className="text-[8px] font-mono text-blue-700">Invoiced Total</div>
+              </div>
+
+              <div className="border border-slate-300 bg-rose-50/40 p-2 rounded text-center">
+                <div className="text-[8.5px] font-bold uppercase text-rose-900">Direct Costs</div>
+                <div className="text-xs font-black text-rose-950">{formatUSD(containerMetrics.totalDirectCost, false, 0)}</div>
+                <div className="text-[8px] font-mono text-rose-700">Line + Driver + Port</div>
+              </div>
+
+              <div className="border border-slate-900 bg-emerald-50/60 p-2 rounded text-center">
+                <div className="text-[8.5px] font-black uppercase text-emerald-950">Net Freight Profit</div>
+                <div className="text-xs font-black text-emerald-900">{formatUSD(containerMetrics.totalNetProfit, true, 0)}</div>
+                <div className="text-[8px] font-bold text-emerald-800">{formatMargin(containerMetrics.overallMargin)} Margin</div>
+              </div>
+            </div>
+          )}
+
+          {/* 3. Dynamic Report Scope Content */}
+          
+          {/* Scope A: Container Manifest & Detailed P&L */}
+          {(printScope === "all_containers" || printScope === "active") && (
+            <div className="space-y-2">
+              <table className="reports-print-table w-full text-[9px] border-collapse border border-slate-300">
+                <thead>
+                  <tr className="bg-slate-200 text-slate-900 font-black">
+                    <th className="border border-slate-300 p-1 text-center w-6">#</th>
+                    <th className="border border-slate-300 p-1 text-left">Container #</th>
+                    <th className="border border-slate-300 p-1 text-center">Size</th>
+                    <th className="border border-slate-300 p-1 text-center">Trade</th>
+                    <th className="border border-slate-300 p-1 text-left">B/L &amp; Shipper</th>
+                    <th className="border border-slate-300 p-1 text-left">Consignee</th>
+                    <th className="border border-slate-300 p-1 text-left">Route</th>
+                    <th className="border border-slate-300 p-1 text-right">Gross WT</th>
+                    <th className="border border-slate-300 p-1 text-right">Freight Rev</th>
+                    <th className="border border-slate-300 p-1 text-right">Line Cost</th>
+                    <th className="border border-slate-300 p-1 text-right">Driver Rent</th>
+                    <th className="border border-slate-300 p-1 text-right">Port/Handling</th>
+                    <th className="border border-slate-300 p-1 text-right">Total Cost</th>
+                    <th className="border border-slate-300 p-1 text-right font-black">Net Profit</th>
+                    <th className="border border-slate-300 p-1 text-center">Margin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredContainers.map((r, idx) => (
+                    <tr key={idx} className={idx % 2 === 1 ? "bg-slate-50/60" : "bg-white"}>
+                      <td className="border border-slate-300 p-1 text-center font-mono text-slate-500">{idx + 1}</td>
+                      <td className="border border-slate-300 p-1 font-mono font-bold text-slate-900">{r.containerNo}</td>
+                      <td className="border border-slate-300 p-1 text-center font-bold">{r.containerSize}</td>
+                      <td className="border border-slate-300 p-1 text-center">
+                        <span className={`px-1 py-0.5 rounded text-[8px] font-bold ${
+                          r.direction === 'Export' ? "bg-emerald-100 text-emerald-900" : r.direction === 'Import' ? "bg-amber-100 text-amber-900" : "bg-purple-100 text-purple-900"
+                        }`}>
+                          {r.direction}
+                        </span>
+                      </td>
+                      <td className="border border-slate-300 p-1">
+                        <div className="font-bold text-slate-900">{r.shipperName || "N/A"}</div>
+                        <div className="text-[8px] font-mono text-slate-500">{r.bolNumber}</div>
+                      </td>
+                      <td className="border border-slate-300 p-1 text-slate-800">{r.consigneeName || "N/A"}</td>
+                      <td className="border border-slate-300 p-1 text-[8px] text-slate-600">
+                        {r.origin} → {r.destination}
+                      </td>
+                      <td className="border border-slate-300 p-1 text-right font-mono">{(r.grossWeightKg / 1000).toFixed(1)} MT</td>
+                      <td className="border border-slate-300 p-1 text-right font-bold text-blue-950">{formatUSD(r.freightRevenue, false, 0)}</td>
+                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{formatUSD(r.shippingCost, false, 0)}</td>
+                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{formatUSD(r.driverCost, false, 0)}</td>
+                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{formatUSD(r.handlingCost, false, 0)}</td>
+                      <td className="border border-slate-300 p-1 text-right font-bold text-slate-800">{formatUSD(r.totalCost, false, 0)}</td>
+                      <td className={`border border-slate-300 p-1 text-right font-black ${
+                        r.netProfit >= 0 ? "text-emerald-900 bg-emerald-50/40" : "text-rose-900 bg-rose-50/40"
+                      }`}>
+                        {formatUSD(r.netProfit, true, 0)}
+                      </td>
+                      <td className="border border-slate-300 p-1 text-center font-bold text-[8.5px]">
+                        {formatMargin(r.profitMargin)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-200 text-slate-950 font-black border-t-2 border-slate-800">
+                    <td colSpan={7} className="border border-slate-400 p-1 text-right uppercase text-[9.5px]">
+                      Grand Total ({filteredContainers.length} Containers):
+                    </td>
+                    <td className="border border-slate-400 p-1 text-right font-mono">
+                      {(containerMetrics.totalGrossWeightKg / 1000).toFixed(1)} MT
+                    </td>
+                    <td className="border border-slate-400 p-1 text-right text-blue-950 font-black">
+                      {formatUSD(containerMetrics.totalGrossRevenue, false, 0)}
+                    </td>
+                    <td className="border border-slate-400 p-1 text-right font-mono">
+                      {formatUSD(containerMetrics.shippingLineCostSum, false, 0)}
+                    </td>
+                    <td className="border border-slate-400 p-1 text-right font-mono">
+                      {formatUSD(containerMetrics.driverFreightCostSum, false, 0)}
+                    </td>
+                    <td className="border border-slate-400 p-1 text-right font-mono">
+                      {formatUSD(containerMetrics.borderHandlingCostSum, false, 0)}
+                    </td>
+                    <td className="border border-slate-400 p-1 text-right font-black">
+                      {formatUSD(containerMetrics.totalDirectCost, false, 0)}
+                    </td>
+                    <td className="border border-slate-400 p-1 text-right text-emerald-950 font-black bg-emerald-100/70">
+                      {formatUSD(containerMetrics.totalNetProfit, true, 0)}
+                    </td>
+                    <td className="border border-slate-400 p-1 text-center font-black">
+                      {formatMargin(containerMetrics.overallMargin)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+
+          {/* Scope B: Executive Trade Summary */}
+          {printScope === "trade_summary" && (
+            <div className="space-y-4">
+              <table className="reports-print-table w-full text-[9.5px] border-collapse border border-slate-300">
+                <thead>
+                  <tr className="bg-slate-200 text-slate-900 font-black uppercase">
+                    <th className="border border-slate-300 p-1.5 text-left">Trade Metric</th>
+                    <th className="border border-slate-300 p-1.5 text-center">Total Overview</th>
+                    <th className="border border-slate-300 p-1.5 text-center text-emerald-900">Export (صادرات)</th>
+                    <th className="border border-slate-300 p-1.5 text-center text-amber-900">Import (واردات)</th>
+                    <th className="border border-slate-300 p-1.5 text-center text-purple-900">Transit (ترانزیت)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-slate-300 p-1.5 font-bold">Total Container Boxes</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold">{containerMetrics.totalContainers} Boxes</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-emerald-800">{containerMetrics.exportCount} Boxes</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-amber-800">{containerMetrics.importCount} Boxes</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-purple-800">{containerMetrics.transitCount} Boxes</td>
+                  </tr>
+                  <tr className="bg-slate-50">
+                    <td className="border border-slate-300 p-1.5 font-bold">TEU Capacity</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono">{containerMetrics.totalTEU} TEU</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono">{containerMetrics.exportCount * 2} TEU</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono">{containerMetrics.importCount * 2} TEU</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono">{containerMetrics.transitCount * 2} TEU</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-slate-300 p-1.5 font-bold">Total Cargo Weight (Gross)</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono">{(containerMetrics.totalGrossWeightKg / 1000).toFixed(1)} MT</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono">{(containerMetrics.exportWeightKg / 1000).toFixed(1)} MT</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono">{(containerMetrics.importWeightKg / 1000).toFixed(1)} MT</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono">-</td>
+                  </tr>
+                  <tr className="bg-slate-50">
+                    <td className="border border-slate-300 p-1.5 font-bold">Freight Invoiced Revenue</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-black text-blue-950">{formatUSD(containerMetrics.totalGrossRevenue, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-blue-900">{formatUSD(containerMetrics.exportRevenue, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-blue-900">{formatUSD(containerMetrics.importRevenue, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-blue-900">{formatUSD(containerMetrics.transitRevenue, false, 0)}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-slate-300 p-1.5 font-bold">Direct Logistics Costs</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-rose-900">{formatUSD(containerMetrics.totalDirectCost, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono text-rose-800">{formatUSD(containerMetrics.exportCost, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono text-rose-800">{formatUSD(containerMetrics.importCost, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono text-rose-800">{formatUSD(containerMetrics.transitCost, false, 0)}</td>
+                  </tr>
+                  <tr className="bg-emerald-50/80 font-black">
+                    <td className="border border-slate-300 p-1.5 text-emerald-950 uppercase">Net Freight Profit</td>
+                    <td className="border border-slate-300 p-1.5 text-center text-emerald-950 font-black">{formatUSD(containerMetrics.totalNetProfit, true, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center text-emerald-900 font-bold">{formatUSD(containerMetrics.exportProfit, true, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center text-emerald-900 font-bold">{formatUSD(containerMetrics.importProfit, true, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center text-emerald-900 font-bold">{formatUSD(containerMetrics.transitProfit, true, 0)}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-slate-300 p-1.5 font-bold">Operating Margin (%)</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-black">{formatMargin(containerMetrics.overallMargin)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold">{formatMargin(containerMetrics.exportMargin)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold">{formatMargin(containerMetrics.importMargin)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold">-</td>
+                  </tr>
+                  <tr className="bg-slate-50">
+                    <td className="border border-slate-300 p-1.5 font-bold">Average Profit / Container</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold">{formatUSD(containerMetrics.avgProfitPerContainer, true, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono">{formatUSD(containerMetrics.avgExportProfitPerBox, true, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono">{formatUSD(containerMetrics.avgImportProfitPerBox, true, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono">-</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Commodity Sub-tables */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="border border-slate-300 rounded p-2">
+                  <div className="font-black text-[10px] text-emerald-900 uppercase border-b pb-1 mb-1">
+                    Top Export Cargoes (اقلام عمده صادراتی)
+                  </div>
+                  <table className="w-full text-[8.5px]">
+                    <tbody>
+                      {tradeCommodities.topExports.map((c, i) => (
+                        <tr key={i} className="border-b border-slate-100">
+                          <td className="p-0.5 font-bold">{c.name}</td>
+                          <td className="p-0.5 text-right font-mono">{c.count} boxes</td>
+                          <td className="p-0.5 text-right font-mono">{(c.weight / 1000).toFixed(1)} MT</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="border border-slate-300 rounded p-2">
+                  <div className="font-black text-[10px] text-amber-900 uppercase border-b pb-1 mb-1">
+                    Top Import Cargoes (اقلام عمده وارداتی)
+                  </div>
+                  <table className="w-full text-[8.5px]">
+                    <tbody>
+                      {tradeCommodities.topImports.map((c, i) => (
+                        <tr key={i} className="border-b border-slate-100">
+                          <td className="p-0.5 font-bold">{c.name}</td>
+                          <td className="p-0.5 text-right font-mono">{c.count} boxes</td>
+                          <td className="p-0.5 text-right font-mono">{(c.weight / 1000).toFixed(1)} MT</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Scope C: Receivables & Balances */}
+          {printScope === "company_balances" && (
+            <div className="space-y-2">
+              <table className="reports-print-table w-full text-[9px] border-collapse border border-slate-300">
+                <thead>
+                  <tr className="bg-slate-200 text-slate-900 font-black">
+                    <th className="border border-slate-300 p-1 text-center w-6">#</th>
+                    <th className="border border-slate-300 p-1 text-left">Company / Client Name</th>
+                    <th className="border border-slate-300 p-1 text-center">Type</th>
+                    <th className="border border-slate-300 p-1 text-center">Containers</th>
+                    <th className="border border-slate-300 p-1 text-right">Invoiced ($)</th>
+                    <th className="border border-slate-300 p-1 text-right">Received ($)</th>
+                    <th className="border border-slate-300 p-1 text-right font-black">Outstanding Balance ($)</th>
+                    <th className="border border-slate-300 p-1 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allShippers.map((shipper, idx) => {
+                    const matched = filteredContainers.filter(r => r.shipperName.toLowerCase() === shipper.toLowerCase())
+                    const totalInv = matched.reduce((s, r) => s + r.freightRevenue, 0)
+                    return (
+                      <tr key={idx} className={idx % 2 === 1 ? "bg-slate-50/60" : "bg-white"}>
+                        <td className="border border-slate-300 p-1 text-center font-mono">{idx + 1}</td>
+                        <td className="border border-slate-300 p-1 font-bold text-slate-900">{shipper}</td>
+                        <td className="border border-slate-300 p-1 text-center font-mono text-[8.5px]">Shipper</td>
+                        <td className="border border-slate-300 p-1 text-center font-mono">{matched.length}</td>
+                        <td className="border border-slate-300 p-1 text-right font-bold text-blue-950">{formatUSD(totalInv, false, 0)}</td>
+                        <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">$0</td>
+                        <td className="border border-slate-300 p-1 text-right font-black text-rose-900">{formatUSD(totalInv, false, 0)}</td>
+                        <td className="border border-slate-300 p-1 text-center font-bold text-amber-800 text-[8px]">Pending Payment</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Scope D: Logistics OPEX & Direct Expenses */}
+          {printScope === "opex_expenses" && (
+            <div className="space-y-2">
+              <table className="reports-print-table w-full text-[9px] border-collapse border border-slate-300">
+                <thead>
+                  <tr className="bg-slate-200 text-slate-900 font-black">
+                    <th className="border border-slate-300 p-1 text-center w-6">#</th>
+                    <th className="border border-slate-300 p-1 text-left">Date</th>
+                    <th className="border border-slate-300 p-1 text-center">Type</th>
+                    <th className="border border-slate-300 p-1 text-left">Category</th>
+                    <th className="border border-slate-300 p-1 text-left">Title / Description</th>
+                    <th className="border border-slate-300 p-1 text-left">Container / Ref</th>
+                    <th className="border border-slate-300 p-1 text-right font-black">Amount ($)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {customExpenses.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="border border-slate-300 p-4 text-center text-slate-500 font-medium italic">
+                        No manual operational expenses recorded.
+                      </td>
+                    </tr>
+                  ) : (
+                    customExpenses.map((e, idx) => (
+                      <tr key={idx} className={idx % 2 === 1 ? "bg-slate-50/60" : "bg-white"}>
+                        <td className="border border-slate-300 p-1 text-center font-mono">{idx + 1}</td>
+                        <td className="border border-slate-300 p-1 font-mono text-slate-600">{e.date}</td>
+                        <td className="border border-slate-300 p-1 text-center font-bold uppercase text-[8px]">
+                          <span className={e.type === 'expense' ? "text-rose-800" : "text-emerald-800"}>{e.type}</span>
+                        </td>
+                        <td className="border border-slate-300 p-1 font-bold text-slate-900">{e.category}</td>
+                        <td className="border border-slate-300 p-1 text-slate-800">{e.title}</td>
+                        <td className="border border-slate-300 p-1 font-mono text-slate-600">{e.containerNo || e.refNumber || "-"}</td>
+                        <td className={`border border-slate-300 p-1 text-right font-black ${
+                          e.type === 'expense' ? "text-rose-900" : "text-emerald-900"
+                        }`}>
+                          {e.type === 'expense' ? `-${formatUSD(e.amount, false, 0)}` : `+${formatUSD(e.amount, false, 0)}`}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                {customExpenses.length > 0 && (
+                  <tfoot>
+                    <tr className="bg-slate-200 text-slate-950 font-black">
+                      <td colSpan={6} className="border border-slate-400 p-1 text-right uppercase text-[9.5px]">
+                        Net Custom OPEX Impact:
+                      </td>
+                      <td className="border border-slate-400 p-1 text-right font-black">
+                        {formatUSD(containerMetrics.customRevenueSum - containerMetrics.customExpenseSum, true, 0)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          )}
+
+          {/* 4. Official Signatures & Audit Stamp */}
+          {includeSignatures && (
+            <div className="flex justify-between items-end pt-8 mt-6 border-t-2 border-slate-800 text-[10px]">
+              <div className="text-center w-44">
+                <div className="border-b border-slate-400 pb-8"></div>
+                <div className="font-bold text-slate-900 mt-1 uppercase">Operations Manager</div>
+                <div className="text-[8px] text-slate-500">Logistics &amp; Dispatch</div>
+              </div>
+              <div className="text-center w-44">
+                <div className="border-b border-slate-400 pb-8 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full border border-dashed border-slate-400 flex items-center justify-center text-[7px] text-slate-400 uppercase text-center font-mono">
+                    Official Stamp
+                  </div>
+                </div>
+                <div className="font-bold text-slate-900 mt-1 uppercase">Chief Financial Officer</div>
+                <div className="text-[8px] text-slate-500">Finance &amp; Audit</div>
+              </div>
+              <div className="text-center w-44">
+                <div className="border-b border-slate-400 pb-8"></div>
+                <div className="font-bold text-slate-900 mt-1 uppercase">Managing Director</div>
+                <div className="text-[8px] text-slate-500">Sky Ariana Limited</div>
+              </div>
+            </div>
+          )}
+
+          {/* Document Footer Note */}
+          <div className="text-center text-[7.5px] text-slate-400 font-mono pt-4 mt-2">
+            This document is an official confidential export of SKY ARIANA LIMITED management information systems. Generated by SkyBOL v3.2 Enterprise.
           </div>
-          <div className="border border-slate-400 p-2 rounded">
-            <div className="text-[9px] font-bold uppercase text-slate-600">Total Freight Revenue</div>
-            <div className="text-sm font-black text-blue-900">{formatUSD(containerMetrics.totalGrossRevenue, false, 0)}</div>
-          </div>
-          <div className="border border-slate-900 bg-slate-100 p-2 rounded">
-            <div className="text-[9px] font-black uppercase text-slate-900">Net Freight Profit</div>
-            <div className="text-sm font-black text-emerald-900">{formatUSD(containerMetrics.totalNetProfit, true, 0)} ({formatMargin(containerMetrics.overallMargin)})</div>
-          </div>
+
         </div>
-
-        {/* Container Items Table */}
-        <table className="w-full text-[10px] border-collapse border border-slate-400 mb-6">
-          <thead>
-            <tr className="bg-slate-200 text-slate-900 font-bold">
-              <th className="border border-slate-400 p-1.5 text-left">Container #</th>
-              <th className="border border-slate-400 p-1.5 text-center">Type</th>
-              <th className="border border-slate-400 p-1.5 text-center">Trade</th>
-              <th className="border border-slate-400 p-1.5 text-left">Shipper / B/L</th>
-              <th className="border border-slate-400 p-1.5 text-right">Gross WT (MT)</th>
-              <th className="border border-slate-400 p-1.5 text-right">Freight Rev ($)</th>
-              <th className="border border-slate-400 p-1.5 text-right">Cost ($)</th>
-              <th className="border border-slate-400 p-1.5 text-right">Net Profit ($)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredContainers.slice(0, 25).map((r, idx) => (
-              <tr key={idx}>
-                <td className="border border-slate-400 p-1 font-mono font-bold">{r.containerNo}</td>
-                <td className="border border-slate-400 p-1 text-center font-bold">{r.containerSize}</td>
-                <td className="border border-slate-400 p-1 text-center font-bold">{r.direction}</td>
-                <td className="border border-slate-400 p-1">{r.shipperName} ({r.bolNumber})</td>
-                <td className="border border-slate-400 p-1 text-right font-mono">{(r.grossWeightKg / 1000).toFixed(1)}</td>
-                <td className="border border-slate-400 p-1 text-right font-bold">{formatUSD(r.freightRevenue, false, 0)}</td>
-                <td className="border border-slate-400 p-1 text-right text-slate-700">{formatUSD(r.totalCost, false, 0)}</td>
-                <td className={`border border-slate-400 p-1 text-right font-black ${
-                  r.netProfit >= 0 ? "text-emerald-900" : "text-rose-900"
-                }`}>{formatUSD(r.netProfit, true, 0)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Signatures & Stamp */}
-        <div className="flex justify-between items-end pt-12 text-xs border-t border-slate-400">
-          <div className="text-center w-48">
-            <div className="border-b border-slate-600 pb-8"></div>
-            <div className="font-bold mt-1">Operations Manager</div>
-          </div>
-          <div className="text-center w-48">
-            <div className="border-b border-slate-600 pb-8"></div>
-            <div className="font-bold mt-1">Audit Stamp</div>
-          </div>
-          <div className="text-center w-48">
-            <div className="border-b border-slate-600 pb-8"></div>
-            <div className="font-bold mt-1">Director Signature</div>
-          </div>
-        </div>
-      </div>
+      </ReportPrintPortal>
 
     </div>
   )

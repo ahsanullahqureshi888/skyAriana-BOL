@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, memo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History, Eye, Download, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
+import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History, Eye, Download, ZoomIn, ZoomOut, Maximize2, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -599,7 +599,7 @@ export const LedgerView = memo(function LedgerView() {
   }
 
   const handleSaveEditedEntry = async (updatedData: Partial<LedgerEntry>) => {
-    if (!editingEntry) return
+    if (!editingEntry || !currentAccount || !currentCompany) return
 
     // Immediately update context state
     updateLedgerEntry(currentAccount.id, currentCompany.id, editingEntry.id, updatedData)
@@ -731,7 +731,9 @@ export const LedgerView = memo(function LedgerView() {
   }
 
   const handleConfirmImport = async () => {
-    if (importedEntries.length === 0) return
+    if (importedEntries.length === 0 || !currentAccount || !currentCompany) return
+
+    if (!currentCompany || !currentAccount) return
 
     setIsLoading(true)
     try {
@@ -785,7 +787,7 @@ export const LedgerView = memo(function LedgerView() {
     }))
   }
 
-  const filteredEntries = currentCompany.ledgerEntries.filter((entry) => {
+  const filteredEntries = (currentCompany?.ledgerEntries || []).filter((entry) => {
     if (startDate && entry.date && entry.date < startDate) return false
     if (endDate && entry.date && entry.date > endDate) return false
     if (searchTerm.trim()) {
@@ -849,7 +851,7 @@ export const LedgerView = memo(function LedgerView() {
     const worksheet = XLSX.utils.json_to_sheet(exportData)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "Ledger")
-    const fileName = `${currentCompany.name.replace(/[^a-z0-9]/gi, '_')}_Ledger_${new Date().toISOString().split('T')[0]}.xlsx`
+    const fileName = `${(currentCompany?.name || 'Ledger').replace(/[^a-z0-9]/gi, '_')}_Ledger_${new Date().toISOString().split('T')[0]}.xlsx`
     XLSX.writeFile(workbook, fileName)
   }
 
@@ -886,7 +888,7 @@ export const LedgerView = memo(function LedgerView() {
       e.balance,
     ])
 
-    const fileName = `${currentCompany.name.replace(/[^a-z0-9]/gi, '_')}_Ledger_${new Date().toISOString().split('T')[0]}.csv`
+    const fileName = `${(currentCompany?.name || 'Ledger').replace(/[^a-z0-9]/gi, '_')}_Ledger_${new Date().toISOString().split('T')[0]}.csv`
     exportToUtf8CSV(headers, rows, fileName)
   }
 

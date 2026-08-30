@@ -60,6 +60,16 @@ const SAMPLE_ACCOUNTS: Account[] = [
 
 
 
+export function normalizeShipperDisplayName(name: string): string {
+  if (!name) return ''
+  return name.trim().replace(/[\s\-_]+/g, ' ').toUpperCase()
+}
+
+export function getShipperCanonicalKey(name: string): string {
+  if (!name) return ''
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
 export interface DeletedLedgerEntryItem {
   entry: LedgerEntry
   accountId: string
@@ -555,34 +565,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     const allDocs = Array.from(allDocsMap.values())
 
-    const shipperMap = new Map<string, any[]>()
+    // Map canonical key -> { displayName, docs, rawKeys }
+    const shipperMap = new Map<string, { displayName: string; docs: any[]; rawKeys: Set<string> }>()
 
-    // Add all shippers from all documents
+    // 1. Add shippers from documents
     for (const doc of allDocs) {
-      const name = (doc.shipper_name || "").trim()
-      if (name) {
-        if (!shipperMap.has(name)) {
-          shipperMap.set(name, [])
-        }
-        shipperMap.get(name)!.push(doc)
+      const rawName = (doc.shipper_name || "").trim()
+      if (!rawName) continue
+      const canonKey = getShipperCanonicalKey(rawName)
+      if (!canonKey) continue
+
+      if (!shipperMap.has(canonKey)) {
+        shipperMap.set(canonKey, {
+          displayName: normalizeShipperDisplayName(rawName),
+          docs: [],
+          rawKeys: new Set([rawName]),
+        })
       }
+      const group = shipperMap.get(canonKey)!
+      group.docs.push(doc)
+      group.rawKeys.add(rawName)
     }
 
-    // Add custom companies from server & localStorage even if no doc yet
+    // 2. Add custom companies from server & localStorage
     for (const compName of customCompanies) {
-      const cleanName = compName.trim()
-      if (cleanName && !shipperMap.has(cleanName)) {
-        shipperMap.set(cleanName, [])
+      const rawName = (compName || "").trim()
+      if (!rawName) continue
+      const canonKey = getShipperCanonicalKey(rawName)
+      if (!canonKey) continue
+
+      if (!shipperMap.has(canonKey)) {
+        shipperMap.set(canonKey, {
+          displayName: normalizeShipperDisplayName(rawName),
+          docs: [],
+          rawKeys: new Set([rawName]),
+        })
       }
+      shipperMap.get(canonKey)!.rawKeys.add(rawName)
     }
 
-    // Add company keys from storedLedgerRecords
+    // 3. Add company keys from storedLedgerRecords
     Object.keys(storedLedgerRecords).forEach((compKey) => {
       const rows = storedLedgerRecords[compKey]
       if (Array.isArray(rows) && rows.length > 0) {
         const sampleDesc = rows[0]?.description || rows[0]?.shipperDescription || compKey
-        if (sampleDesc && !shipperMap.has(sampleDesc)) {
-          shipperMap.set(sampleDesc, [])
+        const canonKey = getShipperCanonicalKey(sampleDesc)
+        if (canonKey) {
+          if (!shipperMap.has(canonKey)) {
+            shipperMap.set(canonKey, {
+              displayName: normalizeShipperDisplayName(sampleDesc),
+              docs: [],
+              rawKeys: new Set([sampleDesc]),
+            })
+          }
+          shipperMap.get(canonKey)!.rawKeys.add(compKey)
         }
       }
     })
@@ -593,39 +629,77 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ? prev.accounts.filter(a => a.id !== 'account-1' || a.companies.some(c => c.ledgerEntries.length > 0 && c.name !== 'SKY ARIANA TRANSPORT'))
         : [...prev.accounts]
 
-      let updated = false
+      shipperMap.forEach(({ displayName, docs: bolList, rawKeys }, canonKey) => {
+        // Collect all stored rows matching any candidate key for this company
+        const storedRowList: any[] = []
+        const seenStoredIds = new Set<string>()
 
-      shipperMap.forEach((bolList, shipperName) => {
-        const accountKey = shipperName.toLowerCase()
-        const companyKey = accountKey.replace(/[^a-z0-9]/g, "-")
-        const storedRows = storedLedgerRecords[companyKey] || storedLedgerRecords[accountKey] || storedLedgerRecords[shipperName] || []
+        const candidateKeys = Array.from(new Set([
+          canonKey,
+          `company-${canonKey}`,
+          displayName,
+          displayName.toLowerCase(),
+          displayName.toLowerCase().replace(/[^a-z0-9]/g, "-"),
+          ...Array.from(rawKeys),
+          ...Array.from(rawKeys).map(k => k.toLowerCase()),
+          ...Array.from(rawKeys).map(k => k.toLowerCase().replace(/[^a-z0-9]/g, "-")),
+        ]))
+
+        candidateKeys.forEach(k => {
+          const rList = storedLedgerRecords[k]
+          if (Array.isArray(rList)) {
+            rList.forEach(r => {
+              const rId = r.id || `${r.barnamehNo || r.bolNo}_${r.date}`
+              if (rId && !seenStoredIds.has(rId)) {
+                seenStoredIds.add(rId)
+                storedRowList.push(r)
+              }
+            })
+          }
+        })
 
         const existingAccIndex = existingAccounts.findIndex(
-          (a) => a.name.toLowerCase() === accountKey
+          (a) => getShipperCanonicalKey(a.name) === canonKey || getShipperCanonicalKey(a.id) === canonKey
         )
 
         let runningBalance = 0
         const ledgerEntries: LedgerEntry[] = []
+        const seenBolNumbers = new Set<string>()
 
-        // 1. Process BOL documents (excluding any explicitly deleted by the user)
+        // 1. Process BOL documents (excluding deleted)
         bolList.forEach((doc, idx) => {
           const bolNo = (doc.bol_number || "").trim()
+          const bolNoLower = bolNo.toLowerCase()
+
+          if (bolNoLower && seenBolNumbers.has(bolNoLower)) {
+            return
+          }
 
           const isDeleted = mergedDeletedEntries.some((d) => {
-            const dBolNo = (d.entry?.barnamehNo || (d.entry as any)?.bolNo || "").trim()
+            const dBolNo = (d.entry?.barnamehNo || (d.entry as any)?.bolNo || "").trim().toLowerCase()
             const dId = d.entry?.id
-            const dCompName = (d.companyName || "").trim().toLowerCase()
-            const dCompId = d.companyId || ""
-            const isMatchingComp = !dCompName || dCompName === shipperName.toLowerCase() || dCompId === `company-${companyKey}`
-            return (dId === doc.id || (bolNo && dBolNo === bolNo)) && isMatchingComp
+            const dCanonKey = getShipperCanonicalKey(d.companyName || d.entry?.shipperDescription || "")
+
+            const isMatchingShipper = !dCanonKey || dCanonKey === canonKey
+
+            if (!isMatchingShipper) return false
+
+            if (doc.id && dId === doc.id) return true
+            if (bolNoLower && dBolNo && bolNoLower === dBolNo) return true
+            return false
           })
 
           if (isDeleted) {
             return
           }
 
-          const existingRow = storedRows.find(
-            (r: any) => (r.barnamehNo && r.barnamehNo.trim() === bolNo) || (r.bolNo && r.bolNo.trim() === bolNo)
+          if (bolNoLower) {
+            seenBolNumbers.add(bolNoLower)
+          }
+
+          const existingRow = storedRowList.find(
+            (r: any) => (r.barnamehNo && r.barnamehNo.trim().toLowerCase() === bolNoLower) ||
+                        (r.bolNo && r.bolNo.trim().toLowerCase() === bolNoLower)
           )
 
           const parsedInvoice = parseInvoiceNo(doc.cargo_description, doc.bol_number)
@@ -638,7 +712,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             id: existingRow?.id || doc.id || `bol-${idx}`,
             sNo: ledgerEntries.length + 1,
             date: existingRow?.date || doc.issue_date || new Date().toISOString().split("T")[0],
-            shipperDescription: doc.shipper_name || shipperName,
+            shipperDescription: displayName,
             invoiceNo: parsedInvoice,
             dateOfShip: existingRow?.shipDate || doc.issue_date || "",
             barnamehNo: bolNo,
@@ -655,77 +729,82 @@ export function AppProvider({ children }: { children: ReactNode }) {
           })
         })
 
-        // 2. Include non-BOL stored rows (e.g. manual payment / receipt rows, excluding deleted)
-        storedRows.forEach((row: any) => {
+        // 2. Include non-BOL stored rows (e.g. manual payment / receipt rows)
+        storedRowList.forEach((row: any) => {
           const rBol = (row.barnamehNo || row.bolNo || "").trim()
+          const rBolLower = rBol.toLowerCase()
+
+          if (rBolLower && seenBolNumbers.has(rBolLower)) {
+            return
+          }
 
           const isDeleted = mergedDeletedEntries.some((d) => {
-            const dBolNo = (d.entry?.barnamehNo || (d.entry as any)?.bolNo || "").trim()
+            const dBolNo = (d.entry?.barnamehNo || (d.entry as any)?.bolNo || "").trim().toLowerCase()
             const dId = d.entry?.id
-            const dCompName = (d.companyName || "").trim().toLowerCase()
-            const dCompId = d.companyId || ""
-            const isMatchingComp = !dCompName || dCompName === shipperName.toLowerCase() || dCompId === `company-${companyKey}`
-            return (dId === row.id || (rBol && dBolNo === rBol)) && isMatchingComp
+            const dCanonKey = getShipperCanonicalKey(d.companyName || d.entry?.shipperDescription || "")
+
+            const isMatchingShipper = !dCanonKey || dCanonKey === canonKey
+
+            if (!isMatchingShipper) return false
+
+            if (row.id && dId === row.id) return true
+            if (rBolLower && dBolNo && rBolLower === dBolNo) return true
+            return false
           })
 
           if (isDeleted) {
             return
           }
 
-          if (!rBol || !bolList.some((doc) => (doc.bol_number || "").trim() === rBol)) {
-            const debitVal = Number(row.debit) || 0
-            const creditVal = Number(row.credit) || 0
-            runningBalance += (debitVal - creditVal)
-            ledgerEntries.push({
-              id: row.id || crypto.randomUUID(),
-              sNo: ledgerEntries.length + 1,
-              date: row.date || "",
-              shipperDescription: row.description || row.shipperDescription || shipperName,
-              invoiceNo: row.invoiceNo || "",
-              dateOfShip: row.shipDate || row.dateOfShip || "",
-              barnamehNo: rBol,
-              driverFreight: row.driverFreight || row.driverRent || "",
-              billOfLanding: row.billOfLanding || "",
-              surrenderedBL: Boolean(row.surrenderedBL),
-              containerNo: row.containerNo || "",
-              consignee: row.consignee || "",
-              quantity: row.quantity || "",
-              debit: debitVal,
-              credit: creditVal,
-              balance: runningBalance,
-              pdfPathname: row.pdfFile || row.pdfPathname || undefined,
-            })
+          if (rBolLower) {
+            seenBolNumbers.add(rBolLower)
           }
+
+          const debitVal = Number(row.debit) || 0
+          const creditVal = Number(row.credit) || 0
+          runningBalance += (debitVal - creditVal)
+
+          ledgerEntries.push({
+            id: row.id || crypto.randomUUID(),
+            sNo: ledgerEntries.length + 1,
+            date: row.date || "",
+            shipperDescription: displayName,
+            invoiceNo: row.invoiceNo || "",
+            dateOfShip: row.shipDate || row.dateOfShip || "",
+            barnamehNo: rBol,
+            driverFreight: row.driverFreight || row.driverRent || "",
+            billOfLanding: row.billOfLanding || "",
+            surrenderedBL: Boolean(row.surrenderedBL),
+            containerNo: row.containerNo || "",
+            consignee: row.consignee || "",
+            quantity: row.quantity || "",
+            debit: debitVal,
+            credit: creditVal,
+            balance: runningBalance,
+            pdfPathname: row.pdfFile || row.pdfPathname || undefined,
+          })
         })
 
         const companyForShipper: Company = {
-          id: `company-${companyKey}`,
-          name: shipperName,
-          ledgerEntries: ledgerEntries.length > 0 ? ledgerEntries : (hasRealAccounts ? [] : SAMPLE_LEDGER_ENTRIES),
+          id: `company-${canonKey}`,
+          name: displayName,
+          ledgerEntries: ledgerEntries.length > 0 ? ledgerEntries : [],
         }
 
         if (existingAccIndex >= 0) {
           const acc = existingAccounts[existingAccIndex]
-          const compIndex = acc.companies.findIndex((c) => c.name.toLowerCase() === accountKey)
-          if (compIndex >= 0) {
-            const newCompanies = [...acc.companies]
-            newCompanies[compIndex] = companyForShipper
-            existingAccounts[existingAccIndex] = { ...acc, companies: newCompanies }
-            updated = true
-          } else {
-            existingAccounts[existingAccIndex] = {
-              ...acc,
-              companies: [...acc.companies, companyForShipper],
-            }
-            updated = true
+          existingAccounts[existingAccIndex] = {
+            ...acc,
+            name: displayName,
+            companies: [companyForShipper],
           }
         } else {
           existingAccounts.push({
-            id: `account-${companyKey}`,
-            name: shipperName,
+            id: `account-${canonKey}`,
+            name: displayName,
             companies: [companyForShipper],
+            createdBy: 'admin',
           })
-          updated = true
         }
       })
 
@@ -735,10 +814,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(storedLedgerRecords))
       } catch (e) {}
 
+      const currentAccId = prev.currentAccount?.id
       const currentAccName = prev.currentAccount?.name
-      const updatedCurrentAcc = existingAccounts.find((a) => a.name.toLowerCase() === currentAccName?.toLowerCase()) || existingAccounts[0] || null
+      const updatedCurrentAcc = existingAccounts.find((a) =>
+        (currentAccId && a.id === currentAccId) ||
+        (currentAccName && getShipperCanonicalKey(a.name) === getShipperCanonicalKey(currentAccName))
+      ) || existingAccounts[0] || null
+
+      const currentCompId = prev.currentCompany?.id
       const currentCompName = prev.currentCompany?.name
-      const updatedCurrentComp = updatedCurrentAcc?.companies.find((c) => c.name.toLowerCase() === currentCompName?.toLowerCase()) || updatedCurrentAcc?.companies[0] || null
+      const updatedCurrentComp = updatedCurrentAcc?.companies.find((c) =>
+        (currentCompId && c.id === currentCompId) ||
+        (currentCompName && getShipperCanonicalKey(c.name) === getShipperCanonicalKey(currentCompName))
+      ) || updatedCurrentAcc?.companies[0] || null
 
       return {
         ...prev,
@@ -854,12 +942,98 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  const persistLedgersDirectly = useCallback((accountsToSave: Account[], deletedItems: DeletedLedgerEntryItem[] = []) => {
+    try {
+      const raw = window.localStorage.getItem("skybol:account-ledgers") || "{}"
+      const records = JSON.parse(raw)
+      const companyNames: string[] = []
+
+      accountsToSave.forEach(account => {
+        if (account.name && !companyNames.includes(account.name)) {
+          companyNames.push(account.name)
+        }
+        account.companies.forEach(company => {
+          if (company.name && !companyNames.includes(company.name)) {
+            companyNames.push(company.name)
+          }
+          const canonKey = getShipperCanonicalKey(company.name)
+          const companyKey = company.id.replace('company-', '')
+          const cleanNameKey = company.name.toLowerCase().replace(/[^a-z0-9]/g, "-")
+
+          if (company.name !== 'Acme Corp' && company.name !== 'Global Logistics') {
+            const rows = company.ledgerEntries.map(entry => ({
+              id: entry.id,
+              sNo: entry.sNo,
+              date: entry.date,
+              description: entry.shipperDescription,
+              shipperDescription: entry.shipperDescription,
+              invoiceNo: entry.invoiceNo,
+              shipDate: entry.dateOfShip,
+              dateOfShip: entry.dateOfShip,
+              barnamehNo: entry.barnamehNo,
+              bolNo: entry.barnamehNo,
+              driverFreight: entry.driverFreight,
+              driverRent: entry.driverFreight,
+              billOfLanding: entry.billOfLanding,
+              surrenderedBL: entry.surrenderedBL,
+              containerNo: entry.containerNo,
+              consignee: entry.consignee,
+              quantity: entry.quantity,
+              debit: Number(entry.debit) || 0,
+              credit: Number(entry.credit) || 0,
+              pdfFile: entry.pdfPathname,
+              pdfPathname: entry.pdfPathname,
+            }))
+
+            records[canonKey] = rows
+            records[`company-${canonKey}`] = rows
+            records[companyKey] = rows
+            records[cleanNameKey] = rows
+            records[company.name.toLowerCase()] = rows
+            records[company.name] = rows
+          }
+        })
+      })
+
+      window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(records))
+      window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(companyNames))
+      window.localStorage.setItem("skybol:deleted-ledger-entries", JSON.stringify(deletedItems))
+
+      // Direct multi-backend persistence
+      fetch("/api/account-ledgers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accounts: companyNames,
+          ledgerEntries: records,
+          deletedLedgerEntries: deletedItems,
+        }),
+        keepalive: true,
+      }).catch(() => {})
+
+      fetch("/api/bol-account-ledgers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customCompanies: companyNames,
+          ledgerRecords: records,
+          deletedLedgerEntries: deletedItems,
+        }),
+        keepalive: true,
+      }).catch(() => {})
+    } catch (e) {
+      console.warn("Direct ledger persistence error:", e)
+    }
+  }, [])
+
   const addLedgerEntry = useCallback((accountId: string, companyId: string, entry: Omit<LedgerEntry, 'id' | 'sNo' | 'balance'>) => {
     const newEntry: LedgerEntry = {
       ...entry,
       id: crypto.randomUUID(),
       sNo: 0,
       balance: 0,
+      debit: Number(entry.debit) || 0,
+      credit: Number(entry.credit) || 0,
     }
 
     setState(prev => {
@@ -881,6 +1055,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const updatedCurrentCompany = updatedCurrentAccount?.companies.find(c => c.id === companyId) || null
 
+      // Synchronously persist right now
+      persistLedgersDirectly(updatedAccounts, prev.deletedLedgerEntries || [])
+
+      // Dedicated single-row API POST
+      fetch("/api/ledger-entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyId,
+          ...newEntry,
+        }),
+        keepalive: true,
+      }).catch(() => {})
+
       return {
         ...prev,
         accounts: updatedAccounts,
@@ -888,98 +1076,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentCompany: updatedCurrentCompany,
       }
     })
-  }, [])
+  }, [persistLedgersDirectly])
 
-  // Auto-sync ledgers back to BOTH localStorage AND server APIs whenever modified
+  // Background auto-sync safeguard for ledgers
   useEffect(() => {
     if (!state.accounts || state.accounts === SAMPLE_ACCOUNTS) return;
     
-    const timeoutId = setTimeout(() => {
-      try {
-        const raw = window.localStorage.getItem("skybol:account-ledgers") || "{}"
-        const records = JSON.parse(raw)
-        const companyNames: string[] = []
-        
-        state.accounts.forEach(account => {
-          account.companies.forEach(company => {
-            if (!companyNames.includes(company.name)) companyNames.push(company.name)
-            const companyKey = company.id.replace('company-', '')
-            const cleanNameKey = company.name.toLowerCase().replace(/[^a-z0-9]/g, "-")
-            
-            if (company.name !== 'Acme Corp' && company.name !== 'Global Logistics') {
-                const rows = company.ledgerEntries.map(entry => ({
-                  id: entry.id,
-                  sNo: entry.sNo,
-                  date: entry.date,
-                  description: entry.shipperDescription,
-                  shipperDescription: entry.shipperDescription,
-                  invoiceNo: entry.invoiceNo,
-                  shipDate: entry.dateOfShip,
-                  dateOfShip: entry.dateOfShip,
-                  barnamehNo: entry.barnamehNo,
-                  bolNo: entry.barnamehNo,
-                  driverFreight: entry.driverFreight,
-                  driverRent: entry.driverFreight,
-                  billOfLanding: entry.billOfLanding,
-                  surrenderedBL: entry.surrenderedBL,
-                  containerNo: entry.containerNo,
-                  consignee: entry.consignee,
-                  quantity: entry.quantity,
-                  debit: entry.debit,
-                  credit: entry.credit,
-                  pdfFile: entry.pdfPathname,
-                  pdfPathname: entry.pdfPathname,
-                }))
-                records[companyKey] = rows
-                records[cleanNameKey] = rows
-                records[company.name.toLowerCase()] = rows
-            }
-          })
-        })
-
-        window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(records))
-        window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(companyNames))
-        window.localStorage.setItem("skybol:deleted-ledger-entries", JSON.stringify(state.deletedLedgerEntries || []))
-
-        // Background server persistence for multi-device sync
-        fetch("/api/account-ledgers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            accounts: companyNames,
-            ledgerEntries: records,
-            deletedLedgerEntries: state.deletedLedgerEntries || [],
-          }),
-        }).catch(() => {})
-
-        fetch("/api/bol-account-ledgers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customCompanies: companyNames,
-            ledgerRecords: records,
-            deletedLedgerEntries: state.deletedLedgerEntries || [],
-          }),
-        }).catch(() => {})
-      } catch (e) {
-        console.warn("Failed to auto-sync ledgers to storage", e)
-      }
-    }, 500)
-
-    return () => clearTimeout(timeoutId)
-  }, [state.accounts, state.deletedLedgerEntries])
+    persistLedgersDirectly(state.accounts, state.deletedLedgerEntries || [])
+  }, [state.accounts, state.deletedLedgerEntries, persistLedgersDirectly])
 
   const updateLedgerEntry = useCallback((accountId: string, companyId: string, entryId: string, entry: Partial<LedgerEntry>) => {
     setState(prev => {
+      let targetRow: LedgerEntry | null = null
       const updatedAccounts = prev.accounts.map(a => {
         if (a.id !== accountId) return a
         return {
           ...a,
           companies: a.companies.map(c => {
             if (c.id !== companyId) return c
-            const updatedEntries = c.ledgerEntries.map(e =>
-              e.id === entryId ? { ...e, ...entry } : e
-            )
+            const updatedEntries = c.ledgerEntries.map(e => {
+              if (e.id === entryId) {
+                const merged = {
+                  ...e,
+                  ...entry,
+                  debit: entry.debit !== undefined ? (Number(entry.debit) || 0) : e.debit,
+                  credit: entry.credit !== undefined ? (Number(entry.credit) || 0) : e.credit,
+                }
+                targetRow = merged
+                return merged
+              }
+              return e
+            })
             return { ...c, ledgerEntries: calculateBalances(updatedEntries) }
           }),
         }
@@ -991,6 +1118,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const updatedCurrentCompany = updatedCurrentAccount?.companies.find(c => c.id === companyId) || null
 
+      // Synchronously persist right now
+      persistLedgersDirectly(updatedAccounts, prev.deletedLedgerEntries || [])
+
+      // Dedicated single-row API PATCH
+      fetch("/api/ledger-entries", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: entryId,
+          companyId,
+          ...(targetRow || entry),
+        }),
+        keepalive: true,
+      }).catch(() => {})
+
       return {
         ...prev,
         accounts: updatedAccounts,
@@ -998,36 +1140,78 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentCompany: updatedCurrentCompany,
       }
     })
-  }, [])
+  }, [persistLedgersDirectly])
 
   const deleteLedgerEntry = useCallback((accountId: string, companyId: string, entryId: string) => {
     setState(prev => {
+      const targetAccountKey = getShipperCanonicalKey(accountId)
+      const targetCompanyKey = getShipperCanonicalKey(companyId)
+
+      // Find the target entry to delete
       let deletedItem: DeletedLedgerEntryItem | null = null
+      for (const a of prev.accounts) {
+        const aCanon = getShipperCanonicalKey(a.id)
+        const aNameCanon = getShipperCanonicalKey(a.name)
+        const isMatchAccount = a.id === accountId || aCanon === targetAccountKey || aNameCanon === targetAccountKey
+        if (!isMatchAccount) continue
+
+        for (const c of a.companies) {
+          const cCanon = getShipperCanonicalKey(c.id)
+          const cNameCanon = getShipperCanonicalKey(c.name)
+          const isMatchCompany = c.id === companyId || cCanon === targetCompanyKey || cNameCanon === targetCompanyKey || isMatchAccount
+          if (!isMatchCompany) continue
+
+          const target = c.ledgerEntries.find(e => e.id === entryId)
+          if (target) {
+            deletedItem = {
+              entry: { ...target },
+              accountId: a.id,
+              companyId: c.id,
+              companyName: normalizeShipperDisplayName(c.name || a.name),
+              deletedAt: new Date().toISOString(),
+            }
+            break
+          }
+        }
+        if (deletedItem) break
+      }
+
+      const targetBol = (deletedItem?.entry?.barnamehNo || '').trim().toLowerCase()
 
       const updatedAccounts = prev.accounts.map(a => {
-        if (a.id !== accountId) return a
+        const aCanon = getShipperCanonicalKey(a.id)
+        const aNameCanon = getShipperCanonicalKey(a.name)
+        const isMatchAccount = a.id === accountId || aCanon === targetAccountKey || aNameCanon === targetAccountKey
+        if (!isMatchAccount) return a
+
         return {
           ...a,
           companies: a.companies.map(c => {
-            if (c.id !== companyId) return c
-            const target = c.ledgerEntries.find(e => e.id === entryId)
-            if (target) {
-              deletedItem = {
-                entry: { ...target },
-                accountId,
-                companyId,
-                companyName: c.name,
-                deletedAt: new Date().toISOString(),
-              }
-            }
-            const filteredEntries = c.ledgerEntries.filter(e => e.id !== entryId)
+            const cCanon = getShipperCanonicalKey(c.id)
+            const cNameCanon = getShipperCanonicalKey(c.name)
+            const isMatchCompany = c.id === companyId || cCanon === targetCompanyKey || cNameCanon === targetCompanyKey || isMatchAccount
+            if (!isMatchCompany) return c
+
+            const filteredEntries = c.ledgerEntries.filter(e => {
+              if (e.id === entryId) return false
+              if (targetBol && (e.barnamehNo || '').trim().toLowerCase() === targetBol) return false
+              return true
+            })
+
             return { ...c, ledgerEntries: calculateBalances(filteredEntries) }
           }),
         }
       })
 
-      const updatedDeleted = deletedItem
-        ? [deletedItem, ...prev.deletedLedgerEntries.filter(i => i.entry.id !== entryId && (!deletedItem?.entry.barnamehNo || i.entry.barnamehNo !== deletedItem.entry.barnamehNo))]
+      const updatedDeleted: DeletedLedgerEntryItem[] = deletedItem
+        ? [
+            deletedItem,
+            ...prev.deletedLedgerEntries.filter(i => {
+              if (i.entry.id === entryId) return false
+              if (targetBol && (i.entry.barnamehNo || '').trim().toLowerCase() === targetBol) return false
+              return true
+            })
+          ]
         : prev.deletedLedgerEntries
 
       try {
@@ -1036,15 +1220,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       // Immediately write updated records to storage & server
       try {
-        const raw = window.localStorage.getItem("skybol:account-ledgers") || "{}"
-        const records = JSON.parse(raw)
+        const records: Record<string, any[]> = {}
         const companyNames: string[] = []
 
         updatedAccounts.forEach(account => {
+          if (!companyNames.includes(account.name)) companyNames.push(account.name)
           account.companies.forEach(company => {
             if (!companyNames.includes(company.name)) companyNames.push(company.name)
+            const canonKey = getShipperCanonicalKey(company.name)
             const companyKey = company.id.replace('company-', '')
             const cleanNameKey = company.name.toLowerCase().replace(/[^a-z0-9]/g, "-")
+
             const rows = company.ledgerEntries.map(entry => ({
               id: entry.id,
               sNo: entry.sNo,
@@ -1068,6 +1254,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
               pdfFile: entry.pdfPathname,
               pdfPathname: entry.pdfPathname,
             }))
+
+            records[canonKey] = rows
+            records[`company-${canonKey}`] = rows
             records[companyKey] = rows
             records[cleanNameKey] = rows
             records[company.name.toLowerCase()] = rows
@@ -1100,11 +1289,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }).catch(() => {})
       } catch (e) {}
 
-      const updatedCurrentAccount = prev.currentAccount?.id === accountId
-        ? updatedAccounts.find(a => a.id === accountId) || null
-        : prev.currentAccount
+      const currentAccId = prev.currentAccount?.id
+      const currentAccName = prev.currentAccount?.name
+      const updatedCurrentAccount = prev.currentAccount
+        ? updatedAccounts.find(a =>
+            (currentAccId && a.id === currentAccId) ||
+            (currentAccName && getShipperCanonicalKey(a.name) === getShipperCanonicalKey(currentAccName))
+          ) || prev.currentAccount
+        : null
 
-      const updatedCurrentCompany = updatedCurrentAccount?.companies.find(c => c.id === companyId) || null
+      const currentCompId = prev.currentCompany?.id
+      const currentCompName = prev.currentCompany?.name
+      const updatedCurrentCompany = updatedCurrentAccount
+        ? updatedCurrentAccount.companies.find(c =>
+            (currentCompId && c.id === currentCompId) ||
+            (currentCompName && getShipperCanonicalKey(c.name) === getShipperCanonicalKey(currentCompName))
+          ) || updatedCurrentAccount.companies[0] || null
+        : null
 
       return {
         ...prev,
@@ -1411,6 +1612,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: crypto.randomUUID(),
       sNo: 0,
       balance: 0,
+      debit: Number(entry.debit) || 0,
+      credit: Number(entry.credit) || 0,
     }))
 
     setState(prev => {
@@ -1432,6 +1635,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const updatedCurrentCompany = updatedCurrentAccount?.companies.find(c => c.id === companyId) || null
 
+      persistLedgersDirectly(updatedAccounts, prev.deletedLedgerEntries || [])
+
       return {
         ...prev,
         accounts: updatedAccounts,
@@ -1439,7 +1644,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentCompany: updatedCurrentCompany,
       }
     })
-  }, [])
+  }, [persistLedgersDirectly])
 
   const addInvoice = useCallback((invoice: Omit<Invoice, 'id'>) => {
     const newInvoice: Invoice = {
@@ -1521,15 +1726,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const toggleSurrenderedBL = useCallback((accountId: string, companyId: string, entryId: string) => {
     setState(prev => {
+      let toggledSurrendered = false
       const updatedAccounts = prev.accounts.map(a => {
         if (a.id !== accountId) return a
         return {
           ...a,
           companies: a.companies.map(c => {
             if (c.id !== companyId) return c
-            const updatedEntries = c.ledgerEntries.map(e =>
-              e.id === entryId ? { ...e, surrenderedBL: !e.surrenderedBL } : e
-            )
+            const updatedEntries = c.ledgerEntries.map(e => {
+              if (e.id === entryId) {
+                toggledSurrendered = !e.surrenderedBL
+                return { ...e, surrenderedBL: toggledSurrendered }
+              }
+              return e
+            })
             return { ...c, ledgerEntries: updatedEntries }
           }),
         }
@@ -1541,6 +1751,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const updatedCurrentCompany = updatedCurrentAccount?.companies.find(c => c.id === companyId) || null
 
+      persistLedgersDirectly(updatedAccounts, prev.deletedLedgerEntries || [])
+
+      fetch("/api/ledger-entries", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: entryId,
+          companyId,
+          surrenderedBL: toggledSurrendered,
+        }),
+        keepalive: true,
+      }).catch(() => {})
+
       return {
         ...prev,
         accounts: updatedAccounts,
@@ -1548,7 +1771,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentCompany: updatedCurrentCompany,
       }
     })
-  }, [])
+  }, [persistLedgersDirectly])
 
   const getLedgerSettings = useCallback((): LedgerSettings => {
     return state.currentCompany?.ledgerSettings || DEFAULT_LEDGER_SETTINGS

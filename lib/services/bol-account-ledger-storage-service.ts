@@ -1,5 +1,6 @@
-import path from "path"
+﻿import path from "path"
 import { readJsonFile, writeJsonFile } from "./blob-db"
+import { mergeLedgerRows } from "./account-ledger-storage-service"
 
 export type BolAccountLedgerDatabase = {
   customCompanies: string[]
@@ -35,9 +36,16 @@ export async function saveBolAccountLedgerDatabase(data: Partial<BolAccountLedge
     ...(Array.isArray(data.deletedLedgerEntries) ? data.deletedLedgerEntries : []),
   ]))
 
-  const mergedRecords = {
-    ...(existing.ledgerRecords || {}),
-    ...(data.ledgerRecords || {}),
+  // Smart row-by-row merge for each company key
+  const mergedRecords: Record<string, any[]> = { ...(existing.ledgerRecords || {}) }
+  if (data.ledgerRecords && typeof data.ledgerRecords === "object") {
+    for (const [key, rows] of Object.entries(data.ledgerRecords)) {
+      if (Array.isArray(rows)) {
+        mergedRecords[key] = mergeLedgerRows(mergedRecords[key] || [], rows)
+      } else {
+        mergedRecords[key] = rows
+      }
+    }
   }
 
   // Clean out any deleted rows from all company ledger records
@@ -70,5 +78,10 @@ export async function saveBolAccountLedgerDatabase(data: Partial<BolAccountLedge
   }
 
   await writeJsonFile(bolAccountLedgerFile, next)
+  const backupFile = path.join(process.cwd(), ".local-bol-account-ledgers.backup.json")
+  try {
+    await writeJsonFile(backupFile, next)
+  } catch (e) {}
+
   return next
 }
