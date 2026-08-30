@@ -2,6 +2,7 @@
 
 import { Account, Company, LedgerEntry, Invoice, InvoiceItem, LedgerSettings, User, UserRole } from '@/lib/types'
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
+import { getFinancialsMap, saveFinancialsForEntry, smartMergeRow, smartMergeLedgerRecords } from '@/lib/services/ledger-sync-utils'
 
 const DEFAULT_LEDGER_SETTINGS: LedgerSettings = {
   companyLogo: '/logo.png',
@@ -544,6 +545,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const customCompanies = Array.from(new Set([...serverCustomCompanies, ...localCustomCompanies].filter(Boolean)))
 
+    const financialsMap = getFinancialsMap()
+
     let localLedgerRecords: Record<string, any[]> = {}
     try {
       const raw1 = window.localStorage.getItem("skybol:account-ledgers")
@@ -553,7 +556,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       localLedgerRecords = { ...rec1, ...rec2 }
     } catch (e) {}
 
-    const storedLedgerRecords: Record<string, any[]> = { ...serverLedgerRecords, ...localLedgerRecords }
+    // Smart merge so local browser records ALWAYS take precedence over static server defaults
+    const storedLedgerRecords = smartMergeLedgerRecords(serverLedgerRecords, localLedgerRecords)
 
     // Combine all documents by id or bol_number
     const allDocsMap = new Map<string, any>()
@@ -630,9 +634,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         : [...prev.accounts]
 
       shipperMap.forEach(({ displayName, docs: bolList, rawKeys }, canonKey) => {
-        // Collect all stored rows matching any candidate key for this company
-        const storedRowList: any[] = []
-        const seenStoredIds = new Set<string>()
+        // Collect and smart merge all stored rows matching any candidate key for this company
+        const storedRowMap = new Map<string, any>()
 
         const candidateKeys = Array.from(new Set([
           canonKey,
@@ -649,14 +652,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const rList = storedLedgerRecords[k]
           if (Array.isArray(rList)) {
             rList.forEach(r => {
-              const rId = r.id || `${r.barnamehNo || r.bolNo}_${r.date}`
-              if (rId && !seenStoredIds.has(rId)) {
-                seenStoredIds.add(rId)
-                storedRowList.push(r)
-              }
+              const rBol = (r.barnamehNo || r.bolNo || "").trim().toLowerCase()
+              const rKey = rBol ? `bol:${rBol}` : (r.id ? `id:${r.id}` : `desc:${(r.shipperDescription || r.description || "").trim().toLowerCase()}_${r.date || ""}`)
+              const existing = storedRowMap.get(rKey)
+              storedRowMap.set(rKey, smartMergeRow(existing, r))
             })
           }
         })
+
+        const storedRowList = Array.from(storedRowMap.values())
 
         const existingAccIndex = existingAccounts.findIndex(
           (a) => getShipperCanonicalKey(a.name) === canonKey || getShipperCanonicalKey(a.id) === canonKey
@@ -670,6 +674,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         bolList.forEach((doc, idx) => {
           const bolNo = (doc.bol_number || "").trim()
           const bolNoLower = bolNo.toLowerCase()
+          const docId = (doc.id || "").trim().toLowerCase()
 
           if (bolNoLower && seenBolNumbers.has(bolNoLower)) {
             return
@@ -699,33 +704,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
           const existingRow = storedRowList.find(
             (r: any) => (r.barnamehNo && r.barnamehNo.trim().toLowerCase() === bolNoLower) ||
-                        (r.bolNo && r.bolNo.trim().toLowerCase() === bolNoLower)
+                        (r.bolNo && r.bolNo.trim().toLowerCase() === bolNoLower) ||
+                        (doc.id && r.id && r.id === doc.id)
           )
 
           const parsedInvoice = parseInvoiceNo(doc.cargo_description, doc.bol_number)
-          const debitVal = existingRow?.debit !== undefined && existingRow?.debit !== "" ? Number(existingRow.debit) || 0 : (doc.debit ? Number(doc.debit) || 0 : 0)
-          const creditVal = existingRow?.credit !== undefined && existingRow?.credit !== "" ? Number(existingRow.credit) || 0 : (doc.credit ? Number(doc.credit) || 0 : 0)
+
+          const fin = (bolNoLower && financialsMap[bolNoLower]) || (docId && financialsMap[docId]) || (existingRow?.id && financialsMap[existingRow.id.toLowerCase()])
+
+          let debitVal = 0
+          if (fin?.debit !== undefined && fin?.debit !== null && Number(fin.debit) > 0) {
+            debitVal = Number(fin.debit)
+          } else if (existingRow?.debit !== undefined && existingRow?.debit !== "" && Number(existingRow.debit) > 0) {
+            debitVal = Number(existingRow.debit)
+          } else if (doc.debit !== undefined && doc.debit !== "" && Number(doc.debit) > 0) {
+            debitVal = Number(doc.debit)
+          } else if (existingRow?.debit !== undefined && existingRow?.debit !== "") {
+            debitVal = Number(existingRow.debit) || 0
+          }
+
+          let creditVal = 0
+          if (fin?.credit !== undefined && fin?.credit !== null && Number(fin.credit) > 0) {
+            creditVal = Number(fin.credit)
+          } else if (existingRow?.credit !== undefined && existingRow?.credit !== "" && Number(existingRow.credit) > 0) {
+            creditVal = Number(existingRow.credit)
+          } else if (doc.credit !== undefined && doc.credit !== "" && Number(doc.credit) > 0) {
+            creditVal = Number(doc.credit)
+          } else if (existingRow?.credit !== undefined && existingRow?.credit !== "") {
+            creditVal = Number(existingRow.credit) || 0
+          }
 
           runningBalance += (debitVal - creditVal)
+
+          const driverFreightVal = fin?.driverFreight || doc.driver_rent || existingRow?.driverFreight || existingRow?.driverRent || ""
+          const surrenderedVal = fin?.surrenderedBL !== undefined ? fin.surrenderedBL : (existingRow?.surrenderedBL || false)
+          const pdfVal = fin?.pdfPathname || existingRow?.pdfFile || existingRow?.pdfPathname || undefined
 
           ledgerEntries.push({
             id: existingRow?.id || doc.id || `bol-${idx}`,
             sNo: ledgerEntries.length + 1,
-            date: existingRow?.date || doc.issue_date || new Date().toISOString().split("T")[0],
+            date: fin?.date || existingRow?.date || doc.issue_date || new Date().toISOString().split("T")[0],
             shipperDescription: displayName,
-            invoiceNo: parsedInvoice,
-            dateOfShip: existingRow?.shipDate || doc.issue_date || "",
+            invoiceNo: fin?.invoiceNo || existingRow?.invoiceNo || parsedInvoice,
+            dateOfShip: existingRow?.shipDate || existingRow?.dateOfShip || doc.issue_date || "",
             barnamehNo: bolNo,
-            driverFreight: doc.driver_rent || existingRow?.driverFreight || "",
+            driverFreight: driverFreightVal,
             billOfLanding: existingRow?.billOfLanding || "",
-            surrenderedBL: existingRow?.surrenderedBL || false,
+            surrenderedBL: surrenderedVal,
             containerNo: doc.container_numbers || existingRow?.containerNo || "N/A",
             consignee: doc.consignee_name || existingRow?.consignee || "N/A",
             quantity: doc.number_of_packages || existingRow?.quantity || "N/A",
             debit: debitVal,
             credit: creditVal,
             balance: runningBalance,
-            pdfPathname: existingRow?.pdfFile || existingRow?.pdfPathname || undefined,
+            pdfPathname: pdfVal,
           })
         })
 
@@ -733,6 +765,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         storedRowList.forEach((row: any) => {
           const rBol = (row.barnamehNo || row.bolNo || "").trim()
           const rBolLower = rBol.toLowerCase()
+          const rId = (row.id || "").trim().toLowerCase()
 
           if (rBolLower && seenBolNumbers.has(rBolLower)) {
             return
@@ -760,28 +793,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
             seenBolNumbers.add(rBolLower)
           }
 
-          const debitVal = Number(row.debit) || 0
-          const creditVal = Number(row.credit) || 0
+          const fin = (rBolLower && financialsMap[rBolLower]) || (rId && financialsMap[rId])
+
+          let debitVal = Number(row.debit) || 0
+          if (fin?.debit !== undefined && Number(fin.debit) > 0) {
+            debitVal = Number(fin.debit)
+          }
+
+          let creditVal = Number(row.credit) || 0
+          if (fin?.credit !== undefined && Number(fin.credit) > 0) {
+            creditVal = Number(fin.credit)
+          }
+
           runningBalance += (debitVal - creditVal)
 
           ledgerEntries.push({
             id: row.id || crypto.randomUUID(),
             sNo: ledgerEntries.length + 1,
-            date: row.date || "",
+            date: fin?.date || row.date || "",
             shipperDescription: displayName,
-            invoiceNo: row.invoiceNo || "",
+            invoiceNo: fin?.invoiceNo || row.invoiceNo || "",
             dateOfShip: row.shipDate || row.dateOfShip || "",
             barnamehNo: rBol,
-            driverFreight: row.driverFreight || row.driverRent || "",
+            driverFreight: fin?.driverFreight || row.driverFreight || row.driverRent || "",
             billOfLanding: row.billOfLanding || "",
-            surrenderedBL: Boolean(row.surrenderedBL),
+            surrenderedBL: fin?.surrenderedBL !== undefined ? fin.surrenderedBL : Boolean(row.surrenderedBL),
             containerNo: row.containerNo || "",
             consignee: row.consignee || "",
             quantity: row.quantity || "",
             debit: debitVal,
             credit: creditVal,
             balance: runningBalance,
-            pdfPathname: row.pdfFile || row.pdfPathname || undefined,
+            pdfPathname: fin?.pdfPathname || row.pdfFile || row.pdfPathname || undefined,
           })
         })
 
@@ -961,6 +1004,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const cleanNameKey = company.name.toLowerCase().replace(/[^a-z0-9]/g, "-")
 
           if (company.name !== 'Acme Corp' && company.name !== 'Global Logistics') {
+            company.ledgerEntries.forEach(e => {
+              if (Number(e.debit) > 0 || Number(e.credit) > 0 || e.driverFreight) {
+                saveFinancialsForEntry(e.barnamehNo, e.id, e)
+              }
+            })
+
             const rows = company.ledgerEntries.map(entry => ({
               id: entry.id,
               sNo: entry.sNo,
@@ -1036,6 +1085,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       credit: Number(entry.credit) || 0,
     }
 
+    saveFinancialsForEntry(newEntry.barnamehNo, newEntry.id, newEntry)
+
     setState(prev => {
       const updatedAccounts = prev.accounts.map(a => {
         if (a.id !== accountId) return a
@@ -1086,6 +1137,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.accounts, state.deletedLedgerEntries, persistLedgersDirectly])
 
   const updateLedgerEntry = useCallback((accountId: string, companyId: string, entryId: string, entry: Partial<LedgerEntry>) => {
+    saveFinancialsForEntry(entry.barnamehNo, entryId, entry)
+
     setState(prev => {
       let targetRow: LedgerEntry | null = null
       const updatedAccounts = prev.accounts.map(a => {
@@ -1111,6 +1164,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }),
         }
       })
+
+      if (targetRow) {
+        saveFinancialsForEntry((targetRow as any).barnamehNo, entryId, targetRow)
+      }
 
       const updatedCurrentAccount = prev.currentAccount?.id === accountId
         ? updatedAccounts.find(a => a.id === accountId) || null

@@ -185,20 +185,27 @@ export const CmrProvider = ({ children }) => {
 
   const [savedDocs, setSavedDocs] = useState(() => {
     try {
+      const v = localStorage.getItem('cmr_archive_version');
+      if (v !== 'v3') {
+        localStorage.setItem('cmr_archive_version', 'v3');
+        localStorage.setItem('cmr_saved_archive', JSON.stringify(DEFAULT_SAVED_CMRS));
+        return DEFAULT_SAVED_CMRS;
+      }
       const existing = JSON.parse(localStorage.getItem('cmr_saved_archive') || '[]');
       if (!existing || existing.length === 0) {
         localStorage.setItem('cmr_saved_archive', JSON.stringify(DEFAULT_SAVED_CMRS));
         return DEFAULT_SAVED_CMRS;
       }
-      // Ensure CMRs 107 to 111 are merged if missing
-      const existingIds = new Set(existing.map(d => String(d.cmr_number)));
-      const missing = DEFAULT_SAVED_CMRS.filter(d => !existingIds.has(String(d.cmr_number)));
-      if (missing.length > 0) {
-        const merged = [...missing, ...existing];
-        localStorage.setItem('cmr_saved_archive', JSON.stringify(merged));
-        return merged;
+      // Map to replace old placeholder records with authentic real PDF records
+      const realMap = new Map(DEFAULT_SAVED_CMRS.map(d => [String(d.cmr_number), d]));
+      const updated = existing.map(d => realMap.get(String(d.cmr_number)) || d);
+      for (const realDoc of DEFAULT_SAVED_CMRS) {
+        if (!updated.some(d => String(d.cmr_number) === String(realDoc.cmr_number))) {
+          updated.unshift(realDoc);
+        }
       }
-      return existing;
+      localStorage.setItem('cmr_saved_archive', JSON.stringify(updated));
+      return updated;
     } catch (e) {
       return DEFAULT_SAVED_CMRS;
     }
@@ -502,6 +509,13 @@ export const CmrProvider = ({ children }) => {
     }));
 
     showToast(`✅ New CMR Number generated: ${serialStr}`, 'success');
+  };
+
+  const resetToRealPdfs = () => {
+    setSavedDocs(DEFAULT_SAVED_CMRS);
+    localStorage.setItem('cmr_archive_version', 'v3');
+    localStorage.setItem('cmr_saved_archive', JSON.stringify(DEFAULT_SAVED_CMRS));
+    showToast('🔄 Real PDF Archive Restored (CMRs 107-111)!', 'success');
   };
 
   const saveToArchive = () => {

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { smartMergeLedgerRecords } from "@/lib/services/ledger-sync-utils"
 import {
   Dialog,
   DialogContent,
@@ -172,7 +173,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
     if (data.ledgerRecords && typeof data.ledgerRecords === "object") {
       const rawLedger = window.localStorage.getItem("skybol:account-ledgers")
       const currentLedger = rawLedger ? JSON.parse(rawLedger) : {}
-      const nextLedger = { ...currentLedger, ...data.ledgerRecords }
+      const nextLedger = smartMergeLedgerRecords(data.ledgerRecords, currentLedger)
       window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(nextLedger))
       setLocalLedgerCount(Object.keys(nextLedger).length)
     }

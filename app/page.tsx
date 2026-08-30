@@ -8,6 +8,7 @@ import { Header } from '@/components/header'
 import { LoginScreen } from '@/components/login-screen'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { toast } from 'sonner'
+import { smartMergeLedgerRecords } from '@/lib/services/ledger-sync-utils'
 
 function ViewLoadingSkeleton() {
   return (
@@ -185,7 +186,8 @@ function MainContent() {
               if (data.ledgerRecords) {
                 const raw = window.localStorage.getItem("skybol:account-ledgers")
                 const cur = raw ? JSON.parse(raw) : {}
-                window.localStorage.setItem("skybol:account-ledgers", JSON.stringify({ ...cur, ...data.ledgerRecords }))
+                const merged = smartMergeLedgerRecords(data.ledgerRecords, cur)
+                window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(merged))
               }
               if (data.companySettings) {
                 window.localStorage.setItem("skybol:company-settings", JSON.stringify(data.companySettings))
@@ -260,7 +262,8 @@ function MainContent() {
                 if (data.ledgerRecords) {
                   const curRaw = window.localStorage.getItem("skybol:account-ledgers")
                   const cur = curRaw ? JSON.parse(curRaw) : {}
-                  window.localStorage.setItem("skybol:account-ledgers", JSON.stringify({ ...cur, ...data.ledgerRecords }))
+                  const merged = smartMergeLedgerRecords(data.ledgerRecords, cur)
+                  window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(merged))
                 }
                 if (data.companySettings && !window.localStorage.getItem("skybol:company-settings")) {
                   window.localStorage.setItem("skybol:company-settings", JSON.stringify(data.companySettings))

@@ -590,16 +590,54 @@ export const CommercialInvoice = () => {
                   <div style={{ fontSize: '8px', color: '#64748b' }}>For Exporter / Seller</div>
                 </div>
 
-                {/* OFFICIAL STAMP BADGE (CIRCULAR VECTOR STAMP) */}
-                <div className="inv-stamp-badge">
-                  <div className="stamp-inner-circle">
-                    <div className="stamp-top-text">★ SKY ARIANA LIMITED ★</div>
-                    <div className="stamp-center-box">
-                      <span className="stamp-main-word">OFFICIAL</span>
-                      <span className="stamp-sub-word">TRANSIT SEAL</span>
-                    </div>
-                    <div className="stamp-bot-text">REG: 2401-2198 • KANDAHAR</div>
-                  </div>
+                {/* OFFICIAL STAMP BADGE (AUTHENTIC CURVED SVG EMBASSY / TRANSIT SEAL) */}
+                <div className="inv-stamp-badge" title="Official Sky Ariana Customs & Transit Stamp">
+                  <svg viewBox="0 0 200 200" width="124" height="124" className="official-stamp-svg" style={{ transform: 'rotate(-5deg)' }}>
+                    <defs>
+                      {/* Top arc: Clockwise from 9 o'clock to 3 o'clock */}
+                      <path id="invStampTopArc" d="M 26,100 A 74,74 0 1,1 174,100" fill="none" />
+                      {/* Bottom arc: Counter-clockwise from 9 o'clock to 3 o'clock */}
+                      <path id="invStampBotArc" d="M 30,100 A 70,70 0 0,0 170,100" fill="none" />
+                    </defs>
+                    {/* Outer serrated notched security ring */}
+                    <circle cx="100" cy="100" r="95" fill="none" stroke="#b91c1c" strokeWidth="2.4" strokeDasharray="4,2.5" />
+                    {/* Outer solid border */}
+                    <circle cx="100" cy="100" r="88" fill="none" stroke="#b91c1c" strokeWidth="2" />
+                    {/* Inner solid border */}
+                    <circle cx="100" cy="100" r="62" fill="none" stroke="#b91c1c" strokeWidth="1.2" />
+                    
+                    {/* Arched Top Text: ★ SKY ARIANA LIMITED ★ */}
+                    <text fill="#b91c1c" fontSize="13.5" fontWeight="900" fontFamily="'Plus Jakarta Sans', Arial, sans-serif" letterSpacing="2.2">
+                      <textPath href="#invStampTopArc" startOffset="50%" textAnchor="middle">
+                        ★ SKY ARIANA LIMITED ★
+                      </textPath>
+                    </text>
+                    
+                    {/* Arched Bottom Text: ★ REG: 2401-2198 • KANDAHAR ★ */}
+                    <text fill="#b91c1c" fontSize="10" fontWeight="800" fontFamily="'Plus Jakarta Sans', Arial, sans-serif" letterSpacing="1.4">
+                      <textPath href="#invStampBotArc" startOffset="50%" textAnchor="middle">
+                        ★ REG: 2401-2198 • KANDAHAR ★
+                      </textPath>
+                    </text>
+                    
+                    {/* Center Security Box */}
+                    <line x1="42" y1="76" x2="158" y2="76" stroke="#b91c1c" strokeWidth="1.6" />
+                    <line x1="48" y1="79" x2="152" y2="79" stroke="#b91c1c" strokeWidth="0.8" />
+                    
+                    <text x="100" y="97" fill="#b91c1c" fontSize="17.5" fontWeight="900" fontFamily="'Plus Jakarta Sans', Arial, sans-serif" textAnchor="middle" letterSpacing="2.5">
+                      OFFICIAL
+                    </text>
+                    <text x="100" y="111" fill="#b91c1c" fontSize="8.8" fontWeight="800" fontFamily="'Plus Jakarta Sans', Arial, sans-serif" textAnchor="middle" letterSpacing="1.5">
+                      TRANSIT &amp; CUSTOMS
+                    </text>
+                    
+                    <line x1="48" y1="117" x2="152" y2="117" stroke="#b91c1c" strokeWidth="0.8" />
+                    <line x1="42" y1="120" x2="158" y2="120" stroke="#b91c1c" strokeWidth="1.6" />
+
+                    {/* Side Star Badges */}
+                    <circle cx="23" cy="100" r="2" fill="#b91c1c" />
+                    <circle cx="177" cy="100" r="2" fill="#b91c1c" />
+                  </svg>
                 </div>
 
                 <div className="inv-sign-box" style={{ textAlign: 'right' }}>

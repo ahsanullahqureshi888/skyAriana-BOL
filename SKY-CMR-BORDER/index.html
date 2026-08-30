@@ -728,22 +728,23 @@ body.active-invoice #desktopPageTabs { display: none !important; }
 }
 .inv-bg-watermark {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 560px;
+  height: 560px;
   pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1;
-  overflow: hidden;
 }
 .inv-watermark-img {
-  width: 580px;
-  height: 580px;
-  max-width: 82%;
-  max-height: 82%;
+  width: 540px;
+  height: 540px;
   object-fit: contain;
-  opacity: 0.07;
-  filter: grayscale(10%) contrast(110%);
+  opacity: 0.12;
+  filter: contrast(115%) brightness(100%) saturate(100%);
   pointer-events: none;
   user-select: none;
   border-radius: 50%;
@@ -850,7 +851,7 @@ body.active-invoice #desktopPageTabs { display: none !important; }
   border-radius: 4px;
 }
 .inv-meta-item {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.92);
   padding: 2px 4px;
   border-radius: 3px;
   display: flex;
@@ -884,7 +885,8 @@ body.active-invoice #desktopPageTabs { display: none !important; }
   border: 1px solid #cbd5e1;
   border-radius: 4px;
   overflow: hidden;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(1px);
 }
 .inv-party-header {
   background: #1e3a8a;
@@ -910,7 +912,7 @@ body.active-invoice #desktopPageTabs { display: none !important; }
   grid-template-columns: repeat(6, 1fr);
   gap: 4px;
   margin-top: 5px;
-  background: #f1f5f9;
+  background: rgba(241, 245, 249, 0.82);
   border: 1px solid #cbd5e1;
   border-radius: 4px;
   padding: 3px 5px;
@@ -962,7 +964,8 @@ body.active-invoice #desktopPageTabs { display: none !important; }
   padding: 3px 5px;
   font-size: 9px;
   vertical-align: top;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(0.5px);
 }
 .inv-row-main {
   min-height: 65px;
@@ -973,7 +976,7 @@ body.active-invoice #desktopPageTabs { display: none !important; }
   display: flex;
   margin-top: -1px;
   border: 1px solid #cbd5e1;
-  background: #f8fafc;
+  background: rgba(248, 250, 252, 0.82);
 }
 .inv-summary-left {
   flex: 1.2;
@@ -1002,7 +1005,7 @@ body.active-invoice #desktopPageTabs { display: none !important; }
 .inv-words-ribbon {
   display: flex;
   align-items: center;
-  background: linear-gradient(90deg, #fef3c7 0%, #fde68a 100%);
+  background: linear-gradient(90deg, rgba(254, 243, 199, 0.88) 0%, rgba(253, 230, 138, 0.88) 100%);
   border: 1px solid #f59e0b;
   border-radius: 4px;
   padding: 3px 8px;
@@ -1032,7 +1035,8 @@ body.active-invoice #desktopPageTabs { display: none !important; }
   border: 1px solid #cbd5e1;
   border-radius: 4px;
   overflow: hidden;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(1px);
 }
 .inv-card-header {
   background: #334155;
@@ -1085,58 +1089,17 @@ body.active-invoice #desktopPageTabs { display: none !important; }
 
 /* CIRCULAR OFFICIAL VECTOR STAMP BADGE */
 .inv-stamp-badge {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  border: 2px dashed #b91c1c;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
   box-sizing: border-box;
-  transform: rotate(-6deg);
+  user-select: none;
 }
-.stamp-inner-circle {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 1px solid #b91c1c;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 3px 2px;
-  text-align: center;
-  color: #b91c1c;
-  font-family: Arial, sans-serif;
-  box-sizing: border-box;
-}
-.stamp-top-text {
-  font-size: 5.5px;
-  font-weight: 900;
-  letter-spacing: 0.2px;
-}
-.stamp-center-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.stamp-main-word {
-  font-size: 8.5px;
-  font-weight: 900;
-  letter-spacing: 0.5px;
-  border-top: 1px solid #b91c1c;
-  border-bottom: 1px solid #b91c1c;
-  padding: 0 4px;
-}
-.stamp-sub-word {
-  font-size: 4.8px;
-  font-weight: 800;
-  margin-top: 1px;
-}
-.stamp-bot-text {
-  font-size: 4.5px;
-  font-weight: 800;
+.official-stamp-svg {
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(185, 28, 28, 0.18));
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
 }
 
 /* FOOTER */
@@ -2544,16 +2507,54 @@ PACKING: EXPORT STANDARD BUNDLES
                 <div style="font-size: 7.5px; color: #64748b; font-weight: 600;">"SABOOR ADEL TRADING COMPANY"</div>
               </div>
 
-              <!-- CIRCULAR OFFICIAL VECTOR STAMP -->
-              <div class="inv-stamp-badge">
-                <div class="stamp-inner-circle">
-                  <div class="stamp-top-text">SKY ARIANA LIMITED</div>
-                  <div class="stamp-center-box">
-                    <div class="stamp-main-word">APPROVED</div>
-                    <div class="stamp-sub-word">CUSTOMS TRANSIT</div>
-                  </div>
-                  <div class="stamp-bot-text">REG: 2401-2198 • KANDAHAR</div>
-                </div>
+              <!-- OFFICIAL STAMP BADGE (AUTHENTIC CURVED SVG EMBASSY / TRANSIT SEAL) -->
+              <div class="inv-stamp-badge" title="Official Sky Ariana Customs &amp; Transit Stamp">
+                <svg viewBox="0 0 200 200" width="124" height="124" class="official-stamp-svg" style="transform: rotate(-5deg);">
+                  <defs>
+                    {/* Top arc: Clockwise from 9 o'clock to 3 o'clock */}
+                    <path id="idxInvStampTopArc" d="M 26,100 A 74,74 0 1,1 174,100" fill="none" />
+                    {/* Bottom arc: Counter-clockwise from 9 o'clock to 3 o'clock */}
+                    <path id="idxInvStampBotArc" d="M 30,100 A 70,70 0 0,0 170,100" fill="none" />
+                  </defs>
+                  <!-- Outer serrated notched security ring -->
+                  <circle cx="100" cy="100" r="95" fill="none" stroke="#b91c1c" stroke-width="2.4" stroke-dasharray="4,2.5" />
+                  <!-- Outer solid border -->
+                  <circle cx="100" cy="100" r="88" fill="none" stroke="#b91c1c" stroke-width="2" />
+                  <!-- Inner solid border -->
+                  <circle cx="100" cy="100" r="62" fill="none" stroke="#b91c1c" stroke-width="1.2" />
+                  
+                  <!-- Arched Top Text: ★ SKY ARIANA LIMITED ★ -->
+                  <text fill="#b91c1c" font-size="13.5" font-weight="900" font-family="'Plus Jakarta Sans', Arial, sans-serif" letter-spacing="2.2">
+                    <textPath href="#idxInvStampTopArc" startOffset="50%" text-anchor="middle">
+                      ★ SKY ARIANA LIMITED ★
+                    </textPath>
+                  </text>
+                  
+                  <!-- Arched Bottom Text: ★ REG: 2401-2198 • KANDAHAR ★ -->
+                  <text fill="#b91c1c" font-size="10" font-weight="800" font-family="'Plus Jakarta Sans', Arial, sans-serif" letter-spacing="1.4">
+                    <textPath href="#idxInvStampBotArc" startOffset="50%" text-anchor="middle">
+                      ★ REG: 2401-2198 • KANDAHAR ★
+                    </textPath>
+                  </text>
+                  
+                  <!-- Center Security Box -->
+                  <line x1="42" y1="76" x2="158" y2="76" stroke="#b91c1c" stroke-width="1.6" />
+                  <line x1="48" y1="79" x2="152" y2="79" stroke="#b91c1c" stroke-width="0.8" />
+                  
+                  <text x="100" y="97" fill="#b91c1c" font-size="17.5" font-weight="900" font-family="'Plus Jakarta Sans', Arial, sans-serif" text-anchor="middle" letter-spacing="2.5">
+                    OFFICIAL
+                  </text>
+                  <text x="100" y="111" fill="#b91c1c" font-size="8.8" font-weight="800" font-family="'Plus Jakarta Sans', Arial, sans-serif" text-anchor="middle" letter-spacing="1.5">
+                    TRANSIT &amp; CUSTOMS
+                  </text>
+                  
+                  <line x1="48" y1="117" x2="152" y2="117" stroke="#b91c1c" stroke-width="0.8" />
+                  <line x1="42" y1="120" x2="158" y2="120" stroke="#b91c1c" stroke-width="1.6" />
+
+                  <!-- Side Star Badges -->
+                  <circle cx="23" cy="100" r="2" fill="#b91c1c" />
+                  <circle cx="177" cy="100" r="2" fill="#b91c1c" />
+                </svg>
               </div>
 
               <div class="inv-sign-box" style="text-align: right;">
@@ -3268,23 +3269,37 @@ N.W: 10,120 KG / G.W: 10,950 KG", "inv_item_hs": "08062010", "inv_item_qty": "63
 
   function getSavedDocuments() {
     try {
+      const v = localStorage.getItem('cmr_archive_version');
+      if (v !== 'v3') {
+        localStorage.setItem('cmr_archive_version', 'v3');
+        localStorage.setItem('cmr_saved_archive', JSON.stringify(DEFAULT_SAVED_CMRS));
+        return DEFAULT_SAVED_CMRS;
+      }
       const raw = localStorage.getItem('cmr_saved_archive');
       const existing = raw ? JSON.parse(raw) : [];
       if (!existing || existing.length === 0) {
         localStorage.setItem('cmr_saved_archive', JSON.stringify(DEFAULT_SAVED_CMRS));
         return DEFAULT_SAVED_CMRS;
       }
-      const existingIds = new Set(existing.map(d => String(d.cmr_number)));
-      const missing = DEFAULT_SAVED_CMRS.filter(d => !existingIds.has(String(d.cmr_number)));
-      if (missing.length > 0) {
-        const merged = [...missing, ...existing];
-        localStorage.setItem('cmr_saved_archive', JSON.stringify(merged));
-        return merged;
+      const realMap = new Map(DEFAULT_SAVED_CMRS.map(d => [String(d.cmr_number), d]));
+      const updated = existing.map(d => realMap.get(String(d.cmr_number)) || d);
+      for (const realDoc of DEFAULT_SAVED_CMRS) {
+        if (!updated.some(d => String(d.cmr_number) === String(realDoc.cmr_number))) {
+          updated.unshift(realDoc);
+        }
       }
-      return existing;
+      localStorage.setItem('cmr_saved_archive', JSON.stringify(updated));
+      return updated;
     } catch (e) {
       return DEFAULT_SAVED_CMRS;
     }
+  }
+
+  function resetToRealPdfs() {
+    localStorage.setItem('cmr_archive_version', 'v3');
+    localStorage.setItem('cmr_saved_archive', JSON.stringify(DEFAULT_SAVED_CMRS));
+    renderSavedDocsTable();
+    showToast('🔄 Real PDF Archive Restored (CMRs 107-111)!', 'success');
   }
 
   function saveSavedDocuments(list) {

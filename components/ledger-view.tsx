@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect, memo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History, Eye, Download, ZoomIn, ZoomOut, Maximize2, BookOpen } from 'lucide-react'
+import { saveFinancialsForEntry } from '@/lib/services/ledger-sync-utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -175,10 +176,19 @@ export const LedgerView = memo(function LedgerView() {
 
   const handleAddEntry = () => {
     if (!currentAccount || !currentCompany) return
+    const debitNum = !newEntry.debit || (newEntry.debit as any) === '' ? 0 : Number(newEntry.debit) || 0
+    const creditNum = !newEntry.credit || (newEntry.credit as any) === '' ? 0 : Number(newEntry.credit) || 0
+    
+    saveFinancialsForEntry(newEntry.barnamehNo, undefined, {
+      ...newEntry,
+      debit: debitNum,
+      credit: creditNum,
+    })
+
     addLedgerEntry(currentAccount.id, currentCompany.id, {
       ...newEntry,
-      debit: !newEntry.debit || (newEntry.debit as any) === '' ? 0 : Number(newEntry.debit) || 0,
-      credit: !newEntry.credit || (newEntry.credit as any) === '' ? 0 : Number(newEntry.credit) || 0,
+      debit: debitNum,
+      credit: creditNum,
     })
     setNewEntry(emptyEntry)
     setIsOpen(false)
@@ -600,6 +610,9 @@ export const LedgerView = memo(function LedgerView() {
 
   const handleSaveEditedEntry = async (updatedData: Partial<LedgerEntry>) => {
     if (!editingEntry || !currentAccount || !currentCompany) return
+
+    // Immediately save to financials map
+    saveFinancialsForEntry(editingEntry.barnamehNo || (updatedData as any)?.barnamehNo, editingEntry.id, updatedData)
 
     // Immediately update context state
     updateLedgerEntry(currentAccount.id, currentCompany.id, editingEntry.id, updatedData)

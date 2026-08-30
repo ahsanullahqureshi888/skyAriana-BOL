@@ -28,6 +28,7 @@ import {
 } from "@/lib/utils/pdf-upload"
 import { SavedDocuments } from "./saved-documents"
 import { LedgerView } from "@/components/ledger-view"
+import { getFinancialsMap, saveFinancialsForEntry } from "@/lib/services/ledger-sync-utils"
 import { PrintOptionsDialog, type PrintOptions } from "@/components/print-options-dialog"
 import { CloudSyncModal } from "./cloud-sync-modal"
 
@@ -257,15 +258,34 @@ function syncBolToAccountLedger(data: BillOfLadingFormData & { bol_number?: stri
     .flat()
     .find((row) => (row.barnamehNo && row.barnamehNo.trim().toLowerCase() === bolNo.toLowerCase()) || (row.bolNo && row.bolNo.trim().toLowerCase() === bolNo.toLowerCase()))
   
-  const driverRentVal = data.driver_rent?.trim() || existingRow?.driverFreight || existingRow?.driverRent || ""
-  const debitVal = existingRow?.debit !== undefined && existingRow?.debit !== "" ? Number(existingRow.debit) || 0 : ((data as any)?.debit ? Number((data as any).debit) || 0 : 0)
-  const creditVal = existingRow?.credit !== undefined && existingRow?.credit !== "" ? Number(existingRow.credit) || 0 : ((data as any)?.credit ? Number((data as any).credit) || 0 : 0)
+  const financialsMap = getFinancialsMap()
+  const fin = bolNo ? financialsMap[bolNo.trim().toLowerCase()] : undefined
+
+  const driverRentVal = fin?.driverFreight || data.driver_rent?.trim() || existingRow?.driverFreight || existingRow?.driverRent || ""
+  
+  let debitVal = 0
+  if (fin?.debit !== undefined && fin.debit > 0) {
+    debitVal = fin.debit
+  } else if (existingRow?.debit !== undefined && existingRow?.debit !== "" && Number(existingRow.debit) > 0) {
+    debitVal = Number(existingRow.debit)
+  } else if ((data as any)?.debit && Number((data as any).debit) > 0) {
+    debitVal = Number((data as any).debit)
+  }
+
+  let creditVal = 0
+  if (fin?.credit !== undefined && fin.credit > 0) {
+    creditVal = fin.credit
+  } else if (existingRow?.credit !== undefined && existingRow?.credit !== "" && Number(existingRow.credit) > 0) {
+    creditVal = Number(existingRow.credit)
+  } else if ((data as any)?.credit && Number((data as any).credit) > 0) {
+    creditVal = Number((data as any).credit)
+  }
 
   const nextRow: AccountLedgerEntry = {
     id: existingRow?.id || crypto.randomUUID(),
-    date: existingRow?.date || data.issue_date || new Date().toISOString().split("T")[0],
+    date: fin?.date || existingRow?.date || data.issue_date || new Date().toISOString().split("T")[0],
     description: shipperName,
-    invoiceNo: getInvoiceNoFromDescription(data.cargo_description),
+    invoiceNo: fin?.invoiceNo || existingRow?.invoiceNo || getInvoiceNoFromDescription(data.cargo_description),
     shipDate: existingRow?.shipDate || data.issue_date || "",
     barnamehNo: bolNo,
     bolNo: bolNo,
@@ -277,7 +297,11 @@ function syncBolToAccountLedger(data: BillOfLadingFormData & { bol_number?: stri
     driverFreight: driverRentVal,
     debit: debitVal as any,
     credit: creditVal as any,
-    pdfFile: existingRow?.pdfFile || "",
+    pdfFile: fin?.pdfPathname || existingRow?.pdfFile || "",
+  }
+
+  if (debitVal > 0 || creditVal > 0 || driverRentVal) {
+    saveFinancialsForEntry(bolNo, nextRow.id, nextRow)
   }
 
   const nextRecords = Object.fromEntries(

@@ -58,8 +58,8 @@
         "quantity": "1400 CTNS - BLACK RAISNIS",
         "driverRent": "45,000-AFN - کرایه واپسی",
         "driverFreight": "45,000-AFN - کرایه واپسی",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -76,8 +76,8 @@
         "quantity": "1323 - CTNS - BLACK RAISNIS",
         "driverRent": "45,000-AFN - کرایه واپسی",
         "driverFreight": "45,000-AFN - کرایه واپسی",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -94,8 +94,8 @@
         "quantity": "BLACK RAISINS 949 CTNS - BLACK RAISINS 325 CTNS ",
         "driverRent": "45,000-AFN - کرایه واپسی",
         "driverFreight": "45,000-AFN - کرایه واپسی",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -112,8 +112,8 @@
         "quantity": "606 CTNS - BLACK-RAISNIS",
         "driverRent": "52,000 - AFN",
         "driverFreight": "52,000 - AFN",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -130,8 +130,8 @@
         "quantity": "631 - CTNS -  BLACK-RAISNIS -16KGS",
         "driverRent": "52,000 - AFN",
         "driverFreight": "52,000 - AFN",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -148,8 +148,8 @@
         "quantity": "630 - CTNS -  BLACK-RAISNIS",
         "driverRent": "52,000 - AFN",
         "driverFreight": "52,000 - AFN",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -166,8 +166,8 @@
         "quantity": "521 CTNS - GREEN-RAISNIS - 16 KGS",
         "driverRent": "52,000 - AFN",
         "driverFreight": "52,000 - AFN",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -184,8 +184,8 @@
         "quantity": "604 CTNS - BLACK-RAISNIS",
         "driverRent": "52,000 - AFN",
         "driverFreight": "52,000 - AFN",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -202,8 +202,8 @@
         "quantity": "1239 - CTNS",
         "driverRent": "44,000-AFN - کرایه واپسی",
         "driverFreight": "44,000-AFN - کرایه واپسی",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -220,8 +220,8 @@
         "quantity": "1377 - CTNS",
         "driverRent": "44,000-AFN - کرایه واپسی",
         "driverFreight": "44,000-AFN - کرایه واپسی",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -238,8 +238,8 @@
         "quantity": "667 CTNS | 658 CTNS",
         "driverRent": "44,000-AFN - کرایه واپسی",
         "driverFreight": "44,000-AFN - کرایه واپسی",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -256,8 +256,8 @@
         "quantity": "120 CTNS - 1269 CTNS",
         "driverRent": "44,000-AFN - کرایه واپسی",
         "driverFreight": "44,000-AFN - کرایه واپسی",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -274,8 +274,8 @@
         "quantity": "1383-CTNS",
         "driverRent": "44,000-AFN - کرایه واپسی",
         "driverFreight": "44,000-AFN - کرایه واپسی",
-        "debit": "44,000-AFN - کرایه واپسی",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -292,8 +292,8 @@
         "quantity": "1327-CTNS",
         "driverRent": "44,000-AFN - کرایه واپسی",
         "driverFreight": "44,000-AFN - کرایه واپسی",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -310,8 +310,8 @@
         "quantity": "660- CTNS / 710- CTNS",
         "driverRent": "44,000-AFN - کرایه واپسی",
         "driverFreight": "44,000-AFN - کرایه واپسی",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -328,8 +328,8 @@
         "quantity": "1395 - CTNS",
         "driverRent": "44,000-AFN - کرایه واپسی",
         "driverFreight": "44,000-AFN - کرایه واپسی",
-        "debit": "44,000-AFN - کرایه واپسی",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -346,8 +346,8 @@
         "quantity": "1395 - CTNS",
         "driverRent": "44,000-AFN - کرایه واپسی",
         "driverFreight": "44,000-AFN - کرایه واپسی",
-        "debit": "44,000-AFN - کرایه واپسی",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -364,8 +364,8 @@
         "quantity": "1376-CTNS",
         "driverRent": "44,000-AFN - کرایه واپسی",
         "driverFreight": "44,000-AFN - کرایه واپسی",
-        "debit": "44,000-AFN - کرایه واپسی",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -382,8 +382,8 @@
         "quantity": "1375-CTNS",
         "driverRent": "44,000-AFN - کرایه واپسی",
         "driverFreight": "44,000-AFN - کرایه واپسی",
-        "debit": "44,000-AFN - کرایه واپسی",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -400,8 +400,8 @@
         "quantity": "1329 - CTNS",
         "driverRent": "43,000-AFN - کرایه واپسی",
         "driverFreight": "43,000-AFN - کرایه واپسی",
-        "debit": "43,000-AFN - کرایه واپسی",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -418,8 +418,8 @@
         "quantity": "1240 - CTNS",
         "driverRent": "43,000-AFN - کرایه واپسی",
         "driverFreight": "43,000-AFN - کرایه واپسی",
-        "debit": "43,000-AFN - کرایه واپسی",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -436,8 +436,8 @@
         "quantity": "932-CTNS-16KGS / 432-CTNS-16KGS",
         "driverRent": "43,000-AFN - کرایه واپسی",
         "driverFreight": "43,000-AFN - کرایه واپسی",
-        "debit": "43,000-AFN - کرایه واپسی",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -454,8 +454,8 @@
         "quantity": "1381-CTNS",
         "driverRent": "45,000-AFN - کرایه واپسی",
         "driverFreight": "45,000-AFN - کرایه واپسی",
-        "debit": "45,000-AFN - کرایه واپسی",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -472,8 +472,8 @@
         "quantity": "1388-CTNS",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -490,8 +490,8 @@
         "quantity": "1386-CTNS",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -508,8 +508,8 @@
         "quantity": "1328-CTNS",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -526,8 +526,8 @@
         "quantity": "1328-CTNS",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -544,8 +544,8 @@
         "quantity": "1328-CTNS",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -562,8 +562,8 @@
         "quantity": "1328-CTNS",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -580,8 +580,8 @@
         "quantity": "1330-CTNS",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -598,8 +598,8 @@
         "quantity": "1330-CTNS",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -616,8 +616,8 @@
         "quantity": "1386-CTNS",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -636,8 +636,8 @@
         "quantity": "1613 -CTNS AFGHAN DRIED FIGS - - 747 - CTNS LONG GREEN RAISINS ",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -654,8 +654,8 @@
         "quantity": "2424-CTNS",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -674,8 +674,8 @@
         "quantity": "746-CTNS 448-CTNS",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       },
       {
@@ -692,8 +692,8 @@
         "quantity": "448-CTNS - 746-CTNS",
         "driverRent": "45,000-AFN - کرایه واپسی",
         "driverFreight": "45,000-AFN - کرایه واپسی",
-        "debit": "45,000-AFN - کرایه واپسی",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -712,8 +712,8 @@
         "quantity": "2450-CTNS",
         "driverRent": "45,000-AFN",
         "driverFreight": "45,000-AFN",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -732,8 +732,8 @@
         "quantity": "2200-CTNS",
         "driverRent": "40,500-AFN - کرایه واپسی",
         "driverFreight": "40,500-AFN - کرایه واپسی",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -752,8 +752,8 @@
         "quantity": "1351 - CTNS",
         "driverRent": "52,000-AFN - کرایه واپسی",
         "driverFreight": "52,000-AFN - کرایه واپسی",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -772,8 +772,8 @@
         "quantity": "1350 - CTNS - BLACK RAISNIS (MED) ",
         "driverRent": "52,000 - AFN -  کرایه واپسی",
         "driverFreight": "52,000 - AFN -  کرایه واپسی",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -792,8 +792,8 @@
         "quantity": " 1467 CTNS - DRY APRICOTS (MED)",
         "driverRent": "45,000 - AFN",
         "driverFreight": "45,000 - AFN",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -813,8 +813,8 @@
         "quantity": "",
         "driverRent": "38,500 - AFN",
         "driverFreight": "38,500 - AFN",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -833,8 +833,8 @@
         "quantity": "330 - BAGS - CARAWAY SEEDS (ZEERAH KAJAK)",
         "driverRent": "45,000-AFN",
         "driverFreight": "45,000-AFN",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -853,8 +853,8 @@
         "quantity": "2700- CTNS - Etehad ML",
         "driverRent": "38,500 - AFN",
         "driverFreight": "38,500 - AFN",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -873,8 +873,8 @@
         "quantity": "2150 CTNS - DRY FIGS 10 KGS",
         "driverRent": "38,500 - AFN",
         "driverFreight": "38,500 - AFN",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -901,8 +901,8 @@
         "quantity": "",
         "driverRent": "",
         "driverFreight": "",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ],
@@ -927,8 +927,8 @@
         "quantity": "514- CTNS پارسل رویحان- ",
         "driverRent": "38,500 - AFN",
         "driverFreight": "38,500 - AFN",
-        "debit": "",
-        "credit": "",
+        "debit": 0,
+        "credit": 0,
         "pdfFile": ""
       }
     ]

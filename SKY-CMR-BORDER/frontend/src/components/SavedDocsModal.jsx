@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useCmr } from '../context/CmrContext';
 
 export const SavedDocsModal = () => {
-  const { isSavedDocsOpen, setIsSavedDocsOpen, savedDocs, restoreFromArchive, saveToArchive } = useCmr();
+  const { isSavedDocsOpen, setIsSavedDocsOpen, savedDocs, restoreFromArchive, saveToArchive, resetToRealPdfs } = useCmr();
   const [search, setSearch] = useState('');
 
   if (!isSavedDocsOpen) return null;
@@ -18,8 +18,11 @@ export const SavedDocsModal = () => {
         <div className="modal-header">
           <h2>📋 CMR Waybill Archive & History Manager</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button className="btn btn-amber" onClick={resetToRealPdfs} style={{ fontSize: '11.5px', padding: '5px 10px' }} title="Reset to authentic real PDF records for CMRs 107 to 111">
+              🔄 Real PDF Data
+            </button>
             <button className="btn btn-success" onClick={saveToArchive} style={{ fontSize: '11.5px', padding: '5px 12px' }}>
-              💾 Save Current Draft
+              💾 Save Draft
             </button>
             <button
               onClick={() => setIsSavedDocsOpen(false)}
