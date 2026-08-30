@@ -30,10 +30,42 @@ export async function getBolAccountLedgerDatabase() {
 export async function saveBolAccountLedgerDatabase(data: Partial<BolAccountLedgerDatabase>) {
   const existing = await getBolAccountLedgerDatabase()
 
+  const mergedDeleted = Array.from(new Set([
+    ...(Array.isArray(existing.deletedLedgerEntries) ? existing.deletedLedgerEntries : []),
+    ...(Array.isArray(data.deletedLedgerEntries) ? data.deletedLedgerEntries : []),
+  ]))
+
+  const mergedRecords = {
+    ...(existing.ledgerRecords || {}),
+    ...(data.ledgerRecords || {}),
+  }
+
+  // Clean out any deleted rows from all company ledger records
+  if (mergedDeleted.length > 0) {
+    const delBolSet = new Set(
+      mergedDeleted.map((d: any) => (d.entry?.barnamehNo || d.entry?.bolNo || '').trim().toLowerCase()).filter(Boolean)
+    )
+    const delIdSet = new Set(
+      mergedDeleted.map((d: any) => d.entry?.id).filter(Boolean)
+    )
+
+    Object.keys(mergedRecords).forEach((key) => {
+      if (Array.isArray(mergedRecords[key])) {
+        mergedRecords[key] = mergedRecords[key].filter((row: any) => {
+          const rBol = (row.barnamehNo || row.bolNo || '').trim().toLowerCase()
+          const rId = row.id
+          if (rId && delIdSet.has(rId)) return false
+          if (rBol && delBolSet.has(rBol)) return false
+          return true
+        })
+      }
+    })
+  }
+
   const next: BolAccountLedgerDatabase = {
     customCompanies: Array.isArray(data.customCompanies) ? data.customCompanies : existing.customCompanies,
-    ledgerRecords: data.ledgerRecords && typeof data.ledgerRecords === "object" ? data.ledgerRecords : existing.ledgerRecords,
-    deletedLedgerEntries: Array.isArray(data.deletedLedgerEntries) ? data.deletedLedgerEntries : existing.deletedLedgerEntries,
+    ledgerRecords: mergedRecords,
+    deletedLedgerEntries: mergedDeleted,
     updated_at: new Date().toISOString(),
   }
 

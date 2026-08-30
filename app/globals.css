@@ -4262,6 +4262,29 @@
     margin: 4mm 5mm !important;
   }
 
+  /* Dedicated A4 Landscape & Portrait setup for Reports printing */
+  body[data-print-active="reports"][data-print-orientation="landscape"],
+  html[data-print-active="reports"][data-print-orientation="landscape"],
+  body[data-print-active="reports"]:not([data-print-orientation="portrait"]),
+  html[data-print-active="reports"]:not([data-print-orientation="portrait"]) {
+    page: reports-landscape-page !important;
+  }
+
+  @page reports-landscape-page {
+    size: A4 landscape !important;
+    margin: 5mm 6mm !important;
+  }
+
+  body[data-print-active="reports"][data-print-orientation="portrait"],
+  html[data-print-active="reports"][data-print-orientation="portrait"] {
+    page: reports-portrait-page !important;
+  }
+
+  @page reports-portrait-page {
+    size: A4 portrait !important;
+    margin: 6mm 6mm !important;
+  }
+
   /* Reset heights & position on global containers to prevent blank page spillover */
   html, body {
     height: 100% !important;
@@ -4276,16 +4299,19 @@
     print-color-adjust: exact !important;
   }
 
-  /* Dedicated landscape body override */
+  /* Dedicated landscape & reports body override */
   body.ledger-landscape-active,
-  body[data-print-active="ledger"] {
+  body[data-print-active="ledger"],
+  body[data-print-active="reports"] {
     height: auto !important;
+    min-height: 0 !important;
     max-height: none !important;
     overflow: visible !important;
+    background: #ffffff !important;
   }
 
-  /* 3. Hide all non-portaled body children except print portals (and in-tree reports/shipper views) */
-  body:not([data-print-active="reports"]):not([data-print-active="shipper-portal"]) > *:not(.ledger-print-root, .invoice-print-root, [data-print-root="true"], #sky-ledger-print-root, #sky-invoice-print-root, #bol-print-preview-root) {
+  /* 3. Hide all non-portaled body children except print portals */
+  body > *:not(.ledger-print-root, .invoice-print-root, .reports-print-root, [data-print-root="true"], #sky-ledger-print-root, #sky-invoice-print-root, #sky-reports-print-root, #bol-print-preview-root) {
     display: none !important;
     height: 0 !important;
     max-height: 0 !important;
@@ -4311,12 +4337,14 @@
 
   /* =========================================================================
      PORTAL MUTUAL EXCLUSION:
-     By default, Ledger and Invoice portals are HIDDEN to prevent leaking into BOL
+     By default, Ledger, Invoice, and Reports portals are HIDDEN to prevent leaking
      ========================================================================= */
   #sky-ledger-print-root,
   .ledger-print-root,
   #sky-invoice-print-root,
-  .invoice-print-root {
+  .invoice-print-root,
+  #sky-reports-print-root,
+  .reports-print-root {
     display: none !important;
     visibility: hidden !important;
     height: 0 !important;
@@ -4326,7 +4354,7 @@
     padding: 0 !important;
   }
 
-  /* LEDGER PRINT MODE: Exclusively show Ledger, hide BOL & Invoice */
+  /* LEDGER PRINT MODE: Exclusively show Ledger, hide BOL & Invoice & Reports */
   body[data-print-active="ledger"] #sky-ledger-print-root,
   body[data-print-active="ledger"] .ledger-print-root,
   body.ledger-landscape-active #sky-ledger-print-root,
@@ -4355,6 +4383,8 @@
 
   body[data-print-active="ledger"] #bol-print-preview-root,
   body[data-print-active="ledger"] #bol-print-preview,
+  body[data-print-active="ledger"] #sky-reports-print-root,
+  body[data-print-active="ledger"] .reports-print-root,
   body.ledger-landscape-active #bol-print-preview-root,
   body.ledger-landscape-active #bol-print-preview,
   html[data-print-mode="ledger-landscape"] #bol-print-preview-root,
@@ -4368,7 +4398,7 @@
     padding: 0 !important;
   }
 
-  /* INVOICE PRINT MODE: Exclusively show Invoice, hide BOL & Ledger */
+  /* INVOICE PRINT MODE: Exclusively show Invoice, hide BOL & Ledger & Reports */
   body[data-print-active="invoice"] #sky-invoice-print-root,
   body[data-print-active="invoice"] .invoice-print-root {
     display: block !important;
@@ -4395,7 +4425,9 @@
   body[data-print-active="invoice"] #bol-print-preview-root,
   body[data-print-active="invoice"] #bol-print-preview,
   body[data-print-active="invoice"] #sky-ledger-print-root,
-  body[data-print-active="invoice"] .ledger-print-root {
+  body[data-print-active="invoice"] .ledger-print-root,
+  body[data-print-active="invoice"] #sky-reports-print-root,
+  body[data-print-active="invoice"] .reports-print-root {
     display: none !important;
     visibility: hidden !important;
     height: 0 !important;
@@ -4405,7 +4437,29 @@
     padding: 0 !important;
   }
 
-  /* REPORTS PRINT MODE: Hide all background portals */
+  /* REPORTS PRINT MODE: Exclusively show Reports Portal, hide BOL, Ledger & Invoice */
+  body[data-print-active="reports"] #sky-reports-print-root,
+  body[data-print-active="reports"] .reports-print-root {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
   body[data-print-active="reports"] #bol-print-preview-root,
   body[data-print-active="reports"] #bol-print-preview,
   body[data-print-active="reports"] #sky-ledger-print-root,
@@ -4482,8 +4536,8 @@
     height: 100% !important;
     max-height: 297mm !important;
     box-sizing: border-box !important;
-    padding: 2mm 3mm 1.5mm 3mm !important;
-    gap: 0.5mm !important;
+    padding: 2.5mm 3.5mm 3mm 3.5mm !important;
+    gap: 0.4mm !important;
     overflow: hidden !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
@@ -4496,8 +4550,8 @@
     justify-content: flex-start !important;
     min-height: 0 !important;
     width: 100% !important;
-    margin-top: 0.3mm !important;
-    gap: 0.5mm !important;
+    margin-top: 0.2mm !important;
+    gap: 0.35mm !important;
     overflow: hidden !important;
   }
 
@@ -4507,6 +4561,7 @@
     bottom: 0 !important;
     width: 100% !important;
     margin-top: auto !important;
+    margin-bottom: 0 !important;
     page-break-before: avoid !important;
     break-before: avoid !important;
   }
@@ -4517,11 +4572,11 @@
   [data-pdf-export="true"] img[data-company-stamp-img="true"] {
     display: block !important;
     visibility: visible !important;
-    height: 28mm !important;
-    max-height: 30mm !important;
-    min-height: 24mm !important;
+    height: 25mm !important;
+    max-height: 26mm !important;
+    min-height: 20mm !important;
     width: auto !important;
-    max-width: 52mm !important;
+    max-width: 48mm !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     image-rendering: -webkit-optimize-contrast !important;
@@ -4754,10 +4809,10 @@
     break-inside: avoid !important;
   }
 
-  [data-print-root="true"]:not(.ledger-print-root) [data-bol-a4="true"],
+  [data-print-root="true"]:not(.ledger-print-root):not(.reports-print-root) [data-bol-a4="true"],
   .print-page [data-bol-a4="true"],
   [data-bol-a4="true"],
-  [data-print-root="true"]:not(.ledger-print-root) > div,
+  [data-print-root="true"]:not(.ledger-print-root):not(.reports-print-root) > div,
   [data-pdf-export="true"],
   [data-bol-page="true"] {
     display: flex !important;
@@ -4782,7 +4837,9 @@
   }
 
   .ledger-print-root > div,
-  #sky-ledger-print-root > div {
+  #sky-ledger-print-root > div,
+  .reports-print-root > div,
+  #sky-reports-print-root > div {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -4793,6 +4850,63 @@
     margin: 0 auto !important;
     padding: 0 !important;
     box-sizing: border-box !important;
+  }
+
+  /* Reports Print Table Typography & Multi-page Formatting */
+  .reports-print-table {
+    display: table !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    margin-top: 4px !important;
+    margin-bottom: 4px !important;
+    font-size: 7.2pt !important;
+  }
+
+  .reports-print-table thead {
+    display: table-header-group !important;
+  }
+
+  .reports-print-table tbody {
+    display: table-row-group !important;
+  }
+
+  .reports-print-table tr {
+    display: table-row !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .reports-print-table th,
+  .reports-print-table td {
+    display: table-cell !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 3px 4px !important;
+    font-size: 6.8pt !important;
+    line-height: 1.2 !important;
+    color: #0f172a !important;
+    vertical-align: middle !important;
+  }
+
+  .reports-print-table th {
+    background-color: #f1f5f9 !important;
+    color: #1e293b !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    font-size: 6.5pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .reports-print-table tr.total-row td {
+    background-color: #f8fafc !important;
+    font-weight: 900 !important;
+    font-size: 7.5pt !important;
+    border-top: 2px solid #0f172a !important;
+    border-bottom: 2px solid #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   [data-bol-content="true"] {

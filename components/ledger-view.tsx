@@ -173,9 +173,8 @@ export const LedgerView = memo(function LedgerView() {
   })
   const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('USD')
 
-  if (!currentAccount || !currentCompany) return null
-
   const handleAddEntry = () => {
+    if (!currentAccount || !currentCompany) return
     addLedgerEntry(currentAccount.id, currentCompany.id, {
       ...newEntry,
       debit: !newEntry.debit || (newEntry.debit as any) === '' ? 0 : Number(newEntry.debit) || 0,
@@ -324,7 +323,8 @@ export const LedgerView = memo(function LedgerView() {
         heightLeft -= pdfHeight
       }
 
-      const fileName = `${currentCompany.name.replace(/[^a-z0-9]/gi, '_')}_Account_Ledger_${new Date().toISOString().split('T')[0]}.pdf`
+      const compName = currentCompany?.name || 'Company'
+      const fileName = `${compName.replace(/[^a-z0-9]/gi, '_')}_Account_Ledger_${new Date().toISOString().split('T')[0]}.pdf`
       pdf.save(fileName)
     } catch (err) {
       console.error('Failed to export PDF:', err)
@@ -905,6 +905,23 @@ export const LedgerView = memo(function LedgerView() {
     quantity: { en: 'Quantity', ps: 'تعداد' },
     debit: { en: 'Debit', ps: 'پور' },
     credit: { en: 'Credit', ps: 'ترلاسه' },
+  }
+
+  if (!currentAccount || !currentCompany) {
+    return (
+      <div className="w-full min-h-[60vh] flex flex-col items-center justify-center p-8 text-center space-y-4 font-sans animate-in fade-in duration-200">
+        <div className="w-14 h-14 rounded-2xl bg-blue-900/10 border border-blue-500/20 flex items-center justify-center text-blue-600">
+          <BookOpen className="w-7 h-7" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-base font-bold text-slate-800">No Account Selected / حساب نه دی ټاکل شوی</h3>
+          <p className="text-xs text-slate-500 max-w-sm">Please select a shipper or business account to view its ledger entries.</p>
+        </div>
+        <Button onClick={() => setView('accounts')} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl h-9 px-4 cursor-pointer shadow-md">
+          Go to Accounts / حسابونو ته لاړ شئ
+        </Button>
+      </div>
+    )
   }
 
   return (

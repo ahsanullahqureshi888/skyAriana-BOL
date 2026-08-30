@@ -69,9 +69,32 @@ export async function saveAccountLedgerDatabase(data: Partial<AccountLedgerDatab
     ...(data.receipts || {}),
   }
 
-  const mergedDeleted = Array.isArray(data.deletedLedgerEntries)
-    ? data.deletedLedgerEntries
-    : (Array.isArray(existing.deletedLedgerEntries) ? existing.deletedLedgerEntries : [])
+  const mergedDeleted = Array.from(new Set([
+    ...(Array.isArray(existing.deletedLedgerEntries) ? existing.deletedLedgerEntries : []),
+    ...(Array.isArray(data.deletedLedgerEntries) ? data.deletedLedgerEntries : []),
+  ]))
+
+  // Clean out any deleted rows from all company ledger keys
+  if (mergedDeleted.length > 0) {
+    const delBolSet = new Set(
+      mergedDeleted.map((d: any) => (d.entry?.barnamehNo || d.entry?.bolNo || '').trim().toLowerCase()).filter(Boolean)
+    )
+    const delIdSet = new Set(
+      mergedDeleted.map((d: any) => d.entry?.id).filter(Boolean)
+    )
+
+    Object.keys(mergedLedgerEntries).forEach((key) => {
+      if (Array.isArray(mergedLedgerEntries[key])) {
+        mergedLedgerEntries[key] = mergedLedgerEntries[key].filter((row: any) => {
+          const rBol = (row.barnamehNo || row.bolNo || '').trim().toLowerCase()
+          const rId = row.id
+          if (rId && delIdSet.has(rId)) return false
+          if (rBol && delBolSet.has(rBol)) return false
+          return true
+        })
+      }
+    })
+  }
 
   const next: AccountLedgerDatabase = {
     accounts: mergedAccounts,

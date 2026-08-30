@@ -1902,7 +1902,7 @@ export function A4Preview({
       className="mx-auto flex min-h-[297mm] w-[210mm] max-w-[210mm] h-[297mm] max-h-[297mm] flex-col justify-between overflow-hidden text-slate-950 shadow-2xl shadow-blue-200/50 ring-1 ring-blue-100 print:m-0 print:p-0 print:h-full print:min-h-0 print:max-h-[297mm] print:w-[210mm] print:max-w-[210mm] print:shadow-none print:ring-0 print:overflow-hidden relative box-border"
       style={pdfMode ? { ...a4ShellStyle, width: "210mm", minHeight: "297mm", height: "297mm", maxHeight: "297mm", overflow: "hidden", boxSizing: "border-box" } : a4ShellStyle}
     >
-      <div data-bol-page="true" className="relative flex h-full flex-col justify-between p-[2mm] print:p-[2mm] gap-[0.8mm] print:gap-[0.6mm] overflow-hidden box-border">
+      <div data-bol-page="true" className="relative flex h-full flex-col justify-between p-[2.5mm] print:p-[2.5mm] pb-[3mm] print:pb-[3mm] gap-[0.5mm] print:gap-[0.4mm] overflow-hidden box-border">
         {/* Technical Blueprint & Mountain Scenery Background Overlay */}
         {backgroundImageUrl && (
           <div
@@ -2001,7 +2001,7 @@ export function A4Preview({
 
         <main
           data-bol-content="true"
-          className="mt-0 flex min-h-0 flex-1 flex-col gap-[0.6mm] print:gap-[0.4mm] overflow-visible"
+          className="mt-0 flex min-h-0 flex-1 flex-col gap-[0.5mm] print:gap-[0.35mm] overflow-visible"
         >
           {hasShipmentData && (
             <Section title="Shipment Information" subtitle={labels.shipmentInfoFa} icon={<CalendarDays className="h-4 w-4" />} glass={!pdfMode} printKey="shipment" pdfMode={pdfMode} titleClassName="text-[9.2pt]">
@@ -2135,19 +2135,19 @@ export function A4Preview({
               )}
               {hasValue(cleanedCargoDesc) && (
                 <div
-                  className={`mt-1.5 rounded-xl border p-2 shadow-xs ${
+                  className={`mt-1 rounded-xl border p-1.5 shadow-xs ${
                     pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white shadow-2xs"
                   }`}
                 >
-                  <div className="mb-1 flex items-center gap-1.5 text-blue-800">
+                  <div className="mb-0.5 flex items-center gap-1.5 text-blue-800">
                     <FileText className="h-3.5 w-3.5" />
-                    <p className="text-[8.5pt] font-black leading-tight">
+                    <p className="text-[8.2pt] font-black leading-tight">
                       Description of Goods / <span className="persian-text bol-persian-text font-[vazirmatn]" dir="rtl">{labels.goodsDescriptionFa}</span>
                     </p>
                   </div>
                   <TextLines
                     value={cleanedCargoDesc}
-                    className="text-[8.2pt] font-extrabold leading-snug text-slate-950"
+                    className="text-[8pt] font-extrabold leading-snug text-slate-950"
                   />
                 </div>
               )}
@@ -2179,10 +2179,10 @@ export function A4Preview({
             {/* Right side: Authorized Signature & Official Seal Block (NO ENCLOSING BOX) */}
             <div className="relative flex flex-col items-center justify-center min-w-[55mm] max-w-[68mm] text-center">
               {/* Official Stamp & Signature Overlay - Balanced size identical in A4 preview and print */}
-              <div className="relative w-full h-[16mm] flex items-center justify-center">
+              <div className="relative w-full h-[15mm] flex items-center justify-center">
                 {isStampActive ? (
                   <div
-                    className="absolute -bottom-1 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10"
+                    className="absolute -bottom-0.5 inset-x-0 flex items-center justify-center pointer-events-none select-none z-10"
                     style={{ transform: `scale(${stampConfig.scale})`, transformOrigin: "center bottom" }}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2190,7 +2190,7 @@ export function A4Preview({
                       data-company-stamp-img="true"
                       src={stampConfig.dataUrl || COMPANY_STAMP_SIGNATURE_SRC}
                       alt="Company Official Stamp & Signature"
-                      className="h-[28mm] max-h-[30mm] w-auto max-w-[52mm] object-contain drop-shadow-sm transition-all duration-200"
+                      className="h-[25mm] max-h-[26mm] w-auto max-w-[48mm] object-contain drop-shadow-sm transition-all duration-200"
                       style={{
                         transform: `rotate(${stampConfig.rotation}deg)`,
                         opacity: stampConfig.opacity,
