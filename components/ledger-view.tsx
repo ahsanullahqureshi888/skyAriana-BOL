@@ -1844,7 +1844,7 @@ export const LedgerView = memo(function LedgerView() {
                           {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
                         </td>
                         <td className={`border px-1 py-1.5 text-center text-[10px] font-mono font-bold ${isCredit ? 'border-emerald-300/60 bg-emerald-100/70 text-emerald-900' : 'border-blue-200/60 bg-blue-50/50 text-blue-900'}`}>
-                          {formatCurrency(entry.balance)}
+                          {entry.debit > 0 || entry.credit > 0 ? formatCurrency(entry.balance) : ''}
                         </td>
                         <td className={`border px-1 py-1 ${isCredit ? 'border-emerald-300/60 bg-emerald-50/50' : 'border-blue-200/60 bg-blue-50/30'}`}>
                           <div className="flex gap-0.5 justify-center items-center">
@@ -2160,7 +2160,7 @@ export const LedgerView = memo(function LedgerView() {
                         {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
                       </td>
                       <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: isCredit ? '#064e3b' : '#1e3a8a', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#d1fae5' : '#eff6ff' }}>
-                        {formatCurrency(entry.balance)}
+                        {entry.debit > 0 || entry.credit > 0 ? formatCurrency(entry.balance) : ''}
                       </td>
                     </tr>
                   );
@@ -2506,7 +2506,7 @@ export const LedgerView = memo(function LedgerView() {
                             {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
                           </td>
                           <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: isCredit ? '#064e3b' : '#1e3a8a', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#d1fae5' : '#eff6ff' }}>
-                            {formatCurrency(entry.balance)}
+                            {entry.debit > 0 || entry.credit > 0 ? formatCurrency(entry.balance) : ''}
                           </td>
                         </tr>
                       );
