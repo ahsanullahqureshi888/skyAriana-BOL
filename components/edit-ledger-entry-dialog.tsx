@@ -275,14 +275,35 @@ export function EditLedgerEntryDialog({
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-blue-950 block mb-1">Driver Freight / کرایه موتر</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-blue-950 block">Driver Freight / کرایه موتر</label>
+                  <span className="text-[9.5px] font-semibold text-slate-500">گزینه‌های سریع کرایه</span>
+                </div>
                 <Input
                   name="driverFreight"
                   value={formData.driverFreight || ''}
                   onChange={handleChange}
-                  placeholder="60,000 AFN / $3,200"
+                  placeholder="45,000-AFN - کرایه واپسی"
                   className="bg-white border-blue-300 focus:border-blue-500 text-xs font-bold text-blue-950 h-9"
                 />
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {[
+                    "45,000-AFN - کرایه واپسی",
+                    "50,000-AFN - کرایه واپسی",
+                    "60,000-AFN - کرایه رفت و برگشت",
+                    "40,000-AFN - کرایه اسلام قلعه",
+                    "کرایه مکمل پرداخت شد",
+                  ].map((f) => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, driverFreight: f }))}
+                      className="text-[9.5px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded cursor-pointer transition-all hover:scale-[1.01]"
+                    >
+                      <span>⚡ {f}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">

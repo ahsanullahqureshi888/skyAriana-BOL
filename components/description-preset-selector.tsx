@@ -1,22 +1,18 @@
 ﻿"use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import {
   Sparkles,
   ChevronDown,
   Search,
   Check,
-  Snowflake,
-  Box,
-  Truck,
-  Building2,
   Plus,
   Trash2,
-  Layers,
+  X,
+  Flame,
 } from "lucide-react"
 
 export interface PresetCategory {
@@ -29,7 +25,7 @@ export interface PresetCategory {
 const DEFAULT_PRESET_CATEGORIES: PresetCategory[] = [
   {
     id: "reefer-mixed",
-    name: "کانتینر یخچالی و ترکیبی (Reefer)",
+    name: "کانتینر یخچالی و ترکیبی",
     icon: "❄️",
     options: [
       "از دوغارون کانتینر معمولی از میرسن کانتینر یخچالی",
@@ -45,7 +41,7 @@ const DEFAULT_PRESET_CATEGORIES: PresetCategory[] = [
   },
   {
     id: "dry-standard",
-    name: "کانتینر معمولی و خشک (Dry / Standard)",
+    name: "کانتینر معمولی و خشک",
     icon: "📦",
     options: [
       "از دوغارون کانتینر معمولی از میرسن کانتینر معمولی",
@@ -60,7 +56,7 @@ const DEFAULT_PRESET_CATEGORIES: PresetCategory[] = [
   },
   {
     id: "border-transit",
-    name: "مسیرهای زمینی و مرزی (Transit Routes)",
+    name: "مسیرهای زمینی و مرزی",
     icon: "🚚",
     options: [
       "بارگیری از هرات به مرسین ترکیه - ترانزیت جاده ای",
@@ -74,7 +70,7 @@ const DEFAULT_PRESET_CATEGORIES: PresetCategory[] = [
   },
   {
     id: "shippers",
-    name: "شرکت‌های لیږدونکی (Registered Shippers)",
+    name: "شرکت‌های لیږدونکی",
     icon: "🏢",
     options: [
       "NAJEB AMIN LTD",
@@ -114,6 +110,7 @@ export function DescriptionPresetSelector({
   const [customPresets, setCustomPresets] = useState<string[]>([])
   const [newCustomInput, setNewCustomInput] = useState("")
   const [appendMode, setAppendMode] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     try {
@@ -124,6 +121,16 @@ export function DescriptionPresetSelector({
       }
     } catch {}
   }, [])
+
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => {
+        searchInputRef.current?.focus()
+      }, 50)
+    } else {
+      setSearchQuery("")
+    }
+  }, [open])
 
   const saveCustomPreset = (preset: string) => {
     const trimmed = preset.trim()
@@ -159,7 +166,7 @@ export function DescriptionPresetSelector({
       ? [
           {
             id: "custom",
-            name: "گزینه‌های سفارشی من (My Custom Presets)",
+            name: "سفارشی من",
             icon: "⭐",
             options: customPresets,
           },
@@ -179,10 +186,10 @@ export function DescriptionPresetSelector({
     .filter(Boolean) as PresetCategory[]
 
   const quickChips = [
-    "از دوغارون کانتینر معمولی از میرسن کانتینر یخچالی",
-    "از دوغارون کانتینر یخچالی از میرسن کانتینر یخچالی",
-    "از اسلام قلعه کانتینر معمولی از میرسن کانتینر یخچالی",
-    "ترانزیت از میرسن - کانتینر ۴۰ فوت یخچالی (40' RF)",
+    { label: "از دوغارون کانتینر معمولی از میرسن کانتینر یخچالی", short: "دوغارون معمولی → میرسن یخچالی", icon: "❄️" },
+    { label: "از دوغارون کانتینر یخچالی از میرسن کانتینر یخچالی", short: "دوغارون یخچالی → میرسن یخچالی", icon: "❄️" },
+    { label: "از اسلام قلعه کانتینر معمولی از میرسن کانتینر یخچالی", short: "اسلام قلعه معمولی → میرسن یخچالی", icon: "❄️" },
+    { label: "ترانزیت از میرسن - کانتینر ۴۰ فوت یخچالی (40' RF)", short: "ترانزیت میرسن ۴۰ فوت RF", icon: "🚢" },
   ]
 
   return (
@@ -199,161 +206,195 @@ export function DescriptionPresetSelector({
               type="button"
               variant="outline"
               size="sm"
-              className="h-6 px-2 text-[10.5px] font-bold bg-blue-50/80 hover:bg-blue-100/80 text-blue-700 border-blue-200 shadow-sm flex items-center gap-1 cursor-pointer transition-all hover:scale-[1.02]"
+              className="h-6 px-2.5 text-[10.5px] font-bold bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-700 border-blue-200 shadow-xs flex items-center gap-1.5 cursor-pointer rounded-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               <Sparkles className="w-3 h-3 text-amber-500 animate-pulse" />
-              <span>انتخاب از لیست سریع (Presets)</span>
+              <span>انتخاب از لیست گزینه‌ها</span>
               <ChevronDown className="w-3 h-3 opacity-60 ml-0.5" />
             </Button>
           </PopoverTrigger>
 
           <PopoverContent
+            side="bottom"
             align="end"
-            sideOffset={4}
-            className="w-[94vw] sm:w-[480px] p-3 shadow-2xl border-blue-200 bg-white/95 backdrop-blur-md rounded-xl z-[9999]"
+            sideOffset={6}
+            collisionPadding={{ top: 60, bottom: 20, left: 16, right: 16 }}
+            className="w-[95vw] sm:w-[460px] p-0 shadow-2xl border-blue-200/90 bg-white rounded-2xl z-[99999] overflow-hidden flex flex-col max-h-[75vh]"
           >
-            <div className="space-y-2.5">
-              {/* Header & Search */}
-              <div className="flex items-center justify-between border-b border-blue-100 pb-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-                  <h4 className="text-xs font-bold text-blue-950">لیست گزینه‌های سریع مسیر و کانتینر</h4>
-                </div>
-                <div className="flex items-center gap-1">
-                  <label className="text-[10px] text-slate-600 font-semibold cursor-pointer flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      checked={appendMode}
-                      onChange={(e) => setAppendMode(e.target.checked)}
-                      className="rounded text-blue-600 h-3 w-3"
-                    />
-                    <span>اضافه به متن فعلی (Append)</span>
-                  </label>
-                </div>
+            {/* Popover Header */}
+            <div dir="rtl" className="bg-gradient-to-r from-blue-600 to-indigo-700 px-3.5 py-2.5 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="p-1 rounded-md bg-white/20">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                </span>
+                <span className="text-xs font-bold tracking-wide">گزینه‌های آماده مسیر و کانتینر</span>
               </div>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 text-[10.5px] font-medium text-blue-100 cursor-pointer bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded-md transition-colors select-none">
+                  <input
+                    type="checkbox"
+                    checked={appendMode}
+                    onChange={(e) => setAppendMode(e.target.checked)}
+                    className="rounded text-blue-600 h-3 w-3 accent-amber-400 cursor-pointer"
+                  />
+                  <span>اضافه کردن به متن فعلی</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="p-1 hover:bg-white/20 rounded-md text-white/80 hover:text-white transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
 
+            {/* Search and Categories Box */}
+            <div dir="rtl" className="p-3 space-y-2.5 bg-slate-50/80 border-b border-slate-200/70 shrink-0">
               {/* Search input */}
               <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                <Search className="w-3.5 h-3.5 absolute right-2.5 top-2.5 text-slate-400" />
                 <Input
+                  ref={searchInputRef}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="جستجو در گزینه‌ها (دوغارون، مرسین، یخچالی...)"
-                  className="h-8 pl-8 text-xs bg-slate-50 border-slate-200 focus:border-blue-500 rounded-lg text-slate-800"
+                  placeholder="جستجو (دوغارون، مرسین، یخچالی، معمولی...)"
+                  className="h-8 pr-8 pl-3 text-xs bg-white border-slate-200 focus:border-blue-500 rounded-lg text-slate-800 shadow-xs"
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute left-2.5 top-2 text-slate-400 hover:text-slate-600 p-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
               </div>
 
-              {/* Category Filter Pills */}
-              <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar text-[10px]">
+              {/* Category Filter Tabs */}
+              <div className="flex gap-1 overflow-x-auto pb-0.5 no-scrollbar text-[10px]">
                 <button
                   type="button"
                   onClick={() => setActiveTab("all")}
-                  className={`px-2 py-1 rounded-md font-bold whitespace-nowrap transition-colors ${
+                  className={`px-2.5 py-1 rounded-md font-bold whitespace-nowrap transition-all ${
                     activeTab === "all"
                       ? "bg-blue-600 text-white shadow-xs"
-                      : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                      : "bg-white hover:bg-slate-200 text-slate-700 border border-slate-200"
                   }`}
                 >
-                  🌐 همه (All)
+                  🌐 همه موارد
                 </button>
                 {allCategories.map((cat) => (
                   <button
                     key={cat.id}
                     type="button"
                     onClick={() => setActiveTab(cat.id)}
-                    className={`px-2 py-1 rounded-md font-bold whitespace-nowrap transition-colors flex items-center gap-1 ${
+                    className={`px-2.5 py-1 rounded-md font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
                       activeTab === cat.id
                         ? "bg-blue-600 text-white shadow-xs"
-                        : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                        : "bg-white hover:bg-slate-200 text-slate-700 border border-slate-200"
                     }`}
                   >
                     <span>{cat.icon}</span>
-                    <span>{cat.name.split(" ")[0]}</span>
+                    <span>{cat.name}</span>
                   </button>
                 ))}
               </div>
+            </div>
 
-              {/* Options List Scrollable */}
-              <div className="max-h-60 overflow-y-auto space-y-3 pr-1 divide-y divide-slate-100">
-                {filteredCategories.length === 0 ? (
-                  <div className="text-center py-6 text-xs text-slate-400">
-                    موردی یافت نشد / No matching presets found
-                  </div>
-                ) : (
-                  filteredCategories.map((cat) => (
-                    <div key={cat.id} className="pt-2 first:pt-0 space-y-1.5">
-                      <div className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5 sticky top-0 bg-white/95 py-0.5">
+            {/* Scrollable Options List */}
+            <div dir="rtl" className="overflow-y-auto p-3 space-y-3 flex-1 divide-y divide-slate-100 max-h-[300px]">
+              {filteredCategories.length === 0 ? (
+                <div className="text-center py-8 text-xs text-slate-400 flex flex-col items-center gap-1.5">
+                  <Search className="w-6 h-6 text-slate-300 stroke-[1.5]" />
+                  <span>گزینه‌ای با عبارت جستجو شده پیدا نشد</span>
+                </div>
+              ) : (
+                filteredCategories.map((cat) => (
+                  <div key={cat.id} className="pt-2.5 first:pt-0 space-y-1.5">
+                    <div className="text-[11px] font-bold text-slate-700 flex items-center justify-between sticky top-0 bg-white py-0.5">
+                      <div className="flex items-center gap-1.5">
                         <span>{cat.icon}</span>
-                        <span>{cat.name}</span>
+                        <span className="text-blue-950 font-bold">{cat.name}</span>
                       </div>
-                      <div className="grid grid-cols-1 gap-1">
-                        {cat.options.map((opt) => {
-                          const isSelected = value === opt || value.includes(opt)
-                          return (
-                            <button
-                              key={opt}
-                              type="button"
-                              onClick={() => handleSelectOption(opt)}
-                              className={`w-full text-right px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-between group transition-all ${
-                                isSelected
-                                  ? "bg-blue-100 text-blue-900 border border-blue-300 font-bold"
-                                  : "hover:bg-blue-50 text-slate-800 border border-transparent hover:border-blue-100"
-                              }`}
-                            >
-                              <span className="truncate" dir="auto">{opt}</span>
-                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                {cat.id === "custom" && (
-                                  <span
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      deleteCustomPreset(opt)
-                                    }}
-                                    className="p-1 hover:text-red-600 text-slate-400 cursor-pointer"
-                                    title="Delete custom preset"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </span>
-                                )}
-                                {isSelected ? (
-                                  <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                                ) : (
-                                  <span className="text-[10px] text-blue-600 font-bold">انتخاب</span>
-                                )}
-                              </div>
-                            </button>
-                          )
-                        })}
-                      </div>
+                      <span className="text-[9.5px] text-slate-600 font-bold px-1.5 py-0.2 rounded-full bg-slate-100">
+                        {cat.options.length}
+                      </span>
                     </div>
-                  ))
-                )}
-              </div>
 
-              {/* Add Custom Preset Input Footer */}
-              <div className="border-t border-blue-100 pt-2 flex gap-1.5">
-                <Input
-                  value={newCustomInput}
-                  onChange={(e) => setNewCustomInput(e.target.value)}
-                  placeholder="افزودن گزینه دلخواه جدید به لیست..."
-                  className="h-7 text-xs bg-slate-50 border-slate-200 text-slate-800"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                      saveCustomPreset(newCustomInput)
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => saveCustomPreset(newCustomInput)}
-                  disabled={!newCustomInput.trim()}
-                  className="h-7 px-2.5 text-[10px] bg-blue-600 hover:bg-blue-700 text-white font-bold shrink-0"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  ثبت گزینه
-                </Button>
-              </div>
+                    <div className="grid grid-cols-1 gap-1">
+                      {cat.options.map((opt) => {
+                        const isSelected = value === opt || value.includes(opt)
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => handleSelectOption(opt)}
+                            className={`w-full text-right px-2.5 py-2 rounded-lg text-xs font-semibold flex items-center justify-between group transition-all ${
+                              isSelected
+                                ? "bg-blue-50 text-blue-900 border border-blue-300 shadow-xs font-bold"
+                                : "hover:bg-slate-50 text-slate-800 border border-transparent hover:border-slate-200"
+                            }`}
+                          >
+                            <span className="truncate leading-relaxed">{opt}</span>
+                            <div className="flex items-center gap-1.5 shrink-0 mr-2">
+                              {cat.id === "custom" && (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    deleteCustomPreset(opt)
+                                  }}
+                                  className="p-1 hover:text-red-600 text-slate-400 cursor-pointer rounded hover:bg-red-50"
+                                  title="حذف این گزینه سفارشی"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </span>
+                              )}
+                              {isSelected ? (
+                                <span className="flex items-center gap-1 text-[10px] text-blue-600 font-bold bg-blue-100/80 px-1.5 py-0.5 rounded">
+                                  <Check className="w-3 h-3 text-blue-600" />
+                                  <span>انتخاب شده</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 group-hover:text-blue-600 font-bold transition-colors">
+                                  انتخاب ↵
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add Custom Preset Footer */}
+            <div dir="rtl" className="border-t border-slate-200 bg-slate-50/90 p-2.5 flex gap-1.5 shrink-0">
+              <Input
+                value={newCustomInput}
+                onChange={(e) => setNewCustomInput(e.target.value)}
+                placeholder="افزودن متن مسیر یا تفصیل جدید..."
+                className="h-8 text-xs bg-white border-slate-200 text-slate-800 focus:border-blue-500"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    saveCustomPreset(newCustomInput)
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => saveCustomPreset(newCustomInput)}
+                disabled={!newCustomInput.trim()}
+                className="h-8 px-3 text-[11px] bg-blue-600 hover:bg-blue-700 text-white font-bold shrink-0 rounded-lg shadow-xs"
+              >
+                <Plus className="w-3 h-3 ml-1" />
+                ثبت در لیست
+              </Button>
             </div>
           </PopoverContent>
         </Popover>
@@ -370,17 +411,17 @@ export function DescriptionPresetSelector({
 
       {/* Quick 1-Click Preset Chips below Input */}
       {showQuickChips && (
-        <div className="flex flex-wrap gap-1 pt-0.5">
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
           {quickChips.map((chip) => (
             <button
-              key={chip}
+              key={chip.label}
               type="button"
-              onClick={() => handleSelectOption(chip)}
-              className="inline-flex items-center text-[9.5px] font-semibold bg-blue-50/70 hover:bg-blue-100/90 text-blue-800 border border-blue-200/80 px-2 py-0.5 rounded-md cursor-pointer transition-all hover:scale-[1.01]"
-              title={`Click to apply: ${chip}`}
+              onClick={() => handleSelectOption(chip.label)}
+              className="inline-flex items-center gap-1 text-[10px] font-semibold bg-gradient-to-r from-blue-50/90 to-indigo-50/80 hover:from-blue-100 hover:to-indigo-100 text-blue-900 border border-blue-200/90 px-2 py-0.5 rounded-md cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98] shadow-2xs"
+              title={`Click to fill: ${chip.label}`}
             >
-              <span className="text-amber-500 mr-1 text-[9px]">⚡</span>
-              <span className="truncate max-w-[210px] sm:max-w-none">{chip}</span>
+              <span className="text-[10px]">{chip.icon}</span>
+              <span className="truncate max-w-[200px] sm:max-w-none">{chip.label}</span>
             </button>
           ))}
         </div>
