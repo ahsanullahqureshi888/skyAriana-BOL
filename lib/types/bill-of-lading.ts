@@ -97,6 +97,12 @@ export interface BillOfLadingFormData {
   driver_father_name: string
   driver_contact: string
   driver_rent: string
+  driver_rent_currency?: "USD" | "AFN"
+  driver_rent_usd?: number
+  shipping_cost?: string
+  shipping_cost_currency?: "USD" | "AFN"
+  shipping_cost_usd?: number
+  afn_to_usd_rate?: number
   
   // Routes (multiple stops)
   routes: RouteStop[]

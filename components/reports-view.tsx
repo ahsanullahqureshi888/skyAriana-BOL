@@ -52,7 +52,9 @@ import {
   SlidersHorizontal,
   FileSpreadsheet,
   FileDown,
-  Loader2
+  Loader2,
+  Coins,
+  ArrowRightLeft
 } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { Button } from "@/components/ui/button"
@@ -61,6 +63,13 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import * as XLSX from "xlsx"
+import {
+  getActiveExchangeRate,
+  setActiveExchangeRate,
+  parseFreightCost,
+  DEFAULT_AFN_USD_RATE,
+  runDataMigrationCleanup
+} from "@/lib/services/currency-service"
 
 /**
  * Dedicated Portal for Report Printing
@@ -125,14 +134,21 @@ export interface ContainerFreightRecord {
   packagesCount: number
   netWeightKg: number
   grossWeightKg: number
-  freightRevenue: number      // Invoiced Client Freight ($)
-  shippingCost: number        // Ocean Line / Road Freight Cost ($)
-  driverCost: number          // Truck Driver Rent ($)
-  handlingCost: number        // Border Transit & Port Handling ($)
-  totalCost: number           // Direct Logistics Outflow ($)
-  netProfit: number           // freightRevenue - totalCost
-  profitMargin: number        // (netProfit / freightRevenue) * 100
+  freightRevenue: number          // Invoiced Client Freight ($ USD)
+  shippingCost: number            // Ocean Line / Direct Shipping Cost ($ USD)
+  shippingCostRaw?: number
+  shippingCostCurrency?: 'USD' | 'AFN'
+  shippingCostDisplay: string
+  driverCost: number              // Normalized Truck Driver Rent ($ USD)
+  driverCostRaw: number           // Original value (e.g., 46730 AFN)
+  driverCostCurrency: 'USD' | 'AFN'
+  driverCostDisplay: string       // Formatted: e.g. "46,730 AFN ($668 USD)"
+  handlingCost: number            // Border Transit & Port Handling ($ USD)
+  totalCost: number               // Total Normalized Logistics Outflow ($ USD)
+  netProfit: number               // freightRevenue - totalCost ($ USD)
+  profitMargin: number            // (netProfit / freightRevenue) * 100
   status: 'Profitable' | 'Break-Even' | 'Loss'
+  exchangeRateUsed: number        // e.g., 70.0 AFN/USD
 }
 
 const DEFAULT_EXPENSE_CATEGORIES = [
@@ -304,6 +320,39 @@ export function ReportsView() {
   const [newExpContainer, setNewExpContainer] = useState("")
   const [newExpPayMethod, setNewExpPayMethod] = useState<CustomExpenseEntry["paymentMethod"]>("Cash")
   const [newExpNotes, setNewExpNotes] = useState("")
+
+  // Exchange Rate State (AFN per USD)
+  const [exchangeRate, setExchangeRate] = useState<number>(() => getActiveExchangeRate())
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false)
+  const [tempRateInput, setTempRateInput] = useState<string>(() => getActiveExchangeRate().toString())
+
+  // Run historical data cleanup migration on mount or exchange rate change
+  useEffect(() => {
+    runDataMigrationCleanup(exchangeRate)
+  }, [exchangeRate])
+
+  // Listen for global exchange rate updates
+  useEffect(() => {
+    const handleRateChange = (e: any) => {
+      if (e?.detail?.rate) {
+        setExchangeRate(e.detail.rate)
+        setTempRateInput(e.detail.rate.toString())
+      }
+    }
+    window.addEventListener("skybol:exchange-rate-updated", handleRateChange)
+    return () => window.removeEventListener("skybol:exchange-rate-updated", handleRateChange)
+  }, [])
+
+  const handleUpdateExchangeRate = (newRate: number) => {
+    if (newRate >= 10 && newRate <= 300) {
+      setExchangeRate(newRate)
+      setActiveExchangeRate(newRate)
+      toast.success(`💱 Exchange Rate updated: 1 USD = ${newRate} AFN`)
+      setIsRateModalOpen(false)
+    } else {
+      toast.error("Please enter a realistic exchange rate (10 to 300 AFN/USD)")
+    }
+  }
 
   // Load Saved BOL documents from localStorage
   const [bolDocs, setBolDocs] = useState<any[]>([])
@@ -477,15 +526,32 @@ export function ReportsView() {
 
           // Financial Metrics
           const revenue = entry.debit || 3200
-          // Direct Line & Ocean Shipping Cost
-          const shippingCost = size === '20FT' ? 950 : size === '40RF' ? 1850 : 1450
-          // Trucking / Driver Rent
-          const driverCost = size === '20FT' ? 650 : 850
+
+          // Driver Rent & Trucking Normalization
+          const driverParsed = parseFreightCost(entry.driverFreight, "AFN", exchangeRate)
+          const driverCost = driverParsed.rawAmount > 0 
+            ? driverParsed.normalizedUSD 
+            : (size === '20FT' ? 650 : 850)
+          const driverCostRaw = driverParsed.rawAmount > 0 ? driverParsed.rawAmount : driverCost
+          const driverCostCurrency = driverParsed.rawAmount > 0 ? driverParsed.currency : 'USD'
+          const driverCostDisplay = driverParsed.rawAmount > 0 
+            ? driverParsed.formattedCombined 
+            : `$${driverCost.toLocaleString("en-US")} USD`
+
+          // Direct Ocean Line / Shipping Cost
+          const shippingParsed = parseFreightCost(entry.shippingCost, "USD", exchangeRate)
+          const defaultShippingCost = size === '20FT' ? 950 : size === '40RF' ? 1850 : 1450
+          const shippingCost = shippingParsed.rawAmount > 0 ? shippingParsed.normalizedUSD : defaultShippingCost
+          const shippingCostDisplay = shippingParsed.rawAmount > 0 
+            ? shippingParsed.formattedCombined 
+            : `$${shippingCost.toLocaleString("en-US")} USD`
+
           // Terminal Handling & Border Waybill
           const handlingCost = 280
 
-          const totalCost = shippingCost + driverCost + handlingCost
-          const netProfit = revenue - totalCost
+          // Total Logistics Direct Cost ($ USD)
+          const totalCost = Math.round((shippingCost + driverCost + handlingCost) * 100) / 100
+          const netProfit = Math.round((revenue - totalCost) * 100) / 100
           const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0
 
           const uniqueKey = `${rawBL}-${rawContainer || entry.id}`
@@ -510,12 +576,19 @@ export function ReportsView() {
               grossWeightKg: Math.round(gw || 22800),
               freightRevenue: revenue,
               shippingCost,
+              shippingCostRaw: shippingParsed.rawAmount || shippingCost,
+              shippingCostCurrency: shippingParsed.currency,
+              shippingCostDisplay,
               driverCost,
+              driverCostRaw,
+              driverCostCurrency,
+              driverCostDisplay,
               handlingCost,
               totalCost,
               netProfit,
               profitMargin,
-              status: netProfit > 0 ? 'Profitable' : netProfit === 0 ? 'Break-Even' : 'Loss'
+              status: netProfit > 0 ? 'Profitable' : netProfit === 0 ? 'Break-Even' : 'Loss',
+              exchangeRateUsed: exchangeRate
             })
           }
         })
@@ -585,17 +658,28 @@ export function ReportsView() {
         revenue = size === '20FT' ? 2450 : 3400
       }
 
-      let driverCost = 0
-      const drMatch = (doc.driver_rent || "").match(/\d[\d,\.]*/g)
-      if (drMatch) driverCost = parseFloat(drMatch[0].replace(/,/g, "")) || 0
-      if (driverCost === 0) {
-        driverCost = size === '20FT' ? 650 : 850
-      }
+      // Driver Rent & Freight Normalization
+      const driverParsed = parseFreightCost(doc.driver_rent, doc.driver_rent_currency || "AFN", exchangeRate)
+      const driverCost = driverParsed.rawAmount > 0 
+        ? driverParsed.normalizedUSD 
+        : (size === '20FT' ? 650 : 850)
+      const driverCostRaw = driverParsed.rawAmount > 0 ? driverParsed.rawAmount : driverCost
+      const driverCostCurrency = driverParsed.rawAmount > 0 ? driverParsed.currency : 'USD'
+      const driverCostDisplay = driverParsed.rawAmount > 0 
+        ? driverParsed.formattedCombined 
+        : `$${driverCost.toLocaleString("en-US")} USD`
 
-      const shippingCost = size === '20FT' ? 950 : size === '40RF' ? 1850 : 1450
+      // Direct Ocean Line / Shipping Cost
+      const shippingParsed = parseFreightCost(doc.shipping_cost, doc.shipping_cost_currency || "USD", exchangeRate)
+      const defaultShippingCost = size === '20FT' ? 950 : size === '40RF' ? 1850 : 1450
+      const shippingCost = shippingParsed.rawAmount > 0 ? shippingParsed.normalizedUSD : defaultShippingCost
+      const shippingCostDisplay = shippingParsed.rawAmount > 0 
+        ? shippingParsed.formattedCombined 
+        : `$${shippingCost.toLocaleString("en-US")} USD`
+
       const handlingCost = 280
-      const totalCost = shippingCost + driverCost + handlingCost
-      const netProfit = revenue - totalCost
+      const totalCost = Math.round((shippingCost + driverCost + handlingCost) * 100) / 100
+      const netProfit = Math.round((revenue - totalCost) * 100) / 100
       const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0
 
       const uniqueKey = `${rawBL}-${rawContainer || doc.id}`
@@ -620,18 +704,25 @@ export function ReportsView() {
           grossWeightKg: Math.round(gw || (nw ? nw * 1.06 : 20800)),
           freightRevenue: revenue,
           shippingCost,
+          shippingCostRaw: shippingParsed.rawAmount || shippingCost,
+          shippingCostCurrency: shippingParsed.currency,
+          shippingCostDisplay,
           driverCost,
+          driverCostRaw,
+          driverCostCurrency,
+          driverCostDisplay,
           handlingCost,
           totalCost,
           netProfit,
           profitMargin,
-          status: netProfit > 0 ? 'Profitable' : netProfit === 0 ? 'Break-Even' : 'Loss'
+          status: netProfit > 0 ? 'Profitable' : netProfit === 0 ? 'Break-Even' : 'Loss',
+          exchangeRateUsed: exchangeRate
         })
       }
     })
 
     return list
-  }, [accounts, bolDocs])
+  }, [accounts, bolDocs, exchangeRate])
 
   // Unique Lists of Shippers and Consignees for filters
   const { allShippers, allConsignees } = useMemo(() => {
@@ -907,14 +998,16 @@ export function ReportsView() {
         "Packages (CTN)": r.packagesCount,
         "Net Weight (KG)": r.netWeightKg,
         "Gross Weight (KG)": r.grossWeightKg,
-        "Freight Invoiced ($)": r.freightRevenue,
-        "Ocean / Shipping Line Cost ($)": r.shippingCost,
-        "Truck Driver Rent ($)": r.driverCost,
-        "Border & Port Handling ($)": r.handlingCost,
-        "Total Direct Cost ($)": r.totalCost,
-        "Net Freight Profit ($)": r.netProfit,
+        "Freight Invoiced ($ USD)": r.freightRevenue,
+        "Ocean / Shipping Line Cost ($ USD)": r.shippingCost,
+        "Driver Rent (Native AFN/USD)": r.driverCostDisplay,
+        "Driver Rent ($ USD Normalized)": r.driverCost,
+        "Border & Port Handling ($ USD)": r.handlingCost,
+        "Total Direct Cost ($ USD)": r.totalCost,
+        "Net Freight Profit ($ USD)": r.netProfit,
         "Margin (%)": `${r.profitMargin.toFixed(2)}%`,
-        "P&L Status": r.status
+        "P&L Status": r.status,
+        "Exchange Rate Applied (AFN/USD)": r.exchangeRateUsed || exchangeRate
       }))
       const wsContainers = XLSX.utils.json_to_sheet(containerRows)
       XLSX.utils.book_append_sheet(wb, wsContainers, "Container Manifest")
@@ -924,6 +1017,7 @@ export function ReportsView() {
         ["SKY ARIANA LIMITED - EXECUTIVE CONTAINER & TRADE REPORT"],
         ["Report Date", new Date().toLocaleString()],
         ["Direction Filter", directionFilter.toUpperCase()],
+        ["Exchange Rate Applied", `1 USD = ${exchangeRate} AFN`],
         [],
         ["METRIC", "TOTAL", "EXPORT (صادرات)", "IMPORT (واردات)", "TRANSIT (ترانزیت)"],
         ["Container Count", containerMetrics.totalContainers, containerMetrics.exportCount, containerMetrics.importCount, containerMetrics.transitCount],
@@ -981,12 +1075,13 @@ export function ReportsView() {
         "Packages",
         "Net Wt (KG)",
         "Gross Wt (KG)",
-        "Freight Revenue ($)",
-        "Shipping Line Cost ($)",
-        "Driver Rent ($)",
-        "Handling Cost ($)",
-        "Total Direct Cost ($)",
-        "Net Profit ($)",
+        "Freight Revenue ($ USD)",
+        "Shipping Line Cost ($ USD)",
+        "Driver Rent (Native)",
+        "Driver Rent ($ USD)",
+        "Handling Cost ($ USD)",
+        "Total Direct Cost ($ USD)",
+        "Net Profit ($ USD)",
         "Margin (%)",
         "Status"
       ]
@@ -1008,6 +1103,7 @@ export function ReportsView() {
         r.grossWeightKg,
         r.freightRevenue,
         r.shippingCost,
+        `"${r.driverCostDisplay}"`,
         r.driverCost,
         r.handlingCost,
         r.totalCost,
@@ -1251,6 +1347,28 @@ export function ReportsView() {
             >
               <FileDown className="w-3.5 h-3.5 text-cyan-600" />
               <span>CSV</span>
+            </Button>
+
+            {/* Live Exchange Rate Selector Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setTempRateInput(exchangeRate.toString())
+                setIsRateModalOpen(true)
+              }}
+              className={`gap-1.5 h-9 rounded-xl text-xs font-black shrink-0 cursor-pointer border transition-all ${
+                isLight
+                  ? "bg-amber-50/90 hover:bg-amber-100/90 text-amber-900 border-amber-300 shadow-xs"
+                  : "bg-amber-950/30 hover:bg-amber-900/40 text-amber-300 border-amber-700/50"
+              }`}
+              title="Click to view or adjust Afghan Afghani (AFN) to USD exchange rate"
+            >
+              <Coins className="w-3.5 h-3.5 text-amber-500" />
+              <span>1 USD = {exchangeRate} AFN</span>
+              <Badge className="ml-1 text-[9px] px-1 py-0 bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-400">
+                Rate
+              </Badge>
             </Button>
 
             <Button
@@ -1813,13 +1931,25 @@ export function ReportsView() {
                           {sortField === "freightRevenue" && (sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
                         </div>
                       </th>
-                      <th className="p-3 text-right cursor-pointer select-none hover:text-blue-600" onClick={() => handleSort("totalCost")}>
+                      <th className="p-3 text-right cursor-pointer select-none hover:text-indigo-600" onClick={() => handleSort("shippingCost")}>
+                        <div className="flex items-center justify-end gap-1 text-indigo-600">
+                          <span>Ocean Line ($)</span>
+                          {sortField === "shippingCost" && (sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
+                        </div>
+                      </th>
+                      <th className="p-3 text-right cursor-pointer select-none hover:text-amber-600" onClick={() => handleSort("driverCost")}>
                         <div className="flex items-center justify-end gap-1 text-amber-600">
-                          <span>Shipping Cost</span>
+                          <span>Driver Rent (موتروان)</span>
+                          {sortField === "driverCost" && (sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
+                        </div>
+                      </th>
+                      <th className="p-3 text-right cursor-pointer select-none hover:text-amber-600" onClick={() => handleSort("totalCost")}>
+                        <div className="flex items-center justify-end gap-1 text-amber-700">
+                          <span>Total Cost ($)</span>
                           {sortField === "totalCost" && (sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
                         </div>
                       </th>
-                      <th className="p-3 text-right cursor-pointer select-none hover:text-blue-600" onClick={() => handleSort("netProfit")}>
+                      <th className="p-3 text-right cursor-pointer select-none hover:text-emerald-600" onClick={() => handleSort("netProfit")}>
                         <div className="flex items-center justify-end gap-1 text-emerald-600">
                           <span>Net Profit ($)</span>
                           {sortField === "netProfit" && (sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
@@ -1833,7 +1963,7 @@ export function ReportsView() {
                   }`}>
                     {filteredContainers.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className={`text-center py-10 ${
+                        <td colSpan={12} className={`text-center py-10 ${
                           isLight ? "text-slate-500" : "text-slate-400"
                         }`}>
                           No containers matching the selected filter criteria.
@@ -1869,11 +1999,11 @@ export function ReportsView() {
                               {r.direction === 'Export' ? '↗ Export' : r.direction === 'Import' ? '↙ Import' : '↔ Transit'}
                             </Badge>
                           </td>
-                          <td className="p-3 max-w-[200px]">
+                          <td className="p-3 max-w-[190px]">
                             <div className={`font-bold truncate ${isLight ? "text-slate-900" : "text-slate-100"}`}>{r.shipperName}</div>
                             <div className={`text-[10px] font-mono ${isLight ? "text-slate-500" : "text-slate-400"}`}>{r.bolNumber}</div>
                           </td>
-                          <td className={`p-3 max-w-[180px] truncate ${isLight ? "text-slate-700" : "text-slate-300"}`}>
+                          <td className={`p-3 max-w-[160px] truncate ${isLight ? "text-slate-700" : "text-slate-300"}`}>
                             {r.goodsDescription}
                           </td>
                           <td className="p-3 text-right">
@@ -1884,6 +2014,25 @@ export function ReportsView() {
                             isLight ? "text-blue-700" : "text-blue-400"
                           }`}>
                             {formatUSD(r.freightRevenue, false, 0)}
+                          </td>
+                          <td className={`p-3 text-right font-mono font-bold ${
+                            isLight ? "text-indigo-700" : "text-indigo-400"
+                          }`}>
+                            {formatUSD(r.shippingCost, false, 0)}
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className={`font-bold text-[11px] ${isLight ? "text-slate-900" : "text-slate-100"}`}>
+                              {r.driverCostCurrency === 'AFN'
+                                ? `${r.driverCostRaw.toLocaleString()} AFN`
+                                : `$${r.driverCost.toLocaleString()} USD`}
+                            </div>
+                            {r.driverCostCurrency === 'AFN' && (
+                              <div className={`text-[10px] font-mono font-bold ${
+                                isLight ? "text-amber-700" : "text-amber-400"
+                              }`}>
+                                (${formatUSD(r.driverCost, false, 0)} USD)
+                              </div>
+                            )}
                           </td>
                           <td className={`p-3 text-right font-bold ${
                             isLight ? "text-amber-700" : "text-amber-400"
@@ -2042,12 +2191,28 @@ export function ReportsView() {
                             <span className={`font-bold ${isLight ? "text-slate-900" : "text-slate-100"}`}>{r.consigneeName}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className={isLight ? "text-slate-500" : "text-slate-400"}>Route Origin:</span>
-                            <span className={isLight ? "text-slate-800" : "text-slate-200"}>{r.origin}</span>
+                            <span className={isLight ? "text-slate-500" : "text-slate-400"}>Route:</span>
+                            <span className={isLight ? "text-slate-800" : "text-slate-200"}>{r.origin} → {r.destination}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className={isLight ? "text-slate-500" : "text-slate-400"}>Destination:</span>
-                            <span className={isLight ? "text-slate-800" : "text-slate-200"}>{r.destination}</span>
+                            <span className={isLight ? "text-slate-500" : "text-slate-400"}>Ocean Line Cost:</span>
+                            <span className={`font-mono font-bold ${isLight ? "text-indigo-700" : "text-indigo-400"}`}>{formatUSD(r.shippingCost, false, 0)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className={isLight ? "text-slate-500" : "text-slate-400"}>Driver Rent (موتروان):</span>
+                            <div className="text-right">
+                              <span className={`font-mono font-bold ${isLight ? "text-slate-900" : "text-slate-100"}`}>
+                                {r.driverCostDisplay}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className={isLight ? "text-slate-500" : "text-slate-400"}>Port &amp; Handling:</span>
+                            <span className={`font-mono font-bold ${isLight ? "text-slate-800" : "text-slate-200"}`}>{formatUSD(r.handlingCost, false, 0)}</span>
+                          </div>
+                          <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-slate-800 font-bold">
+                            <span className={isLight ? "text-slate-700" : "text-slate-300"}>Total Direct Cost:</span>
+                            <span className={`font-mono ${isLight ? "text-amber-700" : "text-amber-400"}`}>{formatUSD(r.totalCost, false, 0)}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className={isLight ? "text-slate-500" : "text-slate-400"}>Gross Weight:</span>
@@ -3090,7 +3255,7 @@ export function ReportsView() {
                       <td className="border border-slate-300 p-1 text-right font-mono">{(r.grossWeightKg / 1000).toFixed(1)} MT</td>
                       <td className="border border-slate-300 p-1 text-right font-bold text-blue-950">{formatUSD(r.freightRevenue, false, 0)}</td>
                       <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{formatUSD(r.shippingCost, false, 0)}</td>
-                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{formatUSD(r.driverCost, false, 0)}</td>
+                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-700 font-bold">{r.driverCostDisplay || formatUSD(r.driverCost, false, 0)}</td>
                       <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{formatUSD(r.handlingCost, false, 0)}</td>
                       <td className="border border-slate-300 p-1 text-right font-bold text-slate-800">{formatUSD(r.totalCost, false, 0)}</td>
                       <td className={`border border-slate-300 p-1 text-right font-black ${
@@ -3118,7 +3283,7 @@ export function ReportsView() {
                     <td className="border border-slate-400 p-1 text-right font-mono">
                       {formatUSD(containerMetrics.shippingLineCostSum, false, 0)}
                     </td>
-                    <td className="border border-slate-400 p-1 text-right font-mono">
+                    <td className="border border-slate-400 p-1 text-right font-mono font-bold">
                       {formatUSD(containerMetrics.driverFreightCostSum, false, 0)}
                     </td>
                     <td className="border border-slate-400 p-1 text-right font-mono">
@@ -3163,51 +3328,51 @@ export function ReportsView() {
                   <tr className="bg-slate-50">
                     <td className="border border-slate-300 p-1.5 font-bold">TEU Capacity</td>
                     <td className="border border-slate-300 p-1.5 text-center font-mono">{containerMetrics.totalTEU} TEU</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-mono">{containerMetrics.exportCount * 2} TEU</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-mono">{containerMetrics.importCount * 2} TEU</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-mono">{containerMetrics.transitCount * 2} TEU</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono text-emerald-800">{containerMetrics.exportCount * 2} TEU</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono text-amber-800">{containerMetrics.importCount * 2} TEU</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono text-purple-800">{containerMetrics.transitCount * 2} TEU</td>
                   </tr>
                   <tr>
-                    <td className="border border-slate-300 p-1.5 font-bold">Total Cargo Weight (Gross)</td>
+                    <td className="border border-slate-300 p-1.5 font-bold">Total Cargo Weight</td>
                     <td className="border border-slate-300 p-1.5 text-center font-mono">{(containerMetrics.totalGrossWeightKg / 1000).toFixed(1)} MT</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-mono">{(containerMetrics.exportWeightKg / 1000).toFixed(1)} MT</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-mono">{(containerMetrics.importWeightKg / 1000).toFixed(1)} MT</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-mono">-</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono text-emerald-800">{(containerMetrics.exportWeightKg / 1000).toFixed(1)} MT</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono text-amber-800">{(containerMetrics.importWeightKg / 1000).toFixed(1)} MT</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono text-purple-800">-</td>
                   </tr>
                   <tr className="bg-slate-50">
-                    <td className="border border-slate-300 p-1.5 font-bold">Freight Invoiced Revenue</td>
+                    <td className="border border-slate-300 p-1.5 font-bold">Gross Invoiced Freight ($)</td>
                     <td className="border border-slate-300 p-1.5 text-center font-black text-blue-950">{formatUSD(containerMetrics.totalGrossRevenue, false, 0)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-bold text-blue-900">{formatUSD(containerMetrics.exportRevenue, false, 0)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-bold text-blue-900">{formatUSD(containerMetrics.importRevenue, false, 0)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-bold text-blue-900">{formatUSD(containerMetrics.transitRevenue, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-emerald-800">{formatUSD(containerMetrics.exportRevenue, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-amber-800">{formatUSD(containerMetrics.importRevenue, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-purple-800">{formatUSD(containerMetrics.transitRevenue, false, 0)}</td>
                   </tr>
                   <tr>
-                    <td className="border border-slate-300 p-1.5 font-bold">Direct Logistics Costs</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-bold text-rose-900">{formatUSD(containerMetrics.totalDirectCost, false, 0)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-mono text-rose-800">{formatUSD(containerMetrics.exportCost, false, 0)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-mono text-rose-800">{formatUSD(containerMetrics.importCost, false, 0)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-mono text-rose-800">{formatUSD(containerMetrics.transitCost, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 font-bold">Direct Logistics Costs ($)</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-slate-800">{formatUSD(containerMetrics.totalDirectCost, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono text-emerald-800">{formatUSD(containerMetrics.exportCost, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono text-amber-800">{formatUSD(containerMetrics.importCost, false, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-mono text-purple-800">{formatUSD(containerMetrics.transitCost, false, 0)}</td>
                   </tr>
-                  <tr className="bg-emerald-50/80 font-black">
-                    <td className="border border-slate-300 p-1.5 text-emerald-950 uppercase">Net Freight Profit</td>
-                    <td className="border border-slate-300 p-1.5 text-center text-emerald-950 font-black">{formatUSD(containerMetrics.totalNetProfit, true, 0)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center text-emerald-900 font-bold">{formatUSD(containerMetrics.exportProfit, true, 0)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center text-emerald-900 font-bold">{formatUSD(containerMetrics.importProfit, true, 0)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center text-emerald-900 font-bold">{formatUSD(containerMetrics.transitProfit, true, 0)}</td>
+                  <tr className="bg-emerald-50/60 font-black">
+                    <td className="border border-slate-300 p-1.5">Net Trade Freight Profit ($)</td>
+                    <td className="border border-slate-300 p-1.5 text-center text-emerald-950">{formatUSD(containerMetrics.totalNetProfit, true, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center text-emerald-900">{formatUSD(containerMetrics.exportProfit, true, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center text-amber-900">{formatUSD(containerMetrics.importProfit, true, 0)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center text-purple-900">{formatUSD(containerMetrics.transitProfit, true, 0)}</td>
                   </tr>
                   <tr>
-                    <td className="border border-slate-300 p-1.5 font-bold">Operating Margin (%)</td>
+                    <td className="border border-slate-300 p-1.5 font-bold">Profit Margin (%)</td>
                     <td className="border border-slate-300 p-1.5 text-center font-black">{formatMargin(containerMetrics.overallMargin)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-bold">{formatMargin(containerMetrics.exportMargin)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-bold">{formatMargin(containerMetrics.importMargin)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-bold">-</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-emerald-800">{formatMargin(containerMetrics.exportMargin)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-amber-800">{formatMargin(containerMetrics.importMargin)}</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-purple-800">-</td>
                   </tr>
                   <tr className="bg-slate-50">
                     <td className="border border-slate-300 p-1.5 font-bold">Average Profit / Container</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-bold">{formatUSD(containerMetrics.avgProfitPerContainer, true, 0)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-mono">{formatUSD(containerMetrics.avgExportProfitPerBox, true, 0)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-mono">{formatUSD(containerMetrics.avgImportProfitPerBox, true, 0)}</td>
-                    <td className="border border-slate-300 p-1.5 text-center font-mono">-</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-black text-emerald-950">{formatUSD(containerMetrics.avgProfitPerContainer, true, 0)} / Box</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-emerald-800">{formatUSD(containerMetrics.avgExportProfitPerBox, true, 0)} / Box</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-amber-800">{formatUSD(containerMetrics.avgImportProfitPerBox, true, 0)} / Box</td>
+                    <td className="border border-slate-300 p-1.5 text-center font-bold text-purple-800">-</td>
                   </tr>
                 </tbody>
               </table>
@@ -3379,6 +3544,110 @@ export function ReportsView() {
 
         </div>
       </ReportPrintPortal>
+
+      {/* =================================================================== */}
+      {/* EXCHANGE RATE CONFIGURATION MODAL */}
+      {/* =================================================================== */}
+      {isRateModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-150">
+          <div className={`w-full max-w-md rounded-2xl border shadow-2xl p-5 space-y-4 ${
+            isLight ? "bg-white border-slate-200 text-slate-900" : "bg-slate-900 border-slate-800 text-white"
+          }`}>
+            <div className="flex items-center justify-between border-b pb-3 border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black">Exchange Rate (نرخ تبادله اسعار)</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">AFN to USD Currency Normalization</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsRateModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  Afghan Afghani per 1 USD (افغانی در بدل یک دالر)
+                </label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="10"
+                    max="300"
+                    value={tempRateInput}
+                    onChange={(e) => setTempRateInput(e.target.value)}
+                    className="font-mono font-black text-base h-10 pl-3 pr-16"
+                    placeholder="70.0"
+                  />
+                  <div className="absolute right-3 top-2.5 text-xs font-black text-amber-600 dark:text-amber-400">
+                    AFN / $
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
+                  Example: 46,730 AFN driver rent at <strong>{parseFloat(tempRateInput) || 70.0} AFN/USD</strong> ={" "}
+                  <strong className="text-emerald-600 dark:text-emerald-400">
+                    ${Math.round(46730 / (parseFloat(tempRateInput) || 70.0)).toLocaleString()} USD
+                  </strong>
+                </p>
+              </div>
+
+              {/* Quick Rate Presets */}
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">Market Rate Presets:</span>
+                <div className="grid grid-cols-4 gap-2">
+                  {[68.0, 70.0, 71.5, 75.0].map((preset) => (
+                    <button
+                      key={preset}
+                      onClick={() => setTempRateInput(preset.toString())}
+                      className={`px-2 py-1.5 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer ${
+                        parseFloat(tempRateInput) === preset
+                          ? "bg-amber-500 text-slate-950 border-amber-500 shadow-xs font-black"
+                          : isLight
+                          ? "bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200"
+                          : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
+                      }`}
+                    >
+                      {preset.toFixed(1)} AFN
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsRateModalOpen(false)}
+                className="text-xs font-bold rounded-xl cursor-pointer"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  const val = parseFloat(tempRateInput)
+                  if (!isNaN(val)) {
+                    handleUpdateExchangeRate(val)
+                  }
+                }}
+                className="text-xs font-black rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 cursor-pointer"
+              >
+                Save &amp; Recalculate Reports
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, memo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History, Eye, Download, ZoomIn, ZoomOut, Maximize2, BookOpen } from 'lucide-react'
+import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History, Eye, Download, ZoomIn, ZoomOut, Maximize2, BookOpen, LayoutGrid, LayoutList, SlidersHorizontal, ArrowUpDown } from 'lucide-react'
 import { saveFinancialsForEntry } from '@/lib/services/ledger-sync-utils'
 import { DescriptionPresetSelector } from './description-preset-selector'
 import { Button } from '@/components/ui/button'
@@ -174,6 +174,7 @@ export const LedgerView = memo(function LedgerView() {
     entry: null,
   })
   const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('USD')
+  const [mobileViewMode, setMobileViewMode] = useState<'cards' | 'table'>('cards')
 
   const handleAddEntry = () => {
     if (!currentAccount || !currentCompany) return
@@ -941,7 +942,7 @@ export const LedgerView = memo(function LedgerView() {
   }
 
   return (
-    <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="w-full max-w-[1920px] mx-auto px-2.5 sm:px-6 lg:px-8 py-4 sm:py-8">
       {/* Hidden file input */}
       <input
         type="file"
@@ -952,24 +953,24 @@ export const LedgerView = memo(function LedgerView() {
       />
 
       {/* Top Banner Header */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8 bg-white/80 backdrop-blur-xl border border-amber-200/60 rounded-3xl p-6 shadow-xl shadow-amber-900/5 relative overflow-hidden no-print">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 sm:gap-6 mb-4 sm:mb-8 bg-white/80 backdrop-blur-xl border border-amber-200/60 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl shadow-amber-900/5 relative overflow-hidden no-print">
         {/* Subtle Background Glow */}
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
         {/* Title & Context */}
         <div className="relative z-10">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <h2 className="text-xl sm:text-3xl font-black tracking-tight text-slate-900">
               Ledger
             </h2>
-            <span className="px-3 py-1 text-xs font-black rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 shadow-2xs">
+            <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs font-black rounded-full bg-amber-100 text-amber-900 border border-amber-300 flex items-center gap-1 shadow-2xs">
               <span>{currentAccount.name}</span>
             </span>
-            <span className="px-3 py-1 text-xs font-black rounded-full bg-blue-100 text-blue-900 border border-blue-300 flex items-center gap-1 shadow-2xs">
+            <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 text-[11px] sm:text-xs font-black rounded-full bg-blue-100 text-blue-900 border border-blue-300 flex items-center gap-1 shadow-2xs">
               <span>{currentCompany.name}</span>
             </span>
-            <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+            <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-full bg-slate-100 text-slate-600 border border-slate-200">
               {currentCompany.ledgerEntries.length} entries
             </span>
           </div>
@@ -979,16 +980,16 @@ export const LedgerView = memo(function LedgerView() {
         </div>
 
         {/* Top Ledger Summary Metric Badges with Multi-Currency Engine */}
-        <div className="flex flex-col gap-2 relative z-10">
+        <div className="flex flex-col gap-2 relative z-10 w-full xl:w-auto">
           {/* Currency Pill Switcher */}
-          <div className="flex items-center gap-1 bg-white/60 backdrop-blur-md p-1 rounded-xl border border-slate-200/90 w-fit self-start sm:self-end shadow-2xs">
-            <span className="text-[10px] font-black text-slate-500 uppercase px-1.5">Currency:</span>
+          <div className="flex items-center gap-1 bg-white/60 backdrop-blur-md p-1 rounded-xl border border-slate-200/90 w-full sm:w-fit self-start sm:self-end shadow-2xs overflow-x-auto">
+            <span className="text-[10px] font-black text-slate-500 uppercase px-1.5 whitespace-nowrap">Currency:</span>
             {(['USD', 'AFN', 'IRR', 'AED', 'PKR'] as SupportedCurrency[]).map((cur) => (
               <button
                 key={cur}
                 type="button"
                 onClick={() => setSelectedCurrency(cur)}
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all cursor-pointer ${
+                className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all cursor-pointer whitespace-nowrap ${
                   selectedCurrency === cur
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -999,65 +1000,65 @@ export const LedgerView = memo(function LedgerView() {
             ))}
           </div>
 
-          <div className="flex flex-wrap gap-3 xl:gap-4">
-            <div className="px-4 py-3 rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-3 min-w-[140px]">
-              <div className="w-8 h-8 rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-black text-[10px]">
+          <div className="grid grid-cols-2 lg:flex lg:flex-wrap gap-2 sm:gap-3 xl:gap-4">
+            <div className="px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-2.5 sm:gap-3 min-w-0 sm:min-w-[140px]">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-blue-100 border border-blue-200 flex items-center justify-center text-blue-700 font-black text-[9px] sm:text-[10px] shrink-0">
                 USD
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Total Debit (پور)</p>
-                <p className="text-lg font-black text-blue-950 font-mono leading-none mt-0.5">${totalDebit.toLocaleString()}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">Debit (پور)</p>
+                <p className="text-base sm:text-lg font-black text-blue-950 font-mono leading-none mt-0.5 truncate">${totalDebit.toLocaleString()}</p>
                 {selectedCurrency !== 'USD' && (
-                  <p className="text-[10px] font-bold text-blue-700 mt-1 font-mono">
+                  <p className="text-[9px] sm:text-[10px] font-bold text-blue-700 mt-0.5 sm:mt-1 font-mono truncate">
                     ≈ {formatCurrencyAmount(convertFromUSD(totalDebit, selectedCurrency), selectedCurrency)}
                   </p>
                 )}
               </div>
             </div>
             
-            <div className="px-4 py-3 rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-3 min-w-[140px]">
-              <div className="w-8 h-8 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 font-black text-[10px]">
+            <div className="px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-2.5 sm:gap-3 min-w-0 sm:min-w-[140px]">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 font-black text-[9px] sm:text-[10px] shrink-0">
                 REC
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Credit (ترلاسه)</p>
-                <p className="text-lg font-black text-emerald-950 font-mono leading-none mt-0.5">${totalCredit.toLocaleString()}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">Credit (ترلاسه)</p>
+                <p className="text-base sm:text-lg font-black text-emerald-950 font-mono leading-none mt-0.5 truncate">${totalCredit.toLocaleString()}</p>
                 {selectedCurrency !== 'USD' && (
-                  <p className="text-[10px] font-bold text-emerald-700 mt-1 font-mono">
+                  <p className="text-[9px] sm:text-[10px] font-bold text-emerald-700 mt-0.5 sm:mt-1 font-mono truncate">
                     ≈ {formatCurrencyAmount(convertFromUSD(totalCredit, selectedCurrency), selectedCurrency)}
                   </p>
                 )}
               </div>
             </div>
 
-            <div className={`px-4 py-3 rounded-2xl bg-white/90 border shadow-sm flex items-center gap-3 min-w-[140px] ${
+            <div className={`px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl bg-white/90 border shadow-sm flex items-center gap-2.5 sm:gap-3 min-w-0 sm:min-w-[140px] ${
               finalBalance >= 0 ? 'border-amber-200' : 'border-red-200'
             }`}>
-              <div className={`w-8 h-8 rounded-xl border flex items-center justify-center font-black text-[10px] ${
+              <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl border flex items-center justify-center font-black text-[9px] sm:text-[10px] shrink-0 ${
                 finalBalance >= 0 ? 'bg-amber-100 border-amber-200 text-amber-800' : 'bg-red-100 border-red-200 text-red-800'
               }`}>
                 BAL
               </div>
-              <div>
-                <p className={`text-[10px] font-bold uppercase tracking-wider ${finalBalance >= 0 ? 'text-amber-700' : 'text-red-600'}`}>Net (بیلانس)</p>
-                <p className={`text-lg font-black font-mono leading-none mt-0.5 ${finalBalance >= 0 ? 'text-amber-950' : 'text-red-700'}`}>
+              <div className="min-w-0 flex-1">
+                <p className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wider truncate ${finalBalance >= 0 ? 'text-amber-700' : 'text-red-600'}`}>Net (بیلانس)</p>
+                <p className={`text-base sm:text-lg font-black font-mono leading-none mt-0.5 truncate ${finalBalance >= 0 ? 'text-amber-950' : 'text-red-700'}`}>
                   ${finalBalance.toLocaleString()}
                 </p>
                 {selectedCurrency !== 'USD' && (
-                  <p className={`text-[10px] font-bold mt-1 font-mono ${finalBalance >= 0 ? 'text-amber-800' : 'text-red-600'}`}>
+                  <p className={`text-[9px] sm:text-[10px] font-bold mt-0.5 sm:mt-1 font-mono truncate ${finalBalance >= 0 ? 'text-amber-800' : 'text-red-600'}`}>
                     ≈ {formatCurrencyAmount(convertFromUSD(finalBalance, selectedCurrency), selectedCurrency)}
                   </p>
                 )}
               </div>
             </div>
             
-            <div className="px-4 py-3 rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-3 min-w-[140px]">
-              <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-black text-[10px]">
+            <div className="px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-2.5 sm:gap-3 min-w-0 sm:min-w-[140px]">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-black text-[9px] sm:text-[10px] shrink-0">
                 AFN
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Driver Rent</p>
-                <p className="text-lg font-black text-slate-900 font-mono leading-none mt-0.5">{formatAFN(totalDriverRentAFN)}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate">Driver Rent</p>
+                <p className="text-base sm:text-lg font-black text-slate-900 font-mono leading-none mt-0.5 truncate">{formatAFN(totalDriverRentAFN)}</p>
               </div>
             </div>
           </div>
@@ -1065,9 +1066,9 @@ export const LedgerView = memo(function LedgerView() {
       </div>
 
       {/* Actions Bar - Premium Glass Design */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 no-print">
-        <div className="flex flex-wrap items-center gap-3">
-          
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 no-print">
+        {/* Selectors Group */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 w-full lg:w-auto">
           {/* Account Selector */}
           <Select
             value={currentAccount.id}
@@ -1076,12 +1077,12 @@ export const LedgerView = memo(function LedgerView() {
               if (acc) selectAccount(acc)
             }}
           >
-            <SelectTrigger className="w-[200px] h-12 rounded-2xl bg-white/70 backdrop-blur-md border border-slate-200/80 text-sm font-bold text-slate-800 shadow-sm hover:bg-white/90 transition-all">
+            <SelectTrigger className="w-full sm:w-[200px] h-11 sm:h-12 rounded-xl sm:rounded-2xl bg-white/70 backdrop-blur-md border border-slate-200/80 text-xs sm:text-sm font-bold text-slate-800 shadow-sm hover:bg-white/90 transition-all">
               <SelectValue placeholder="Select Account" />
             </SelectTrigger>
             <SelectContent className="glass-strong border-slate-200/80 rounded-2xl">
               {accounts.map(acc => (
-                <SelectItem key={acc.id} value={acc.id} className="text-sm font-semibold rounded-xl">
+                <SelectItem key={acc.id} value={acc.id} className="text-xs sm:text-sm font-semibold rounded-xl">
                   {acc.name}
                 </SelectItem>
               ))}
@@ -1096,47 +1097,59 @@ export const LedgerView = memo(function LedgerView() {
               if (comp) selectCompany(comp)
             }}
           >
-            <SelectTrigger className="w-[180px] h-12 rounded-2xl bg-white/70 backdrop-blur-md border border-slate-200/80 text-sm font-bold text-slate-800 shadow-sm hover:bg-white/90 transition-all">
+            <SelectTrigger className="w-full sm:w-[180px] h-11 sm:h-12 rounded-xl sm:rounded-2xl bg-white/70 backdrop-blur-md border border-slate-200/80 text-xs sm:text-sm font-bold text-slate-800 shadow-sm hover:bg-white/90 transition-all">
               <SelectValue placeholder="Select Company" />
             </SelectTrigger>
             <SelectContent className="glass-strong border-slate-200/80 rounded-2xl">
               {currentAccount.companies.map(comp => (
-                <SelectItem key={comp.id} value={comp.id} className="text-sm font-semibold rounded-xl">
+                <SelectItem key={comp.id} value={comp.id} className="text-xs sm:text-sm font-semibold rounded-xl">
                   {comp.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div className="flex flex-wrap gap-2">
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full lg:w-auto">
+          {/* Primary Action Button First on Mobile */}
+          <Button 
+            type="button" 
+            onClick={() => setIsOpen(true)} 
+            className="w-full sm:w-auto gap-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 hover:from-blue-950 hover:to-indigo-950 text-white font-black shadow-lg shadow-blue-950/20 hover:scale-[1.02] active:scale-[0.98] transition-all h-11 sm:h-12 px-4 sm:px-6 text-xs sm:text-sm cursor-pointer order-first sm:order-last"
+          >
+            <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400" />
+            <span>Add Entry</span>
+          </Button>
+
           <Button
             type="button"
             variant="outline"
-            className="gap-2 rounded-2xl h-12 px-5 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all"
+            className="flex-1 sm:flex-initial gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl h-10 sm:h-12 px-3 sm:px-4 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all text-xs sm:text-sm"
             onClick={() => setView('invoice')}
           >
-            <Receipt className="h-4 w-4" />
-            Invoice
+            <Receipt className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span>Invoice</span>
           </Button>
           
           {/* Export Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" className="gap-2 rounded-2xl h-12 px-5 bg-emerald-50/80 hover:bg-emerald-100/90 border-emerald-200 text-emerald-800 font-bold shadow-sm transition-all" disabled={isExportingPDF}>
-                {isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin text-emerald-600" /> : <FileSpreadsheet className="h-4 w-4 text-emerald-600" />}
-                {isExportingPDF ? 'Exporting...' : 'Export'}
+              <Button type="button" variant="outline" className="flex-1 sm:flex-initial gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl h-10 sm:h-12 px-3 sm:px-4 bg-emerald-50/80 hover:bg-emerald-100/90 border-emerald-200 text-emerald-800 font-bold shadow-sm transition-all text-xs sm:text-sm" disabled={isExportingPDF}>
+                {isExportingPDF ? <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-emerald-600" /> : <FileSpreadsheet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600" />}
+                <span>{isExportingPDF ? 'Exporting...' : 'Export'}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="glass-strong border-emerald-200/60 rounded-2xl p-1">
-              <DropdownMenuItem onClick={handleExportExcel} className="gap-2 cursor-pointer hover:bg-emerald-50 font-semibold rounded-xl p-2">
+              <DropdownMenuItem onClick={handleExportExcel} className="gap-2 cursor-pointer hover:bg-emerald-50 font-semibold rounded-xl p-2 text-xs sm:text-sm">
                 <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
                 Export Excel (.xlsx)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportCSV} className="gap-2 cursor-pointer hover:bg-emerald-50 font-semibold rounded-xl p-2">
+              <DropdownMenuItem onClick={handleExportCSV} className="gap-2 cursor-pointer hover:bg-emerald-50 font-semibold rounded-xl p-2 text-xs sm:text-sm">
                 <FileText className="h-4 w-4 text-blue-600" />
                 Export CSV (.csv)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportLandscapePDF} className="gap-2 cursor-pointer hover:bg-emerald-50 font-semibold rounded-xl p-2 text-rose-700">
+              <DropdownMenuItem onClick={handleExportLandscapePDF} className="gap-2 cursor-pointer hover:bg-emerald-50 font-semibold rounded-xl p-2 text-rose-700 text-xs sm:text-sm">
                 <Download className="h-4 w-4 text-rose-600" />
                 Export PDF (A4 Landscape)
               </DropdownMenuItem>
@@ -1146,17 +1159,17 @@ export const LedgerView = memo(function LedgerView() {
           {/* Import Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" className="gap-2 rounded-2xl h-12 px-5 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all" disabled={isLoading}>
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {isLoading ? 'Processing...' : 'Import'}
+              <Button type="button" variant="outline" className="flex-1 sm:flex-initial gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl h-10 sm:h-12 px-3 sm:px-4 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all text-xs sm:text-sm" disabled={isLoading}>
+                {isLoading ? <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" /> : <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+                <span>{isLoading ? '...' : 'Import'}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="glass-strong border-slate-200/80 rounded-2xl p-1">
-              <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2 cursor-pointer hover:bg-slate-50 font-semibold rounded-xl p-2">
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2 cursor-pointer hover:bg-slate-50 font-semibold rounded-xl p-2 text-xs sm:text-sm">
                 <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
                 Import from Excel (.xlsx, .csv)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2 cursor-pointer hover:bg-slate-50 font-semibold rounded-xl p-2">
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2 cursor-pointer hover:bg-slate-50 font-semibold rounded-xl p-2 text-xs sm:text-sm">
                 <FileText className="h-4 w-4 text-red-500" />
                 Import from PDF
               </DropdownMenuItem>
@@ -1164,69 +1177,69 @@ export const LedgerView = memo(function LedgerView() {
           </DropdownMenu>
 
           {/* Print & Preview Button Group */}
-          <div className="flex items-center gap-1.5">
-            <Button
-              type="button"
-              variant="outline"
-              className="gap-2 rounded-2xl h-12 px-5 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all"
-              onClick={() => setIsPrintPreviewOpen(true)}
-              title="Open A4 Landscape Print Preview / کتل مخکې له چاپه"
-            >
-              <Eye className="h-4 w-4 text-blue-600" />
-              Preview
-            </Button>
-            <Button
-              type="button"
-              className="gap-2 rounded-2xl h-12 px-5 bg-blue-900 hover:bg-blue-950 text-white font-bold shadow-md shadow-blue-950/15 transition-all"
-              onClick={handlePrint}
-              title="Print Account Ledger (A4 Landscape) / چاپول"
-            >
-              <Printer className="h-4 w-4 text-amber-400" />
-              Print
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 sm:flex-initial gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl h-10 sm:h-12 px-3 sm:px-4 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all text-xs sm:text-sm"
+            onClick={() => setIsPrintPreviewOpen(true)}
+            title="Open A4 Landscape Print Preview / کتل مخکې له چاپه"
+          >
+            <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
+            <span>Preview</span>
+          </Button>
+          <Button
+            type="button"
+            className="flex-1 sm:flex-initial gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl h-10 sm:h-12 px-3 sm:px-4 bg-blue-900 hover:bg-blue-950 text-white font-bold shadow-md shadow-blue-950/15 transition-all text-xs sm:text-sm"
+            onClick={handlePrint}
+            title="Print Account Ledger (A4 Landscape) / چاپول"
+          >
+            <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400" />
+            <span>Print</span>
+          </Button>
 
           {/* Restore Deleted / Recycle Bin Button */}
           <Button
             type="button"
             variant="outline"
-            className="gap-2 rounded-2xl h-12 px-4 bg-amber-50/90 hover:bg-amber-100 border-amber-300 text-amber-950 font-bold shadow-sm transition-all"
+            className="gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl h-10 sm:h-12 px-3 sm:px-4 bg-amber-50/90 hover:bg-amber-100 border-amber-300 text-amber-950 font-bold shadow-sm transition-all text-xs sm:text-sm"
             onClick={() => setIsRestoreOpen(true)}
             title="Restore Deleted Entries & BOLs / بېرته راوستل"
           >
-            <RotateCcw className="h-4 w-4 text-amber-700" />
-            <span>Restore / راوستل</span>
+            <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-700" />
+            <span className="hidden sm:inline">Restore</span>
             {deletedLedgerEntries && deletedLedgerEntries.filter(d => d.companyId === currentCompany.id || d.accountId === currentAccount.id).length > 0 && (
-              <span className="px-1.5 py-0.5 text-[10px] font-black bg-amber-600 text-white rounded-full">
+              <span className="px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black bg-amber-600 text-white rounded-full">
                 {deletedLedgerEntries.filter(d => d.companyId === currentCompany.id || d.accountId === currentAccount.id).length}
               </span>
             )}
           </Button>
 
-          <Button type="button" variant="outline" className="gap-2 rounded-2xl h-12 px-5 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all" onClick={() => setIsSettingsOpen(true)}>
-            <Settings2 className="h-4 w-4" />
-            Settings
-          </Button>
-          <Button type="button" onClick={() => setIsOpen(true)} className="gap-2 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 hover:from-blue-950 hover:to-indigo-950 text-white font-black shadow-xl shadow-blue-950/20 hover:scale-[1.02] active:scale-[0.98] transition-all h-12 px-6">
-            <Plus className="h-5 w-5 text-amber-400" />
-            <span>Add Entry</span>
+          <Button 
+            type="button" 
+            variant="outline" 
+            className="gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl h-10 sm:h-12 px-3 sm:px-4 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all text-xs sm:text-sm" 
+            onClick={() => setIsSettingsOpen(true)}
+            title="Ledger Settings"
+          >
+            <Settings2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Settings</span>
           </Button>
         </div>
       </div>
 
       {/* Filter & Search Bar - Premium Glass Design */}
-      <div className="mb-6 p-5 rounded-3xl bg-white/80 border border-slate-200/80 shadow-lg shadow-slate-200/50 backdrop-blur-xl flex flex-wrap items-center justify-between gap-4 no-print relative overflow-hidden group hover:border-amber-400/60 transition-all">
+      <div className="mb-4 sm:mb-6 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-white/80 border border-slate-200/80 shadow-lg shadow-slate-200/50 backdrop-blur-xl flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4 no-print relative overflow-hidden group hover:border-amber-400/60 transition-all">
         {/* Accent Top Border */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-900/10 via-indigo-800/10 to-amber-500/10 group-hover:from-blue-900 group-hover:via-indigo-800 group-hover:to-amber-500 transition-all duration-300" />
         
-        <div className="flex flex-1 flex-wrap items-center gap-4 min-w-[280px]">
-          <div className="relative flex-1 min-w-[240px]">
+        <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+          <div className="relative flex-1">
             <Input
               type="text"
-              placeholder="Search Barnameh No, Invoice, Consignee, Container..."
+              placeholder="Search Barnameh, Invoice, Consignee, Container..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-11 pr-10 rounded-2xl bg-white border-slate-200 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-sm"
+              className="h-10 sm:h-11 pr-10 rounded-xl sm:rounded-2xl bg-white border-slate-200 text-xs sm:text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-sm w-full"
             />
             {searchTerm && (
               <button
@@ -1234,26 +1247,26 @@ export const LedgerView = memo(function LedgerView() {
                 onClick={() => setSearchTerm('')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2 shadow-sm">
-            <span className="text-xs font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">Date Range:</span>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl p-2 sm:px-4 sm:py-2 shadow-sm">
+            <span className="text-[10px] sm:text-xs font-black text-slate-500 uppercase tracking-wider whitespace-nowrap">Date Range:</span>
             <div className="flex items-center gap-2">
               <Input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="h-8 w-36 bg-white border-slate-200 text-xs font-bold text-slate-800 rounded-xl"
+                className="h-8 flex-1 sm:w-36 bg-white border-slate-200 text-[11px] sm:text-xs font-bold text-slate-800 rounded-lg sm:rounded-xl"
               />
               <span className="text-slate-400 font-bold">-</span>
               <Input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="h-8 w-36 bg-white border-slate-200 text-xs font-bold text-slate-800 rounded-xl"
+                className="h-8 flex-1 sm:w-36 bg-white border-slate-200 text-[11px] sm:text-xs font-bold text-slate-800 rounded-lg sm:rounded-xl"
               />
             </div>
           </div>
@@ -1267,15 +1280,15 @@ export const LedgerView = memo(function LedgerView() {
                 setStartDate('')
                 setEndDate('')
               }}
-              className="h-11 rounded-2xl px-5 text-sm font-black text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+              className="h-9 sm:h-11 rounded-xl sm:rounded-2xl px-3 sm:px-5 text-xs sm:text-sm font-black text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors self-start sm:self-auto"
             >
               Reset Filters
             </Button>
           )}
         </div>
 
-        <div className="text-sm font-bold text-slate-600 bg-blue-50 border border-blue-100 rounded-2xl px-4 py-2.5">
-          Showing <span className="text-blue-900 font-extrabold text-base">{filteredEntries.length}</span> of {currentCompany.ledgerEntries.length} entries
+        <div className="text-xs sm:text-sm font-bold text-slate-600 bg-blue-50 border border-blue-100 rounded-xl sm:rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 text-center lg:text-left">
+          Showing <span className="text-blue-900 font-extrabold text-sm sm:text-base">{filteredEntries.length}</span> of {currentCompany.ledgerEntries.length} entries
         </div>
       </div>
 
@@ -1303,11 +1316,11 @@ export const LedgerView = memo(function LedgerView() {
 
       {/* Add Entry Dialog */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="bg-white/90 backdrop-blur-xl border border-blue-200/50 max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl shadow-blue-500/10">
+        <DialogContent className="bg-white/95 backdrop-blur-xl border border-blue-200/50 max-w-2xl w-[95vw] sm:w-full max-h-[90vh] overflow-y-auto shadow-xl shadow-blue-500/10 p-4 sm:p-6 rounded-2xl sm:rounded-3xl">
           <DialogHeader>
-            <DialogTitle className="text-xl text-blue-900">Add Ledger Entry</DialogTitle>
+            <DialogTitle className="text-lg sm:text-xl font-bold text-blue-900">Add Ledger Entry</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 py-3 sm:py-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Date / تاریخ</label>
               <Input
@@ -1612,14 +1625,14 @@ export const LedgerView = memo(function LedgerView() {
         
         {/* Ledger Header with Logo and Info - Screen Version */}
         <div className="relative z-10 no-print border-b border-blue-200/50 bg-gradient-to-r from-blue-50/60 via-white/40 to-blue-50/60 backdrop-blur-sm">
-          <div className="px-6 py-4 flex items-start justify-between">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row items-center md:items-start justify-between text-center md:text-left gap-3 md:gap-4">
             {/* Left - Account/Shipper Info */}
-            <div className="flex-1">
-              <p className="text-[11px] text-blue-600 font-semibold uppercase tracking-wider mb-1">Account Ledger</p>
-              <p className="text-lg font-bold text-blue-900">{currentCompany.name}</p>
-              <p className="text-[10px] text-blue-500 mt-0.5">Account Holder / Shipper</p>
-              <p className="text-xs text-blue-700 mt-2">
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            <div className="flex-1 w-full md:w-auto">
+              <p className="text-[10px] sm:text-[11px] text-blue-600 font-semibold uppercase tracking-wider mb-0.5">Account Ledger</p>
+              <p className="text-base sm:text-lg font-bold text-blue-900">{currentCompany.name}</p>
+              <p className="text-[9px] sm:text-[10px] text-blue-500 mt-0.5">Account Holder / Shipper</p>
+              <p className="text-[11px] sm:text-xs text-blue-700 mt-1 sm:mt-2 font-medium">
+                {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
               </p>
             </div>
             
@@ -1629,32 +1642,297 @@ export const LedgerView = memo(function LedgerView() {
               <img 
                 src={getLedgerSettings().logoUrl || getLedgerSettings().companyLogo || "/logo.png"} 
                 alt="SKY ARIANA Logo" 
-                className="h-14 max-w-[140px] object-contain mb-1" 
+                className="h-10 sm:h-14 max-w-[120px] sm:max-w-[140px] object-contain mb-1" 
               />
-              <p className="text-lg font-bold text-blue-800">SKY ARIANA</p>
-              <p className="text-[10px] text-blue-600 tracking-[0.15em] uppercase">Transport & Logistics</p>
+              <p className="text-base sm:text-lg font-bold text-blue-800">SKY ARIANA</p>
+              <p className="text-[9px] sm:text-[10px] text-blue-600 tracking-[0.15em] uppercase">Transport & Logistics</p>
             </div>
             
             {/* Right - Company Address */}
-            <div className="flex-1 text-right">
-              <p className="text-[11px] font-semibold text-blue-700 mb-1">AFGHANISTAN OFFICE</p>
-              <p className="text-[9px] text-blue-600 leading-relaxed">
-                2nd Floor, 16 No. Office,<br />
-                Shahidano Chowk, Etimad Rahmi Market,<br />
-                Kandahar, Afghanistan
+            <div className="flex-1 w-full md:w-auto text-center md:text-right hidden sm:block">
+              <p className="text-[10px] sm:text-[11px] font-semibold text-blue-700 mb-0.5">AFGHANISTAN OFFICE</p>
+              <p className="text-[8px] sm:text-[9px] text-blue-600 leading-relaxed">
+                2nd Floor, 16 No. Office, Shahidano Chowk,<br className="hidden md:inline" />
+                Etimad Rahmi Market, Kandahar, Afghanistan
               </p>
-              <p className="text-[9px] text-blue-500 mt-2">
-                Tel: +93 700 939 365<br />
-                info@skyariana.com
+              <p className="text-[8px] sm:text-[9px] text-blue-500 mt-1">
+                Tel: +93 700 939 365 • info@skyariana.com
               </p>
-              <p className="text-[8px] text-blue-400 mt-1">Licence: 2401-2198</p>
+              <p className="text-[7px] sm:text-[8px] text-blue-400 mt-0.5">Licence: 2401-2198</p>
             </div>
           </div>
         </div>
         
         {/* Screen Table (hidden during print) */}
         <CardContent className="p-0 no-print relative z-10">
-          <div className="overflow-x-auto overflow-y-visible">
+          {/* Mobile View Switcher (Cards vs Table) */}
+          <div className="block md:hidden px-3.5 py-2.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-blue-50/90 border-b border-blue-200/60 no-print">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-black text-blue-950">
+                <Layers className="h-3.5 w-3.5 text-blue-600" />
+                <span>Layout:</span>
+              </div>
+              <div className="flex items-center gap-1 bg-white/90 p-0.5 rounded-xl border border-blue-200 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setMobileViewMode('cards')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                    mobileViewMode === 'cards'
+                      ? 'bg-blue-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <LayoutGrid className="h-3 w-3" />
+                  <span>Card View</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileViewMode('table')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
+                    mobileViewMode === 'table'
+                      ? 'bg-blue-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <LayoutList className="h-3 w-3" />
+                  <span>Table View</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Dedicated Mobile Cards View (Visible on small screens when in cards mode) */}
+          {mobileViewMode === 'cards' && (
+            <div className="block md:hidden p-3 space-y-3 no-print">
+              {filteredEntries.length === 0 ? (
+                <div className="p-8 text-center bg-white/60 rounded-2xl border border-blue-100 space-y-3">
+                  <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <BookOpen className="h-6 w-6" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-700">No ledger entries found</p>
+                  <Button
+                    type="button"
+                    onClick={() => setIsOpen(true)}
+                    className="h-10 px-4 bg-blue-900 text-white font-bold rounded-xl text-xs gap-1.5"
+                  >
+                    <Plus className="h-4 w-4 text-amber-400" />
+                    <span>Add First Entry</span>
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {filteredEntries.map((entry, idx) => {
+                    const isCredit = entry.credit > 0
+                    return (
+                      <div
+                        key={entry.id || idx}
+                        className={`p-3.5 rounded-2xl border transition-all relative overflow-hidden shadow-sm ${
+                          isCredit
+                            ? 'bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/50 border-emerald-300/80 shadow-emerald-900/5'
+                            : 'bg-gradient-to-br from-white via-blue-50/20 to-slate-50 border-blue-200/80 shadow-blue-900/5'
+                        }`}
+                      >
+                        {/* Card Header: S.No, Date, Status */}
+                        <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-lg text-xs font-black font-mono ${
+                              isCredit ? 'bg-emerald-600 text-white' : 'bg-blue-900 text-white'
+                            }`}>
+                              #{entry.sNo || idx + 1}
+                            </span>
+                            <span className="text-xs font-bold text-slate-800">
+                              {entry.date}
+                            </span>
+                            {entry.dateOfShip && (
+                              <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                Ship: {entry.dateOfShip}
+                              </span>
+                            )}
+                          </div>
+                          {isCredit ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                              CREDIT / ترلاسه
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-900 border border-blue-200">
+                              DEBIT / پور
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Card Main Info Grid */}
+                        <div className="space-y-2 pt-1 text-xs">
+                          {/* Shipper & Description */}
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Shipper / Description:</span>
+                            <p className="font-bold text-slate-900 text-sm mt-0.5">
+                              {entry.shipperDescription || (isCredit ? 'RECEIVING MONEY' : '—')}
+                            </p>
+                          </div>
+
+                          {/* Logistics Identifiers Row */}
+                          <div className="grid grid-cols-2 gap-2 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                            <div>
+                              <span className="text-[9px] font-black uppercase text-slate-500 block">Barnameh No:</span>
+                              <span className="font-mono text-xs font-bold text-blue-950 block truncate">
+                                {entry.barnamehNo || "—"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] font-black uppercase text-slate-500 block">Bill of Lading:</span>
+                              <span className="font-mono text-xs font-bold text-slate-800 block truncate">
+                                {entry.billOfLanding || "—"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] font-black uppercase text-slate-500 block">Container:</span>
+                              <span className="font-mono text-xs font-bold text-slate-800 block truncate">
+                                {entry.containerNo || "—"}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-[9px] font-black uppercase text-slate-500 block">Consignee:</span>
+                              <span className="text-xs font-bold text-slate-800 block truncate">
+                                {entry.consignee || "—"}
+                              </span>
+                            </div>
+                            {entry.quantity && (
+                              <div>
+                                <span className="text-[9px] font-black uppercase text-slate-500 block">Quantity:</span>
+                                <span className="text-xs font-bold text-slate-800 block truncate">
+                                  {entry.quantity}
+                                </span>
+                              </div>
+                            )}
+                            {entry.invoiceNo && (
+                              <div>
+                                <span className="text-[9px] font-black uppercase text-slate-500 block">Invoice No:</span>
+                                <span className="text-xs font-bold text-slate-800 block truncate">
+                                  {entry.invoiceNo}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Driver Freight (if exists) */}
+                          {entry.driverFreight && entry.driverFreight.trim() !== '' && (
+                            <div className="flex items-center justify-between bg-amber-50/80 px-2.5 py-1.5 rounded-xl border border-amber-200/80">
+                              <span className="text-[10px] font-bold text-amber-900 uppercase">Driver Freight (کرایه موتر):</span>
+                              <span className="font-mono text-xs font-black text-amber-950">{entry.driverFreight}</span>
+                            </div>
+                          )}
+
+                          {/* Financials Row */}
+                          <div className="grid grid-cols-3 gap-1.5 pt-1">
+                            <div className="p-2 rounded-xl bg-red-50/70 border border-red-200/60 text-center">
+                              <span className="text-[9px] font-bold uppercase text-red-700 block">Debit</span>
+                              <span className="font-mono text-xs sm:text-sm font-black text-red-600 block mt-0.5">
+                                {entry.debit > 0 ? formatCurrency(entry.debit) : '$0'}
+                              </span>
+                            </div>
+                            <div className="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200/60 text-center">
+                              <span className="text-[9px] font-bold uppercase text-emerald-700 block">Credit</span>
+                              <span className="font-mono text-xs sm:text-sm font-black text-emerald-700 block mt-0.5">
+                                {entry.credit > 0 ? formatCurrency(entry.credit) : '$0'}
+                              </span>
+                            </div>
+                            <div className="p-2 rounded-xl bg-blue-50/70 border border-blue-200/60 text-center">
+                              <span className="text-[9px] font-bold uppercase text-blue-800 block">Balance</span>
+                              <span className="font-mono text-xs sm:text-sm font-black text-blue-950 block mt-0.5">
+                                {entry.debit > 0 || entry.credit > 0 ? formatCurrency(entry.balance) : '$0'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card Actions Footer */}
+                        <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 mt-2">
+                          <div className="flex items-center gap-2">
+                            {/* Surrender BL Checkbox */}
+                            <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 cursor-pointer select-none">
+                              <Checkbox
+                                id={`m-surrendered-${entry.id}`}
+                                checked={entry.surrenderedBL || false}
+                                onCheckedChange={() => toggleSurrenderedBL(currentAccount.id, currentCompany.id, entry.id)}
+                                className="h-3.5 w-3.5 border-blue-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                              />
+                              <span>{entry.surrenderedBL ? 'Surrendered' : 'Surrender B/L'}</span>
+                            </label>
+
+                            {entry.pdfPathname && (
+                              <a
+                                href={entry.pdfPathname}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                              >
+                                <FileText className="h-3 w-3" />
+                                <span>PDF</span>
+                              </a>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2.5 rounded-xl border-blue-200 text-blue-800 hover:bg-blue-50 text-xs font-bold gap-1"
+                              onClick={() => handleEditEntry(entry)}
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                              <span>Edit</span>
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2 rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-xs"
+                              onClick={() => {
+                                setEntryToDelete(entry)
+                                setIsDeleteDialogOpen(true)
+                              }}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {/* Mobile Totals Card */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 text-white shadow-lg space-y-3">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-amber-300">LEDGER TOTALS SUMMARY</span>
+                      <span className="text-[10px] font-bold text-blue-200">{filteredEntries.length} Active Entries</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-white/10 p-2.5 rounded-xl">
+                        <span className="text-[10px] text-blue-200 font-bold block">Total Debit</span>
+                        <span className="text-base font-black font-mono text-red-300 mt-0.5 block">{formatCurrency(totalDebit)}</span>
+                      </div>
+                      <div className="bg-white/10 p-2.5 rounded-xl">
+                        <span className="text-[10px] text-blue-200 font-bold block">Total Credit</span>
+                        <span className="text-base font-black font-mono text-emerald-300 mt-0.5 block">{formatCurrency(totalCredit)}</span>
+                      </div>
+                      <div className="bg-white/10 p-2.5 rounded-xl">
+                        <span className="text-[10px] text-blue-200 font-bold block">Net Balance USD</span>
+                        <span className="text-base font-black font-mono text-amber-300 mt-0.5 block">{formatCurrency(finalBalance)}</span>
+                      </div>
+                      <div className="bg-white/10 p-2.5 rounded-xl">
+                        <span className="text-[10px] text-blue-200 font-bold block">Driver Rent Total</span>
+                        <span className="text-base font-black font-mono text-amber-200 mt-0.5 block">{formatAFN(totalDriverRentAFN)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Screen Table (always visible on desktop, toggleable on mobile) */}
+          <div className={`${mobileViewMode === 'table' ? 'block' : 'hidden md:block'} overflow-x-auto overflow-y-visible`}>
             <table className="w-full border-collapse text-xs" style={{ minWidth: '1200px' }}>
               <thead>
                 <tr className="bg-gradient-to-r from-blue-100/80 via-blue-50/60 to-white/60 backdrop-blur-sm">
