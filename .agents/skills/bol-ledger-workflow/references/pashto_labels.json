@@ -1,0 +1,66 @@
+{
+  "columns": [
+    {
+      "id": "sNo",
+      "en": "S.NO",
+      "ps": "مسلسل شمېره",
+      "direction": "rtl"
+    },
+    {
+      "id": "date",
+      "en": "DATE",
+      "ps": "تاریخ",
+      "direction": "rtl"
+    },
+    {
+      "id": "description",
+      "en": "SHIPPER / DESCRIPTION",
+      "ps": "لېږدونکی / تفصیل",
+      "direction": "rtl"
+    },
+    {
+      "id": "billOfLanding",
+      "en": "BILL OF LADING",
+      "ps": "بی ال",
+      "direction": "rtl"
+    },
+    {
+      "id": "containerType",
+      "en": "CONTAINER TYPE",
+      "ps": "د کانټینر ډول",
+      "direction": "rtl"
+    },
+    {
+      "id": "debitCredit",
+      "en": "DEBIT / CREDIT",
+      "ps": "بدهی / اعتبار",
+      "direction": "rtl"
+    },
+    {
+      "id": "balanceUsd",
+      "en": "BALANCE USD",
+      "ps": "پاتې بیلانس",
+      "direction": "rtl"
+    }
+  ],
+  "mergedLabels": {
+    "blNo": { "en": "B/L No", "ps": "د بی ال نمبر" },
+    "consignee": { "en": "Consignee", "ps": "ترلاسه کوونکی" },
+    "containerNo": { "en": "Container No", "ps": "د کانټینر نمبر" },
+    "containerType": { "en": "Type", "ps": "نوعیت" },
+    "containerDetails": { "en": "Details", "ps": "تفصیلات" },
+    "driverRent": { "en": "Driver Rent / Freight", "ps": "د ډریور کرایه" },
+    "truckNumber": { "en": "Truck Number", "ps": "د موټر نمبر" },
+    "driverName": { "en": "Driver Name", "ps": "د ډریور نوم" },
+    "packages": { "en": "Packages / Cartons", "ps": "کارتنونه" },
+    "weight": { "en": "Weight", "ps": "وزن" }
+  },
+  "financialLabels": {
+    "debit": { "en": "Debit (Charges)", "ps": "رسید / بدهی" },
+    "credit": { "en": "Credit (Payments)", "ps": "تادیه / اعتبار" },
+    "balance": { "en": "Balance", "ps": "پاتې بیلانس" },
+    "exchangeRate": { "en": "Exchange Rate", "ps": "د تبادلې نرخ" },
+    "currencyUsd": { "en": "USD ($)", "ps": "ډالر" },
+    "currencyAfn": { "en": "AFN (؋)", "ps": "افغانۍ" }
+  }
+}

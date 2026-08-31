@@ -22,6 +22,8 @@ import {
   CheckCircle2,
   Truck,
   TrendingUp,
+  Activity,
+  BarChart3,
 } from "lucide-react"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
@@ -193,6 +195,18 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
         badge: "Reports",
         perform: () => {
           setView("reports")
+          onOpenChange(false)
+        },
+      },
+      {
+        id: "nav-analytics",
+        title: "Executive Analytics & AI Suite (تحلیل داده‌ها)",
+        subtitle: "Shipment velocity, commodities, cashflow trends & Gemini AI Copilot",
+        category: "Navigation",
+        icon: Activity,
+        badge: "Analytics",
+        perform: () => {
+          setView("analytics")
           onOpenChange(false)
         },
       },

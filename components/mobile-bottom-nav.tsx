@@ -1,7 +1,7 @@
 "use client"
 
 import { useApp } from "@/lib/app-context"
-import { Building2, FileText, Landmark, Settings as SettingsIcon, Cloud, Receipt, Truck, TrendingUp } from "lucide-react"
+import { Building2, FileText, Landmark, Settings as SettingsIcon, Cloud, Receipt, Truck, TrendingUp, BarChart3 } from "lucide-react"
 import { useState } from "react"
 import { CloudSyncModal } from "@/components/bill-of-lading/cloud-sync-modal"
 
@@ -59,6 +59,14 @@ export function MobileBottomNav() {
       activeClass: "text-blue-700 bg-blue-50 border-blue-200",
       activeIndicator: "bg-blue-600",
       onClick: () => setView("reports")
+    },
+    {
+      id: "analytics",
+      label: "Analytics",
+      icon: BarChart3,
+      activeClass: "text-blue-700 bg-blue-50 border-blue-200",
+      activeIndicator: "bg-blue-600",
+      onClick: () => setView("analytics")
     },
     ...(!isShipper ? [{
       id: "settings",

@@ -38,6 +38,7 @@ const viewLoaders: Record<string, () => Promise<any>> = {
   'sky-doc': () => import('@/components/sky-doc-view'),
   reports: () => import('@/components/reports-view'),
   'shipper-portal': () => import('@/components/shipper-dashboard'),
+  analytics: () => import('@/components/analytics-dashboard-view'),
 }
 
 export function preloadView(viewName: string) {
@@ -79,6 +80,7 @@ const SkyCmrView = dynamic(safeLazy(() => import('@/components/sky-cmr-view').th
 const SkyDocView = dynamic(safeLazy(() => import('@/components/sky-doc-view').then(m => m.SkyDocView)), { loading: ViewLoadingSkeleton })
 const ReportsView = dynamic(safeLazy(() => import('@/components/reports-view').then(m => m.ReportsView)), { loading: ViewLoadingSkeleton })
 const ShipperDashboardView = dynamic(safeLazy(() => import('@/components/shipper-dashboard').then(m => m.ShipperDashboardView)), { loading: ViewLoadingSkeleton })
+const AnalyticsDashboardView = dynamic(safeLazy(() => import('@/components/analytics-dashboard-view').then(m => m.AnalyticsDashboardView)), { loading: ViewLoadingSkeleton })
 
 function MainContent() {
   const { view, isAuthenticated, currentUser } = useApp()
@@ -341,6 +343,13 @@ function MainContent() {
         {visitedViews.has('reports') && (
           <div className={view === 'reports' ? 'w-full' : 'hidden'}>
             <ReportsView />
+          </div>
+        )}
+
+        {/* Executive Analytics Dashboard View */}
+        {visitedViews.has('analytics') && (
+          <div className={view === 'analytics' ? 'w-full' : 'hidden'}>
+            <AnalyticsDashboardView />
           </div>
         )}
 

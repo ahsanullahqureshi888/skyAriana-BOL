@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Landmark,
   TrendingUp,
+  BarChart3,
   Search,
   Command,
   LayoutGrid,
@@ -70,6 +71,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
   const getTitle = () => {
     if (title) return title
+    if (view === 'analytics') return 'Sky Ariana Executive Analytics'
     if (view === 'shipper-portal') return 'Sky Ariana Shipper Portal'
     if (view === 'reports') return 'Financial Reports & P&L Statement'
     if (view === 'sky-doc') return 'Sky Ariana Document System (SKY DOC)'
@@ -86,6 +88,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
   const getSubtitle = () => {
     if (subtitle) return subtitle
+    if (view === 'analytics') return 'Multi-source Data Intelligence, Shipments & Ledger Statements • داشبورد تحلیل داده‌ها'
     if (view === 'shipper-portal') return 'Verified Client Consignments & Live Milestones • پورتال مشتریان'
     if (view === 'reports') return 'Executive Profit & Loss Statement, Cargo Volumes & Financial Aging • گزارشات مالی، سود و زیان'
     if (view === 'sky-doc') return 'Enterprise Operating System & Document Management • سیستم جامع اسناد و عملیات'
@@ -101,6 +104,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   }
 
   const getViewBadge = () => {
+    if (view === 'analytics') return { label: 'Analytics', color: 'bg-blue-50 text-blue-950 border-blue-300 ring-1 ring-blue-400/30' }
     if (view === 'shipper-portal') return { label: 'Shipper Portal', color: 'bg-amber-50 text-amber-900 border-amber-300 ring-1 ring-amber-400/30' }
     if (view === 'reports') return { label: 'Financial Reports', color: 'bg-emerald-50 text-emerald-950 border-emerald-300 ring-1 ring-emerald-400/30' }
     if (view === 'sky-doc') return { label: 'SKY DOC', color: 'bg-cyan-50 text-cyan-950 border-cyan-300 ring-1 ring-cyan-400/30' }
@@ -271,6 +275,26 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
                 <span className="font-extrabold">Reports</span>
                 <span className="hidden xl:inline font-[vazirmatn] text-[9.5px] font-bold opacity-80">/ گزارشات</span>
+              </Button>
+
+              {/* 5. Executive Analytics Dashboard */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setView('analytics')}
+                onMouseEnter={() => preloadView('analytics')}
+                onTouchStart={() => preloadView('analytics')}
+                onFocus={() => preloadView('analytics')}
+                className={`gap-1 sm:gap-1.5 h-8 sm:h-8.5 px-2.5 sm:px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  view === 'analytics' 
+                    ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-sm shadow-blue-500/25 ring-2 ring-blue-400/40' 
+                    : 'text-blue-950 hover:bg-blue-50 hover:text-blue-900 hover:shadow-2xs'
+                }`}
+                title="Executive Analytics, BI Dashboards & AI Suite • داشبورد تحلیل داده‌ها"
+              >
+                <BarChart3 className="h-3.5 w-3.5 text-blue-600" />
+                <span className="font-extrabold">Analytics</span>
+                <span className="hidden xl:inline font-[vazirmatn] text-[9.5px] font-bold opacity-80">/ تحلیل</span>
               </Button>
 
               {/* 5. Direct Buttons on Extra Wide Screens (>= 1440px) OR Collapsed Dropdown Menu */}
