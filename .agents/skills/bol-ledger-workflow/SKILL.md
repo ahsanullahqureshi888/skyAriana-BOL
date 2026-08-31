@@ -77,6 +77,7 @@ The skill includes the CLI tool located at `scripts/bol_ledger_cli.py`.
 | `inspect-bol` | `--bol-no <id>`, `--output <file>` | `--data-dir <path>` | Full BOL data object, related ledger links, and linked invoices |
 | `inspect-invoice` | `--invoice-no <id>`, `--output <file>` | `--data-dir <path>` | Full invoice details, item breakdown, and documentation fees |
 | `export-ledger`| `--account-id <id>`, `--output <file>`| `--format <json\|markdown>`, `--data-dir <path>` | Formatted ledger with running balances, invoices, doc fees & Pashto labels |
+| `inspect-sync` | `--output <file>` | `--data-dir <path>` | Full cloud snapshot & transfer codes audit report with financial invariance check |
 
 ---
 

@@ -79,6 +79,8 @@ export async function POST(request: NextRequest) {
         bolNo: e.bill_of_landing || e.barnamehNo || e.bolNo || "",
         billOfLanding: e.bill_of_landing || e.billOfLanding || "",
         containerNo: e.container_no || e.containerNo || "",
+        containerType: e.container_type || e.containerType || "",
+        containerDetails: e.container_details || e.containerDetails || "",
         consignee: e.consignee || "",
         quantity: e.quantity || "",
         driverFreight: e.driver_freight || e.driverFreight || e.driverRent || "",
@@ -133,6 +135,8 @@ export async function POST(request: NextRequest) {
       billOfLanding: body.billOfLanding || "",
       surrenderedBL: Boolean(body.surrenderedBL),
       containerNo: body.containerNo || "",
+      containerType: body.containerType || "",
+      containerDetails: body.containerDetails || "",
       consignee: body.consignee || "",
       quantity: body.quantity || "",
       driverFreight: body.driverFreight || body.driverRent || "",
@@ -213,6 +217,8 @@ export async function PATCH(request: NextRequest) {
       if (body.billOfLanding !== undefined) merged.billOfLanding = body.billOfLanding
       if (body.surrenderedBL !== undefined) merged.surrenderedBL = Boolean(body.surrenderedBL)
       if (body.containerNo !== undefined) merged.containerNo = body.containerNo
+      if (body.containerType !== undefined) merged.containerType = body.containerType
+      if (body.containerDetails !== undefined) merged.containerDetails = body.containerDetails
       if (body.consignee !== undefined) merged.consignee = body.consignee
       if (body.quantity !== undefined) merged.quantity = body.quantity
       if (body.driverFreight !== undefined) {

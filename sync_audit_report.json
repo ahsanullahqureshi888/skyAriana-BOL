@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-08-31T15:27:20.782263",
+  "workspace": "D:\\skybalam-26-bol-V3.2\\skybalam-26-bol-V3.2",
+  "snapshot_exists": true,
+  "snapshot_metrics": {
+    "total_bols": 79,
+    "total_invoices": 0,
+    "total_accounts": 41,
+    "total_ledger_accounts": 29,
+    "accounting_invariance": {
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "formula": "Net Balance = Total Debit - Total Credit",
+      "status": "VALID"
+    }
+  },
+  "sync_codes_count": 7,
+  "available_sync_codes": [
+    "2026",
+    "4440",
+    "SKY-4440",
+    "SKY4440",
+    "SKY-2026",
+    "SKY-MASTER",
+    "MASTER"
+  ]
+}

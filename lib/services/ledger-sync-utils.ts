@@ -13,6 +13,8 @@ export interface EntryFinancials {
   description?: string
   consignee?: string
   containerNo?: string
+  containerType?: string
+  containerDetails?: string
   quantity?: string
 }
 
@@ -43,6 +45,8 @@ export function saveFinancialsForEntry(
     description?: string
     consignee?: string
     containerNo?: string
+    containerType?: string
+    containerDetails?: string
     quantity?: string
   }
 ) {
@@ -85,6 +89,12 @@ export function saveFinancialsForEntry(
     }
     if (entryData.containerNo !== undefined) {
       fin.containerNo = entryData.containerNo
+    }
+    if (entryData.containerType !== undefined) {
+      fin.containerType = entryData.containerType
+    }
+    if (entryData.containerDetails !== undefined) {
+      fin.containerDetails = entryData.containerDetails
     }
     if (entryData.quantity !== undefined) {
       fin.quantity = entryData.quantity
@@ -133,6 +143,8 @@ export function smartMergeRow(existing: any = {}, incoming: any = {}): any {
     shipperDescription: descVal,
     description: descVal,
     containerNo: incoming?.containerNo || existing?.containerNo || "",
+    containerType: incoming?.containerType || existing?.containerType || "",
+    containerDetails: incoming?.containerDetails || existing?.containerDetails || "",
     consignee: incoming?.consignee || existing?.consignee || "",
     quantity: incoming?.quantity || existing?.quantity || "",
     driverFreight: incoming?.driverFreight || incoming?.driverRent || existing?.driverFreight || existing?.driverRent || "",

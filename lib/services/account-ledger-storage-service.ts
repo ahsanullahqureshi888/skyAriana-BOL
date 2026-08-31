@@ -1,4 +1,4 @@
-﻿import path from "path"
+import path from "path"
 import { readJsonFile, writeJsonFile } from "./blob-db"
 
 export type AccountLedgerDatabase = {
@@ -62,6 +62,9 @@ export function mergeLedgerRows(existingRows: any[] = [], incomingRows: any[] = 
       ...row,
       debit: mergedDebit,
       credit: mergedCredit,
+      containerNo: row.containerNo || existing?.containerNo || "",
+      containerType: row.containerType || existing?.containerType || "",
+      containerDetails: row.containerDetails || existing?.containerDetails || "",
       driverFreight: row.driverFreight || row.driverRent || existing?.driverFreight || existing?.driverRent || "",
       driverRent: row.driverFreight || row.driverRent || existing?.driverFreight || existing?.driverRent || "",
       pdfFile: row.pdfFile || row.pdfPathname || existing?.pdfFile || existing?.pdfPathname || undefined,

@@ -745,6 +745,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const pdfVal = fin?.pdfPathname || existingRow?.pdfFile || existingRow?.pdfPathname || undefined
           const descVal = fin?.shipperDescription || fin?.description || existingRow?.shipperDescription || existingRow?.description || displayName
           const containerVal = fin?.containerNo || doc.container_numbers || existingRow?.containerNo || "N/A"
+          const containerTypeVal = fin?.containerType || existingRow?.containerType || doc.container_type || ""
+          const containerDetailsVal = fin?.containerDetails || existingRow?.containerDetails || doc.container_details || ""
           const consigneeVal = fin?.consignee || doc.consignee_name || existingRow?.consignee || "N/A"
           const quantityVal = fin?.quantity || doc.number_of_packages || existingRow?.quantity || "N/A"
 
@@ -760,6 +762,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             billOfLanding: existingRow?.billOfLanding || "",
             surrenderedBL: surrenderedVal,
             containerNo: containerVal,
+            containerType: containerTypeVal,
+            containerDetails: containerDetailsVal,
             consignee: consigneeVal,
             quantity: quantityVal,
             debit: debitVal,
@@ -817,6 +821,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
           const descVal = fin?.shipperDescription || fin?.description || row.shipperDescription || row.description || displayName
           const containerVal = fin?.containerNo || row.containerNo || ""
+          const containerTypeVal = fin?.containerType || row.containerType || ""
+          const containerDetailsVal = fin?.containerDetails || row.containerDetails || ""
           const consigneeVal = fin?.consignee || row.consignee || ""
           const quantityVal = fin?.quantity || row.quantity || ""
 
@@ -832,6 +838,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             billOfLanding: row.billOfLanding || "",
             surrenderedBL: fin?.surrenderedBL !== undefined ? fin.surrenderedBL : Boolean(row.surrenderedBL),
             containerNo: containerVal,
+            containerType: containerTypeVal,
+            containerDetails: containerDetailsVal,
             consignee: consigneeVal,
             quantity: quantityVal,
             debit: debitVal,
@@ -1354,15 +1362,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       })
 
-      if (targetRow) {
-        saveFinancialsForEntry((targetRow as any).barnamehNo, entryId, targetRow)
+      const mergedPayload = {
+        ...(targetRow || entry),
+        id: entryId,
+        companyId,
       }
-
-      const updatedCurrentAccount = prev.currentAccount?.id === accountId
-        ? updatedAccounts.find(a => a.id === accountId) || null
-        : prev.currentAccount
-
-      const updatedCurrentCompany = updatedCurrentAccount?.companies.find(c => c.id === companyId) || null
 
       // Synchronously persist right now
       persistLedgersDirectly(updatedAccounts, prev.deletedLedgerEntries || [])
@@ -1371,13 +1375,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
       fetch("/api/ledger-entries", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: entryId,
-          companyId,
-          ...(targetRow || entry),
-        }),
+        body: JSON.stringify(mergedPayload),
         keepalive: true,
       }).catch(() => {})
+
+      // If associated with a BOL number, update BOL endpoint as well
+      const bolNo = (mergedPayload as any).barnamehNo || (mergedPayload as any).bolNo
+      if (bolNo) {
+        fetch(`/api/bol/${encodeURIComponent(bolNo)}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            container_numbers: (mergedPayload as any).containerNo,
+            container_type: (mergedPayload as any).containerType,
+            container_details: (mergedPayload as any).containerDetails,
+            driver_rent: (mergedPayload as any).driverFreight,
+            debit: (mergedPayload as any).debit,
+            credit: (mergedPayload as any).credit,
+          }),
+          keepalive: true,
+        }).catch(() => {})
+      }
+
+      const updatedCurrentAccount = prev.currentAccount?.id === accountId
+        ? updatedAccounts.find(a => a.id === accountId) || null
+        : prev.currentAccount
+
+      const updatedCurrentCompany = updatedCurrentAccount?.companies.find(c => c.id === companyId) || null
 
       return {
         ...prev,
