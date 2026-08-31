@@ -1,4 +1,4 @@
-﻿export const FINANCIALS_MAP_KEY = "skybol:financials-map"
+export const FINANCIALS_MAP_KEY = "skybol:financials-map"
 export const ACCOUNT_LEDGERS_KEY = "skybol:account-ledgers"
 
 export interface EntryFinancials {
@@ -9,6 +9,11 @@ export interface EntryFinancials {
   pdfPathname?: string
   date?: string
   invoiceNo?: string
+  shipperDescription?: string
+  description?: string
+  consignee?: string
+  containerNo?: string
+  quantity?: string
 }
 
 export function getFinancialsMap(): Record<string, EntryFinancials> {
@@ -34,6 +39,11 @@ export function saveFinancialsForEntry(
     pdfPathname?: string
     date?: string
     invoiceNo?: string
+    shipperDescription?: string
+    description?: string
+    consignee?: string
+    containerNo?: string
+    quantity?: string
   }
 ) {
   if (typeof window === "undefined") return
@@ -61,6 +71,23 @@ export function saveFinancialsForEntry(
     }
     if (entryData.invoiceNo !== undefined) {
       fin.invoiceNo = entryData.invoiceNo
+    }
+    if (entryData.shipperDescription !== undefined && entryData.shipperDescription.trim() !== "") {
+      fin.shipperDescription = entryData.shipperDescription.trim()
+      fin.description = entryData.shipperDescription.trim()
+    }
+    if (entryData.description !== undefined && entryData.description.trim() !== "") {
+      fin.shipperDescription = entryData.description.trim()
+      fin.description = entryData.description.trim()
+    }
+    if (entryData.consignee !== undefined) {
+      fin.consignee = entryData.consignee
+    }
+    if (entryData.containerNo !== undefined) {
+      fin.containerNo = entryData.containerNo
+    }
+    if (entryData.quantity !== undefined) {
+      fin.quantity = entryData.quantity
     }
 
     const keys: string[] = []
@@ -95,12 +122,19 @@ export function smartMergeRow(existing: any = {}, incoming: any = {}): any {
   const incomingCredit = incoming?.credit !== undefined && incoming?.credit !== "" ? Number(incoming?.credit) || 0 : undefined
   const mergedCredit = incomingCredit !== undefined && incomingCredit > 0 ? incomingCredit : (existingCredit > 0 ? existingCredit : (incomingCredit ?? 0))
 
+  const descVal = incoming?.shipperDescription || incoming?.description || existing?.shipperDescription || existing?.description || ""
+
   return {
     ...existing,
     ...incoming,
     id: incoming?.id || existing?.id || crypto.randomUUID(),
     debit: mergedDebit,
     credit: mergedCredit,
+    shipperDescription: descVal,
+    description: descVal,
+    containerNo: incoming?.containerNo || existing?.containerNo || "",
+    consignee: incoming?.consignee || existing?.consignee || "",
+    quantity: incoming?.quantity || existing?.quantity || "",
     driverFreight: incoming?.driverFreight || incoming?.driverRent || existing?.driverFreight || existing?.driverRent || "",
     driverRent: incoming?.driverFreight || incoming?.driverRent || existing?.driverFreight || existing?.driverRent || "",
     pdfFile: incoming?.pdfFile || incoming?.pdfPathname || existing?.pdfFile || existing?.pdfPathname || undefined,

@@ -2,7 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect, memo, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History, Eye, Download, ZoomIn, ZoomOut, Maximize2, BookOpen, LayoutGrid, LayoutList, SlidersHorizontal, ArrowUpDown, Layers } from 'lucide-react'
+import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileText, X, Check, AlertCircle, Settings2, Loader2, Image as ImageIcon, CheckCircle2, RotateCcw, AlertTriangle, RefreshCw, Undo2, History, Eye, Download, ZoomIn, ZoomOut, Maximize2, BookOpen, LayoutGrid, LayoutList, SlidersHorizontal, ArrowUpDown, Layers, Save } from 'lucide-react'
+import { toast } from 'sonner'
 import { saveFinancialsForEntry } from '@/lib/services/ledger-sync-utils'
 import { DescriptionPresetSelector } from './description-preset-selector'
 import { Button } from '@/components/ui/button'
@@ -175,12 +176,34 @@ export const LedgerView = memo(function LedgerView() {
   })
   const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('USD')
   const [mobileViewMode, setMobileViewMode] = useState<'cards' | 'table'>('cards')
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving'>('saved')
+  const [lastSavedTime, setLastSavedTime] = useState<string>('')
+
+  const handleManualAutoSave = useCallback(() => {
+    setAutoSaveStatus('saving')
+    if (currentAccount && currentCompany) {
+      currentCompany.ledgerEntries.forEach((e) => {
+        saveFinancialsForEntry(e.barnamehNo, e.id, e)
+      })
+      window.dispatchEvent(new CustomEvent('skybol:account-ledger-updated', { detail: {} }))
+    }
+    setTimeout(() => {
+      setAutoSaveStatus('saved')
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      setLastSavedTime(timeStr)
+      toast.success('ټول حسابی معلومات په بریالیتوب سره په بشپړ ډول اتومات خوندي شول (Ledger auto-saved!)', {
+        duration: 3000,
+        icon: '💾',
+      })
+    }, 350)
+  }, [currentAccount, currentCompany])
 
   const handleAddEntry = () => {
     if (!currentAccount || !currentCompany) return
     const debitNum = !newEntry.debit || (newEntry.debit as any) === '' ? 0 : Number(newEntry.debit) || 0
     const creditNum = !newEntry.credit || (newEntry.credit as any) === '' ? 0 : Number(newEntry.credit) || 0
     
+    setAutoSaveStatus('saving')
     saveFinancialsForEntry(newEntry.barnamehNo, undefined, {
       ...newEntry,
       debit: debitNum,
@@ -194,6 +217,10 @@ export const LedgerView = memo(function LedgerView() {
     })
     setNewEntry(emptyEntry)
     setIsOpen(false)
+    setTimeout(() => {
+      setAutoSaveStatus('saved')
+      setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+    }, 300)
   }
 
   const handleResyncBols = async () => {
@@ -613,6 +640,8 @@ export const LedgerView = memo(function LedgerView() {
   const handleSaveEditedEntry = async (updatedData: Partial<LedgerEntry>) => {
     if (!editingEntry || !currentAccount || !currentCompany) return
 
+    setAutoSaveStatus('saving')
+
     // Immediately save to financials map
     saveFinancialsForEntry(editingEntry.barnamehNo || (updatedData as any)?.barnamehNo, editingEntry.id, updatedData)
 
@@ -634,6 +663,15 @@ export const LedgerView = memo(function LedgerView() {
 
     setIsEditOpen(false)
     setEditingEntry(null)
+
+    setTimeout(() => {
+      setAutoSaveStatus('saved')
+      setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+      toast.success('ریکارډ په اتومات ډول خوندي شو (Entry auto-saved!)', {
+        duration: 2500,
+        icon: '✓',
+      })
+    }, 250)
   }
 
   const handleUploadPdfForEntry = async (file: File): Promise<{ pathname: string; filename: string } | void> => {
@@ -973,6 +1011,21 @@ export const LedgerView = memo(function LedgerView() {
             <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-full bg-slate-100 text-slate-600 border border-slate-200">
               {currentCompany.ledgerEntries.length} entries
             </span>
+            <button
+              type="button"
+              onClick={handleManualAutoSave}
+              className="px-2.5 py-0.5 sm:px-3 sm:py-1 text-[10px] sm:text-xs font-black rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer group"
+              title="Click to force immediate save & backup / اتومات خوندي کول"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className={`${autoSaveStatus === 'saving' ? 'animate-spin border-t-emerald-600 border-2 rounded-full w-2 h-2' : 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75'}`}></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>{autoSaveStatus === 'saving' ? 'Saving...' : 'Auto-Saved'}</span>
+              <span className="text-[9px] text-emerald-600 font-bold hidden md:inline">
+                {lastSavedTime ? `(${lastSavedTime})` : '(اتومات خوندي)'}
+              </span>
+            </button>
           </div>
           <p className="text-xs sm:text-sm text-slate-600 mt-1 font-bold">
             Manage transactions and print statements
@@ -1130,6 +1183,22 @@ export const LedgerView = memo(function LedgerView() {
           >
             <Receipt className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>Invoice</span>
+          </Button>
+
+          {/* Dedicated Auto-Save / Save Ledger Button */}
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 sm:flex-initial gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl h-10 sm:h-12 px-3 sm:px-4 bg-emerald-50/90 hover:bg-emerald-100/90 border-emerald-300 text-emerald-950 font-black shadow-sm transition-all text-xs sm:text-sm cursor-pointer"
+            onClick={handleManualAutoSave}
+            title="Save & Backup Ledger / حسابی ریکارډونه خوندي کړئ"
+          >
+            {autoSaveStatus === 'saving' ? (
+              <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-emerald-700" />
+            ) : (
+              <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-700" />
+            )}
+            <span>Save Ledger</span>
           </Button>
           
           {/* Export Dropdown */}

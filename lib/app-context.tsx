@@ -739,21 +739,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const driverFreightVal = fin?.driverFreight || doc.driver_rent || existingRow?.driverFreight || existingRow?.driverRent || ""
           const surrenderedVal = fin?.surrenderedBL !== undefined ? fin.surrenderedBL : (existingRow?.surrenderedBL || false)
           const pdfVal = fin?.pdfPathname || existingRow?.pdfFile || existingRow?.pdfPathname || undefined
+          const descVal = fin?.shipperDescription || fin?.description || existingRow?.shipperDescription || existingRow?.description || displayName
+          const containerVal = fin?.containerNo || doc.container_numbers || existingRow?.containerNo || "N/A"
+          const consigneeVal = fin?.consignee || doc.consignee_name || existingRow?.consignee || "N/A"
+          const quantityVal = fin?.quantity || doc.number_of_packages || existingRow?.quantity || "N/A"
 
           ledgerEntries.push({
             id: existingRow?.id || doc.id || `bol-${idx}`,
             sNo: ledgerEntries.length + 1,
             date: fin?.date || existingRow?.date || doc.issue_date || new Date().toISOString().split("T")[0],
-            shipperDescription: displayName,
+            shipperDescription: descVal,
             invoiceNo: fin?.invoiceNo || existingRow?.invoiceNo || parsedInvoice,
             dateOfShip: existingRow?.shipDate || existingRow?.dateOfShip || doc.issue_date || "",
             barnamehNo: bolNo,
             driverFreight: driverFreightVal,
             billOfLanding: existingRow?.billOfLanding || "",
             surrenderedBL: surrenderedVal,
-            containerNo: doc.container_numbers || existingRow?.containerNo || "N/A",
-            consignee: doc.consignee_name || existingRow?.consignee || "N/A",
-            quantity: doc.number_of_packages || existingRow?.quantity || "N/A",
+            containerNo: containerVal,
+            consignee: consigneeVal,
+            quantity: quantityVal,
             debit: debitVal,
             credit: creditVal,
             balance: runningBalance,
@@ -807,20 +811,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
           runningBalance += (debitVal - creditVal)
 
+          const descVal = fin?.shipperDescription || fin?.description || row.shipperDescription || row.description || displayName
+          const containerVal = fin?.containerNo || row.containerNo || ""
+          const consigneeVal = fin?.consignee || row.consignee || ""
+          const quantityVal = fin?.quantity || row.quantity || ""
+
           ledgerEntries.push({
             id: row.id || crypto.randomUUID(),
             sNo: ledgerEntries.length + 1,
             date: fin?.date || row.date || "",
-            shipperDescription: displayName,
+            shipperDescription: descVal,
             invoiceNo: fin?.invoiceNo || row.invoiceNo || "",
             dateOfShip: row.shipDate || row.dateOfShip || "",
             barnamehNo: rBol,
             driverFreight: fin?.driverFreight || row.driverFreight || row.driverRent || "",
             billOfLanding: row.billOfLanding || "",
             surrenderedBL: fin?.surrenderedBL !== undefined ? fin.surrenderedBL : Boolean(row.surrenderedBL),
-            containerNo: row.containerNo || "",
-            consignee: row.consignee || "",
-            quantity: row.quantity || "",
+            containerNo: containerVal,
+            consignee: consigneeVal,
+            quantity: quantityVal,
             debit: debitVal,
             credit: creditVal,
             balance: runningBalance,
@@ -1005,9 +1014,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
           if (company.name !== 'Acme Corp' && company.name !== 'Global Logistics') {
             company.ledgerEntries.forEach(e => {
-              if (Number(e.debit) > 0 || Number(e.credit) > 0 || e.driverFreight) {
-                saveFinancialsForEntry(e.barnamehNo, e.id, e)
-              }
+              saveFinancialsForEntry(e.barnamehNo, e.id, e)
             })
 
             const rows = company.ledgerEntries.map(entry => ({

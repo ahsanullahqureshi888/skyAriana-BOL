@@ -1,0 +1,146 @@
+{
+  "bol_details": {
+    "truck_number": "35974هرات",
+    "driver_name": " گل احمد ولد حاجي نظرمحمد",
+    "driver_father_name": "",
+    "driver_contact": "0793563000",
+    "driver_rent": "45,000-AFN - کرایه واپسی",
+    "routes": [
+      {
+        "id": "ebb7b93e-e5c9-474b-9d6b-2779c58df2b4",
+        "location": "Kandahar",
+        "locationPersian": "کندهار",
+        "stopOrder": 1,
+        "transportMode": "truck",
+        "stopLabel": "Origin"
+      },
+      {
+        "id": "3fcf2437-c574-4bb6-aff7-d10c163465e2",
+        "location": "Dougharoun, IR",
+        "locationPersian": "دوغارون، ایران",
+        "stopOrder": 2,
+        "transportMode": "truck",
+        "stopLabel": "Stop 1"
+      },
+      {
+        "id": "987fb92c-aac9-4d1a-acc4-3de6b43f9e5c",
+        "location": "Mersin, TR",
+        "locationPersian": "مرسین، ترکیه",
+        "stopOrder": 3,
+        "transportMode": "vessel",
+        "stopLabel": "Stop 2"
+      },
+      {
+        "id": "47cdd41c-4e81-442e-8772-4ab145599b46",
+        "location": "Nhava Sheva, IN",
+        "locationPersian": "نوا شوا، هند",
+        "stopOrder": 4,
+        "transportMode": "vessel",
+        "stopLabel": "Destination"
+      }
+    ],
+    "container_type": "",
+    "container_size": "",
+    "container_numbers": "",
+    "seal_numbers": "",
+    "shipper_name": "NAJEB AMIN LTD",
+    "shipper_address": "T.L NO: 27-975\nShorandam Industrial Area, Kandahar, Afghanistan",
+    "shipper_contact": "+93 700 308 086",
+    "shipper_email": "",
+    "consignee_name": "MANIK TRADERS",
+    "consignee_address": "D-25, APMC Market-1, Phase-2, Sector-19, Vashi, Navi Mumbai – 400705, India.\nGST NO: 27AADFM0385M1ZO\nIEC NO: AADFM0385M\nPAN NO: AADFM0385M",
+    "consignee_contact": "+9764265544",
+    "consignee_email": "jaimanik@icloud.com",
+    "notify_party": "YAAQOUB HAMDAN FOODSTUFF TRADING CO LLC",
+    "notify_party_address": "Shop No: 28 Al Hawai Building, Al Ras Street, Deira Dubai, UAE\nTRN NO: 100340961000003",
+    "vessel_name": "",
+    "voyage_number": "",
+    "port_of_loading": "",
+    "port_of_discharge": "",
+    "place_of_delivery": "",
+    "cargo_description": "📦 CONTAINER & CARGO DETAILS │ 🧾 DOCUMENT & SHIPPING DETAILS\n🥬 Cargo: BLACK RAISINS 1400 CTNS 16 KG @ 2.65 $ │ 📄 Invoice NO: INV-119",
+    "net_weight": "22,400 KG",
+    "gross_weight": "24,500 KG",
+    "measurement": "",
+    "number_of_packages": "1400 CTNS - BLACK RAISNIS",
+    "kgs_per_carton": "16-KGS",
+    "gross_weight_per_carton": "17.50-KGS",
+    "rate_per_kgs": "2.65",
+    "goods_value": "59,360.00 USD",
+    "freight_payable_at": "",
+    "freight_terms": "",
+    "remarks": "",
+    "notes_1": "نظرمحمد (یارمل)\n(+93) 0 700 203 307",
+    "notes_1_label": "دکندهار بارګیری مسؤل",
+    "notes_1_theme": "red",
+    "notes_2": "اسلام قلعه نمبرونه | نماینده دوغارون / شماره تماس\nحاجی معلم صاحب : 0799007371 , عصمت الله : 0729807676 , حکمت الله :0794983011",
+    "notes_2_label": "نماینده نمبرونه",
+    "notes_2_theme": "red",
+    "afghanistan_documents": [],
+    "afghanistan_document_details": {},
+    "bol_number": "BOL-2026-NSA504",
+    "issue_date": "2026-08-26",
+    "persian_date": "۴ شهریور ۱۴۰۵",
+    "persian_date_numeric": "‎۱۴۰۵/‎۰۶/‎۰۴‎",
+    "updated_at": "2026-08-26T05:31:44.345Z"
+  },
+  "related_ledger_entries": [
+    {
+      "source": "bol-account-ledgers",
+      "company": "najeb amin ltd",
+      "entry": {
+        "id": "13fc4ba6-13b9-4bd7-9b43-07cec1129441",
+        "date": "2026-08-26",
+        "description": "NAJEB AMIN LTD",
+        "invoiceNo": "INV-119",
+        "shipDate": "2026-08-26",
+        "barnamehNo": "BOL-2026-NSA504",
+        "bolNo": "BOL-2026-NSA504",
+        "truckNo": "35974هرات",
+        "containerNo": "",
+        "consignee": "MANIK TRADERS",
+        "quantity": "1400 CTNS - BLACK RAISNIS",
+        "driverRent": "45,000-AFN - کرایه واپسی",
+        "driverFreight": "45,000-AFN - کرایه واپسی",
+        "debit": 0,
+        "credit": 0,
+        "pdfFile": ""
+      }
+    }
+  ],
+  "related_entries_count": 1,
+  "linked_invoices": [
+    {
+      "invoice_number": "INV-119",
+      "invoice_date": "2026-08-26",
+      "buyer_name": "NAJEB AMIN LTD",
+      "charges": {
+        "service_subtotal": 11000.0,
+        "freight_charges": 0.0,
+        "demurrage_charges": 0.0,
+        "detention_charges": 0.0,
+        "documentation_charges": 150.0,
+        "port_charges": 0.0,
+        "truck_charges": 0.0,
+        "other_charges": 0.0,
+        "tax": 0.0,
+        "discount": 0.0,
+        "subtotal": 11150.0,
+        "grand_total": 11150.0
+      },
+      "items": [
+        {
+          "id": "1788160007.83568",
+          "date": "2026-08-26",
+          "description": "Freight Transportation: 📦 CONTAINER & CARGO DETAILS │ 🧾 DOCUMENT & SHIPPING DETAILS\n🥬 Cargo: BLACK RAISINS 1400 CTNS 16 KG @ 2.65 $ │ 📄 Invoice NO: INV-119",
+          "containerNo": "",
+          "quantity": "1",
+          "unit": "کرایه",
+          "unitPrice": "11000.0",
+          "currency": "USD"
+        }
+      ]
+    }
+  ],
+  "linked_invoices_count": 1
+}

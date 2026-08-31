@@ -1,0 +1,129 @@
+{
+  "timestamp": "2026-08-31T11:31:07.465859",
+  "totals": {
+    "total_bol_count": 59,
+    "total_accounts_count": 20,
+    "total_invoices_count": 2,
+    "total_invoice_billed_usd": 27600.0,
+    "total_documentation_charges_usd": 0.0,
+    "overall_debit_usd": 236900.0,
+    "overall_credit_usd": 18222.0,
+    "overall_net_receivable_usd": 218678.0
+  },
+  "top_accounts": [
+    {
+      "account_id": "najeb-amin-ltd-mersin-port-account",
+      "entry_count": 18,
+      "total_debit_usd": 198000.0,
+      "total_credit_usd": 0.0,
+      "net_balance_usd": 198000.0,
+      "latest_entry_date": "2026-08-13"
+    },
+    {
+      "account_id": "d45c97c9-e70e-493b-af93-7b2408272973",
+      "entry_count": 2,
+      "total_debit_usd": 13000.0,
+      "total_credit_usd": 5000.0,
+      "net_balance_usd": 8000.0,
+      "latest_entry_date": "2026-06-03"
+    },
+    {
+      "account_id": "6ed83185-22b2-426a-b865-20d4e79fcdf4",
+      "entry_count": 1,
+      "total_debit_usd": 7200.0,
+      "total_credit_usd": 0.0,
+      "net_balance_usd": 7200.0,
+      "latest_entry_date": "2026-06-04"
+    },
+    {
+      "account_id": "79bd5d03-7fe7-481e-b5cf-21bed863082a",
+      "entry_count": 4,
+      "total_debit_usd": 18700.0,
+      "total_credit_usd": 13222.0,
+      "net_balance_usd": 5478.0,
+      "latest_entry_date": "2026-06-08"
+    },
+    {
+      "account_id": "5a8ee275-1a24-481b-905a-39858b23af98",
+      "entry_count": 0,
+      "total_debit_usd": 0,
+      "total_credit_usd": 0,
+      "net_balance_usd": 0,
+      "latest_entry_date": null
+    }
+  ],
+  "recent_invoices": [
+    {
+      "invoice_number": "INV-2026-0108",
+      "invoice_date": "2026-03-02",
+      "buyer_name": "HAJI AMANULLAH",
+      "item_count": 4,
+      "documentation_charges_usd": 0.0,
+      "freight_charges_usd": 0.0,
+      "grand_total_usd": 13800.0,
+      "payment_status": "Unpaid"
+    },
+    {
+      "invoice_number": "INV-2026-0117",
+      "invoice_date": "2026-06-08",
+      "buyer_name": "haji-amnaullah",
+      "item_count": 4,
+      "documentation_charges_usd": 0.0,
+      "freight_charges_usd": 0.0,
+      "grand_total_usd": 13800.0,
+      "payment_status": "Unpaid"
+    }
+  ],
+  "recent_bols": [
+    {
+      "bol_number": "BOL-2026-NSA513",
+      "issue_date": "2026-08-26",
+      "shipper": "HAJI-NOOR-MUHMMAD-AYAZ-NOORI",
+      "consignee": "",
+      "truck_number": "71731کابل",
+      "driver_name": "  شبیراحمد ولد حاجی محمد",
+      "packages": "514- CTNS پارسل رویحان- ",
+      "net_weight": "25,443 KG"
+    },
+    {
+      "bol_number": "BOL-2026-NSA515",
+      "issue_date": "2026-08-26",
+      "shipper": "HAJI NOOR MUHMMAD AYAZ NOORI",
+      "consignee": "",
+      "truck_number": "",
+      "driver_name": "",
+      "packages": "",
+      "net_weight": ""
+    },
+    {
+      "bol_number": "BOL-2026-NSA504",
+      "issue_date": "2026-08-26",
+      "shipper": "NAJEB AMIN LTD",
+      "consignee": "MANIK TRADERS",
+      "truck_number": "35974هرات",
+      "driver_name": " گل احمد ولد حاجي نظرمحمد",
+      "packages": "1400 CTNS - BLACK RAISNIS",
+      "net_weight": "22,400 KG"
+    },
+    {
+      "bol_number": "BOL-2026-NSA505",
+      "issue_date": "2026-08-26",
+      "shipper": "HAYATULLAH KHAN FAZLI LTD",
+      "consignee": "LAKHDATAR FOODS",
+      "truck_number": "1265نیمروز",
+      "driver_name": " امیرمحمد ولد دوست محمد",
+      "packages": "2150 CTNS - DRY FIGS 10 KGS",
+      "net_weight": "21,500 KG - 100 KG"
+    },
+    {
+      "bol_number": "BOL-2025-NSA150",
+      "issue_date": "2026-06-01",
+      "shipper": "ASADULLAH NIAMATULLAH HABIBI LTD",
+      "consignee": "DEV IMPEX-",
+      "truck_number": "38663-HRT",
+      "driver_name": "AHMAD",
+      "packages": "1565 CTNS",
+      "net_weight": "25,040 KG"
+    }
+  ]
+}

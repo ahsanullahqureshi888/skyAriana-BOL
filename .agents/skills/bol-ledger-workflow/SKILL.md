@@ -50,8 +50,14 @@ Look up a BOL by number or ID and find all associated ledger records:
 python .agents/skills/bol-ledger-workflow/scripts/bol_ledger_cli.py inspect-bol --bol-no "BOL-2026-NSA513" --output bol_details.json
 ```
 
-### 4. Export Formatted Account Ledger
-Generate a markdown table with bilingual headers for an account:
+### 4. Inspect an Invoice & Charges
+Look up an invoice to inspect freight, demurrage, detention, and documentation fees:
+```bash
+python .agents/skills/bol-ledger-workflow/scripts/bol_ledger_cli.py inspect-invoice --invoice-no "INV-2026-0108" --output invoice_details.json
+```
+
+### 5. Export Formatted Account Ledger
+Generate a markdown table with bilingual headers, B/L & invoice numbers, and documentation charges for an account:
 ```bash
 python .agents/skills/bol-ledger-workflow/scripts/bol_ledger_cli.py export-ledger --account-id "NAJEB AMIN LTD" --format markdown --output najeb_amin_ledger.md
 ```
@@ -67,9 +73,10 @@ The skill includes the CLI tool located at `scripts/bol_ledger_cli.py`.
 | Subcommand | Required Arguments | Optional Arguments | Output Description |
 |---|---|---|---|
 | `validate` | `--output <file>` | `--data-dir <path>`, `--strict` | JSON report of checked files, errors, and warnings |
-| `summary` | `--limit <int>`, `--output <file>` | `--data-dir <path>` | JSON report with totals, top debtors, recent BOLs |
-| `inspect-bol` | `--bol-no <id>`, `--output <file>` | `--data-dir <path>` | Full BOL data object and related ledger links |
-| `export-ledger`| `--account-id <id>`, `--output <file>`| `--format <json\|markdown>`, `--data-dir <path>` | Formatted ledger with running balances & Pashto labels |
+| `summary` | `--limit <int>`, `--output <file>` | `--data-dir <path>` | JSON report with totals, top debtors, invoices, doc fees, recent BOLs |
+| `inspect-bol` | `--bol-no <id>`, `--output <file>` | `--data-dir <path>` | Full BOL data object, related ledger links, and linked invoices |
+| `inspect-invoice` | `--invoice-no <id>`, `--output <file>` | `--data-dir <path>` | Full invoice details, item breakdown, and documentation fees |
+| `export-ledger`| `--account-id <id>`, `--output <file>`| `--format <json\|markdown>`, `--data-dir <path>` | Formatted ledger with running balances, invoices, doc fees & Pashto labels |
 
 ---
 

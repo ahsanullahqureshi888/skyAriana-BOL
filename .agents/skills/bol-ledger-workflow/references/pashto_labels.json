@@ -45,6 +45,8 @@
   ],
   "mergedLabels": {
     "blNo": { "en": "B/L No", "ps": "د بی ال نمبر" },
+    "invoiceNo": { "en": "Invoice No", "ps": "د انوایس شمېره" },
+    "documentationFee": { "en": "Documentation Fee / Expenses", "ps": "د اسنادو فیس / مصارف" },
     "consignee": { "en": "Consignee", "ps": "ترلاسه کوونکی" },
     "containerNo": { "en": "Container No", "ps": "د کانټینر نمبر" },
     "containerType": { "en": "Type", "ps": "نوعیت" },
@@ -59,6 +61,8 @@
     "debit": { "en": "Debit (Charges)", "ps": "رسید / بدهی" },
     "credit": { "en": "Credit (Payments)", "ps": "تادیه / اعتبار" },
     "balance": { "en": "Balance", "ps": "پاتې بیلانس" },
+    "documentationCharges": { "en": "Documentation Charges", "ps": "د اسنادو مصارف" },
+    "invoiceTotal": { "en": "Invoice Total", "ps": "د انوایس مجموعه" },
     "exchangeRate": { "en": "Exchange Rate", "ps": "د تبادلې نرخ" },
     "currencyUsd": { "en": "USD ($)", "ps": "ډالر" },
     "currencyAfn": { "en": "AFN (؋)", "ps": "افغانۍ" }
