@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, Upload, FileText, Trash2 } from 'lucide-react'
 import { LedgerEntry } from '@/lib/types'
+import { ContainerPresetSelector } from './container-preset-selector'
 
 interface EditLedgerEntryDialogProps {
   open: boolean
@@ -183,14 +184,16 @@ export function EditLedgerEntryDialog({
             </div>
           </div>
 
-          <div>
-            <label className="text-sm font-medium">Container No</label>
-            <Input
-              name="containerNo"
-              value={formData.containerNo || ''}
-              onChange={handleChange}
-              placeholder="SEGU9872723"
-              className="mt-1"
+          <div className="col-span-2 bg-slate-50/70 p-3 rounded-xl border border-blue-200/60 shadow-xs">
+            <ContainerPresetSelector
+              containerNo={formData.containerNo || ''}
+              containerType={formData.containerType || ''}
+              containerDetails={formData.containerDetails || ''}
+              onChangeContainerNo={(newNo) => setFormData(prev => ({ ...prev, containerNo: newNo }))}
+              onChangeContainerType={(newType) => setFormData(prev => ({ ...prev, containerType: newType }))}
+              onChangeContainerDetails={(newDetails) => setFormData(prev => ({ ...prev, containerDetails: newDetails }))}
+              showDetailsField={true}
+              showQuickChips={true}
             />
           </div>
           <div>

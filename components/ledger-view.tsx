@@ -6,6 +6,7 @@ import { Plus, Trash2, Edit3, Printer, Receipt, Upload, FileSpreadsheet, FileTex
 import { toast } from 'sonner'
 import { saveFinancialsForEntry } from '@/lib/services/ledger-sync-utils'
 import { DescriptionPresetSelector } from './description-preset-selector'
+import { ContainerPresetSelector } from './container-preset-selector'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -82,6 +83,8 @@ const emptyEntry: Omit<LedgerEntry, 'id' | 'sNo' | 'balance'> = {
   billOfLanding: '',
   surrenderedBL: false,
   containerNo: '',
+  containerType: '',
+  containerDetails: '',
   consignee: '',
   quantity: '',
   debit: 0,
@@ -1431,12 +1434,16 @@ export const LedgerView = memo(function LedgerView() {
                 className="bg-white/50 border-white/30"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Container No / د کانټینر شمېره</label>
-              <Input
-                value={newEntry.containerNo}
-                onChange={e => setNewEntry({ ...newEntry, containerNo: e.target.value })}
-                className="bg-white/50 border-white/30"
+            <div className="col-span-full bg-slate-50/70 p-3 rounded-xl border border-blue-200/60 shadow-xs">
+              <ContainerPresetSelector
+                containerNo={newEntry.containerNo}
+                containerType={newEntry.containerType || ''}
+                containerDetails={newEntry.containerDetails || ''}
+                onChangeContainerNo={val => setNewEntry({ ...newEntry, containerNo: val })}
+                onChangeContainerType={val => setNewEntry({ ...newEntry, containerType: val })}
+                onChangeContainerDetails={val => setNewEntry({ ...newEntry, containerDetails: val })}
+                showDetailsField={true}
+                showQuickChips={true}
               />
             </div>
             <div className="space-y-2">
@@ -2174,7 +2181,23 @@ export const LedgerView = memo(function LedgerView() {
                             </div>
                           </div>
                         </td>
-                        <td className={`border px-1 py-1.5 text-center text-[10px] ${isCredit ? 'border-emerald-300/60 text-emerald-900 bg-emerald-50/50' : 'border-blue-200/60 text-blue-900 bg-white/40'}`}>{entry.containerNo}</td>
+                        <td className={`border px-1 py-1.5 text-center text-[10px] ${isCredit ? 'border-emerald-300/60 text-emerald-900 bg-emerald-50/50' : 'border-blue-200/60 text-blue-900 bg-white/40'}`}>
+                          <div className="flex flex-col items-center justify-center gap-0.5">
+                            {entry.containerType && (
+                              <span className="inline-block px-1.5 py-0.2 rounded text-[8.5px] font-bold bg-blue-100/90 text-blue-950 border border-blue-200 shadow-2xs">
+                                {entry.containerType}
+                              </span>
+                            )}
+                            <span className="font-mono font-bold text-[9.5px] text-blue-950 tracking-wider">
+                              {entry.containerNo || (entry.containerType ? "" : "—")}
+                            </span>
+                            {entry.containerDetails && (
+                              <span className="text-[8px] text-emerald-800 bg-emerald-50 border border-emerald-200/70 rounded px-1 max-w-[130px] truncate" title={entry.containerDetails}>
+                                {entry.containerDetails}
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className={`border px-1 py-1.5 text-center text-[10px] ${isCredit ? 'border-emerald-300/60 text-emerald-900 bg-emerald-50/50' : 'border-blue-200/60 text-blue-900 bg-white/40'}`}>{entry.consignee}</td>
                         <td className={`border px-1 py-1.5 text-center text-[10px] ${isCredit ? 'border-emerald-300/60 text-emerald-900 bg-emerald-50/50' : 'border-blue-200/60 text-blue-900 bg-white/40'}`}>{entry.quantity}</td>
                         <td className={`border px-1 py-1.5 text-center text-[10px] ${isCredit ? 'border-emerald-300/60 text-emerald-900 bg-emerald-50/50' : 'border-blue-200/60 text-blue-900 bg-white/40'}`}>
@@ -2492,7 +2515,12 @@ export const LedgerView = memo(function LedgerView() {
                           )}
                         </div>
                       </td>
-                      <td style={{ textAlign: 'center', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.containerNo}</td>
+                      <td style={{ textAlign: 'center', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>
+                        <div>{entry.containerType ? `${entry.containerType} ${entry.containerNo || ''}`.trim() : entry.containerNo}</div>
+                        {entry.containerDetails && (
+                          <div style={{ fontSize: '5.2pt', opacity: 0.85, color: '#047857' }}>{entry.containerDetails}</div>
+                        )}
+                      </td>
                       <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.consignee}</td>
                       <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', fontWeight: 600, border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.quantity}</td>
                       <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '6.8pt', backgroundColor: '#fffdf5', lineHeight: '1.15', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', fontFamily: 'monospace' }}>
@@ -2838,7 +2866,12 @@ export const LedgerView = memo(function LedgerView() {
                               )}
                             </div>
                           </td>
-                          <td style={{ textAlign: 'center', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.containerNo}</td>
+                          <td style={{ textAlign: 'center', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>
+                            <div>{entry.containerType ? `${entry.containerType} ${entry.containerNo || ''}`.trim() : entry.containerNo}</div>
+                            {entry.containerDetails && (
+                              <div style={{ fontSize: '5.2pt', opacity: 0.85, color: '#047857' }}>{entry.containerDetails}</div>
+                            )}
+                          </td>
                           <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.consignee}</td>
                           <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', fontWeight: 600, border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.quantity}</td>
                           <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '6.8pt', backgroundColor: '#fffdf5', lineHeight: '1.15', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', fontFamily: 'monospace' }}>

@@ -16,6 +16,8 @@ export interface LedgerEntry {
   billOfLanding: string
   surrenderedBL: boolean
   containerNo: string
+  containerType?: string
+  containerDetails?: string
   consignee: string
   quantity: string
   debit: number

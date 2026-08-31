@@ -1,0 +1,5 @@
+﻿ClinVar Database License & Terms Notification
+=============================================
+Notification Timestamp: 2026-08-31T12:03:53+04:30
+Source: NCBI ClinVar (https://www.ncbi.nlm.nih.gov/clinvar/)
+Notice: Users are advised to review the terms of service, data usage policies, and attribution guidelines at https://www.ncbi.nlm.nih.gov/clinvar/ before using data in clinical or research contexts.

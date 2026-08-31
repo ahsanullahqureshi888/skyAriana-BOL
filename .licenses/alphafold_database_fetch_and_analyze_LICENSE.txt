@@ -1,0 +1,3 @@
+﻿Notification: AlphaFold Database terms of use notice.
+Please review the AlphaFold Database terms of use and licenses at https://alphafold.ebi.ac.uk/.
+Recorded at: 2026-08-31T12:20:20+04:30

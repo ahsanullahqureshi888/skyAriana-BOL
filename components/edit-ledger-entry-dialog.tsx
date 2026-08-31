@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, Upload, FileText, Trash2, Paperclip } from 'lucide-react'
 import { LedgerEntry } from '@/lib/types'
 import { DescriptionPresetSelector } from './description-preset-selector'
+import { ContainerPresetSelector } from './container-preset-selector'
 
 interface EditLedgerEntryDialogProps {
   open: boolean
@@ -208,27 +209,28 @@ export function EditLedgerEntryDialog({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <label className="text-[11px] font-bold text-blue-900 block mb-1">Container No / کانټینر</label>
-                  <Input
-                    name="containerNo"
-                    value={formData.containerNo || ''}
-                    onChange={handleChange}
-                    placeholder="SEGU9872723"
-                    className="bg-white border-blue-200 focus:border-blue-500 text-xs font-semibold h-9 text-blue-950"
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold text-blue-900 block mb-1">Consignee / وصول کوونکی</label>
-                  <Input
-                    name="consignee"
-                    value={formData.consignee || ''}
-                    onChange={handleChange}
-                    placeholder="Company Name"
-                    className="bg-white border-blue-200 focus:border-blue-500 text-xs font-semibold h-9 text-blue-950"
-                  />
-                </div>
+              <div>
+                <label className="text-[11px] font-bold text-blue-900 block mb-1">Consignee / وصول کوونکی</label>
+                <Input
+                  name="consignee"
+                  value={formData.consignee || ''}
+                  onChange={handleChange}
+                  placeholder="Company Name"
+                  className="bg-white border-blue-200 focus:border-blue-500 text-xs font-semibold h-9 text-blue-950"
+                />
+              </div>
+
+              <div>
+                <ContainerPresetSelector
+                  containerNo={formData.containerNo || ''}
+                  containerType={formData.containerType || ''}
+                  containerDetails={formData.containerDetails || ''}
+                  onChangeContainerNo={(newNo) => setFormData(prev => ({ ...prev, containerNo: newNo }))}
+                  onChangeContainerType={(newType) => setFormData(prev => ({ ...prev, containerType: newType }))}
+                  onChangeContainerDetails={(newDetails) => setFormData(prev => ({ ...prev, containerDetails: newDetails }))}
+                  showDetailsField={true}
+                  showQuickChips={true}
+                />
               </div>
             </div>
 
