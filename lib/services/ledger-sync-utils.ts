@@ -182,3 +182,82 @@ export function smartMergeLedgerRecords(
 
   return result
 }
+
+export interface LedgerAuditResult {
+  isValid: boolean
+  totalAccounts: number
+  totalEntries: number
+  totalDebit: number
+  totalCredit: number
+  netBalance: number
+  discrepancies: Array<{
+    account: string
+    totalDebit: number
+    totalCredit: number
+    expectedBalance: number
+    reportedBalance?: number
+    message: string
+  }>
+}
+
+export function validateLedgerInvariance(
+  ledgerRecords: Record<string, any[]> = {}
+): LedgerAuditResult {
+  let totalAccounts = 0
+  let totalEntries = 0
+  let totalDebit = 0
+  let totalCredit = 0
+  const discrepancies: LedgerAuditResult["discrepancies"] = []
+
+  const accountKeys = Object.keys(ledgerRecords || {})
+  totalAccounts = accountKeys.length
+
+  for (const account of accountKeys) {
+    const entries = Array.isArray(ledgerRecords[account]) ? ledgerRecords[account] : []
+    totalEntries += entries.length
+
+    let accDebit = 0
+    let accCredit = 0
+
+    for (const entry of entries) {
+      const d = Number(entry.debit) || 0
+      const c = Number(entry.credit) || 0
+      accDebit += d
+      accCredit += c
+    }
+
+    totalDebit += accDebit
+    totalCredit += accCredit
+
+    // Check last row reported balance if present
+    if (entries.length > 0) {
+      const lastEntry = entries[entries.length - 1]
+      if (lastEntry.balance !== undefined && lastEntry.balance !== null && lastEntry.balance !== "") {
+        const reported = Number(lastEntry.balance)
+        const expected = accDebit - accCredit
+        if (!isNaN(reported) && Math.abs(reported - expected) > 0.05) {
+          discrepancies.push({
+            account,
+            totalDebit: accDebit,
+            totalCredit: accCredit,
+            expectedBalance: expected,
+            reportedBalance: reported,
+            message: `Account "${account}" balance mismatch: reported ${reported}, expected ${expected} (Debit ${accDebit} - Credit ${accCredit})`,
+          })
+        }
+      }
+    }
+  }
+
+  const netBalance = totalDebit - totalCredit
+
+  return {
+    isValid: discrepancies.length === 0,
+    totalAccounts,
+    totalEntries,
+    totalDebit,
+    totalCredit,
+    netBalance,
+    discrepancies,
+  }
+}

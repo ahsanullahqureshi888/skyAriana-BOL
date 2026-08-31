@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,8 +15,6 @@ import {
   Sparkles,
   ThermometerSnowflake,
   ShieldCheck,
-  Zap,
-  Wind,
 } from "lucide-react"
 
 export interface ContainerTypePreset {
@@ -54,21 +52,15 @@ export const CONTAINER_PREFIX_SHORTCUTS = [
   "CMAU",
   "TCLU",
   "MEDU",
-  "HLXU",
-  "MAEU",
-  "COSU",
 ]
 
 export const CONTAINER_DETAILS_PRESETS = [
   { text: "❄️ -18°C یخچالی", label: "-18°C یخچالی", icon: "❄️" },
   { text: "❄️ +4°C یخچالی", label: "+4°C یخچالی", icon: "❄️" },
-  { text: "📦 معمولي وچ (Dry Cargo)", label: "معمولي Dry", icon: "📦" },
-  { text: "🔒 ګمرکي مهر (Customs Sealed)", label: "ګمرک مهر", icon: "🔒" },
-  { text: "⚡ ژنراتور فعال (GenSet Attached)", label: "ژنراتور GenSet", icon: "⚡" },
-  { text: "💨 دریچه بنده (Vent Closed)", label: "دریچه بنده", icon: "💨" },
-  { text: "💨 دریچه ۲۵٪ خلاصه (Vent 25% Open)", label: "دریچه ۲۵٪", icon: "💨" },
-  { text: "🏷️ فوډ ګریډ (Food Grade)", label: "Food Grade", icon: "🏷️" },
-  { text: "📐 های کیوب ۹.۶ فوټه (High Cube 9'6\")", label: "High Cube 9'6\"", icon: "📐" },
+  { text: "📦 معمولی Dry", label: "معمولی Dry", icon: "📦" },
+  { text: "🔒 ګمرک مهر (Sealed)", label: "ګمرک مهر", icon: "🔒" },
+  { text: "⚡ ژنراتور GenSet", label: "ژنراتور GenSet", icon: "⚡" },
+  { text: "💨 دریچه بنده (Closed)", label: "دریچه بنده", icon: "💨" },
 ]
 
 const CUSTOM_CONTAINER_PRESETS_KEY = "skybol:custom-container-presets"
@@ -134,7 +126,6 @@ export function ContainerPresetSelector({
     if (onChangeContainerType) {
       onChangeContainerType(typeVal)
     } else {
-      // If no separate containerType handler, append or set into containerNo
       onChangeContainerNo(typeVal)
     }
     setTypePopoverOpen(false)
@@ -142,13 +133,15 @@ export function ContainerPresetSelector({
 
   const handleApplyPrefix = (prefix: string) => {
     const current = (containerNo || "").trim()
+    if (!current || current === "N/A" || current === "—") {
+      onChangeContainerNo(`${prefix} `)
+      return
+    }
     const parts = current.split(/\s+/)
     if (parts.length > 1 && CONTAINER_PREFIX_SHORTCUTS.includes(parts[0].toUpperCase())) {
       onChangeContainerNo(`${prefix} ${parts.slice(1).join(" ")}`)
-    } else if (current) {
-      onChangeContainerNo(`${prefix} ${current}`)
     } else {
-      onChangeContainerNo(`${prefix} `)
+      onChangeContainerNo(`${prefix} ${current}`)
     }
   }
 
@@ -176,25 +169,24 @@ export function ContainerPresetSelector({
     )
   })
 
-  // Quick chips for container type
   const quickTypeChips = [
-    { label: "1X40' RF", ps: "یخچالی", icon: "❄️" },
-    { label: "1X40' HC", ps: "های کیوب", icon: "📦" },
-    { label: "1X40' Dry", ps: "معمولي", icon: "📦" },
-    { label: "1X20' RF", ps: "۲۰ یخچالی", icon: "❄️" },
-    { label: "1X20' GP", ps: "۲۰ عمومي", icon: "📦" },
-    { label: "1X40J", ps: "1X40J", icon: "🚢" },
+    { label: "1X40' RF", icon: "❄️" },
+    { label: "1X40' HC", icon: "📦" },
+    { label: "1X40' Dry", icon: "📦" },
+    { label: "1X20' RF", icon: "❄️" },
+    { label: "1X20' GP", icon: "📦" },
+    { label: "1X40J", icon: "🚢" },
   ]
 
   return (
-    <div className="space-y-2.5 w-full">
+    <div className="space-y-2 w-full">
       {/* Top Row: Container Type & Container No Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {/* Field 1: Container Type */}
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[11px] font-bold text-blue-900 flex items-center gap-1">
-              <Boxes className="w-3 h-3 text-blue-600" />
+          <div className="flex items-center justify-between mb-0.5">
+            <label className="text-[10.5px] font-bold text-blue-900 flex items-center gap-1">
+              <Boxes className="w-2.5 h-2.5 text-blue-600" />
               <span>Container Type / د کانټینر ډول</span>
             </label>
 
@@ -202,61 +194,59 @@ export function ContainerPresetSelector({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 hover:text-blue-900 bg-blue-50/80 hover:bg-blue-100/80 border border-blue-200/80 rounded-md px-1.5 py-0.5 transition-colors shadow-xs"
+                  className="inline-flex items-center gap-0.5 text-[9.5px] font-bold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 rounded px-1.5 py-0.2 transition-colors shadow-2xs"
                 >
                   <Sparkles className="w-2.5 h-2.5 text-blue-600" />
                   <span>انتخاب ډول</span>
-                  <ChevronDown className="w-2.5 h-2.5 opacity-60" />
+                  <ChevronDown className="w-2 h-2 opacity-60" />
                 </button>
               </PopoverTrigger>
 
               <PopoverContent
-                className="w-80 sm:w-96 p-0 bg-white/98 backdrop-blur-xl border border-blue-200 shadow-2xl rounded-xl z-[150]"
+                className="w-72 sm:w-80 p-0 bg-white/98 backdrop-blur-xl border border-blue-200 shadow-2xl rounded-xl z-[99999]"
                 align="start"
                 sideOffset={4}
               >
-                {/* Header & Search */}
-                <div className="p-2.5 border-b border-blue-100 bg-gradient-to-r from-blue-50/80 via-white to-blue-50/80">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
-                      <Boxes className="w-3.5 h-3.5 text-blue-600" />
-                      لیست انواع کانتینر (Container Types)
+                <div className="p-2 border-b border-blue-100 bg-gradient-to-r from-blue-50/80 via-white to-blue-50/80">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-blue-950 flex items-center gap-1">
+                      <Boxes className="w-3 h-3 text-blue-600" />
+                      لیست انواع کانتینر
                     </span>
                     <button
                       type="button"
                       onClick={() => setTypePopoverOpen(false)}
-                      className="text-slate-400 hover:text-slate-700 p-0.5 rounded-md hover:bg-slate-100"
+                      className="text-slate-400 hover:text-slate-700 p-0.5 rounded"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
 
                   <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
                     <Input
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="لټون (Reefer, Dry, HC, 40ft...)"
-                      className="pl-8 h-8 text-xs bg-white border-blue-200 focus:border-blue-500 rounded-lg text-slate-800"
+                      placeholder="لټون (Reefer, Dry, HC...)"
+                      className="pl-7 h-7 text-[11px] bg-white border-blue-200 focus:border-blue-500 rounded-md"
                     />
                   </div>
 
-                  {/* Category Filter Tabs */}
-                  <div className="flex gap-1 mt-2">
+                  <div className="flex gap-1 mt-1.5">
                     {[
-                      { id: "all", label: "ټول (All)" },
+                      { id: "all", label: "ټول" },
                       { id: "reefer", label: "❄️ یخچالی" },
-                      { id: "dry", label: "📦 وچ / عادي" },
+                      { id: "dry", label: "📦 وچ" },
                       { id: "special", label: "🚢 ځانګړي" },
                     ].map((tab) => (
                       <button
                         key={tab.id}
                         type="button"
                         onClick={() => setActiveCategory(tab.id)}
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full transition-all ${
                           activeCategory === tab.id
-                            ? "bg-blue-600 text-white shadow-xs"
-                            : "bg-white/80 text-blue-900 hover:bg-blue-100/60 border border-blue-200/60"
+                            ? "bg-blue-600 text-white shadow-2xs"
+                            : "bg-white text-blue-900 hover:bg-blue-100/60 border border-blue-200"
                         }`}
                       >
                         {tab.label}
@@ -265,8 +255,7 @@ export function ContainerPresetSelector({
                   </div>
                 </div>
 
-                {/* Items List */}
-                <div className="max-h-56 overflow-y-auto p-1.5 space-y-1">
+                <div className="max-h-48 overflow-y-auto p-1 space-y-0.5">
                   {filteredTypes.map((t) => {
                     const isSelected = containerType === t.value || containerNo === t.value
                     return (
@@ -274,52 +263,44 @@ export function ContainerPresetSelector({
                         key={t.value}
                         type="button"
                         onClick={() => handleSelectType(t.value)}
-                        className={`w-full text-left p-2 rounded-lg flex items-center justify-between text-xs transition-all ${
+                        className={`w-full text-left p-1.5 rounded-md flex items-center justify-between text-xs transition-all ${
                           isSelected
-                            ? "bg-blue-600 text-white shadow-xs font-semibold"
-                            : "hover:bg-blue-50/80 text-slate-800 border border-transparent hover:border-blue-200/60"
+                            ? "bg-blue-600 text-white shadow-2xs font-bold"
+                            : "hover:bg-blue-50 text-slate-800"
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{t.icon}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">{t.icon}</span>
                           <div>
-                            <div className="font-bold text-[11px] leading-tight">{t.value}</div>
-                            <div
-                              className={`text-[10px] ${
-                                isSelected ? "text-blue-100" : "text-slate-500"
-                              }`}
-                            >
-                              {t.labelPs} • {t.label}
+                            <div className="font-bold text-[10.5px] leading-tight">{t.value}</div>
+                            <div className={`text-[9px] ${isSelected ? "text-blue-100" : "text-slate-500"}`}>
+                              {t.labelPs}
                             </div>
                           </div>
                         </div>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-white flex-shrink-0" />}
+                        {isSelected && <Check className="w-3 h-3 text-white shrink-0" />}
                       </button>
                     )
                   })}
 
-                  {/* Custom Types */}
                   {customTypes.length > 0 && (
-                    <div className="pt-2 border-t border-blue-100 mt-2">
-                      <div className="text-[10px] font-bold text-slate-500 uppercase px-2 mb-1">سفارشي انتخابونه</div>
+                    <div className="pt-1 border-t border-blue-100 mt-1">
+                      <div className="text-[9px] font-bold text-slate-500 uppercase px-1 mb-0.5">سفارشي</div>
                       {customTypes.map((c) => (
-                        <div
-                          key={c}
-                          className="flex items-center justify-between p-1.5 hover:bg-blue-50/60 rounded-lg group"
-                        >
+                        <div key={c} className="flex items-center justify-between p-1 hover:bg-blue-50 rounded group">
                           <button
                             type="button"
                             onClick={() => handleSelectType(c)}
-                            className="text-xs text-left font-medium text-slate-800 flex-1 truncate"
+                            className="text-[10px] text-left font-medium text-slate-800 flex-1 truncate"
                           >
                             ⭐ {c}
                           </button>
                           <button
                             type="button"
                             onClick={() => deleteCustomType(c)}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-red-500 hover:text-red-700"
+                            className="opacity-0 group-hover:opacity-100 p-0.5 text-red-500 hover:text-red-700"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-2.5 h-2.5" />
                           </button>
                         </div>
                       ))}
@@ -327,13 +308,12 @@ export function ContainerPresetSelector({
                   )}
                 </div>
 
-                {/* Add Custom Type */}
-                <div className="p-2 border-t border-blue-100 bg-slate-50/80 flex gap-1.5">
+                <div className="p-1.5 border-t border-blue-100 bg-slate-50/80 flex gap-1">
                   <Input
                     value={newCustomInput}
                     onChange={(e) => setNewCustomInput(e.target.value)}
-                    placeholder="نوی ډول ورزیات کړئ..."
-                    className="h-7 text-xs bg-white border-blue-200"
+                    placeholder="نوی ډول..."
+                    className="h-6 text-[10px] bg-white border-blue-200"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault()
@@ -346,9 +326,9 @@ export function ContainerPresetSelector({
                     size="sm"
                     onClick={() => saveCustomType(newCustomInput)}
                     disabled={!newCustomInput.trim()}
-                    className="h-7 px-2 bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1"
+                    className="h-6 px-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] gap-0.5"
                   >
-                    <Plus className="w-3 h-3" />
+                    <Plus className="w-2.5 h-2.5" />
                     <span>ثبت</span>
                   </Button>
                 </div>
@@ -359,13 +339,12 @@ export function ContainerPresetSelector({
           <Input
             value={containerType || ""}
             onChange={(e) => onChangeContainerType && onChangeContainerType(e.target.value)}
-            placeholder="مثال: 1X40' RF یا 1X40' HC"
-            className="bg-white border-blue-200 focus:border-blue-500 text-xs font-semibold h-9 text-blue-950"
+            placeholder="1X40' RF / 1X40' HC"
+            className="bg-white border-blue-200 focus:border-blue-500 text-xs font-semibold h-8 text-blue-950 shadow-2xs"
           />
 
-          {/* Quick Type Chips */}
           {showQuickChips && (
-            <div className="flex flex-wrap gap-1 mt-1.5">
+            <div className="flex flex-wrap gap-1 mt-1">
               {quickTypeChips.map((chip) => {
                 const isActive = containerType === chip.label
                 return (
@@ -373,10 +352,10 @@ export function ContainerPresetSelector({
                     key={chip.label}
                     type="button"
                     onClick={() => handleSelectType(chip.label)}
-                    className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                    className={`inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.2 rounded border transition-all ${
                       isActive
-                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                        : "bg-white/90 text-blue-900 border-blue-200/90 hover:bg-blue-100/70 hover:border-blue-300"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                        : "bg-white text-blue-900 border-blue-200 hover:bg-blue-50"
                     }`}
                   >
                     <span>{chip.icon}</span>
@@ -388,33 +367,32 @@ export function ContainerPresetSelector({
           )}
         </div>
 
-        {/* Field 2: Container No (with Prefix Helper) */}
+        {/* Field 2: Container No */}
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[11px] font-bold text-blue-900 block">
+          <div className="flex items-center justify-between mb-0.5">
+            <label className="text-[10.5px] font-bold text-blue-900 block">
               Container No / د کانټینر شمېره
             </label>
-            <span className="text-[9.5px] font-semibold text-slate-500">شمېره یا بارکوډ</span>
+            <span className="text-[9px] font-medium text-slate-400">شمېره</span>
           </div>
 
           <Input
             name="containerNo"
             value={containerNo || ""}
             onChange={(e) => onChangeContainerNo(e.target.value.toUpperCase())}
-            placeholder="مثال: SEGU9872723 یا MSCU4591028"
-            className="bg-white border-blue-200 focus:border-blue-500 text-xs font-mono font-bold h-9 text-blue-950 tracking-wider"
+            placeholder="SEGU9872723 / MSCU4591028"
+            className="bg-white border-blue-200 focus:border-blue-500 text-xs font-mono font-bold h-8 text-blue-950 tracking-wider shadow-2xs"
           />
 
-          {/* Quick Prefix Pills */}
           {showQuickChips && (
-            <div className="flex flex-wrap items-center gap-1 mt-1.5">
-              <span className="text-[9.5px] font-bold text-slate-500 mr-0.5">مختاړی:</span>
-              {CONTAINER_PREFIX_SHORTCUTS.slice(0, 6).map((pref) => (
+            <div className="flex flex-wrap items-center gap-1 mt-1">
+              <span className="text-[9px] font-bold text-slate-400">مختاړی:</span>
+              {CONTAINER_PREFIX_SHORTCUTS.map((pref) => (
                 <button
                   key={pref}
                   type="button"
                   onClick={() => handleApplyPrefix(pref)}
-                  className="text-[9.5px] font-mono font-bold px-1.5 py-0.5 bg-slate-100/80 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-200/80 rounded transition-colors"
+                  className="text-[9px] font-mono font-bold px-1 py-0.2 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-200 rounded transition-colors"
                 >
                   +{pref}
                 </button>
@@ -424,43 +402,43 @@ export function ContainerPresetSelector({
         </div>
       </div>
 
-      {/* Field 3: Container Details (د کانټینر تفصیلات / Details) */}
+      {/* Field 3: Container Details */}
       {showDetailsField && (
-        <div className="bg-blue-50/40 p-2.5 rounded-lg border border-blue-200/60 space-y-1.5">
+        <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-200/70 space-y-1">
           <div className="flex items-center justify-between">
-            <label className="text-[11px] font-bold text-blue-950 flex items-center gap-1">
-              <ThermometerSnowflake className="w-3 h-3 text-emerald-600" />
-              <span>Container Details & Conditions / د کانټینر تفصیلات او شرایط</span>
+            <label className="text-[10.5px] font-bold text-blue-950 flex items-center gap-1">
+              <ThermometerSnowflake className="w-2.5 h-2.5 text-emerald-600" />
+              <span>Container Details & Conditions / د کانټینر شرایط او تفصیلات</span>
             </label>
 
             <Popover open={detailsPopoverOpen} onOpenChange={setDetailsPopoverOpen}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 rounded-md px-1.5 py-0.5 transition-colors shadow-xs"
+                  className="inline-flex items-center gap-0.5 text-[9.5px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded px-1.5 py-0.2 transition-colors shadow-2xs"
                 >
                   <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
                   <span>انتخاب شرایط / تودوخه</span>
-                  <ChevronDown className="w-2.5 h-2.5 opacity-60" />
+                  <ChevronDown className="w-2 h-2 opacity-60" />
                 </button>
               </PopoverTrigger>
 
               <PopoverContent
-                className="w-72 sm:w-80 p-2 bg-white/98 backdrop-blur-xl border border-emerald-200 shadow-2xl rounded-xl z-[150]"
+                className="w-72 p-1.5 bg-white/98 backdrop-blur-xl border border-emerald-200 shadow-2xl rounded-xl z-[99999]"
                 align="end"
                 sideOffset={4}
               >
-                <div className="text-xs font-bold text-emerald-950 pb-1.5 mb-1.5 border-b border-emerald-100 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  شرایط او د یخچالي کانتینر درجه (Details)
+                <div className="text-[11px] font-bold text-emerald-950 pb-1 mb-1 border-b border-emerald-100 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                  شرایط او تودوخه (Conditions)
                 </div>
-                <div className="space-y-1 max-h-52 overflow-y-auto">
+                <div className="space-y-0.5 max-h-44 overflow-y-auto">
                   {CONTAINER_DETAILS_PRESETS.map((d) => (
                     <button
                       key={d.text}
                       type="button"
                       onClick={() => handleSelectDetail(d.text)}
-                      className="w-full text-left p-1.5 rounded-md hover:bg-emerald-50 text-xs font-medium text-slate-800 flex items-center gap-2 transition-colors"
+                      className="w-full text-left p-1 rounded hover:bg-emerald-50 text-[10.5px] font-medium text-slate-800 flex items-center gap-1.5 transition-colors"
                     >
                       <span>{d.icon}</span>
                       <span>{d.text}</span>
@@ -474,24 +452,23 @@ export function ContainerPresetSelector({
           <Input
             value={containerDetails || ""}
             onChange={(e) => onChangeContainerDetails && onChangeContainerDetails(e.target.value)}
-            placeholder="مثال: -18°C یخچالی | مهر ګمرک | GenSet ژنراتور لګیدلی"
-            className="bg-white border-blue-200 focus:border-blue-500 text-xs font-medium h-8 text-blue-950"
+            placeholder="-18°C یخچالی | مهر ګمرک | GenSet ژنراتور"
+            className="bg-white border-blue-200 focus:border-blue-500 text-xs font-medium h-7.5 text-blue-950 shadow-2xs"
           />
 
-          {/* Quick Details Chips */}
           {showQuickChips && (
             <div className="flex flex-wrap gap-1 pt-0.5">
-              {CONTAINER_DETAILS_PRESETS.slice(0, 5).map((chip) => {
+              {CONTAINER_DETAILS_PRESETS.map((chip) => {
                 const isActive = (containerDetails || "").includes(chip.text)
                 return (
                   <button
                     key={chip.text}
                     type="button"
                     onClick={() => handleSelectDetail(chip.text)}
-                    className={`inline-flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-full border transition-all ${
+                    className={`inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.2 rounded border transition-all ${
                       isActive
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                        : "bg-white text-emerald-900 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                        : "bg-white text-emerald-900 border-emerald-200 hover:bg-emerald-50"
                     }`}
                   >
                     <span>{chip.icon}</span>

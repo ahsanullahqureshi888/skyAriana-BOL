@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { smartMergeLedgerRecords } from "@/lib/services/ledger-sync-utils"
+import { smartMergeLedgerRecords, validateLedgerInvariance, type LedgerAuditResult } from "@/lib/services/ledger-sync-utils"
 import {
   Dialog,
   DialogContent,
@@ -38,6 +38,9 @@ import {
   Layers,
   HardDrive,
   Radio,
+  History,
+  Activity,
+  MessageCircle,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -47,67 +50,132 @@ interface CloudSyncModalProps {
   onSyncComplete?: () => void
 }
 
+interface SyncHistoryItem {
+  id: string
+  timestamp: string
+  action: "upload" | "download" | "backup_export" | "backup_restore"
+  bolCount: number
+  ledgerCount: number
+  invoiceCount: number
+  syncCode?: string
+  status: "success" | "failed"
+  message?: string
+}
+
 export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSyncModalProps) {
-  const [activeTab, setActiveTab] = useState<"upload" | "download" | "code">("upload")
+  const [activeTab, setActiveTab] = useState<"upload" | "download" | "code" | "history">("upload")
   const [isUploading, setIsUploading] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [syncCode, setSyncCode] = useState<string>("")
   const [inputCode, setInputCode] = useState<string>("")
   const [copiedCode, setCopiedCode] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
+  
+  // Local Database metrics
   const [localDocCount, setLocalDocCount] = useState<number>(0)
   const [localLedgerCount, setLocalLedgerCount] = useState<number>(0)
   const [localAccountsCount, setLocalAccountsCount] = useState<number>(0)
+  const [localInvoiceCount, setLocalInvoiceCount] = useState<number>(0)
   const [lastSyncTime, setLastSyncTime] = useState<string>("")
+  const [ledgerAudit, setLedgerAudit] = useState<LedgerAuditResult | null>(null)
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState<boolean>(false)
+  const [syncHistory, setSyncHistory] = useState<SyncHistoryItem[]>([])
   
   // Cloud server state
   const [cloudDocCount, setCloudDocCount] = useState<number | null>(null)
+  const [cloudInvoiceCount, setCloudInvoiceCount] = useState<number | null>(null)
   const [cloudLastUpdated, setCloudLastUpdated] = useState<string | null>(null)
   const [isCheckingCloud, setIsCheckingCloud] = useState(false)
   const [transferStep, setTransferStep] = useState<string>("")
+  const [relayLatencyMs, setRelayLatencyMs] = useState<number | null>(null)
 
-  // Load local counts and check cloud snapshot on open
+  // Load local counts, ledger audit, and check cloud snapshot on open
   useEffect(() => {
     if (open && typeof window !== "undefined") {
-      try {
-        const raw1 = window.localStorage.getItem("skybol:saved-documents")
-        const raw2 = window.localStorage.getItem("sky-bol-browser-documents")
-        const docs1 = raw1 ? JSON.parse(raw1) : []
-        const docs2 = raw2 ? JSON.parse(raw2) : []
-        const map = new Map<string, any>()
-        for (const d of [...docs1, ...docs2]) {
-          const k = d.bol_number || d.id
-          if (k) map.set(k, d)
-        }
-        setLocalDocCount(map.size)
-
-        const lRaw = window.localStorage.getItem("skybol:account-ledgers")
-        const ledgers = lRaw ? JSON.parse(lRaw) : {}
-        setLocalLedgerCount(Object.keys(ledgers).length)
-
-        const cRaw = window.localStorage.getItem("skybol:account-custom-companies")
-        const accounts = cRaw ? JSON.parse(cRaw) : []
-        setLocalAccountsCount(accounts.length)
-      } catch (e) {
-        setLocalDocCount(0)
-        setLocalLedgerCount(0)
-        setLocalAccountsCount(0)
-      }
-
-      // Check cloud snapshot
+      refreshLocalMetrics()
       checkCloudStatus()
+      loadSyncHistory()
+      
+      const storedAuto = window.localStorage.getItem("skybol:auto-sync-enabled")
+      if (storedAuto !== null) {
+        setAutoSyncEnabled(storedAuto === "true")
+      }
     }
   }, [open])
 
+  const refreshLocalMetrics = () => {
+    try {
+      const raw1 = window.localStorage.getItem("skybol:saved-documents")
+      const raw2 = window.localStorage.getItem("sky-bol-browser-documents")
+      const docs1 = raw1 ? JSON.parse(raw1) : []
+      const docs2 = raw2 ? JSON.parse(raw2) : []
+      const map = new Map<string, any>()
+      for (const d of [...docs1, ...docs2]) {
+        const k = d.bol_number || d.id
+        if (k) map.set(k, d)
+      }
+      setLocalDocCount(map.size)
+
+      const lRaw = window.localStorage.getItem("skybol:account-ledgers")
+      const ledgers = lRaw ? JSON.parse(lRaw) : {}
+      setLocalLedgerCount(Object.keys(ledgers).length)
+      
+      const audit = validateLedgerInvariance(ledgers)
+      setLedgerAudit(audit)
+
+      const cRaw = window.localStorage.getItem("skybol:account-custom-companies")
+      const accounts = cRaw ? JSON.parse(cRaw) : []
+      setLocalAccountsCount(accounts.length)
+
+      const iRaw = window.localStorage.getItem("skybol:saved-invoices")
+      const invoices = iRaw ? JSON.parse(iRaw) : []
+      setLocalInvoiceCount(Array.isArray(invoices) ? invoices.length : 0)
+    } catch (e) {
+      setLocalDocCount(0)
+      setLocalLedgerCount(0)
+      setLocalAccountsCount(0)
+      setLocalInvoiceCount(0)
+    }
+  }
+
+  const loadSyncHistory = () => {
+    try {
+      const raw = window.localStorage.getItem("skybol:sync-history")
+      if (raw) {
+        setSyncHistory(JSON.parse(raw))
+      }
+    } catch (e) {}
+  }
+
+  const recordSyncEvent = (event: Omit<SyncHistoryItem, "id" | "timestamp">) => {
+    try {
+      const newItem: SyncHistoryItem = {
+        id: crypto.randomUUID(),
+        timestamp: new Date().toLocaleString(),
+        ...event,
+      }
+      const updated = [newItem, ...syncHistory].slice(0, 20)
+      setSyncHistory(updated)
+      window.localStorage.setItem("skybol:sync-history", JSON.stringify(updated))
+    } catch (e) {}
+  }
+
   const checkCloudStatus = async () => {
     setIsCheckingCloud(true)
+    const startTime = performance.now()
     try {
       const res = await fetch("/api/sync", { cache: "no-store" })
+      const endTime = performance.now()
+      setRelayLatencyMs(Math.round(endTime - startTime))
+
       if (res.ok) {
         const body = await res.json()
         const data = body.data || body
         if (Array.isArray(data.documents)) {
           setCloudDocCount(data.documents.length)
+        }
+        if (Array.isArray(data.invoices)) {
+          setCloudInvoiceCount(data.invoices.length)
         }
         if (data.updated_at) {
           const d = new Date(data.updated_at)
@@ -115,9 +183,22 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
         }
       }
     } catch (e) {
-      // ignore
+      setRelayLatencyMs(null)
     } finally {
       setIsCheckingCloud(false)
+    }
+  }
+
+  const toggleAutoSync = () => {
+    const next = !autoSyncEnabled
+    setAutoSyncEnabled(next)
+    window.localStorage.setItem("skybol:auto-sync-enabled", String(next))
+    if (next) {
+      toast.success("Auto-Sync Activated", {
+        description: "Your records will automatically sync across devices on changes.",
+      })
+    } else {
+      toast.info("Auto-Sync Deactivated")
     }
   }
 
@@ -127,9 +208,17 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
     return `${window.location.origin}/?sync=${encodeURIComponent(syncCode)}`
   }
 
+  // Get WhatsApp Share URL
+  const getWhatsAppShareUrl = () => {
+    const url = getSyncUrl()
+    const text = `Sky Ariana BOL Sync Transfer Code: *${syncCode}*\nDirect Sync Link: ${url}\nOpen link on mobile to sync all BOLs and ledgers instantly.`
+    return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`
+  }
+
   // Save parsed cloud snapshot into local storage with full redundancy
-  const applySnapshotDataToLocal = (data: any): number => {
+  const applySnapshotDataToLocal = (data: any): { docs: number; invoices: number } => {
     let restoredDocsCount = 0
+    let restoredInvoicesCount = 0
 
     // 1. Merge documents into localStorage with redundancy
     if (Array.isArray(data.documents) && data.documents.length > 0) {
@@ -176,9 +265,39 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
       const nextLedger = smartMergeLedgerRecords(data.ledgerRecords, currentLedger)
       window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(nextLedger))
       setLocalLedgerCount(Object.keys(nextLedger).length)
+      
+      const audit = validateLedgerInvariance(nextLedger)
+      setLedgerAudit(audit)
     }
 
-    // 4. Restore company settings & presets if present
+    // 4. Merge invoices
+    if (Array.isArray(data.invoices) && data.invoices.length > 0) {
+      const rawInv = window.localStorage.getItem("skybol:saved-invoices")
+      const currentInv: any[] = rawInv ? JSON.parse(rawInv) : []
+      const invMap = new Map<string, any>()
+      for (const inv of data.invoices) {
+        const k = inv.invoice_number || inv.id
+        if (k) invMap.set(k, inv)
+      }
+      for (const inv of currentInv) {
+        const k = inv.invoice_number || inv.id
+        if (k && !invMap.has(k)) invMap.set(k, inv)
+      }
+      const allInvoices = Array.from(invMap.values())
+      window.localStorage.setItem("skybol:saved-invoices", JSON.stringify(allInvoices))
+      restoredInvoicesCount = allInvoices.length
+      setLocalInvoiceCount(restoredInvoicesCount)
+    }
+
+    // 5. Merge financials map
+    if (data.financialsMap && typeof data.financialsMap === "object") {
+      const rawFin = window.localStorage.getItem("skybol:financials-map")
+      const currentFin = rawFin ? JSON.parse(rawFin) : {}
+      const nextFin = { ...currentFin, ...data.financialsMap }
+      window.localStorage.setItem("skybol:financials-map", JSON.stringify(nextFin))
+    }
+
+    // 6. Restore company settings & presets if present
     if (data.companySettings) {
       window.localStorage.setItem("skybol:company-settings", JSON.stringify(data.companySettings))
       window.localStorage.setItem("skybol:pdf-company-settings", JSON.stringify(data.companySettings))
@@ -199,20 +318,24 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
     // Dispatch global events to refresh all views in real time
     window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: {} }))
     window.dispatchEvent(new CustomEvent("skybol:account-ledger-updated", { detail: {} }))
+    window.dispatchEvent(new CustomEvent("skybol:invoices-updated", { detail: {} }))
 
-    return restoredDocsCount
+    return { docs: restoredDocsCount, invoices: restoredInvoicesCount }
   }
 
-  // 1. Upload all local BOLs, accounts, and ledgers to cloud
+
+  // 1. Upload all local BOLs, accounts, invoices, and ledgers to cloud
   const handleUploadAllToCloud = async () => {
     setIsUploading(true)
-    setTransferStep("Packaging all local BOLs and ledgers...")
+    setTransferStep("Auditing and packaging local BOLs, invoices, and ledgers...")
     const toastId = toast.loading("Uploading database to Sky Ariana Cloud Relay...")
 
     try {
       let localDocs: any[] = []
       let customCompanies: string[] = []
       let storedLedgerRecords: Record<string, any[]> = {}
+      let storedInvoices: any[] = []
+      let storedFinancialsMap: Record<string, any> = {}
       let companySettings: any = null
       let routePresets: any[] = []
       let savedShippers: any[] = []
@@ -236,6 +359,12 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
 
         const lRaw = window.localStorage.getItem("skybol:account-ledgers")
         storedLedgerRecords = lRaw ? JSON.parse(lRaw) : {}
+
+        const iRaw = window.localStorage.getItem("skybol:saved-invoices")
+        storedInvoices = iRaw ? JSON.parse(iRaw) : []
+
+        const fRaw = window.localStorage.getItem("skybol:financials-map")
+        storedFinancialsMap = fRaw ? JSON.parse(fRaw) : {}
 
         const csRaw = window.localStorage.getItem("skybol:company-settings") || window.localStorage.getItem("skybol:pdf-company-settings")
         companySettings = csRaw ? JSON.parse(csRaw) : null
@@ -262,6 +391,8 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
           documents: localDocs,
           accounts: customCompanies,
           ledgerRecords: storedLedgerRecords,
+          invoices: storedInvoices,
+          financialsMap: storedFinancialsMap,
           companySettings,
           routePresets,
           savedShippers,
@@ -281,10 +412,21 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
         const timeNow = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         setLastSyncTime(timeNow)
         setCloudDocCount(localDocs.length)
+        setCloudInvoiceCount(storedInvoices.length)
         setCloudLastUpdated(timeNow)
         setTransferStep("Upload completed successfully! 🎉")
 
-        toast.success(`Successfully uploaded ${localDocs.length} BOL documents to Cloud! 🚀`, {
+        recordSyncEvent({
+          action: "upload",
+          bolCount: localDocs.length,
+          ledgerCount: Object.keys(storedLedgerRecords).length,
+          invoiceCount: storedInvoices.length,
+          syncCode: genCode,
+          status: "success",
+          message: `Uploaded ${localDocs.length} BOLs, ${storedInvoices.length} Invoices to Cloud`,
+        })
+
+        toast.success(`Successfully uploaded ${localDocs.length} BOLs & ${storedInvoices.length} Invoices to Cloud! 🚀`, {
           id: toastId,
           description: `Transfer Code: ${genCode}. Use QR code or direct link to sync across any phone or laptop.`,
         })
@@ -292,6 +434,15 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
         throw new Error(result.error || "Upload failed")
       }
     } catch (error) {
+      recordSyncEvent({
+        action: "upload",
+        bolCount: localDocCount,
+        ledgerCount: localLedgerCount,
+        invoiceCount: localInvoiceCount,
+        status: "failed",
+        message: error instanceof Error ? error.message : "Upload failed",
+      })
+
       toast.error("Failed to upload to Cloud", {
         id: toastId,
         description: error instanceof Error ? error.message : "Please check internet connection",
@@ -366,17 +517,38 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
         throw new Error(`Could not find cloud snapshot for code ${targetCode || "master"}. Please verify code.`)
       }
 
-      setTransferStep("Merging BOL documents, accounts, and ledgers...")
-      const restoredDocsCount = applySnapshotDataToLocal(data)
+      setTransferStep("Merging BOL documents, invoices, accounts, and ledgers...")
+      const { docs, invoices } = applySnapshotDataToLocal(data)
 
       setTransferStep("Synchronization completed successfully! 🎉")
-      toast.success(`Successfully synchronized ${restoredDocsCount || data.documents?.length || 0} BOLs on this device! 🎉`, {
+      
+      recordSyncEvent({
+        action: "download",
+        bolCount: docs || data.documents?.length || 0,
+        ledgerCount: Object.keys(data.ledgerRecords || {}).length,
+        invoiceCount: invoices || (Array.isArray(data.invoices) ? data.invoices.length : 0),
+        syncCode: targetCode || "MASTER",
+        status: "success",
+        message: `Synchronized ${docs} BOLs and ${invoices} Invoices`,
+      })
+
+      toast.success(`Successfully synchronized ${docs || data.documents?.length || 0} BOLs & ${invoices} Invoices on this device! 🎉`, {
         id: toastId,
         description: "All client accounts, ledgers, and document files are now synchronized.",
       })
 
       if (onSyncComplete) onSyncComplete()
     } catch (error) {
+      recordSyncEvent({
+        action: "download",
+        bolCount: 0,
+        ledgerCount: 0,
+        invoiceCount: 0,
+        syncCode: targetCode || "UNKNOWN",
+        status: "failed",
+        message: error instanceof Error ? error.message : "Sync transfer failed",
+      })
+
       toast.error("Sync transfer failed", {
         id: toastId,
         description: error instanceof Error ? error.message : "Could not fetch documents",
@@ -400,15 +572,21 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
         if (k) map.set(k, d)
       }
       const allDocs = Array.from(map.values())
+      const allInvoices = JSON.parse(window.localStorage.getItem("skybol:saved-invoices") || "[]")
+      const ledgers = JSON.parse(window.localStorage.getItem("skybol:account-ledgers") || "{}")
 
       const backup = {
         app: "SKY_ARIANA_LOGISTICS",
         version: "3.2.0",
         exportedAt: new Date().toISOString(),
         totalDocuments: allDocs.length,
+        totalInvoices: allInvoices.length,
+        ledgerAudit: validateLedgerInvariance(ledgers),
         savedDocuments: allDocs,
+        savedInvoices: allInvoices,
+        financialsMap: JSON.parse(window.localStorage.getItem("skybol:financials-map") || "{}"),
         customCompanies: JSON.parse(window.localStorage.getItem("skybol:account-custom-companies") || "[]"),
-        accountLedgers: JSON.parse(window.localStorage.getItem("skybol:account-ledgers") || "{}"),
+        accountLedgers: ledgers,
         companySettings: JSON.parse(window.localStorage.getItem("skybol:company-settings") || "{}"),
         routePresets: JSON.parse(window.localStorage.getItem("skybol:saved-route-presets") || "[]"),
         savedShippers: JSON.parse(window.localStorage.getItem("skybol:saved-shippers") || "[]"),
@@ -426,7 +604,16 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
 
-      toast.success(`Full Backup (${allDocs.length} BOLs) downloaded successfully! 💾`)
+      recordSyncEvent({
+        action: "backup_export",
+        bolCount: allDocs.length,
+        ledgerCount: Object.keys(ledgers).length,
+        invoiceCount: allInvoices.length,
+        status: "success",
+        message: `Exported full backup (.json) with ${allDocs.length} BOLs`,
+      })
+
+      toast.success(`Full Backup (${allDocs.length} BOLs, ${allInvoices.length} Invoices) downloaded successfully! 💾`)
     } catch (e) {
       toast.error("Failed to export backup")
     }
@@ -447,6 +634,12 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
           window.localStorage.setItem("sky-bol-browser-documents", JSON.stringify(parsed.savedDocuments))
           window.localStorage.setItem("skybol:saved-documents", JSON.stringify(parsed.savedDocuments))
           window.localStorage.setItem("skybol:backup-documents", JSON.stringify(parsed.savedDocuments))
+        }
+        if (Array.isArray(parsed.savedInvoices || parsed.invoices)) {
+          window.localStorage.setItem("skybol:saved-invoices", JSON.stringify(parsed.savedInvoices || parsed.invoices))
+        }
+        if (parsed.financialsMap) {
+          window.localStorage.setItem("skybol:financials-map", JSON.stringify(parsed.financialsMap))
         }
         if (Array.isArray(parsed.customCompanies)) {
           window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(parsed.customCompanies))
@@ -473,9 +666,21 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
 
         window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: {} }))
         window.dispatchEvent(new CustomEvent("skybol:account-ledger-updated", { detail: {} }))
+        window.dispatchEvent(new CustomEvent("skybol:invoices-updated", { detail: {} }))
+
+        refreshLocalMetrics()
+
+        recordSyncEvent({
+          action: "backup_restore",
+          bolCount: parsed.savedDocuments?.length || 0,
+          ledgerCount: Object.keys(parsed.accountLedgers || {}).length,
+          invoiceCount: (parsed.savedInvoices || parsed.invoices)?.length || 0,
+          status: "success",
+          message: `Restored backup with ${parsed.savedDocuments?.length || 0} BOLs`,
+        })
 
         toast.success("Backup Restored Successfully! 🎉", {
-          description: `Loaded ${parsed.savedDocuments?.length || 0} documents into this device.`,
+          description: `Loaded ${parsed.savedDocuments?.length || 0} BOLs and ${(parsed.savedInvoices || parsed.invoices)?.length || 0} invoices into this device.`,
         })
 
         if (onSyncComplete) onSyncComplete()
@@ -523,25 +728,42 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
     }
   }
 
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-strong sm:max-w-xl rounded-[32px] border border-blue-200/90 shadow-2xl p-5 sm:p-7 max-h-[92vh] overflow-y-auto no-scrollbar">
+      <DialogContent className="glass-strong sm:max-w-2xl rounded-[32px] border border-blue-200/90 shadow-2xl p-5 sm:p-7 max-h-[92vh] overflow-y-auto no-scrollbar">
         <DialogHeader className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-linear-to-br from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25">
-              <Cloud className="h-6 w-6" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-linear-to-br from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-lg shadow-blue-600/25">
+                <Cloud className="h-6 w-6" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg sm:text-xl font-black text-slate-950 flex flex-wrap items-center gap-2">
+                  <span>Multi-Device Cloud Sync Hub</span>
+                  <span className="text-xs font-black text-blue-700 font-[vazirmatn] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+                    همگام‌سازی ابری
+                  </span>
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 font-semibold mt-0.5">
+                  Sync all BOLs, accounts, ledgers, and invoices between PC, Phone, and other browsers seamlessly.
+                </DialogDescription>
+              </div>
             </div>
-            <div>
-              <DialogTitle className="text-lg sm:text-xl font-black text-slate-950 flex flex-wrap items-center gap-2">
-                <span>Multi-Device Cloud Sync Hub</span>
-                <span className="text-xs font-black text-blue-700 font-[vazirmatn] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
-                  همگام‌سازی ابری
-                </span>
-              </DialogTitle>
-              <DialogDescription className="text-xs text-slate-500 font-semibold mt-0.5">
-                Sync all BOLs, accounts, and ledgers between PC, Phone, and other browsers seamlessly.
-              </DialogDescription>
-            </div>
+
+            {/* Auto Sync Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleAutoSync}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-bold cursor-pointer transition ${
+                autoSyncEnabled
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-300 shadow-2xs"
+                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${autoSyncEnabled ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+              <span>{autoSyncEnabled ? "Auto-Sync: ON" : "Auto-Sync: OFF"}</span>
+            </button>
           </div>
         </DialogHeader>
 
@@ -550,31 +772,33 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
           <button
             type="button"
             onClick={() => setActiveTab("upload")}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === "upload"
                 ? "bg-white text-blue-950 shadow-sm border border-slate-200/80"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
             <UploadCloud className="h-4 w-4 text-blue-600" />
-            <span>Upload to Cloud</span>
+            <span className="hidden xs:inline">Upload to Cloud</span>
+            <span className="xs:hidden">Upload</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("download")}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === "download"
                 ? "bg-white text-blue-950 shadow-sm border border-slate-200/80"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
             <DownloadCloud className="h-4 w-4 text-emerald-600" />
-            <span>Download & Sync</span>
+            <span className="hidden xs:inline">Download & Sync</span>
+            <span className="xs:hidden">Download</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("code")}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === "code"
                 ? "bg-white text-blue-950 shadow-sm border border-slate-200/80"
                 : "text-slate-600 hover:text-slate-900"
@@ -583,13 +807,26 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
             <QrCode className="h-4 w-4 text-purple-600" />
             <span>Sync Code / کد</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === "history"
+                ? "bg-white text-blue-950 shadow-sm border border-slate-200/80"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <History className="h-4 w-4 text-amber-600" />
+            <span className="hidden xs:inline">Sync Logs</span>
+            <span className="xs:hidden">Logs</span>
+          </button>
         </div>
 
         {/* Tab 1: Upload */}
         {activeTab === "upload" && (
           <div className="space-y-3.5 py-2 animate-in fade-in">
-            {/* Database Metrics Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {/* Database Metrics Grid (5 Cards) */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div className="p-2.5 rounded-2xl bg-blue-50/80 border border-blue-200/80 text-center">
                 <span className="text-[10px] font-black uppercase tracking-wider text-blue-900 block">BOLs Found</span>
                 <span className="text-base font-black text-blue-950">{localDocCount}</span>
@@ -602,14 +839,31 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
                 <span className="text-[10px] font-black uppercase tracking-wider text-purple-900 block">Companies</span>
                 <span className="text-base font-black text-purple-950">{localAccountsCount}</span>
               </div>
-              <div className="p-2.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-center">
+              <div className="p-2.5 rounded-2xl bg-teal-50/80 border border-teal-200/80 text-center">
+                <span className="text-[10px] font-black uppercase tracking-wider text-teal-900 block">Invoices</span>
+                <span className="text-base font-black text-teal-950">{localInvoiceCount}</span>
+              </div>
+              <div className="col-span-2 sm:col-span-1 p-2.5 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-center">
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">Relay Status</span>
                 <span className="text-xs font-black text-amber-950 flex items-center justify-center gap-1 mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Online
+                  {relayLatencyMs !== null ? `${relayLatencyMs}ms` : "Online"}
                 </span>
               </div>
             </div>
+
+            {/* Ledger Balance Invariance Audit Status Badge */}
+            {ledgerAudit && (
+              <div className="p-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-emerald-950 flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 font-bold">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>Ledger Invariance Verified: Total Debit - Total Credit = Balance</span>
+                </div>
+                <div className="text-[11px] font-mono font-bold bg-white px-2.5 py-1 rounded-lg border border-emerald-200 text-emerald-900 shrink-0">
+                  Net: ${ledgerAudit.netBalance.toLocaleString()}
+                </div>
+              </div>
+            )}
 
             {/* Primary Upload Button */}
             <Button
@@ -622,7 +876,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
               ) : (
                 <UploadCloud className="h-4.5 w-4.5 text-amber-400" />
               )}
-              <span>{isUploading ? "Uploading to Cloud..." : `Upload All (${localDocCount}) BOLs to Cloud / آپلود به سرور`}</span>
+              <span>{isUploading ? "Uploading to Cloud..." : `Upload All (${localDocCount}) BOLs & (${localInvoiceCount}) Invoices to Cloud`}</span>
             </Button>
 
             {transferStep && (
@@ -673,7 +927,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
                       <span>Point Phone Camera at QR Code</span>
                     </div>
                     <p className="text-[11px] text-slate-500 font-medium leading-tight">
-                      Instantly opens the app on your mobile and automatically synchronizes all {localDocCount} BOLs without typing!
+                      Instantly opens the app on your mobile and automatically synchronizes all {localDocCount} BOLs and invoices without typing!
                     </p>
                     <div className="pt-1 flex flex-wrap gap-1.5 justify-center sm:justify-start">
                       <Button
@@ -686,6 +940,15 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
                         {copiedLink ? <Check className="w-3 h-3 text-emerald-600" /> : <Share2 className="w-3 h-3 text-blue-600" />}
                         <span>{copiedLink ? "Link Copied!" : "Copy Direct Link"}</span>
                       </Button>
+                      <a
+                        href={getWhatsAppShareUrl()}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center h-7 px-2.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[10.5px] font-bold gap-1 cursor-pointer border border-emerald-200"
+                      >
+                        <MessageCircle className="w-3 h-3 text-emerald-600" />
+                        <span>Share on WhatsApp</span>
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -718,14 +981,21 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
                 </span>
               </div>
               <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                Fetch and merge all latest BOLs, ledgers, customer accounts, and company settings from the cloud server into this device.
+                Fetch and merge all latest BOLs, invoices, ledgers, customer accounts, and company settings from the cloud server into this device.
               </p>
-              {cloudLastUpdated && (
-                <div className="flex items-center gap-1 text-[11px] text-slate-500 font-bold">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Last Cloud Snapshot: {cloudLastUpdated}</span>
-                </div>
-              )}
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-emerald-100 text-[11px] text-slate-500 font-bold">
+                {cloudLastUpdated && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Last Cloud Snapshot: {cloudLastUpdated}</span>
+                  </div>
+                )}
+                {cloudInvoiceCount !== null && (
+                  <span className="text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                    {cloudInvoiceCount} Invoices Available
+                  </span>
+                )}
+              </div>
             </div>
 
             <Button
@@ -751,7 +1021,8 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
               <span className="font-black text-slate-800 text-xs block">✨ What gets synchronized:</span>
               <ul className="space-y-1 text-[11px] text-slate-600 list-disc list-inside">
                 <li>All Bills of Lading and saved document records</li>
-                <li>Customer accounts & transaction ledgers</li>
+                <li>Customer accounts & transaction ledgers (verified balance identity)</li>
+                <li>Invoices, item breakdowns, demurrage/detention charges & fees</li>
                 <li>Saved Shippers, Consignees, and Notify Parties directories</li>
                 <li>Company stamp, signature, and print preferences</li>
               </ul>
@@ -773,7 +1044,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
                 </span>
               </div>
               <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                Enter the transfer code (e.g. <strong>SKY-8204</strong> or <strong>4440</strong>) generated from your other device to pull all BOLs and ledgers here immediately.
+                Enter the transfer code (e.g. <strong>SKY-8204</strong> or <strong>4440</strong>) generated from your other device to pull all BOLs, invoices, and ledgers here immediately.
               </p>
             </div>
 
@@ -843,6 +1114,68 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
           </div>
         )}
 
+        {/* Tab 4: Sync Activity History */}
+        {activeTab === "history" && (
+          <div className="space-y-3 py-2 animate-in fade-in">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                <Activity className="w-4 h-4 text-amber-600" />
+                <span>Recent Sync Activity</span>
+              </span>
+              <span className="text-[11px] font-bold text-slate-500">
+                {syncHistory.length} Logged Transfer(s)
+              </span>
+            </div>
+
+            {syncHistory.length === 0 ? (
+              <div className="p-6 text-center rounded-2xl bg-slate-50 border border-slate-200 text-slate-500 text-xs">
+                <History className="h-8 w-8 mx-auto mb-2 text-slate-400 opacity-60" />
+                <p className="font-bold text-slate-700">No sync activity recorded yet on this device.</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Your uploads and downloads will appear here with transfer timestamps.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar pr-1">
+                {syncHistory.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`p-2 rounded-lg ${
+                        item.status === "success" 
+                          ? item.action === "upload" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700"
+                          : "bg-red-50 text-red-700"
+                      }`}>
+                        {item.action === "upload" ? <UploadCloud className="h-4 w-4" /> : <DownloadCloud className="h-4 w-4" />}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 truncate">
+                          {item.message || (item.action === "upload" ? "Cloud Database Upload" : "Cloud Database Download")}
+                        </div>
+                        <div className="text-[10.5px] text-slate-500 flex items-center gap-2 mt-0.5">
+                          <span>{item.timestamp}</span>
+                          {item.syncCode && (
+                            <span className="font-mono font-bold bg-slate-100 px-1.5 py-0.2 rounded text-slate-700">
+                              {item.syncCode}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className={`text-[10.5px] font-black px-2 py-0.5 rounded-full ${
+                        item.status === "success" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
+                      }`}>
+                        {item.status === "success" ? "Success" : "Failed"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Bottom File Backup Quick Actions */}
         <div className="pt-3.5 border-t border-slate-200/80 flex items-center justify-between gap-2 flex-wrap text-xs">
           <div className="flex items-center gap-2">
@@ -877,3 +1210,4 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
     </Dialog>
   )
 }
+

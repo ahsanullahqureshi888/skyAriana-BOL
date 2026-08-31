@@ -60,11 +60,17 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
       setIsOnline(navigator.onLine)
       const handleOnline = () => setIsOnline(true)
       const handleOffline = () => setIsOnline(false)
+      const handleOpenPalette = () => setIsCommandPaletteOpen(true)
+      const handleOpenSync = () => setIsCloudSyncOpen(true)
       window.addEventListener('online', handleOnline)
       window.addEventListener('offline', handleOffline)
+      window.addEventListener('skybol:open-command-palette', handleOpenPalette)
+      window.addEventListener('skybol:open-cloud-sync', handleOpenSync)
       return () => {
         window.removeEventListener('online', handleOnline)
         window.removeEventListener('offline', handleOffline)
+        window.removeEventListener('skybol:open-command-palette', handleOpenPalette)
+        window.removeEventListener('skybol:open-cloud-sync', handleOpenSync)
       }
     }
   }, [])

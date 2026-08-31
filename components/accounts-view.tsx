@@ -1,7 +1,32 @@
 "use client"
 
 import { useState, useCallback } from 'react'
-import { Plus, Trash2, Building2, ChevronRight, Sparkles, FileText, Search, X, CheckCircle2, ArrowUpRight, BarChart3, AlertTriangle, RefreshCw, Truck, Receipt, Landmark, ExternalLink, Globe } from 'lucide-react'
+import {
+  Plus,
+  Trash2,
+  Building2,
+  ChevronRight,
+  Sparkles,
+  FileText,
+  Search,
+  X,
+  CheckCircle2,
+  ArrowUpRight,
+  BarChart3,
+  AlertTriangle,
+  RefreshCw,
+  Truck,
+  Receipt,
+  Landmark,
+  ExternalLink,
+  Globe,
+  Edit3,
+  ArrowRightLeft,
+  ArrowRight,
+  Check,
+  FolderSync,
+  DollarSign,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell } from 'recharts'
 import { Input } from '@/components/ui/input'
@@ -15,22 +40,82 @@ import {
   DialogClose,
 } from '@/components/ui/dialog'
 import { useApp } from '@/lib/app-context'
+import { toast } from 'sonner'
 
 export function AccountsView() {
-  const { accounts, addAccount, deleteAccount, selectAccount, selectCompany, isSyncing, syncCloudData, currentUser, setView } = useApp()
+  const {
+    accounts,
+    addAccount,
+    updateAccount,
+    moveAccount,
+    deleteAccount,
+    moveCompany,
+    updateCompany,
+    selectAccount,
+    selectCompany,
+    isSyncing,
+    syncCloudData,
+    currentUser,
+    setView,
+  } = useApp()
+
   const [newAccountName, setNewAccountName] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [activeFilter, setActiveFilter] = useState<'all' | 'accounts' | 'shippers'>('all')
+
+  // Edit Account state
+  const [accountToEdit, setAccountToEdit] = useState<{ id: string; name: string } | null>(null)
+  const [editAccountName, setEditAccountName] = useState('')
+
+  // Move / Merge Account state
+  const [accountToMove, setAccountToMove] = useState<{ id: string; name: string; companiesCount: number } | null>(null)
+  const [targetAccountId, setTargetAccountId] = useState('')
+
+  // Move Company state (from Shippers list)
+  const [companyToMove, setCompanyToMove] = useState<{ sourceAccountId: string; companyId: string; companyName: string } | null>(null)
+  const [targetCompanyAccountId, setTargetCompanyAccountId] = useState('')
+
+  // Delete Account state
   const [accountToDelete, setAccountToDelete] = useState<{ id: string; name: string } | null>(null)
 
   const handleAddAccount = useCallback(() => {
     if (newAccountName.trim()) {
       addAccount(newAccountName.trim())
+      toast.success(`Account "${newAccountName.trim()}" created`)
       setNewAccountName('')
       setIsOpen(false)
     }
   }, [newAccountName, addAccount])
+
+  const handleSaveEditAccount = useCallback(() => {
+    if (accountToEdit && editAccountName.trim()) {
+      updateAccount(accountToEdit.id, editAccountName.trim())
+      toast.success(`Account renamed to "${editAccountName.trim()}"`)
+      setAccountToEdit(null)
+      setEditAccountName('')
+    }
+  }, [accountToEdit, editAccountName, updateAccount])
+
+  const handleConfirmMoveAccount = useCallback(() => {
+    if (accountToMove && targetAccountId && accountToMove.id !== targetAccountId) {
+      const targetAcc = accounts.find(a => a.id === targetAccountId)
+      moveAccount(accountToMove.id, targetAccountId)
+      toast.success(`Moved all records from "${accountToMove.name}" to "${targetAcc?.name || 'target account'}"`)
+      setAccountToMove(null)
+      setTargetAccountId('')
+    }
+  }, [accountToMove, targetAccountId, accounts, moveAccount])
+
+  const handleConfirmMoveCompany = useCallback(() => {
+    if (companyToMove && targetCompanyAccountId && companyToMove.sourceAccountId !== targetCompanyAccountId) {
+      const targetAcc = accounts.find(a => a.id === targetCompanyAccountId)
+      moveCompany(companyToMove.sourceAccountId, companyToMove.companyId, targetCompanyAccountId)
+      toast.success(`Moved "${companyToMove.companyName}" to "${targetAcc?.name || 'target account'}"`)
+      setCompanyToMove(null)
+      setTargetCompanyAccountId('')
+    }
+  }, [companyToMove, targetCompanyAccountId, accounts, moveCompany])
 
   const openDialog = useCallback(() => {
     setIsOpen(true)
@@ -510,77 +595,140 @@ export function AccountsView() {
                 <span>Primary Business Accounts</span>
               </h3>
               <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {filteredAccounts.map(account => (
-                  <Card
-                    key={account.id}
-                    className="group relative flex flex-col rounded-3xl border border-slate-200/90 bg-white p-5 shadow-lg shadow-slate-200/50 transition-all duration-300 hover:-translate-y-1 hover:border-amber-400 hover:shadow-2xl hover:shadow-amber-900/10 overflow-hidden cursor-pointer"
-                    onClick={() => selectAccount(account)}
-                  >
-                    {/* Top Accent Gradient Line */}
-                    <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-900 via-indigo-800 to-amber-500 group-hover:h-2 transition-all duration-300" />
+                {filteredAccounts.map(account => {
+                  const totalDebit = account.companies?.reduce((sum, c) => 
+                    sum + (c.ledgerEntries?.reduce((s, e) => s + (Number(e.debit) || 0), 0) || 0), 0
+                  ) || 0
+                  const totalCredit = account.companies?.reduce((sum, c) => 
+                    sum + (c.ledgerEntries?.reduce((s, e) => s + (Number(e.credit) || 0), 0) || 0), 0
+                  ) || 0
+                  const netBalance = totalDebit - totalCredit
 
-                    <div className="flex items-start justify-between gap-3 pt-1">
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 shadow-md shadow-blue-950/20">
-                          <Building2 className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <CardTitle className="text-base font-black text-slate-900 group-hover:text-blue-900 transition-colors truncate" title={account.name}>
-                            {account.name}
-                          </CardTitle>
-                          <span className="text-xs text-amber-700 font-[vazirmatn] font-bold block">حساب تجاری اصلی</span>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:text-red-600 rounded-xl cursor-pointer"
-                        onClick={e => {
-                          e.stopPropagation()
-                          setAccountToDelete({ id: account.id, name: account.name })
-                        }}
-                        title="Delete Account / حذف حساب"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                  return (
+                    <Card
+                      key={account.id}
+                      className="group relative flex flex-col rounded-3xl border border-slate-200/90 bg-white p-5 shadow-lg shadow-slate-200/50 transition-all duration-300 hover:-translate-y-1 hover:border-amber-400 hover:shadow-2xl hover:shadow-amber-900/10 overflow-hidden cursor-pointer"
+                      onClick={() => selectAccount(account)}
+                    >
+                      {/* Top Accent Gradient Line */}
+                      <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-900 via-indigo-800 to-amber-500 group-hover:h-2 transition-all duration-300" />
 
-                    {/* Company Tags Preview */}
-                    {account.companies && account.companies.length > 0 && (
-                      <div className="mt-4 flex flex-wrap gap-1.5">
-                        {account.companies.slice(0, 4).map((comp) => (
-                          <span
-                            key={comp.id}
-                            className="inline-block rounded-xl border border-blue-200 bg-blue-50/90 px-2.5 py-1 text-[11px] font-black text-blue-950"
+                      <div className="flex items-start justify-between gap-3 pt-1">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 shadow-md shadow-blue-950/20">
+                            <Building2 className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <CardTitle className="text-base font-black text-slate-900 group-hover:text-blue-900 transition-colors truncate" title={account.name}>
+                              {account.name}
+                            </CardTitle>
+                            <span className="text-xs text-amber-700 font-[vazirmatn] font-bold block">حساب تجاری اصلی</span>
+                          </div>
+                        </div>
+
+                        {/* Card Action Buttons (Edit, Move, Delete) */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer transition-colors"
+                            onClick={e => {
+                              e.stopPropagation()
+                              setAccountToEdit({ id: account.id, name: account.name })
+                              setEditAccountName(account.name)
+                            }}
+                            title="Edit Account Name / ویرایش نام حساب"
                           >
-                            {comp.name}
-                          </span>
-                        ))}
-                        {account.companies.length > 4 && (
-                          <span className="inline-block rounded-xl border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-600">
-                            +{account.companies.length - 4} more
-                          </span>
-                        )}
-                      </div>
-                    )}
+                            <Edit3 className="h-3.5 w-3.5" />
+                          </Button>
 
-                    <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between mt-4">
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-xl bg-blue-50 text-blue-700 group-hover:bg-blue-900 group-hover:text-white transition-colors">
-                          <FileText className="h-4 w-4" />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-amber-50 hover:text-amber-800 rounded-xl cursor-pointer transition-colors"
+                            onClick={e => {
+                              e.stopPropagation()
+                              setAccountToMove({
+                                id: account.id,
+                                name: account.name,
+                                companiesCount: account.companies?.length || 0,
+                              })
+                              setTargetAccountId('')
+                            }}
+                            title="Move / Merge into Another Account / انتقال و ادغام حساب"
+                          >
+                            <ArrowRightLeft className="h-3.5 w-3.5" />
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-red-50 hover:text-red-600 rounded-xl cursor-pointer transition-colors"
+                            onClick={e => {
+                              e.stopPropagation()
+                              setAccountToDelete({ id: account.id, name: account.name })
+                            }}
+                            title="Delete Account / حذف حساب"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
-                        <p className="text-xs font-black text-slate-800">
-                          {account.companies.length} {account.companies.length === 1 ? 'Company' : 'Companies'}
-                        </p>
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs font-black text-blue-900 group-hover:translate-x-1 transition-transform bg-blue-50/90 px-3 py-1.5 rounded-xl border border-blue-200">
-                        <span>View Companies</span>
-                        <ChevronRight className="h-4 w-4" />
+
+                      {/* Net Balance & Financial Indicator */}
+                      <div className="mt-3.5 flex items-center justify-between gap-2 flex-wrap">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-black text-slate-800">
+                          <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Balance:</span>
+                          <span className={`font-mono ${netBalance > 0 ? 'text-emerald-700 font-extrabold' : 'text-slate-700'}`}>
+                            ${netBalance.toLocaleString()} USD
+                          </span>
+                        </div>
+
+                        <span className="text-[11px] font-bold text-slate-500">
+                          {account.companies?.length || 0} {(account.companies?.length || 0) === 1 ? 'Company' : 'Companies'}
+                        </span>
                       </div>
-                    </div>
-                  </Card>
-                ))}
+
+                      {/* Company Tags Preview */}
+                      {account.companies && account.companies.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {account.companies.slice(0, 3).map((comp) => (
+                            <span
+                              key={comp.id}
+                              className="inline-block rounded-xl border border-blue-200 bg-blue-50/90 px-2.5 py-1 text-[11px] font-black text-blue-950 truncate max-w-[200px]"
+                            >
+                              {comp.name}
+                            </span>
+                          ))}
+                          {account.companies.length > 3 && (
+                            <span className="inline-block rounded-xl border border-slate-200 bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-600">
+                              +{account.companies.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between mt-4">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-xl bg-blue-50 text-blue-700 group-hover:bg-blue-900 group-hover:text-white transition-colors">
+                            <FileText className="h-4 w-4" />
+                          </div>
+                          <p className="text-xs font-black text-slate-800">
+                            Manage Ledgers
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs font-black text-blue-900 group-hover:translate-x-1 transition-transform bg-blue-50/90 px-3 py-1.5 rounded-xl border border-blue-200">
+                          <span>View Companies</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -625,16 +773,33 @@ export function AccountsView() {
                             <span className="text-xs text-amber-700 font-[vazirmatn] font-bold block">دفتر حساب شرکت</span>
                           </div>
                         </div>
-                        <div className="p-1.5 rounded-xl bg-slate-100 text-slate-500 group-hover:bg-amber-100 group-hover:text-amber-900 transition-colors">
-                          <ArrowUpRight className="h-4 w-4" />
-                        </div>
+
+                        {/* Move Company Button */}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 hover:bg-indigo-50 hover:text-indigo-700 rounded-xl cursor-pointer transition-colors"
+                          onClick={e => {
+                            e.stopPropagation()
+                            setCompanyToMove({
+                              sourceAccountId: account.id,
+                              companyId: company.id,
+                              companyName: company.name,
+                            })
+                            setTargetCompanyAccountId('')
+                          }}
+                          title="Move Company to Another Account / انتقال شرکت به حساب دیگر"
+                        >
+                          <ArrowRightLeft className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
 
                       <div className="mt-4 flex items-center justify-between">
                         <div className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/90 px-2.5 py-1 text-xs font-black text-indigo-950">
                           <span>{entryCount} {entryCount === 1 ? 'Ledger Entry' : 'Ledger Entries'}</span>
                         </div>
-                        <span className="text-[11px] font-black text-slate-600 truncate max-w-[140px]">
+                        <span className="text-[11px] font-black text-slate-600 truncate max-w-[140px]" title={account.name}>
                           {account.name}
                         </span>
                       </div>
@@ -696,7 +861,214 @@ export function AccountsView() {
         </div>
       )}
 
-      {/* Delete Account Confirmation Dialog */}
+      {/* 1. Edit Account Name Dialog */}
+      <Dialog open={!!accountToEdit} onOpenChange={(open) => !open && setAccountToEdit(null)}>
+        <DialogContent className="glass-strong sm:max-w-md rounded-3xl border-white/80 shadow-2xl p-6">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-blue-100 text-blue-800 shadow-sm">
+                <Edit3 className="h-5 w-5 text-blue-700" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <span>Edit Account Name</span>
+                  <span className="text-xs text-amber-700 font-[vazirmatn] font-bold">ویرایش نام حساب</span>
+                </DialogTitle>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                  Update primary business account title
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-wider text-slate-700">Account Name / نام حساب</label>
+              <Input
+                placeholder="e.g. NAJEB AMIN LTD..."
+                value={editAccountName}
+                onChange={e => setEditAccountName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleSaveEditAccount()
+                  }
+                }}
+                className="bg-white border-slate-300 focus:border-blue-500 h-11 font-extrabold text-slate-950 rounded-2xl"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              className="bg-slate-100 rounded-xl font-bold"
+              onClick={() => setAccountToEdit(null)}
+            >
+              Cancel / لغو
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveEditAccount}
+              disabled={!editAccountName.trim()}
+              className="bg-blue-900 hover:bg-blue-950 font-black rounded-xl text-white shadow-md shadow-blue-900/20"
+            >
+              Save Changes / ذخیره تغییرات
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 2. Move / Merge Account Dialog */}
+      <Dialog open={!!accountToMove} onOpenChange={(open) => !open && setAccountToMove(null)}>
+        <DialogContent className="glass-strong sm:max-w-md rounded-3xl border-amber-200/80 shadow-2xl p-6">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-amber-100 text-amber-900 shadow-sm">
+                <ArrowRightLeft className="h-5 w-5 text-amber-700" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <span>Move & Merge Account</span>
+                  <span className="text-xs text-amber-700 font-[vazirmatn] font-bold">انتقال و ادغام حساب</span>
+                </DialogTitle>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                  Transfer all companies & ledger entries into another account
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {accountToMove && (
+            <div className="space-y-4 py-3">
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                <span className="text-slate-500 font-bold block">Source Account (Moving From):</span>
+                <span className="text-sm font-black text-blue-950">{accountToMove.name}</span>
+                <span className="text-[11px] text-slate-500 block pt-0.5">
+                  Contains <strong>{accountToMove.companiesCount}</strong> {accountToMove.companiesCount === 1 ? 'company' : 'companies'} and all linked ledgers.
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700">
+                  Select Destination Account / حساب مقصد
+                </label>
+                <select
+                  value={targetAccountId}
+                  onChange={e => setTargetAccountId(e.target.value)}
+                  className="w-full h-11 px-3 bg-white border border-slate-300 rounded-2xl font-bold text-xs text-slate-900 focus:outline-none focus:border-amber-500 shadow-2xs"
+                >
+                  <option value="">-- Choose Target Account / انتخاب حساب --</option>
+                  {accounts
+                    .filter(a => a.id !== accountToMove.id)
+                    .map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({a.companies?.length || 0} companies)
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <p className="text-[11px] text-amber-800 bg-amber-50 p-2.5 rounded-xl border border-amber-200 font-medium">
+                ⚠️ All companies and ledger records will be transferred to the destination account, and the source account will be safely merged.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              className="bg-slate-100 rounded-xl font-bold"
+              onClick={() => setAccountToMove(null)}
+            >
+              Cancel / لغو
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmMoveAccount}
+              disabled={!targetAccountId}
+              className="bg-amber-600 hover:bg-amber-700 font-black rounded-xl text-white shadow-md shadow-amber-600/20"
+            >
+              Confirm Move / تایید انتقال
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 3. Move Company Dialog */}
+      <Dialog open={!!companyToMove} onOpenChange={(open) => !open && setCompanyToMove(null)}>
+        <DialogContent className="glass-strong sm:max-w-md rounded-3xl border-indigo-200/80 shadow-2xl p-6">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-indigo-100 text-indigo-900 shadow-sm">
+                <ArrowRightLeft className="h-5 w-5 text-indigo-700" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <span>Move Shipper Company</span>
+                  <span className="text-xs text-indigo-700 font-[vazirmatn] font-bold">انتقال شرکت به حساب دیگر</span>
+                </DialogTitle>
+                <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                  Transfer company ledger to another business account
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {companyToMove && (
+            <div className="space-y-4 py-3">
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                <span className="text-slate-500 font-bold block">Company (Moving):</span>
+                <span className="text-sm font-black text-indigo-950">{companyToMove.companyName}</span>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-700">
+                  Select Destination Account / حساب مقصد
+                </label>
+                <select
+                  value={targetCompanyAccountId}
+                  onChange={e => setTargetCompanyAccountId(e.target.value)}
+                  className="w-full h-11 px-3 bg-white border border-slate-300 rounded-2xl font-bold text-xs text-slate-900 focus:outline-none focus:border-indigo-500 shadow-2xs"
+                >
+                  <option value="">-- Choose Target Account / انتخاب حساب --</option>
+                  {accounts
+                    .filter(a => a.id !== companyToMove.sourceAccountId)
+                    .map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              className="bg-slate-100 rounded-xl font-bold"
+              onClick={() => setCompanyToMove(null)}
+            >
+              Cancel / لغو
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmMoveCompany}
+              disabled={!targetCompanyAccountId}
+              className="bg-indigo-700 hover:bg-indigo-800 font-black rounded-xl text-white shadow-md shadow-indigo-700/20"
+            >
+              Move Company / انتقال شرکت
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 4. Delete Account Confirmation Dialog */}
       <Dialog open={!!accountToDelete} onOpenChange={(open) => !open && setAccountToDelete(null)}>
         <DialogContent className="glass-strong border-red-200 sm:max-w-md p-6 shadow-2xl rounded-3xl">
           <DialogHeader>
@@ -741,6 +1113,7 @@ export function AccountsView() {
               onClick={() => {
                 if (accountToDelete) {
                   deleteAccount(accountToDelete.id)
+                  toast.success(`Account "${accountToDelete.name}" deleted`)
                   setAccountToDelete(null)
                 }
               }}

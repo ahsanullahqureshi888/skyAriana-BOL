@@ -102,9 +102,13 @@ interface AppContextType extends AppState {
   deleteUser: (id: string) => void
   changePassword: (oldPassword: string, newPassword: string) => { success: boolean; message: string }
   addAccount: (name: string) => void
+  updateAccount: (id: string, name: string) => void
+  moveAccount: (sourceAccountId: string, targetAccountId: string) => void
   deleteAccount: (id: string) => void
   selectAccount: (account: Account) => void
   addCompany: (accountId: string, name: string) => void
+  updateCompany: (accountId: string, companyId: string, name: string) => void
+  moveCompany: (sourceAccountId: string, companyId: string, targetAccountId: string) => void
   deleteCompany: (accountId: string, companyId: string) => void
   selectCompany: (company: Company) => void
   addLedgerEntry: (accountId: string, companyId: string, entry: Omit<LedgerEntry, 'id' | 'sNo' | 'balance'>) => void
@@ -1082,6 +1086,184 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const updateAccount = useCallback((id: string, newName: string) => {
+    const trimmed = newName.trim()
+    if (!trimmed) return
+
+    setState(prev => {
+      const oldAccount = prev.accounts.find(a => a.id === id)
+      if (!oldAccount) return prev
+
+      const updatedAccounts = prev.accounts.map(a => {
+        if (a.id !== id) return a
+        return {
+          ...a,
+          name: trimmed,
+        }
+      })
+
+      const updatedCurrentAccount = prev.currentAccount?.id === id
+        ? { ...prev.currentAccount, name: trimmed }
+        : prev.currentAccount
+
+      persistLedgersDirectly(updatedAccounts, prev.deletedLedgerEntries || [])
+
+      return {
+        ...prev,
+        accounts: updatedAccounts,
+        currentAccount: updatedCurrentAccount,
+      }
+    })
+  }, [persistLedgersDirectly])
+
+  const moveAccount = useCallback((sourceAccountId: string, targetAccountId: string) => {
+    if (!sourceAccountId || !targetAccountId || sourceAccountId === targetAccountId) return
+
+    setState(prev => {
+      const sourceAcc = prev.accounts.find(a => a.id === sourceAccountId)
+      const targetAcc = prev.accounts.find(a => a.id === targetAccountId)
+      if (!sourceAcc || !targetAcc) return prev
+
+      // Merge companies from source into target
+      const targetCompanies = [...targetAcc.companies]
+      sourceAcc.companies.forEach(srcComp => {
+        const existingIndex = targetCompanies.findIndex(
+          tc => getShipperCanonicalKey(tc.name) === getShipperCanonicalKey(srcComp.name)
+        )
+        if (existingIndex >= 0) {
+          const existingComp = targetCompanies[existingIndex]
+          const existingIds = new Set(existingComp.ledgerEntries.map(e => e.id))
+          const newEntries = srcComp.ledgerEntries.filter(e => !existingIds.has(e.id))
+          const mergedEntries = calculateBalances([...existingComp.ledgerEntries, ...newEntries])
+          targetCompanies[existingIndex] = {
+            ...existingComp,
+            ledgerEntries: mergedEntries,
+          }
+        } else {
+          targetCompanies.push({ ...srcComp })
+        }
+      })
+
+      const updatedAccounts = prev.accounts
+        .filter(a => a.id !== sourceAccountId)
+        .map(a => {
+          if (a.id === targetAccountId) {
+            return {
+              ...a,
+              companies: targetCompanies,
+            }
+          }
+          return a
+        })
+
+      const updatedCurrentAccount = prev.currentAccount?.id === sourceAccountId
+        ? updatedAccounts.find(a => a.id === targetAccountId) || null
+        : (prev.currentAccount?.id === targetAccountId ? updatedAccounts.find(a => a.id === targetAccountId) || null : prev.currentAccount)
+
+      persistLedgersDirectly(updatedAccounts, prev.deletedLedgerEntries || [])
+
+      return {
+        ...prev,
+        accounts: updatedAccounts,
+        currentAccount: updatedCurrentAccount,
+      }
+    })
+  }, [persistLedgersDirectly])
+
+  const updateCompany = useCallback((accountId: string, companyId: string, newName: string) => {
+    const trimmed = newName.trim()
+    if (!trimmed) return
+
+    setState(prev => {
+      const updatedAccounts = prev.accounts.map(a => {
+        if (a.id !== accountId) return a
+        return {
+          ...a,
+          companies: a.companies.map(c => {
+            if (c.id !== companyId) return c
+            return { ...c, name: trimmed }
+          }),
+        }
+      })
+
+      const updatedCurrentAccount = prev.currentAccount?.id === accountId
+        ? updatedAccounts.find(a => a.id === accountId) || null
+        : prev.currentAccount
+
+      const updatedCurrentCompany = updatedCurrentAccount?.companies.find(c => c.id === companyId) || prev.currentCompany
+
+      persistLedgersDirectly(updatedAccounts, prev.deletedLedgerEntries || [])
+
+      return {
+        ...prev,
+        accounts: updatedAccounts,
+        currentAccount: updatedCurrentAccount,
+        currentCompany: updatedCurrentCompany,
+      }
+    })
+  }, [persistLedgersDirectly])
+
+  const moveCompany = useCallback((sourceAccountId: string, companyId: string, targetAccountId: string) => {
+    if (!sourceAccountId || !companyId || !targetAccountId || sourceAccountId === targetAccountId) return
+
+    setState(prev => {
+      const sourceAcc = prev.accounts.find(a => a.id === sourceAccountId)
+      const targetAcc = prev.accounts.find(a => a.id === targetAccountId)
+      if (!sourceAcc || !targetAcc) return prev
+
+      const companyToMove = sourceAcc.companies.find(c => c.id === companyId)
+      if (!companyToMove) return prev
+
+      const targetCompanies = [...targetAcc.companies]
+      const existingIndex = targetCompanies.findIndex(
+        tc => getShipperCanonicalKey(tc.name) === getShipperCanonicalKey(companyToMove.name)
+      )
+
+      if (existingIndex >= 0) {
+        const existingComp = targetCompanies[existingIndex]
+        const existingIds = new Set(existingComp.ledgerEntries.map(e => e.id))
+        const newEntries = companyToMove.ledgerEntries.filter(e => !existingIds.has(e.id))
+        targetCompanies[existingIndex] = {
+          ...existingComp,
+          ledgerEntries: calculateBalances([...existingComp.ledgerEntries, ...newEntries]),
+        }
+      } else {
+        targetCompanies.push({ ...companyToMove })
+      }
+
+      const updatedAccounts = prev.accounts.map(a => {
+        if (a.id === sourceAccountId) {
+          return {
+            ...a,
+            companies: a.companies.filter(c => c.id !== companyId),
+          }
+        }
+        if (a.id === targetAccountId) {
+          return {
+            ...a,
+            companies: targetCompanies,
+          }
+        }
+        return a
+      })
+
+      const updatedCurrentAccount = prev.currentAccount?.id === sourceAccountId
+        ? updatedAccounts.find(a => a.id === sourceAccountId) || null
+        : (prev.currentAccount?.id === targetAccountId ? updatedAccounts.find(a => a.id === targetAccountId) || null : prev.currentAccount)
+
+      const updatedCurrentCompany = updatedCurrentAccount?.companies.find(c => c.id === companyId) || null
+
+      persistLedgersDirectly(updatedAccounts, prev.deletedLedgerEntries || [])
+
+      return {
+        ...prev,
+        accounts: updatedAccounts,
+        currentAccount: updatedCurrentAccount,
+        currentCompany: updatedCurrentCompany,
+      }
+    })
+  }, [persistLedgersDirectly])
+
   const addLedgerEntry = useCallback((accountId: string, companyId: string, entry: Omit<LedgerEntry, 'id' | 'sNo' | 'balance'>) => {
     const newEntry: LedgerEntry = {
       ...entry,
@@ -1855,9 +2037,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         deleteUser,
         changePassword,
         addAccount,
+        updateAccount,
+        moveAccount,
         deleteAccount,
         selectAccount,
         addCompany,
+        updateCompany,
+        moveCompany,
         deleteCompany,
         selectCompany,
         addLedgerEntry,

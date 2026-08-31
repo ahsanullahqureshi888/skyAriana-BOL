@@ -246,6 +246,56 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
           if (onOpenCloudSync) onOpenCloudSync()
         },
       },
+      {
+        id: "action-ledger-audit",
+        title: "Ledger Data Integrity & Math Verification Audit",
+        subtitle: "Scan all accounts for cumulative balance drift and auto-reconcile in 1 click",
+        category: "Actions",
+        icon: CheckCircle2,
+        badge: "Audit",
+        perform: () => {
+          onOpenChange(false)
+          import("@/lib/services/ledger-integrity-service").then(({ auditLedgerIntegrity, reconcileAllLedgers }) => {
+            const report = auditLedgerIntegrity()
+            if (report.healthy) {
+              import("sonner").then(({ toast }) => {
+                toast.success(`🎉 Ledger Health 100%: All ${report.totalEntriesAudited} entries mathematically verified!`)
+              })
+            } else {
+              import("sonner").then(({ toast }) => {
+                toast.warning(`⚠️ Found ${report.discrepanciesCount} discrepancies. Click to auto-reconcile!`, {
+                  action: {
+                    label: "Fix Now",
+                    onClick: () => {
+                      const res = reconcileAllLedgers()
+                      toast.success(res.message)
+                    },
+                  },
+                  duration: 8000,
+                })
+              })
+            }
+          })
+        },
+      },
+      {
+        id: "action-export-analytics",
+        title: "Export Multi-Sheet Executive Analytics (Excel .xlsx)",
+        subtitle: "Download complete workbook with Shipments, Aging, Debtors, Corridors & Audit Trail",
+        category: "Actions",
+        icon: FileSpreadsheet,
+        badge: "Excel",
+        perform: () => {
+          onOpenChange(false)
+          import("@/lib/services/analytics-service").then(({ computeAnalyticsData, exportAnalyticsToExcel }) => {
+            const payload = computeAnalyticsData()
+            exportAnalyticsToExcel(payload)
+            import("sonner").then(({ toast }) => {
+              toast.success("Excel Analytics Report exported successfully!")
+            })
+          })
+        },
+      },
     ]
 
     // Append Accounts

@@ -81,9 +81,10 @@ const SkyDocView = dynamic(safeLazy(() => import('@/components/sky-doc-view').th
 const ReportsView = dynamic(safeLazy(() => import('@/components/reports-view').then(m => m.ReportsView)), { loading: ViewLoadingSkeleton })
 const ShipperDashboardView = dynamic(safeLazy(() => import('@/components/shipper-dashboard').then(m => m.ShipperDashboardView)), { loading: ViewLoadingSkeleton })
 const AnalyticsDashboardView = dynamic(safeLazy(() => import('@/components/analytics-dashboard-view').then(m => m.AnalyticsDashboardView)), { loading: ViewLoadingSkeleton })
+const QuickActionsWidget = dynamic(safeLazy(() => import('@/components/quick-actions-widget').then(m => m.QuickActionsWidget)), { ssr: false })
 
 function MainContent() {
-  const { view, isAuthenticated, currentUser } = useApp()
+  const { view, isAuthenticated, currentUser, setView } = useApp()
   const [visitedViews, setVisitedViews] = useState<Set<string>>(() => new Set(['accounts']))
 
   // Track visited views to keep them alive and ready
@@ -378,6 +379,21 @@ function MainContent() {
           </div>
         )}
       </main>
+
+      {/* Global Floating Quick Actions Speed Dial */}
+      {!isFullBleedView && (
+        <QuickActionsWidget
+          onOpenCommandPalette={() => {
+            window.dispatchEvent(new CustomEvent('skybol:open-command-palette'))
+          }}
+          onOpenCloudSync={() => {
+            window.dispatchEvent(new CustomEvent('skybol:open-cloud-sync'))
+          }}
+          onOpenChat={() => {
+            setView('analytics')
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect, useRef } from "react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -405,23 +405,23 @@ export function DescriptionPresetSelector({
         name="shipperDescription"
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="1476 CTNS: GOLDEN RAISINS / از دوغارون کانتینر معمولی از میرسن کانتینر یخچالی"
-        className="bg-white border-blue-200 focus:border-blue-500 text-xs font-semibold h-9 text-blue-950 shadow-xs"
+        placeholder="1476 CTNS: GOLDEN RAISINS / از دوغارون کانتینر معمولی..."
+        className="bg-white border-blue-200 focus:border-blue-500 text-xs font-semibold h-8 text-blue-950 shadow-2xs"
       />
 
       {/* Quick 1-Click Preset Chips below Input */}
       {showQuickChips && (
-        <div className="flex flex-wrap gap-1.5 pt-0.5">
+        <div className="flex flex-wrap gap-1 pt-0.5">
           {quickChips.map((chip) => (
             <button
               key={chip.label}
               type="button"
               onClick={() => handleSelectOption(chip.label)}
-              className="inline-flex items-center gap-1 text-[10px] font-semibold bg-gradient-to-r from-blue-50/90 to-indigo-50/80 hover:from-blue-100 hover:to-indigo-100 text-blue-900 border border-blue-200/90 px-2 py-0.5 rounded-md cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98] shadow-2xs"
+              className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-900 border border-blue-200 px-1.5 py-0.2 rounded cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98] shadow-2xs"
               title={`Click to fill: ${chip.label}`}
             >
-              <span className="text-[10px]">{chip.icon}</span>
-              <span className="truncate max-w-[200px] sm:max-w-none">{chip.label}</span>
+              <span className="text-[9.5px]">{chip.icon}</span>
+              <span className="truncate max-w-[160px] sm:max-w-none">{chip.short}</span>
             </button>
           ))}
         </div>

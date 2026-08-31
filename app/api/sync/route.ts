@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { readJsonFile, writeJsonFile } from "@/lib/services/blob-db"
 import * as localStorage from "@/lib/services/local-storage-service"
 import { saveBolAccountLedgerDatabase, getBolAccountLedgerDatabase } from "@/lib/services/bol-account-ledger-storage-service"
+import { getAllInvoices, saveInvoice } from "@/lib/services/invoice-storage-service"
+import { validateLedgerInvariance } from "@/lib/services/ledger-sync-utils"
 import path from "path"
 
 const syncCodesFile = path.join(process.cwd(), ".local-sync-codes.json")
@@ -11,6 +13,8 @@ interface SyncPayload {
   documents?: any[]
   accounts?: string[]
   ledgerRecords?: Record<string, any[]>
+  invoices?: any[]
+  financialsMap?: Record<string, any>
   companySettings?: any
   routePresets?: any[]
   savedShippers?: any[]
@@ -208,6 +212,7 @@ export async function GET(request: Request) {
 
     const allBols = await localStorage.getAllLocalBOLs()
     const ledgerDb = await getBolAccountLedgerDatabase()
+    const allInvoices = await getAllInvoices()
     const snapshot = await readJsonFile<any>(fullSnapshotFile, inMemorySnapshot || {})
 
     // Merge documents
@@ -229,6 +234,25 @@ export async function GET(request: Request) {
       }
     }
 
+    // Merge invoices
+    const invMap = new Map<string, any>()
+    if (masterData && Array.isArray(masterData.invoices)) {
+      for (const inv of masterData.invoices) {
+        const k = inv.invoice_number || inv.id
+        if (k) invMap.set(k, inv)
+      }
+    }
+    for (const inv of allInvoices) {
+      const k = inv.invoice_number || inv.id
+      if (k) invMap.set(k, inv)
+    }
+    if (Array.isArray(snapshot.invoices)) {
+      for (const inv of snapshot.invoices) {
+        const k = inv.invoice_number || inv.id
+        if (k) invMap.set(k, inv)
+      }
+    }
+
     const mergedCompanies = Array.from(
       new Set([
         ...(ledgerDb.customCompanies || []),
@@ -243,10 +267,20 @@ export async function GET(request: Request) {
       ...(ledgerDb.ledgerRecords || {}),
     }
 
+    const mergedFinancialsMap = {
+      ...(masterData?.financialsMap || {}),
+      ...(snapshot.financialsMap || {}),
+    }
+
+    const ledgerAudit = validateLedgerInvariance(mergedLedgers)
+
     const responseData = {
       documents: Array.from(docMap.values()),
+      invoices: Array.from(invMap.values()),
       customCompanies: mergedCompanies,
       ledgerRecords: mergedLedgers,
+      financialsMap: mergedFinancialsMap,
+      ledgerAudit,
       companySettings: snapshot.companySettings || masterData?.companySettings || null,
       routePresets: snapshot.routePresets || masterData?.routePresets || [],
       savedShippers: snapshot.savedShippers || masterData?.savedShippers || [],
@@ -281,13 +315,11 @@ export async function POST(request: Request) {
       const existingBols = await localStorage.getAllLocalBOLs()
       const bolMap = new Map<string, any>()
 
-      // Add existing
       for (const b of existingBols) {
         const k = b.bol_number || b.id
         if (k) bolMap.set(k, b)
       }
 
-      // Merge incoming
       for (const b of payload.documents) {
         const k = b.bol_number || b.id
         if (k) {
@@ -308,7 +340,18 @@ export async function POST(request: Request) {
       mergedDocsCount = allMergedBols.length
     }
 
-    // 2. Merge accounts and ledger entries locally
+    // 2. Merge invoices locally
+    let mergedInvoicesCount = 0
+    if (Array.isArray(payload.invoices) && payload.invoices.length > 0) {
+      for (const inv of payload.invoices) {
+        if (inv && (inv.invoice_number || inv.id)) {
+          await saveInvoice(inv)
+          mergedInvoicesCount++
+        }
+      }
+    }
+
+    // 3. Merge accounts and ledger entries locally
     if (payload.ledgerRecords || payload.accounts) {
       const currentLedgerDb = await getBolAccountLedgerDatabase()
       const mergedCompanies = Array.from(
@@ -330,24 +373,31 @@ export async function POST(request: Request) {
       })
     }
 
-    // 3. Save full master snapshot
+    // Audit ledger records
+    const currentLedgerDbAfter = await getBolAccountLedgerDatabase()
+    const ledgerAudit = validateLedgerInvariance(currentLedgerDbAfter.ledgerRecords || payload.ledgerRecords || {})
+
+    // 4. Save full master snapshot
     const masterSnapshot = {
       documents: payload.documents || [],
+      invoices: payload.invoices || [],
       accounts: payload.accounts || [],
       ledgerRecords: payload.ledgerRecords || {},
+      financialsMap: payload.financialsMap || {},
       deletedLedgerEntries: payload.deletedLedgerEntries || [],
       companySettings: payload.companySettings || null,
       routePresets: payload.routePresets || [],
       savedShippers: payload.savedShippers || [],
       savedConsignees: payload.savedConsignees || [],
       savedNotifyParties: payload.savedNotifyParties || [],
+      ledgerAudit,
       updated_at: now,
     }
 
     inMemorySnapshot = masterSnapshot
     await writeJsonFile(fullSnapshotFile, masterSnapshot)
 
-    // 4. Generate Transfer Code for instant cross-device transfer (e.g. SKY-5821)
+    // 5. Generate Transfer Code for instant cross-device transfer (e.g. SKY-5821)
     const codeNum = Math.floor(1000 + Math.random() * 9000).toString()
     const syncCode = `SKY-${codeNum}`
 
@@ -365,7 +415,7 @@ export async function POST(request: Request) {
       await writeJsonFile(syncCodesFile, storedCodes)
     } catch (e) {}
 
-    // 5. Broadcast to Global Cloud Relays for 100% Guaranteed Cross-Device Reach
+    // 6. Broadcast to Global Cloud Relays for 100% Guaranteed Cross-Device Reach
     void Promise.allSettled([
       saveToGlobalRelay(`sky-relay-v3-${codeNum}`, masterSnapshot),
       saveToGlobalRelay(`sky-relay-v3-${syncCode.toLowerCase()}`, masterSnapshot),
@@ -377,7 +427,9 @@ export async function POST(request: Request) {
       syncCode,
       codeNum,
       totalDocuments: payload.documents?.length || mergedDocsCount,
-      message: `Successfully synchronized ${payload.documents?.length || mergedDocsCount} BOLs and accounts to the cloud!`,
+      totalInvoices: payload.invoices?.length || mergedInvoicesCount,
+      ledgerAudit,
+      message: `Successfully synchronized ${payload.documents?.length || mergedDocsCount} BOLs, ${payload.invoices?.length || mergedInvoicesCount} invoices, and accounts to the cloud!`,
       expiresAt: new Date(expiresAt).toISOString(),
     })
   } catch (error) {
@@ -387,3 +439,4 @@ export async function POST(request: Request) {
     )
   }
 }
+
