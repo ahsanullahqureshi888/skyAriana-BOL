@@ -60,13 +60,13 @@ assertEqual(quoteNimroz.grossProfitUSD, 550.0, "Gross profit is $550.00")
 assertEqual(quoteNimroz.targetMarginPercent, 20.0, "Target margin is 20%")
 assertEqual(quoteNimroz.effectiveMarkupPercent, 25.0, "Effective markup is 25%")
 
-// 4. User Test Case 2: Dogharon to Mersin Reefer Routing (Refrigerated 40RF)
-console.log("\n=== Testing Reefer Export Routing (Dogharon to Mersin Reefer) ===")
+// 4. User Test Case 2: Dogharon to Nhava Sheva via Mersin Reefer Routing (Refrigerated 40RF)
+console.log("\n=== Testing Reefer Export Routing (Dogharon to Nhava Sheva via Mersin Reefer) ===")
 const transitTotal = dogharonToMersinReeferCosts.transitLegs.reduce((sum, leg) => sum + leg.cost, 0)
-assertEqual(transitTotal, 5300.0, "Reefer transit legs total is $5,300.00")
+assertEqual(transitTotal, 5350.0, "Reefer transit legs total is $5,350.00")
 
 const grandTotalCost = dogharonToMersinReeferCosts.oceanFreight + transitTotal
-assertEqual(grandTotalCost, 12320.0, "Grand total base cost is $12,320.00 ($7,020 Ocean + $5,300 Transit)")
+assertEqual(grandTotalCost, 12370.0, "Grand total base cost is $12,370.00 ($7,020 Ocean + $5,350 Transit)")
 
 const targetMarginReefer = 15 // 15% Margin
 const quoteReefer = generateMultiLegQuote(
@@ -75,7 +75,7 @@ const quoteReefer = generateMultiLegQuote(
   0, // no extra risk buffer
   targetMarginReefer,
   {
-    destinationPort: "Mersin Port (Turkey)",
+    destinationPort: "Nhava Sheva via Mersin Port (Turkey)",
     equipmentType: "40RF",
     temperatureSetting: "-18°C Frozen",
     afnExchangeRate: 70,
@@ -89,10 +89,10 @@ assertEqual(quoteReefer.equipmentType, "40RF", "Equipment is 40RF Reefer")
 assertEqual(quoteReefer.isReefer, true, "isReefer flag is true")
 assertEqual(quoteReefer.escortFeeUSD, 1050.0, "Escort Service fee is $1,050.00")
 assertEqual(quoteReefer.pluggingFeeUSD, 700.0, "Plugging charges (7 days) is $700.00")
-assertEqual(quoteReefer.commissionFeeUSD, 150.0, "Admin commission is $150.00")
-assertEqual(quoteReefer.totalBaseCostUSD, 12320.0, "Grand total base cost is $12,320.00")
-assertCloseTo(quoteReefer.finalQuotedPriceUSD, 14494.12, "Final customer quote is $14,494.12 ($12,320 / 0.85)")
-assertCloseTo(quoteReefer.grossProfitUSD, 2174.12, "Net profit is $2,174.12 ($14,494.12 - $12,320)")
+assertEqual(quoteReefer.commissionFeeUSD, 200.0, "Admin commission is $200.00")
+assertEqual(quoteReefer.totalBaseCostUSD, 12370.0, "Grand total base cost is $12,370.00")
+assertCloseTo(quoteReefer.finalQuotedPriceUSD, 14552.94, "Final customer quote is $14,552.94 ($12,370 / 0.85)")
+assertCloseTo(quoteReefer.grossProfitUSD, 2182.94, "Net profit is $2,182.94 ($14,552.94 - $12,370)")
 
 // 5. BOL Route Conversion Verification for Reefer
 const bolReeferRoutes = exportCorridorToBillOfLadingRoutes(dogharonToMersinReeferLegs)

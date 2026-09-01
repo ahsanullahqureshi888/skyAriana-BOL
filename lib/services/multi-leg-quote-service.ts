@@ -156,20 +156,20 @@ export const nimrozToBandarAbbasLegs: ExportLeg[] = [
 ]
 
 /**
- * Route 3 Payload: Dogharon to Mersin Reefer Export Routing (Refrigerated 40RF/20RF)
+ * Route 3 Payload: Dogharon to Nhava Sheva via Mersin Reefer Export Routing (Refrigerated 40RF)
  * Includes Escort Service (مامور بدرقه), Plugging Charges (7 Days), Turkey Transit Trucking, Commission (CMSN), and Ocean Freight with TRF.
- * Total Transit Legs Cost: $5,300.00 USD
+ * Total Transit Legs Cost: $5,350.00 USD
  * Ocean Freight ($6,500 + 8% TRF): $7,020.00 USD
- * Grand Total Cost: $12,320.00 USD
+ * Grand Total Company Cost: $12,370.00 USD
  */
 export const dogharonToMersinReeferCosts = {
-  oceanFreight: 7020.0, // $6,500 + 8% TRF
+  oceanFreight: 7020.0, // $6,500 + 8% TRF ($520)
   transitLegs: [
     { location: "Dogharon/Iran Transit", costType: "Escort Service", cost: 1050.0 },
     { location: "Dogharon to Bazargan", costType: "Trucking (Iran Inland)", cost: 800.0 },
     { location: "Bazargan to Mersin", costType: "Trucking (Turkey Transit)", cost: 2600.0 },
     { location: "Mersin Port", costType: "Plugging Charges (7 Days)", cost: 700.0 },
-    { location: "Admin", costType: "Commission (CMSN)", cost: 150.0 },
+    { location: "Admin", costType: "Commission (CMSN)", cost: 200.0 },
   ],
 }
 
@@ -241,7 +241,7 @@ export const dogharonToMersinReeferLegs: ExportLeg[] = [
     locationPersian: "امور اداری و مدیریت",
     costType: "Commission (CMSN)",
     costTypePersian: "کمیسیون و مدیریت (CMSN)",
-    cost: 150.0,
+    cost: 200.0,
     chargeCode: "CMSN",
     isAccessorial: true,
     transportMode: "customs",
@@ -256,6 +256,16 @@ export const dogharonToMersinReeferLegs: ExportLeg[] = [
 // ==========================================
 
 export const OCEAN_FREIGHT_PRESETS: OceanFreightPreset[] = [
+  {
+    id: "ocean-mersin-nhava-sheva-reefer-trf",
+    destinationPort: "Mersin Port to Nhava Sheva (40RF Reefer + 8% TRF)",
+    destinationPortPersian: "بندر مرسین به نهاوا شوا هند (کانتینر یخچالی ۴۰ فوت + مالیات TRF)",
+    country: "India / Turkey",
+    defaultCostUSD: 7020.0, // $6,500 base + 8% TRF ($520)
+    transitDaysEstimated: 14,
+    isReeferRate: true,
+    trfIncluded: true,
+  },
   {
     id: "ocean-mersin-reefer-trf",
     destinationPort: "Mersin Port (40RF Reefer + 8% TRF)",
@@ -328,6 +338,25 @@ export const OCEAN_FREIGHT_PRESETS: OceanFreightPreset[] = [
 
 export const EXPORT_CORRIDOR_PRESETS: ExportCorridorPreset[] = [
   {
+    id: "corridor-dgh-mersin-nhava-reefer",
+    name: "Dogharon to Nhava Sheva via Mersin Reefer (Refrigerated 40RF)",
+    namePersian: "دوغارون الی نهاوا شوا هند از طریق مرسین (کانتینر یخچالی ۴۰ فوت با مامور بدرقه و پلاگینگ)",
+    routeCode: "DGH-MERSIN-NHAVA-REEFER",
+    originBorder: "Dogharon / Islam Qala",
+    originBorderPersian: "دوغارون / اسلام قلعه",
+    destinationPort: "Nhava Sheva via Mersin Port",
+    destinationPortPersian: "بندر نهاوا شوا هند از طریق بندر مرسین ترکیه",
+    viaCountry: "Iran, Turkey & Maritime",
+    equipmentType: "40RF",
+    temperatureSetting: "-18°C Frozen",
+    defaultRiskBuffer: 0.0,
+    defaultTargetMargin: 15.0, // 15% Target Margin
+    defaultOceanFreight: 7020.0, // $6,500 + 8% TRF ($520)
+    legs: dogharonToMersinReeferLegs,
+    description: "Reefer corridor to Nhava Sheva via Mersin with Escort Service across Iran (مامور بدرقه $1,050), Dogharon-Bazargan trucking ($800), Bazargan-Mersin transit ($2,600), 7 days plugging ($700), CMSN ($200), and Ocean Freight with TRF ($7,020). Total Base Cost: $12,370 USD.",
+    descriptionPersian: "مسیر ترانزیت کانتینر یخچالی به نهاوا شوا هند از طریق مرسین با مامور بدرقه ایران (۱۰۵۰ دلار)، کرایه لاری دوغارون-بازرگان (۸۰۰ دلار)، ترانزیت ترکیه (۲۶۰۰ دلار)، برق پلاگینگ ۷ روزه (۷۰۰ دلار)، کمیسیون (۲۰۰ دلار) و کرایه دریایی با TRF (۷۰۲۰ دلار). مجموعه مصارف تمام شده: ۱۲,۳۷۰ دلار.",
+  },
+  {
     id: "corridor-dgh-mersin-reefer",
     name: "Route 3: Dogharon to Mersin Reefer (Refrigerated 40RF)",
     namePersian: "مسیر سوم: دوغارون الی مرسین کانتینر یخچالی (۴۰ فوت با مامور بدرقه و پلاگینگ)",
@@ -343,8 +372,8 @@ export const EXPORT_CORRIDOR_PRESETS: ExportCorridorPreset[] = [
     defaultTargetMargin: 15.0, // 15% Target Margin
     defaultOceanFreight: 7020.0, // $6,500 + 8% TRF
     legs: dogharonToMersinReeferLegs,
-    description: "Reefer export routing with bonded Escort Service across Iran (مامور بدرقه), Turkey transit trucking, 7 days Reefer plugging charges at Mersin port, and 8% TRF included in ocean freight.",
-    descriptionPersian: "مسیر ترانزیت کانتینر یخچالی با اسکورت مامور بدرقه در ایران، ترانزیت ترکیه، ۷ روز هزینه برق (Plugging) در مرسین و مالیات TRF.",
+    description: "Reefer export routing with bonded Escort Service across Iran (مامور بدرقه), Turkey transit trucking, 7 days Reefer plugging charges at Mersin port, Commission, and 8% TRF included in ocean freight.",
+    descriptionPersian: "مسیر ترانزیت کانتینر یخچالی با اسکورت مامور بدرقه در ایران، ترانزیت ترکیه، ۷ روز هزینه برق (Plugging) در مرسین، کمیسیون و مالیات TRF.",
   },
   {
     id: "corridor-dgh-mersin",

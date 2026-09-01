@@ -519,10 +519,20 @@ export function ReportsView() {
           ) {
             direction = 'Import'
           } else if (lowerAll.includes('transit') || lowerAll.includes('t.t') || lowerAll.includes('transshipment')) {
-            direction = 'Transit'
-          } else {
-            // Afghan Dry Figs, Raisins, Almonds to India/UAE/Chabahar are primary Exports
             direction = 'Export'
+          }
+
+          const isMersinReefer = (
+            lowerAll.includes('میرسن') ||
+            lowerAll.includes('mersin') ||
+            lowerAll.includes('یخچال') ||
+            lowerAll.includes('reefer') ||
+            lowerAll.includes('بدرقه') ||
+            lowerAll.includes('ترانزیت ترکیه')
+          )
+
+          if (isMersinReefer) {
+            size = '40RF'
           }
 
           // Financial Metrics: Only use real debited or entered freight
@@ -546,24 +556,44 @@ export function ReportsView() {
             }
           }
 
-          // Driver Rent & Trucking Normalization (Only if entered)
+          // Driver Rent & Trucking Normalization
           const driverParsed = parseFreightCost((entry as any).driverFreight, "AFN", exchangeRate)
-          const driverCost = driverParsed.rawAmount > 0 ? driverParsed.normalizedUSD : 0
-          const driverCostRaw = driverParsed.rawAmount
-          const driverCostCurrency = driverParsed.currency
-          const driverCostDisplay = driverParsed.rawAmount > 0 
+          let driverCost = driverParsed.rawAmount > 0 ? driverParsed.normalizedUSD : 0
+          let driverCostRaw = driverParsed.rawAmount
+          let driverCostCurrency = driverParsed.currency
+          let driverCostDisplay = driverParsed.rawAmount > 0 
             ? driverParsed.formattedCombined 
             : "$0 USD"
 
-          // Direct Ocean Line / Shipping Cost (Only if entered)
+          // Direct Ocean Line / Shipping Cost
           const shippingParsed = parseFreightCost(entry.shippingCost, "USD", exchangeRate)
-          const shippingCost = shippingParsed.rawAmount > 0 ? shippingParsed.normalizedUSD : 0
-          const shippingCostDisplay = shippingParsed.rawAmount > 0 
+          let shippingCost = shippingParsed.rawAmount > 0 ? shippingParsed.normalizedUSD : 0
+          let shippingCostDisplay = shippingParsed.rawAmount > 0 
             ? shippingParsed.formattedCombined 
             : "$0 USD"
 
-          // Terminal Handling & Border Waybill (0 unless explicitly defined)
-          const handlingCost = 0
+          // Handling Cost & Specialized Accessorials (Escort, Plugging, CMSN, Transit Trucking)
+          let handlingCost = 0
+
+          if (isMersinReefer) {
+            // Apply Company Multi-Leg Cost Breakdown for Dogharon to Nhava Sheva via Mersin:
+            // Ocean: $7,020 ($6,500 + 8% TRF), Plugging: $700, Escort: $1,050, Turkey Transit: $2,600, Iran: $800, CMSN: $200 = $12,370
+            if (shippingCost === 0) {
+              shippingCost = 7020
+              shippingCostDisplay = "$7,020 USD (incl. 8% TRF)"
+            }
+            handlingCost = 1050 + 700 + 200 // Escort ($1,050) + 7-Day Plugging ($700) + Commission ($200) = $1,950
+            if (driverCost > 0) {
+              // Local driver rent entered + Turkey transit trucking ($2,600)
+              driverCost = driverCost + 2600
+              driverCostDisplay = `${driverParsed.rawAmount.toLocaleString()} AFN + $2,600 Turkey Transit`
+            } else {
+              driverCost = 800 + 2600 // $800 Iran + $2,600 Turkey
+              driverCostRaw = 3400
+              driverCostCurrency = 'USD'
+              driverCostDisplay = "$3,400 USD (Inland Transit)"
+            }
+          }
 
           // Total Logistics Direct Cost ($ USD)
           const totalCost = Math.round((shippingCost + driverCost + handlingCost) * 100) / 100
@@ -603,8 +633,8 @@ export function ReportsView() {
               containerNo: rawContainer || `CTNR-${rawBL.slice(-6)}`,
               containerSize: size,
               direction,
-              origin: direction === 'Export' ? 'Kandahar / Nimroz (AF)' : 'Nhava Sheva / Dubai',
-              destination: direction === 'Export' ? 'Nhava Sheva / Mundra (IN)' : 'Kabul / Kandahar (AF)',
+              origin: isMersinReefer ? 'Dogharon / Herat (AF)' : direction === 'Export' ? 'Kandahar / Nimroz (AF)' : 'Nhava Sheva / Dubai',
+              destination: isMersinReefer ? 'Nhava Sheva (IN) via Mersin Port (TR)' : direction === 'Export' ? 'Nhava Sheva / Mundra (IN)' : 'Kabul / Kandahar (AF)',
               goodsDescription: rawQty || 'Fresh Dry Fruit Cargo',
               packagesCount: pkgs || 1450,
               netWeightKg: nw || 21500,
@@ -686,6 +716,17 @@ export function ReportsView() {
         direction = 'Export'
       }
 
+      const isMersinReefer = (
+        (rawContainer + ' ' + (doc.container_size || '') + ' ' + desc + ' ' + pol + ' ' + pod + ' ' + shipper + ' ' + consignee).toLowerCase().includes('میرسن') ||
+        (rawContainer + ' ' + (doc.container_size || '') + ' ' + desc + ' ' + pol + ' ' + pod + ' ' + shipper + ' ' + consignee).toLowerCase().includes('mersin') ||
+        (rawContainer + ' ' + (doc.container_size || '') + ' ' + desc + ' ' + pol + ' ' + pod + ' ' + shipper + ' ' + consignee).toLowerCase().includes('یخچال') ||
+        (rawContainer + ' ' + (doc.container_size || '') + ' ' + desc + ' ' + pol + ' ' + pod + ' ' + shipper + ' ' + consignee).toLowerCase().includes('reefer')
+      )
+
+      if (isMersinReefer) {
+        size = '40RF'
+      }
+
       // Financials: Check if user entered shipping_cost or freight_amount
       let revenue = 0
       let hasFreightRevenue = false
@@ -701,21 +742,39 @@ export function ReportsView() {
 
       // Driver Rent & Freight Normalization (Only if entered)
       const driverParsed = parseFreightCost(doc.driver_rent, doc.driver_rent_currency || "AFN", exchangeRate)
-      const driverCost = driverParsed.rawAmount > 0 ? driverParsed.normalizedUSD : 0
-      const driverCostRaw = driverParsed.rawAmount
-      const driverCostCurrency = driverParsed.currency
-      const driverCostDisplay = driverParsed.rawAmount > 0 
+      let driverCost = driverParsed.rawAmount > 0 ? driverParsed.normalizedUSD : 0
+      let driverCostRaw = driverParsed.rawAmount
+      let driverCostCurrency = driverParsed.currency
+      let driverCostDisplay = driverParsed.rawAmount > 0 
         ? driverParsed.formattedCombined 
         : "$0 USD"
 
       // Direct Ocean Line / Shipping Cost (Only if entered)
       const oceanParsed = parseFreightCost(doc.ocean_freight, "USD", exchangeRate)
-      const shippingCost = oceanParsed.rawAmount > 0 ? oceanParsed.normalizedUSD : 0
-      const shippingCostDisplay = oceanParsed.rawAmount > 0 
+      let shippingCost = oceanParsed.rawAmount > 0 ? oceanParsed.normalizedUSD : 0
+      let shippingCostDisplay = oceanParsed.rawAmount > 0 
         ? oceanParsed.formattedCombined 
         : "$0 USD"
 
-      const handlingCost = 0
+      let handlingCost = 0
+
+      if (isMersinReefer) {
+        if (shippingCost === 0) {
+          shippingCost = 7020
+          shippingCostDisplay = "$7,020 USD (incl. 8% TRF)"
+        }
+        handlingCost = 1050 + 700 + 200 // Escort ($1,050) + Plugging ($700) + CMSN ($200) = $1,950
+        if (driverCost > 0) {
+          driverCost = driverCost + 2600
+          driverCostDisplay = `${driverParsed.rawAmount.toLocaleString()} AFN + $2,600 Turkey Transit`
+        } else {
+          driverCost = 800 + 2600
+          driverCostRaw = 3400
+          driverCostCurrency = 'USD'
+          driverCostDisplay = "$3,400 USD (Inland Transit)"
+        }
+      }
+
       const totalCost = Math.round((shippingCost + driverCost + handlingCost) * 100) / 100
 
       let netProfit = 0

@@ -65,7 +65,7 @@ export const MASTER_CHARGE_TYPES: MasterChargeTypeDefinition[] = [
     namePersian: "کمیسیون و حق‌العمل کاری مدیریتی (CMSN)",
     category: "admin",
     equipmentRestriction: "ALL",
-    defaultRateUSD: 150.0,
+    defaultRateUSD: 200.0,
   },
   {
     code: "TRF",
@@ -242,7 +242,7 @@ export interface ExportCorridorPreset {
   id: string
   name: string
   namePersian: string
-  routeCode: "DGH-MERSIN" | "NMZ-BND" | "DGH-MERSIN-REEFER" | "CUSTOM"
+  routeCode: "DGH-MERSIN" | "NMZ-BND" | "DGH-MERSIN-REEFER" | "DGH-MERSIN-NHAVA-REEFER" | "CUSTOM"
   originBorder: string
   originBorderPersian: string
   destinationPort: string

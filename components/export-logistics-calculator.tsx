@@ -67,17 +67,17 @@ export function ExportLogisticsCalculator({
   const { setView } = useApp()
 
   // Selected Preset or Custom
-  const [selectedCorridorId, setSelectedCorridorId] = useState<string>("corridor-dgh-mersin-reefer")
+  const [selectedCorridorId, setSelectedCorridorId] = useState<string>("corridor-dgh-mersin-nhava-reefer")
   const [legs, setLegs] = useState<ExportLeg[]>(() => JSON.parse(JSON.stringify(dogharonToMersinReeferLegs)))
 
   // Simulation Parameters
   const [equipmentType, setEquipmentType] = useState<EquipmentType>("40RF")
   const [temperatureSetting, setTemperatureSetting] = useState<string>("-18°C Frozen")
-  const [oceanFreight, setOceanFreight] = useState<number>(7020.0) // $6,500 + 8% TRF
+  const [oceanFreight, setOceanFreight] = useState<number>(7020.0) // $6,500 + 8% TRF ($520)
   const [riskBuffer, setRiskBuffer] = useState<number>(0.0)
   const [targetMargin, setTargetMargin] = useState<number>(15.0) // 15% Target Profit Margin
   const [pricingMethod, setPricingMethod] = useState<"margin" | "markup">("margin")
-  const [destinationPortName, setDestinationPortName] = useState<string>("Mersin Port (40RF Reefer + 8% TRF)")
+  const [destinationPortName, setDestinationPortName] = useState<string>("Mersin Port to Nhava Sheva (40RF Reefer + 8% TRF)")
   const [currencyMode, setCurrencyMode] = useState<"USD" | "AFN">("USD")
   const [shipperName, setShipperName] = useState<string>("Ariana Reefer Consignments")
 
