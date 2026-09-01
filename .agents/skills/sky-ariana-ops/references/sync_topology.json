@@ -1,0 +1,22 @@
+{
+  "project": "Sky Ariana Logistics V3.2",
+  "nodes": {
+    "workstation": {
+      "type": "Primary Browser / Local Node",
+      "storage": "IndexedDB / LocalStorage / Node.js Local JSON Files"
+    },
+    "mobile_browser": {
+      "type": "Mobile Web Client",
+      "storage": "LocalStorage with 1-Tap Sync Code"
+    },
+    "cloud_relays": [
+      "https://sky-relay-v3-primary.upstash.io",
+      "https://sky-relay-v3-backup.workers.dev"
+    ],
+    "object_storage": "gs://sky-ariana-backups"
+  },
+  "accounting_identity": {
+    "formula": "Net Balance = Total Debit - Total Credit",
+    "enforcement": "STRICT_ABORT_ON_DISCREPANCY"
+  }
+}
