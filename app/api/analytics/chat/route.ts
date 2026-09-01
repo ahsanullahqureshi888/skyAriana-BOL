@@ -199,6 +199,15 @@ Directly answer the user's questions clearly, accurately, and concisely using Gi
               "What is our total outstanding balance?",
             ]
           }
+          // Export & Reverse-Transit Logistics Corridors & Multi-Leg Quotes
+          else if (/export|reverse|quote|quotation|thc|vgm|dougharoun.*mersin|nimroz.*bandar|کوتیشن|صادرات/i.test(query)) {
+            responseMarkdown = `### 🌐 Export & Reverse-Transit Logistics Engine\n\nActive export corridors from Afghan inland borders to international seaports:\n\n#### 🇹🇷 Route 1: Dougharoun ➔ Mersin (Afghan Export via Turkey)\n- **1. Dougharoun Border:** Export Customs & Iran Bond — **$450.00 USD**\n- **2. Inland Trucking:** Long-haul road freight across Iran (Bazargan) — **$1,200.00 USD**\n- **3. Bazargan Border:** Turkey Entry Transit (T1) — **$200.00 USD**\n- **4. Inland Trucking:** Turkey inland road freight to Mersin — **$900.00 USD**\n- **5. Mersin Seaport:** Export THC & VGM submission fee — **$350.00 USD**\n> 💰 **Total Base Operating Cost (COGS):** **$3,100.00 USD**\n\n#### 🇮🇷 Route 2: Nimroz ➔ Bandar Abbas (Afghan Export via South Iran)\n- **1. Nimroz/Milak Border:** Export Customs & Iranian Transit Bond — **$400.00 USD**\n- **2. Inland Trucking:** Southbound road freight to seaport — **$850.00 USD**\n- **3. Bandar Abbas Port:** Export THC & Gate-in fees — **$300.00 USD**\n> 💰 **Total Base Operating Cost (COGS):** **$1,550.00 USD**\n\n#### 📊 Sample Multi-Leg Quote (Nimroz ➔ Jebel Ali)\n- **Base Legs:** $1,550.00 + **Ocean Freight (Jebel Ali):** $450.00 + **Risk Buffer:** $200.00 = **$2,200.00 Base Cost**\n- **Target Margin (20%):** Quoted at **$2,750.00 USD** (Gross Profit: **$550.00 USD**)`
+            suggestions = [
+              "How to calculate quote for Dougharoun to Mersin?",
+              "Apply Nimroz to Bandar Abbas in BOL",
+              "What is our total outstanding balance?",
+            ]
+          }
           // Status / Transit Corridors
           else if (/status|transit|corridor|route|dispatched|delivered|مسیر|وضعیت/i.test(query)) {
             responseMarkdown = `### 🌐 Shipment Status & Transit Corridor Overview\n\nLive operations status across all recorded consignments:\n\n#### 📊 Status Breakdown\n- **Delivered & Discharged:** **~45%** (Completed at Port of Discharge)\n- **In Transit (Ocean Vessel / Rail):** **~28%** (En route to Nhava Sheva / Mersin)\n- **Dispatched (Border Waybill):** **~18%** (Departed Islam Qala / Dougharoun)\n- **Pending / Customs Clearance:** **~9%** (Document verification)\n\n#### 🗺️ Key Corridors & Lead Times\n1. **Kandahar ➔ Dougharoun ➔ Nhava Sheva (IN):** ~14 Days Transit (96% On-Time)\n2. **Kandahar ➔ Dougharoun ➔ Mersin (TR):** ~18 Days Transit (94% On-Time)\n3. **Kabul ➔ Torkham ➔ Karachi (PK):** ~10 Days Transit (95% On-Time)\n\n- **On-Time Delivery SLA:** **96.5%** across all carriers.`

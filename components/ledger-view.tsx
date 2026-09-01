@@ -265,19 +265,75 @@ export const LedgerView = memo(function LedgerView() {
     styleEl.innerHTML = `
       @page {
         size: A4 landscape !important;
-        margin: 4mm 5mm !important;
+        margin: 3mm 4mm !important;
       }
       @media print {
         @page {
           size: A4 landscape !important;
-          margin: 4mm 5mm !important;
+          margin: 3mm 4mm !important;
         }
         html, body {
           background: #ffffff !important;
           width: 100% !important;
           height: auto !important;
           min-height: 0 !important;
+          max-height: none !important;
           overflow: visible !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .ledger-print-root, #sky-ledger-print-root {
+          display: block !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          height: auto !important;
+          overflow: visible !important;
+          page-break-inside: auto !important;
+          break-inside: auto !important;
+        }
+        .ledger-print-table {
+          display: table !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          table-layout: fixed !important;
+          border-collapse: collapse !important;
+          page-break-inside: auto !important;
+          break-inside: auto !important;
+          page-break-before: auto !important;
+          break-before: auto !important;
+          page-break-after: auto !important;
+          break-after: auto !important;
+          margin-top: 0 !important;
+        }
+        .ledger-print-table thead {
+          display: table-header-group !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          page-break-after: avoid !important;
+          break-after: avoid !important;
+        }
+        .ledger-print-table tbody {
+          display: table-row-group !important;
+          page-break-inside: auto !important;
+          break-inside: auto !important;
+        }
+        .ledger-print-table tr {
+          display: table-row !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          page-break-after: auto !important;
+          break-after: auto !important;
+        }
+        .print-header {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          page-break-after: avoid !important;
+          break-after: avoid !important;
+          margin-bottom: 0 !important;
+        }
+        .totals-row, .print-signatures, .print-footer {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
         }
       }
     `
@@ -2330,7 +2386,7 @@ export const LedgerView = memo(function LedgerView() {
 
         {/* Print Table - Rendered via React Portal directly on document.body */}
         <LedgerPrintPortal>
-          <div data-print-root="true" className="print-container print-wrapper ledger-print-root" style={{ position: 'relative', background: '#ffffff', width: '100%', maxWidth: '100%', boxSizing: 'border-box', border: '1.5px solid #bfdbfe', borderRadius: '8px', overflow: 'hidden' }}>
+          <div data-print-root="true" className="print-container print-wrapper ledger-print-root" style={{ position: 'relative', background: '#ffffff', width: '100%', maxWidth: '100%', boxSizing: 'border-box', border: '1px solid #bfdbfe', borderRadius: '4px', overflow: 'visible' }}>
             {/* Background Watermark Image if set in settings */}
             {getLedgerSettings().backgroundImage && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -2496,30 +2552,71 @@ export const LedgerView = memo(function LedgerView() {
                       <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.dateOfShip}</td>
                       <td style={{ textAlign: 'center', fontWeight: 'bold', fontFamily: 'monospace', color: '#1e3a8a', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', backgroundColor: isCredit ? '#ecfdf5' : '#ffffff' }}>{entry.barnamehNo || ''}</td>
                       <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
-                          <span style={{ color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.billOfLanding}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5px' }}>
+                          <span style={{ color: isCredit ? '#064e3b' : '#1e3a8a', fontWeight: '700' }}>{entry.billOfLanding || '—'}</span>
                           {entry.surrenderedBL && (
                             <span style={{ 
                               border: '1px solid #059669',
                               color: '#059669',
-                              padding: '0.5px 3px',
+                              padding: '0.5px 3.5px',
                               fontSize: '5.2pt',
-                              fontWeight: 'bold',
+                              fontWeight: '800',
                               textTransform: 'uppercase',
                               letterSpacing: '0.04em',
                               backgroundColor: '#ecfdf5',
                               borderRadius: '2px',
                               whiteSpace: 'nowrap',
-                              lineHeight: '1'
-                            }}>Surrender</span>
+                              lineHeight: '1.1',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '2px'
+                            }}>
+                              <span>✓</span>
+                              <span>Surrender</span>
+                            </span>
                           )}
                         </div>
                       </td>
-                      <td style={{ textAlign: 'center', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>
-                        <div>{entry.containerType ? `${entry.containerType} ${entry.containerNo || ''}`.trim() : entry.containerNo}</div>
-                        {entry.containerDetails && (
-                          <div style={{ fontSize: '5.2pt', opacity: 0.85, color: '#047857' }}>{entry.containerDetails}</div>
-                        )}
+                      <td style={{ textAlign: 'center', fontSize: '6.8pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px' }}>
+                          {entry.containerType && (
+                            <span style={{ 
+                              display: 'inline-block',
+                              padding: '0.5px 3.5px', 
+                              borderRadius: '3px', 
+                              fontSize: '5.8pt', 
+                              fontWeight: '800', 
+                              backgroundColor: '#dbeafe', 
+                              color: '#1e3a8a', 
+                              border: '1px solid #93c5fd',
+                              lineHeight: '1.1',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {entry.containerType}
+                            </span>
+                          )}
+                          <span style={{ fontFamily: 'monospace', fontWeight: '800', fontSize: '6.8pt', color: '#0f172a', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                            {entry.containerNo || (entry.containerType ? "" : "—")}
+                          </span>
+                          {entry.containerDetails && (
+                            <span style={{ 
+                              fontSize: '5.2pt', 
+                              fontWeight: '600',
+                              color: '#065f46', 
+                              backgroundColor: '#ecfdf5', 
+                              border: '1px solid #a7f3d0', 
+                              borderRadius: '2px', 
+                              padding: '0.5px 3px', 
+                              maxWidth: '110px', 
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              lineHeight: '1.1'
+                            }}>
+                              {entry.containerDetails}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.consignee}</td>
                       <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', fontWeight: 600, border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.quantity}</td>
@@ -2540,9 +2637,9 @@ export const LedgerView = memo(function LedgerView() {
                     </tr>
                   );
                   })}
-                  {/* Empty rows to fill to 17 matching Screen UI */}
-                  {filteredEntries.length < 17 && Array.from({ length: 17 - filteredEntries.length }).map((_, idx) => (
-                    <tr key={`empty-${idx}`} style={{ height: '20px', pageBreakInside: 'avoid', breakInside: 'avoid', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                  {/* Empty rows to fill to 10 matching Single Sheet A4 Landscape layout */}
+                  {filteredEntries.length < 10 && Array.from({ length: 10 - filteredEntries.length }).map((_, idx) => (
+                    <tr key={`empty-${idx}`} style={{ height: '19px', pageBreakInside: 'avoid', breakInside: 'avoid', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                       <td style={{ textAlign: 'center', color: '#1e40af', fontSize: '6.8pt', border: '1px solid #bfdbfe' }}>{filteredEntries.length + idx + 1}</td>
                       <td style={{ border: '1px solid #bfdbfe' }}></td>
                       <td style={{ border: '1px solid #bfdbfe' }}></td>
@@ -2847,30 +2944,71 @@ export const LedgerView = memo(function LedgerView() {
                           <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.dateOfShip}</td>
                           <td style={{ textAlign: 'center', fontWeight: 'bold', fontFamily: 'monospace', color: '#1e3a8a', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', backgroundColor: isCredit ? '#ecfdf5' : '#ffffff' }}>{entry.barnamehNo || ''}</td>
                           <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
-                              <span style={{ color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.billOfLanding}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5px' }}>
+                              <span style={{ color: isCredit ? '#064e3b' : '#1e3a8a', fontWeight: '700' }}>{entry.billOfLanding || '—'}</span>
                               {entry.surrenderedBL && (
                                 <span style={{ 
                                   border: '1px solid #059669',
                                   color: '#059669',
-                                  padding: '0.5px 3px',
+                                  padding: '0.5px 3.5px',
                                   fontSize: '5.2pt',
-                                  fontWeight: 'bold',
+                                  fontWeight: '800',
                                   textTransform: 'uppercase',
                                   letterSpacing: '0.04em',
                                   backgroundColor: '#ecfdf5',
                                   borderRadius: '2px',
                                   whiteSpace: 'nowrap',
-                                  lineHeight: '1'
-                                }}>Surrender</span>
+                                  lineHeight: '1.1',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '2px'
+                                }}>
+                                  <span>✓</span>
+                                  <span>Surrender</span>
+                                </span>
                               )}
                             </div>
                           </td>
-                          <td style={{ textAlign: 'center', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>
-                            <div>{entry.containerType ? `${entry.containerType} ${entry.containerNo || ''}`.trim() : entry.containerNo}</div>
-                            {entry.containerDetails && (
-                              <div style={{ fontSize: '5.2pt', opacity: 0.85, color: '#047857' }}>{entry.containerDetails}</div>
-                            )}
+                          <td style={{ textAlign: 'center', fontSize: '6.8pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px' }}>
+                              {entry.containerType && (
+                                <span style={{ 
+                                  display: 'inline-block',
+                                  padding: '0.5px 3.5px', 
+                                  borderRadius: '3px', 
+                                  fontSize: '5.8pt', 
+                                  fontWeight: '800', 
+                                  backgroundColor: '#dbeafe', 
+                                  color: '#1e3a8a', 
+                                  border: '1px solid #93c5fd',
+                                  lineHeight: '1.1',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {entry.containerType}
+                                </span>
+                              )}
+                              <span style={{ fontFamily: 'monospace', fontWeight: '800', fontSize: '6.8pt', color: '#0f172a', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                                {entry.containerNo || (entry.containerType ? "" : "—")}
+                              </span>
+                              {entry.containerDetails && (
+                                <span style={{ 
+                                  fontSize: '5.2pt', 
+                                  fontWeight: '600',
+                                  color: '#065f46', 
+                                  backgroundColor: '#ecfdf5', 
+                                  border: '1px solid #a7f3d0', 
+                                  borderRadius: '2px', 
+                                  padding: '0.5px 3px', 
+                                  maxWidth: '110px', 
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  lineHeight: '1.1'
+                                }}>
+                                  {entry.containerDetails}
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.consignee}</td>
                           <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', fontWeight: 600, border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.quantity}</td>
@@ -2891,9 +3029,9 @@ export const LedgerView = memo(function LedgerView() {
                         </tr>
                       );
                       })}
-                      {/* Empty rows to fill to 17 matching Screen UI */}
-                      {filteredEntries.length < 17 && Array.from({ length: 17 - filteredEntries.length }).map((_, idx) => (
-                        <tr key={`empty-${idx}`} style={{ height: '20px', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                      {/* Empty rows to fill to 10 matching Screen UI */}
+                      {filteredEntries.length < 10 && Array.from({ length: 10 - filteredEntries.length }).map((_, idx) => (
+                        <tr key={`empty-${idx}`} style={{ height: '19px', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                           <td style={{ textAlign: 'center', color: '#1e40af', fontSize: '6.8pt', border: '1px solid #bfdbfe' }}>{filteredEntries.length + idx + 1}</td>
                           <td style={{ border: '1px solid #bfdbfe' }}></td>
                           <td style={{ border: '1px solid #bfdbfe' }}></td>

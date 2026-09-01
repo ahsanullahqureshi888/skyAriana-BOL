@@ -1468,7 +1468,7 @@ export function LedgerView() {
                     key={entry.id}
                     className={isCredit ? 'credit-row' : ''}
                   >
-                    <td style={{ fontWeight: 500 }}>{entry.sNo}</td>
+                    <td style={{ fontWeight: 600 }}>{entry.sNo}</td>
                     <td>{entry.date}</td>
                     <td className="text-left" style={{ fontWeight: isCredit ? 600 : 'normal' }}>
                       {isCredit ? (
@@ -1482,12 +1482,12 @@ export function LedgerView() {
                     <td>{entry.dateOfShip}</td>
                     <td>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                        <span>{entry.billOfLanding}</span>
+                        <span style={{ fontWeight: 'bold' }}>{entry.billOfLanding || '—'}</span>
                         {entry.surrenderedBL && (
                           <span style={{ 
                             border: '1px solid #059669',
                             color: '#059669',
-                            padding: '1px 4px',
+                            padding: '0.5px 3.5px',
                             fontSize: '6px',
                             fontWeight: 'bold',
                             textTransform: 'uppercase',
@@ -1495,11 +1495,44 @@ export function LedgerView() {
                             backgroundColor: '#ecfdf5',
                             borderRadius: '2px',
                             whiteSpace: 'nowrap'
-                          }}>Surrender</span>
+                          }}>✓ Surrender</span>
                         )}
                       </div>
                     </td>
-                    <td>{entry.containerNo}</td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px' }}>
+                        {entry.containerType && (
+                          <span style={{ 
+                            display: 'inline-block',
+                            padding: '0.5px 3px', 
+                            borderRadius: '3px', 
+                            fontSize: '7px', 
+                            fontWeight: 'bold', 
+                            backgroundColor: '#dbeafe', 
+                            color: '#1e3a8a', 
+                            border: '1px solid #93c5fd',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {entry.containerType}
+                          </span>
+                        )}
+                        <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '8px' }}>
+                          {entry.containerNo || (entry.containerType ? "" : "—")}
+                        </span>
+                        {entry.containerDetails && (
+                          <span style={{ 
+                            fontSize: '6px', 
+                            color: '#065f46', 
+                            backgroundColor: '#ecfdf5', 
+                            border: '1px solid #a7f3d0', 
+                            borderRadius: '2px', 
+                            padding: '0.5px 2px' 
+                          }}>
+                            {entry.containerDetails}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td>{entry.consignee}</td>
                     <td>{entry.quantity}</td>
                     <td className="text-right debit-cell">{entry.debit > 0 ? `$${entry.debit.toLocaleString()}` : ''}</td>
@@ -1508,8 +1541,8 @@ export function LedgerView() {
                   </tr>
                 );
                 })}
-                {/* Empty rows to fill page like reference */}
-                {Array.from({ length: Math.max(0, 17 - currentCompany.ledgerEntries.length) }).map((_, idx) => (
+                {/* Empty rows to fill page nicely without overflowing onto page 2 */}
+                {Array.from({ length: Math.max(0, 10 - currentCompany.ledgerEntries.length) }).map((_, idx) => (
                   <tr key={`empty-${idx}`}>
                     <td>{currentCompany.ledgerEntries.length + idx + 1}</td>
                     <td></td>

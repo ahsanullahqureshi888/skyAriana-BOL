@@ -4583,9 +4583,8 @@
     filter: contrast(1.08) saturate(1.15) !important;
   }
 
-  [data-print-root="true"] *:not([data-bol-watermark="true"]),
+  [data-print-root="true"]:not(.ledger-print-root):not(.reports-print-root) *:not([data-bol-watermark="true"]),
   .invoice-print-root *,
-  .ledger-print-root *,
   [data-bol-a4="true"],
   [data-bol-a4="true"] * {
     visibility: visible !important;
@@ -4850,6 +4849,63 @@
     margin: 0 auto !important;
     padding: 0 !important;
     box-sizing: border-box !important;
+  }
+
+  /* Ledger Print Table Typography & Multi-page Formatting */
+  .ledger-print-table {
+    display: table !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    page-break-before: auto !important;
+    break-before: auto !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
+    margin-top: 0 !important;
+  }
+
+  .ledger-print-table thead {
+    display: table-header-group !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .ledger-print-table tbody {
+    display: table-row-group !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .ledger-print-table tr {
+    display: table-row !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
+  .ledger-print-root .print-header,
+  #sky-ledger-print-root .print-header {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    margin-bottom: 0 !important;
+  }
+
+  .ledger-print-root .totals-row,
+  #sky-ledger-print-root .totals-row,
+  .ledger-print-root .print-signatures,
+  #sky-ledger-print-root .print-signatures,
+  .ledger-print-root .print-footer,
+  #sky-ledger-print-root .print-footer {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   /* Reports Print Table Typography & Multi-page Formatting */

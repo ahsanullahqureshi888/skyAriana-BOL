@@ -21,6 +21,10 @@ export interface BillOfLadingRecord {
   driver_rent?: string
   container_number?: string
   container_type?: string
+  equipment_type?: string // '40RF', '20RF', '40HC'
+  temperature_setting?: string
+  plugging_days?: number
+  escort_service_required?: boolean
   seal_number?: string
   commodity_description?: string
   net_weight?: string

@@ -47,6 +47,7 @@ import {
   Moon,
   Info,
   Check,
+  Calculator,
 } from "lucide-react"
 import { useApp } from "@/lib/app-context"
 import { Button } from "@/components/ui/button"
@@ -79,6 +80,7 @@ import {
   type AnalyticsDataPayload,
 } from "@/lib/services/analytics-service"
 import { GeminiDataChatPanel } from "@/components/gemini-data-chat-panel"
+import { ExportLogisticsCalculator } from "@/components/export-logistics-calculator"
 
 const CHART_COLORS = [
   "#3b82f6", // Blue
@@ -103,7 +105,7 @@ export function AnalyticsDashboardView() {
   const [shipperFilter, setShipperFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState("all")
-  const [activeTab, setActiveTab] = useState<"logistics" | "financials" | "reports" | "explorer">("logistics")
+  const [activeTab, setActiveTab] = useState<"logistics" | "financials" | "reports" | "explorer" | "export-quotes">("logistics")
   const [currencyMode, setCurrencyMode] = useState<"USD" | "AFN">("USD")
   const [isChatOpen, setIsChatOpen] = useState(false)
 
@@ -414,6 +416,7 @@ export function AnalyticsDashboardView() {
             { id: "financials", label: "2. Financial & Ledger Analytics", icon: DollarSign },
             { id: "reports", label: "3. Custom Reporting & Data Grid", icon: FileSpreadsheet },
             { id: "explorer", label: "4. Data Explorer & Audit Logs", icon: History },
+            { id: "export-quotes", label: "5. Export Corridors & Multi-Leg Quotes", icon: Calculator },
           ].map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -1158,6 +1161,13 @@ export function AnalyticsDashboardView() {
               </div>
             </Card>
           </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* TAB 5: EXPORT CORRIDORS & MULTI-LEG QUOTATION SIMULATOR */}
+        {/* ================================================================= */}
+        {activeTab === "export-quotes" && (
+          <ExportLogisticsCalculator />
         )}
 
       </div>

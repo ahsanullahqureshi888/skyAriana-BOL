@@ -26,13 +26,18 @@ export interface ContainerTypePreset {
 }
 
 export const CONTAINER_TYPE_PRESETS: ContainerTypePreset[] = [
-  // Reefer
+  // Reefer (Temperature-Controlled / Plugging Required)
+  { value: "40RF", label: "40ft Reefer (40RF)", labelPs: "۴۰ فوت یخچالی (40RF)", icon: "❄️", category: "reefer" },
+  { value: "20RF", label: "20ft Reefer (20RF)", labelPs: "۲۰ فوت یخچالی (20RF)", icon: "❄️", category: "reefer" },
+  { value: "40HR", label: "40ft High Cube Reefer (40HR)", labelPs: "۴۰ فوت های کیوب یخچالی", icon: "❄️", category: "reefer" },
   { value: "1X40' RF", label: "40ft Reefer (1X40' RF)", labelPs: "۴۰ فوت یخچالی", icon: "❄️", category: "reefer" },
   { value: "1X40' HR", label: "40ft High Cube Reefer (1X40' HR)", labelPs: "۴۰ فوت های کیوب یخچالی", icon: "❄️", category: "reefer" },
   { value: "2X40' RF", label: "2x 40ft Reefer (2X40' RF)", labelPs: "۲ دانه ۴۰ فوت یخچالی", icon: "❄️", category: "reefer" },
   { value: "1X20' RF", label: "20ft Reefer (1X20' RF)", labelPs: "۲۰ فوت یخچالی", icon: "❄️", category: "reefer" },
   
   // Dry Standard
+  { value: "40HC", label: "40ft High Cube (40HC)", labelPs: "۴۰ فوت های کیوب (40HC)", icon: "📦", category: "dry" },
+  { value: "20GP", label: "20ft General Purpose (20GP)", labelPs: "۲۰ فوت عمومی (20GP)", icon: "📦", category: "dry" },
   { value: "1X40' HC", label: "40ft High Cube (1X40' HC)", labelPs: "۴۰ فوت های کیوب", icon: "📦", category: "dry" },
   { value: "1X40' Dry", label: "40ft Standard Dry (1X40' Dry)", labelPs: "۴۰ فوت معیاري وچ", icon: "📦", category: "dry" },
   { value: "2X40' HC", label: "2x 40ft High Cube (2X40' HC)", labelPs: "۲ دانه ۴۰ فوت های کیوب", icon: "📦", category: "dry" },

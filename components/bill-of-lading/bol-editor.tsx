@@ -31,6 +31,12 @@ import { LedgerView } from "@/components/ledger-view"
 import { getFinancialsMap, saveFinancialsForEntry } from "@/lib/services/ledger-sync-utils"
 import { PrintOptionsDialog, type PrintOptions } from "@/components/print-options-dialog"
 import { CloudSyncModal } from "./cloud-sync-modal"
+import {
+  dougharounToMersinLegs,
+  nimrozToBandarAbbasLegs,
+  dogharonToMersinReeferLegs,
+  exportCorridorToBillOfLadingRoutes,
+} from "@/lib/services/multi-leg-quote-service"
 
 interface BOLEditorProps {
   onSave?: (data: BillOfLadingFormData) => void
@@ -540,6 +546,29 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       }
     } catch (e) {
       console.error("Error reading draft:", e)
+    }
+
+    // Check for active export corridor transfer from Logistics Calculator
+    try {
+      const rawExportDraft = window.localStorage.getItem("skybol:active-export-routes-draft")
+      if (rawExportDraft) {
+        const parsed = JSON.parse(rawExportDraft)
+        if (Array.isArray(parsed.routes) && parsed.routes.length > 0) {
+          setFormData((prev) => ({
+            ...prev,
+            routes: parsed.routes,
+            shipping_cost: parsed.shipping_cost || prev.shipping_cost,
+            shipping_cost_currency: "USD",
+            remarks: parsed.remarks || prev.remarks,
+          }))
+          window.localStorage.removeItem("skybol:active-export-routes-draft")
+          toast.success("Loaded Export Corridor into Active BOL! 🚛", {
+            description: `${parsed.routes.length} export & transit route stops populated`,
+          })
+        }
+      }
+    } catch (e) {
+      console.warn("Error reading export draft:", e)
     }
   }, [])
 
@@ -2003,6 +2032,69 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       const newRoutes = [...prev.routes]
       newRoutes[index] = { ...newRoutes[index], [field]: value }
       return { ...prev, routes: newRoutes }
+    })
+  }
+
+  const applyDogharonToMersinReeferExportPreset = () => {
+    const newRoutes = exportCorridorToBillOfLadingRoutes(dogharonToMersinReeferLegs)
+    setFormData((prev) => ({
+      ...prev,
+      routes: newRoutes,
+      port_of_loading: "Dogharon / Islam Qala, AF",
+      port_of_discharge: "Mersin Port, Turkey",
+      place_of_delivery: "Mersin Reefer Terminal, TR",
+      container_type: "40RF",
+      equipment_type: "40RF",
+      temperature_setting: "-18°C Frozen",
+      plugging_days: 7,
+      escort_service_required: true,
+      shipping_cost: "14494.12",
+      shipping_cost_currency: "USD",
+      driver_rent: "800.00",
+      driver_rent_currency: "USD",
+      remarks: "❄️ 40RF REEFER EXPORT: Escort Service (مامور بدرقه), Turkey Transit Trucking, 7 Days Plugging Charges, 8% TRF Included.",
+    }))
+    setActiveRouteIndex(0)
+    toast.success("Applied Route 3: Dogharon ➔ Mersin Reefer (40RF)", {
+      description: "کانتینر ۴۰ فوت یخچالی با مامور بدرقه، کرایه ترانزیت، ۷ روز هزینه برق و مالیات TRF ($14,494.12)",
+    })
+  }
+
+  const applyDougharounToMersinExportPreset = () => {
+    const newRoutes = exportCorridorToBillOfLadingRoutes(dougharounToMersinLegs)
+    setFormData((prev) => ({
+      ...prev,
+      routes: newRoutes,
+      port_of_loading: "Dougharoun / Islam Qala, AF",
+      port_of_discharge: "Mersin Port, Turkey",
+      place_of_delivery: "Mersin Seaport Terminal, TR",
+      shipping_cost: "3100.00",
+      shipping_cost_currency: "USD",
+      driver_rent: "1200.00",
+      driver_rent_currency: "USD",
+    }))
+    setActiveRouteIndex(0)
+    toast.success("Applied Route 1: Dougharoun ➔ Mersin Export Corridor", {
+      description: "۵ ایستگاه ترانزیت، اسناد T1، کرایه‌های ترانزیت و THC صادراتی اعمال شد ($3,100)",
+    })
+  }
+
+  const applyNimrozToBandarAbbasExportPreset = () => {
+    const newRoutes = exportCorridorToBillOfLadingRoutes(nimrozToBandarAbbasLegs)
+    setFormData((prev) => ({
+      ...prev,
+      routes: newRoutes,
+      port_of_loading: "Nimroz / Milak, AF",
+      port_of_discharge: "Bandar Abbas Port, IR",
+      place_of_delivery: "Bandar Abbas Terminal, IR",
+      shipping_cost: "1550.00",
+      shipping_cost_currency: "USD",
+      driver_rent: "850.00",
+      driver_rent_currency: "USD",
+    }))
+    setActiveRouteIndex(0)
+    toast.success("Applied Route 2: Nimroz ➔ Bandar Abbas Export Corridor", {
+      description: "۳ ایستگاه ترانزیت، گمرک صادرات، کرایه لاری جنوب و THC بندرعباس اعمال شد ($1,550)",
     })
   }
 
@@ -6226,6 +6318,42 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       </div>
                     ))}
                     
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={applyDogharonToMersinReeferExportPreset}
+                      className="h-7.5 rounded-lg border border-cyan-300 bg-cyan-50/90 px-2.5 text-[11px] font-black text-cyan-950 shadow-2xs hover:bg-cyan-100 cursor-pointer transition-all"
+                      title="Route 3: Dogharon → Bazargan → Mersin Reefer (40RF with Escort & Plugging - $14,494.12 USD)"
+                    >
+                      <Ship className="h-3.5 w-3.5 mr-1 text-cyan-700" />
+                      ❄️ Route 3: Dogharon ➡️ Mersin Reefer ($14,494)
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={applyDougharounToMersinExportPreset}
+                      className="h-7.5 rounded-lg border border-purple-300 bg-purple-50/90 px-2.5 text-[11px] font-black text-purple-950 shadow-2xs hover:bg-purple-100 cursor-pointer transition-all"
+                      title="Route 1: Dougharoun → Bazargan → Mersin (Afghan Export via Turkey - $3,100 USD)"
+                    >
+                      <Truck className="h-3.5 w-3.5 mr-1 text-purple-700" />
+                      🇹🇷 Route 1: Dougharoun ➡️ Mersin ($3,100)
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={applyNimrozToBandarAbbasExportPreset}
+                      className="h-7.5 rounded-lg border border-amber-300 bg-amber-50/90 px-2.5 text-[11px] font-black text-amber-950 shadow-2xs hover:bg-amber-100 cursor-pointer transition-all"
+                      title="Route 2: Nimroz → Milak → Bandar Abbas (Afghan Export via South Iran - $1,550 USD)"
+                    >
+                      <Ship className="h-3.5 w-3.5 mr-1 text-amber-700" />
+                      🇮🇷 Route 2: Nimroz ➡️ Bandar Abbas ($1,550)
+                    </Button>
+
                     <Button
                       type="button"
                       variant="ghost"

@@ -7,6 +7,10 @@ export interface RouteStop {
   transportMode?: "truck" | "vessel" | "airplane" | "train" | "road"
   estimatedDuration?: string
   estimatedCost?: string
+  costType?: string
+  costTypePersian?: string
+  costUSD?: number
+  isExportLeg?: boolean
   capacity?: string
   arrivalDate?: string
   departureDate?: string
@@ -112,6 +116,11 @@ export interface BillOfLadingFormData {
   container_size: string
   container_numbers: string
   seal_numbers: string
+  equipment_type?: string // '40RF', '20RF', '40HC', etc.
+  temperature_setting?: string // e.g. '-18°C Frozen', '+4°C Chilled'
+  plugging_days?: number // e.g. 7 days
+  escort_service_required?: boolean // مامور بدرقه
+  genset_required?: boolean
   
   // Shipper Information
   shipper_name: string
