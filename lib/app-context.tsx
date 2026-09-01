@@ -145,16 +145,16 @@ function parseInvoiceNo(cargoDesc?: string | null, bolNumber?: string): string {
 }
 
 function parseDriverRent(driverRentStr?: string | null): number {
-  if (!driverRentStr) return 3200
+  if (!driverRentStr) return 0
   const cleanStr = driverRentStr.replace(/,/g, '').trim()
   const numMatch = cleanStr.match(/(\d+(?:\.\d+)?)/)
-  if (!numMatch) return 3200
+  if (!numMatch) return 0
   let val = parseFloat(numMatch[1])
-  if (isNaN(val) || val <= 0) return 3200
+  if (isNaN(val) || val <= 0) return 0
   if (/AFN|افغانی/i.test(driverRentStr)) {
-    val = Math.round(val / 65)
+    val = Math.round(val / 70)
   }
-  return val > 0 ? val : 3200
+  return val > 0 ? val : 0
 }
 
 const DEFAULT_USERS_LIST: User[] = [

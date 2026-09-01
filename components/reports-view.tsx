@@ -134,6 +134,7 @@ export interface ContainerFreightRecord {
   packagesCount: number
   netWeightKg: number
   grossWeightKg: number
+  hasFreightRevenue: boolean       // True if actual freight was entered by user
   freightRevenue: number          // Invoiced Client Freight ($ USD)
   shippingCost: number            // Ocean Line / Direct Shipping Cost ($ USD)
   shippingCostRaw?: number
@@ -147,7 +148,7 @@ export interface ContainerFreightRecord {
   totalCost: number               // Total Normalized Logistics Outflow ($ USD)
   netProfit: number               // freightRevenue - totalCost ($ USD)
   profitMargin: number            // (netProfit / freightRevenue) * 100
-  status: 'Profitable' | 'Break-Even' | 'Loss'
+  status: 'Profitable' | 'Break-Even' | 'Loss' | 'Pending Freight'
   exchangeRateUsed: number        // e.g., 70.0 AFN/USD
 }
 
@@ -524,35 +525,69 @@ export function ReportsView() {
             direction = 'Export'
           }
 
-          // Financial Metrics
-          const revenue = entry.debit || 3200
+          // Financial Metrics: Only use real debited or entered freight
+          let revenue = 0
+          let hasFreightRevenue = false
+          const rawDebit = typeof entry.debit === 'number' ? entry.debit : parseFloat(String(entry.debit || '0').replace(/,/g, '')) || 0
+          if (rawDebit > 0) {
+            revenue = rawDebit
+            hasFreightRevenue = true
+          } else {
+            const freightVal = (entry as any).freight || (entry as any).totalFreight || "";
+            if (freightVal) {
+              const revMatch = String(freightVal).replace(/,/g, "").match(/\d+(\.\d+)?/)
+              if (revMatch) {
+                const p = parseFloat(revMatch[0]) || 0
+                if (p > 0) {
+                  revenue = p
+                  hasFreightRevenue = true
+                }
+              }
+            }
+          }
 
-          // Driver Rent & Trucking Normalization
-          const driverParsed = parseFreightCost(entry.driverFreight, "AFN", exchangeRate)
-          const driverCost = driverParsed.rawAmount > 0 
-            ? driverParsed.normalizedUSD 
-            : (size === '20FT' ? 650 : 850)
-          const driverCostRaw = driverParsed.rawAmount > 0 ? driverParsed.rawAmount : driverCost
-          const driverCostCurrency = driverParsed.rawAmount > 0 ? driverParsed.currency : 'USD'
+          // Driver Rent & Trucking Normalization (Only if entered)
+          const driverParsed = parseFreightCost((entry as any).driverFreight, "AFN", exchangeRate)
+          const driverCost = driverParsed.rawAmount > 0 ? driverParsed.normalizedUSD : 0
+          const driverCostRaw = driverParsed.rawAmount
+          const driverCostCurrency = driverParsed.currency
           const driverCostDisplay = driverParsed.rawAmount > 0 
             ? driverParsed.formattedCombined 
-            : `$${driverCost.toLocaleString("en-US")} USD`
+            : "$0 USD"
 
-          // Direct Ocean Line / Shipping Cost
+          // Direct Ocean Line / Shipping Cost (Only if entered)
           const shippingParsed = parseFreightCost(entry.shippingCost, "USD", exchangeRate)
-          const defaultShippingCost = size === '20FT' ? 950 : size === '40RF' ? 1850 : 1450
-          const shippingCost = shippingParsed.rawAmount > 0 ? shippingParsed.normalizedUSD : defaultShippingCost
+          const shippingCost = shippingParsed.rawAmount > 0 ? shippingParsed.normalizedUSD : 0
           const shippingCostDisplay = shippingParsed.rawAmount > 0 
             ? shippingParsed.formattedCombined 
-            : `$${shippingCost.toLocaleString("en-US")} USD`
+            : "$0 USD"
 
-          // Terminal Handling & Border Waybill
-          const handlingCost = 280
+          // Terminal Handling & Border Waybill (0 unless explicitly defined)
+          const handlingCost = 0
 
           // Total Logistics Direct Cost ($ USD)
           const totalCost = Math.round((shippingCost + driverCost + handlingCost) * 100) / 100
-          const netProfit = Math.round((revenue - totalCost) * 100) / 100
-          const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0
+          
+          let netProfit = 0
+          let profitMargin = 0
+          let status: ContainerFreightRecord['status'] = 'Pending Freight'
+
+          if (hasFreightRevenue) {
+            netProfit = Math.round((revenue - totalCost) * 100) / 100
+            profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0
+            status = netProfit > 0 ? 'Profitable' : netProfit === 0 ? 'Break-Even' : 'Loss'
+          } else {
+            // Freight NOT added yet
+            if (totalCost > 0) {
+              netProfit = -totalCost // Direct expense outflow without billed revenue yet
+              profitMargin = 0
+              status = 'Pending Freight'
+            } else {
+              netProfit = 0
+              profitMargin = 0
+              status = 'Pending Freight'
+            }
+          }
 
           const uniqueKey = `${rawBL}-${rawContainer || entry.id}`
           if (!seen.has(uniqueKey)) {
@@ -574,6 +609,7 @@ export function ReportsView() {
               packagesCount: pkgs || 1450,
               netWeightKg: nw || 21500,
               grossWeightKg: Math.round(gw || 22800),
+              hasFreightRevenue,
               freightRevenue: revenue,
               shippingCost,
               shippingCostRaw: shippingParsed.rawAmount || shippingCost,
@@ -587,7 +623,7 @@ export function ReportsView() {
               totalCost,
               netProfit,
               profitMargin,
-              status: netProfit > 0 ? 'Profitable' : netProfit === 0 ? 'Break-Even' : 'Loss',
+              status,
               exchangeRateUsed: exchangeRate
             })
           }
@@ -650,37 +686,57 @@ export function ReportsView() {
         direction = 'Export'
       }
 
-      // Financials
+      // Financials: Check if user entered shipping_cost or freight_amount
       let revenue = 0
-      const revMatch = (doc.freight_amount || doc.goods_value || "").match(/\d[\d,\.]*/g)
-      if (revMatch) revenue = parseFloat(revMatch[0].replace(/,/g, "")) || 0
-      if (revenue === 0 || revenue > 50000) {
-        revenue = size === '20FT' ? 2450 : 3400
+      let hasFreightRevenue = false
+      const rawShipping = String(doc.shipping_cost || doc.freight_amount || "").replace(/,/g, "").trim()
+      const revMatch = rawShipping.match(/\d+(\.\d+)?/)
+      if (revMatch) {
+        const p = parseFloat(revMatch[0]) || 0
+        if (p > 0) {
+          revenue = p
+          hasFreightRevenue = true
+        }
       }
 
-      // Driver Rent & Freight Normalization
+      // Driver Rent & Freight Normalization (Only if entered)
       const driverParsed = parseFreightCost(doc.driver_rent, doc.driver_rent_currency || "AFN", exchangeRate)
-      const driverCost = driverParsed.rawAmount > 0 
-        ? driverParsed.normalizedUSD 
-        : (size === '20FT' ? 650 : 850)
-      const driverCostRaw = driverParsed.rawAmount > 0 ? driverParsed.rawAmount : driverCost
-      const driverCostCurrency = driverParsed.rawAmount > 0 ? driverParsed.currency : 'USD'
+      const driverCost = driverParsed.rawAmount > 0 ? driverParsed.normalizedUSD : 0
+      const driverCostRaw = driverParsed.rawAmount
+      const driverCostCurrency = driverParsed.currency
       const driverCostDisplay = driverParsed.rawAmount > 0 
         ? driverParsed.formattedCombined 
-        : `$${driverCost.toLocaleString("en-US")} USD`
+        : "$0 USD"
 
-      // Direct Ocean Line / Shipping Cost
-      const shippingParsed = parseFreightCost(doc.shipping_cost, doc.shipping_cost_currency || "USD", exchangeRate)
-      const defaultShippingCost = size === '20FT' ? 950 : size === '40RF' ? 1850 : 1450
-      const shippingCost = shippingParsed.rawAmount > 0 ? shippingParsed.normalizedUSD : defaultShippingCost
-      const shippingCostDisplay = shippingParsed.rawAmount > 0 
-        ? shippingParsed.formattedCombined 
-        : `$${shippingCost.toLocaleString("en-US")} USD`
+      // Direct Ocean Line / Shipping Cost (Only if entered)
+      const oceanParsed = parseFreightCost(doc.ocean_freight, "USD", exchangeRate)
+      const shippingCost = oceanParsed.rawAmount > 0 ? oceanParsed.normalizedUSD : 0
+      const shippingCostDisplay = oceanParsed.rawAmount > 0 
+        ? oceanParsed.formattedCombined 
+        : "$0 USD"
 
-      const handlingCost = 280
+      const handlingCost = 0
       const totalCost = Math.round((shippingCost + driverCost + handlingCost) * 100) / 100
-      const netProfit = Math.round((revenue - totalCost) * 100) / 100
-      const profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0
+
+      let netProfit = 0
+      let profitMargin = 0
+      let status: ContainerFreightRecord['status'] = 'Pending Freight'
+
+      if (hasFreightRevenue) {
+        netProfit = Math.round((revenue - totalCost) * 100) / 100
+        profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0
+        status = netProfit > 0 ? 'Profitable' : netProfit === 0 ? 'Break-Even' : 'Loss'
+      } else {
+        if (totalCost > 0) {
+          netProfit = -totalCost
+          profitMargin = 0
+          status = 'Pending Freight'
+        } else {
+          netProfit = 0
+          profitMargin = 0
+          status = 'Pending Freight'
+        }
+      }
 
       const uniqueKey = `${rawBL}-${rawContainer || doc.id}`
       if (!seen.has(uniqueKey)) {
@@ -702,10 +758,11 @@ export function ReportsView() {
           packagesCount: pkgs || 1200,
           netWeightKg: nw || 19500,
           grossWeightKg: Math.round(gw || (nw ? nw * 1.06 : 20800)),
+          hasFreightRevenue,
           freightRevenue: revenue,
           shippingCost,
-          shippingCostRaw: shippingParsed.rawAmount || shippingCost,
-          shippingCostCurrency: shippingParsed.currency,
+          shippingCostRaw: shippingCost,
+          shippingCostCurrency: 'USD',
           shippingCostDisplay,
           driverCost,
           driverCostRaw,
@@ -715,7 +772,7 @@ export function ReportsView() {
           totalCost,
           netProfit,
           profitMargin,
-          status: netProfit > 0 ? 'Profitable' : netProfit === 0 ? 'Break-Even' : 'Loss',
+          status,
           exchangeRateUsed: exchangeRate
         })
       }
@@ -846,10 +903,17 @@ export function ReportsView() {
     let shippingLineCostSum = 0
     let driverFreightCostSum = 0
     let borderHandlingCostSum = 0
+    let pendingFreightCount = 0
+    let billedContainersCount = 0
 
     filteredContainers.forEach(r => {
       totalContainers += 1
-      totalGrossRevenue += r.freightRevenue
+      if (r.hasFreightRevenue) {
+        billedContainersCount += 1
+        totalGrossRevenue += r.freightRevenue
+      } else {
+        pendingFreightCount += 1
+      }
       totalDirectCost += r.totalCost
       totalNetProfit += r.netProfit
       totalNetWeightKg += r.netWeightKg
@@ -899,7 +963,7 @@ export function ReportsView() {
     const finalOperatingProfit = totalNetProfit + customRevenueSum - customExpenseSum
     const overallMargin = totalGrossRevenue > 0 ? (totalNetProfit / totalGrossRevenue) * 100 : 0
     const avgProfitPerContainer = totalContainers > 0 ? Math.round(totalNetProfit / totalContainers) : 0
-    const avgRevenuePerContainer = totalContainers > 0 ? Math.round(totalGrossRevenue / totalContainers) : 0
+    const avgRevenuePerContainer = billedContainersCount > 0 ? Math.round(totalGrossRevenue / billedContainersCount) : 0
 
     return {
       totalContainers,
@@ -908,6 +972,8 @@ export function ReportsView() {
       total40hq,
       total40rf,
       totalTEU: total20ft + (total40ft + total40hq + total40rf) * 2,
+      pendingFreightCount,
+      billedContainersCount,
       exportCount,
       exportRevenue,
       exportCost,
@@ -1517,6 +1583,7 @@ export function ReportsView() {
               <option value="Profitable">🟢 Profitable / سودده (&gt; $0)</option>
               <option value="Loss">🔴 Loss / زیان‌ده (&lt; $0)</option>
               <option value="Break-Even">⚪ Break-Even / سر‌به‌سر ($0)</option>
+              <option value="Pending Freight">⏳ Pending Freight / در انتظار درج کرایه</option>
             </select>
 
             {/* Shipper Selector */}
@@ -1878,14 +1945,23 @@ export function ReportsView() {
                     Freight billing revenue, carrier ocean freight, driver rent &amp; net operating profit per container box
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge className={
                     containerMetrics.totalNetProfit >= 0
                       ? isLight ? "bg-emerald-100 text-emerald-800 border-emerald-300 font-mono text-xs font-bold" : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-mono text-xs"
                       : isLight ? "bg-rose-100 text-rose-800 border-rose-300 font-mono text-xs font-bold" : "bg-rose-500/20 text-rose-300 border-rose-500/40 font-mono text-xs"
                   }>
-                    Total Profit: {formatUSD(containerMetrics.totalNetProfit, true, 0)} USD
+                    Net Profit: {formatUSD(containerMetrics.totalNetProfit, true, 0)} USD
                   </Badge>
+                  {containerMetrics.pendingFreightCount > 0 && (
+                    <Badge className={
+                      isLight 
+                        ? "bg-amber-100 text-amber-900 border-amber-300 text-xs font-bold"
+                        : "bg-amber-950/60 text-amber-300 border-amber-700 text-xs font-bold"
+                    }>
+                      ⏳ {containerMetrics.pendingFreightCount} Pending Freight
+                    </Badge>
+                  )}
                 </div>
               </div>
 
@@ -2010,56 +2086,96 @@ export function ReportsView() {
                             <div className={`font-bold ${isLight ? "text-slate-800" : "text-slate-200"}`}>{r.packagesCount} CTNS</div>
                             <div className={`text-[10px] font-mono ${isLight ? "text-slate-500" : "text-slate-400"}`}>{(r.grossWeightKg / 1000).toFixed(1)} MT</div>
                           </td>
-                          <td className={`p-3 text-right font-black ${
-                            isLight ? "text-blue-700" : "text-blue-400"
-                          }`}>
-                            {formatUSD(r.freightRevenue, false, 0)}
+                          <td className="p-3 text-right">
+                            {r.hasFreightRevenue ? (
+                              <div className={`font-black ${isLight ? "text-blue-700" : "text-blue-400"}`}>
+                                {formatUSD(r.freightRevenue, false, 0)}
+                              </div>
+                            ) : (
+                              <div>
+                                <span className="font-mono text-xs text-slate-400 font-bold">$0</span>
+                                <span className="block text-[9px] font-bold text-amber-600 dark:text-amber-400">
+                                  ⏳ Pending
+                                </span>
+                              </div>
+                            )}
                           </td>
                           <td className={`p-3 text-right font-mono font-bold ${
-                            isLight ? "text-indigo-700" : "text-indigo-400"
+                            r.shippingCost > 0
+                              ? isLight ? "text-indigo-700" : "text-indigo-400"
+                              : "text-slate-400"
                           }`}>
                             {formatUSD(r.shippingCost, false, 0)}
                           </td>
                           <td className="p-3 text-right">
-                            <div className={`font-bold text-[11px] ${isLight ? "text-slate-900" : "text-slate-100"}`}>
-                              {r.driverCostCurrency === 'AFN'
-                                ? `${r.driverCostRaw.toLocaleString()} AFN`
-                                : `$${r.driverCost.toLocaleString()} USD`}
-                            </div>
-                            {r.driverCostCurrency === 'AFN' && (
-                              <div className={`text-[10px] font-mono font-bold ${
-                                isLight ? "text-amber-700" : "text-amber-400"
-                              }`}>
-                                (${formatUSD(r.driverCost, false, 0)} USD)
-                              </div>
+                            {r.driverCost > 0 ? (
+                              <>
+                                <div className={`font-bold text-[11px] ${isLight ? "text-slate-900" : "text-slate-100"}`}>
+                                  {r.driverCostCurrency === 'AFN'
+                                    ? `${r.driverCostRaw.toLocaleString()} AFN`
+                                    : `$${r.driverCost.toLocaleString()} USD`}
+                                </div>
+                                {r.driverCostCurrency === 'AFN' && (
+                                  <div className={`text-[10px] font-mono font-bold ${
+                                    isLight ? "text-amber-700" : "text-amber-400"
+                                  }`}>
+                                    ({formatUSD(r.driverCost, false, 0)} USD)
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <span className="font-mono text-xs text-slate-400 font-bold">$0</span>
                             )}
                           </td>
                           <td className={`p-3 text-right font-bold ${
-                            isLight ? "text-amber-700" : "text-amber-400"
+                            r.totalCost > 0
+                              ? isLight ? "text-amber-700" : "text-amber-400"
+                              : "text-slate-400 font-mono"
                           }`}>
                             {formatUSD(r.totalCost, false, 0)}
                           </td>
-                          <td className={`p-3 text-right font-black text-sm ${
-                            r.netProfit >= 0
-                              ? isLight ? "text-emerald-700" : "text-emerald-400"
-                              : isLight ? "text-rose-700" : "text-rose-400"
-                          }`}>
-                            {formatUSD(r.netProfit, true, 0)}
-                            <span className={`block text-[9.5px] font-bold ${
-                              r.profitMargin >= 0
-                                ? isLight ? "text-emerald-600" : "text-emerald-500"
-                                : isLight ? "text-rose-600" : "text-rose-400"
-                            }`}>{formatMargin(r.profitMargin)}</span>
+                          <td className="p-3 text-right">
+                            {r.hasFreightRevenue ? (
+                              <>
+                                <div className={`font-black text-sm ${
+                                  r.netProfit >= 0
+                                    ? isLight ? "text-emerald-700" : "text-emerald-400"
+                                    : isLight ? "text-rose-700" : "text-rose-400"
+                                }`}>
+                                  {formatUSD(r.netProfit, true, 0)}
+                                </div>
+                                <span className={`block text-[9.5px] font-bold ${
+                                  r.profitMargin >= 0
+                                    ? isLight ? "text-emerald-600" : "text-emerald-500"
+                                    : isLight ? "text-rose-600" : "text-rose-400"
+                                }`}>{formatMargin(r.profitMargin)}</span>
+                              </>
+                            ) : (
+                              <>
+                                <div className={`font-bold text-xs ${
+                                  r.totalCost > 0 
+                                    ? isLight ? "text-rose-600 font-mono" : "text-rose-400 font-mono"
+                                    : "text-slate-400 font-mono"
+                                }`}>
+                                  {r.totalCost > 0 ? formatUSD(-r.totalCost, true, 0) : "$0"}
+                                </div>
+                                <span className="block text-[9px] font-semibold text-amber-600 dark:text-amber-400">
+                                  {r.totalCost > 0 ? "Unbilled Cost" : "Pending"}
+                                </span>
+                              </>
+                            )}
                           </td>
                           <td className="p-3 text-center">
-                            <Badge className={`text-[9.5px] ${
-                              r.netProfit > 0
+                            <Badge className={`text-[9.5px] font-bold ${
+                              r.status === 'Pending Freight'
+                                ? isLight ? "bg-amber-100 text-amber-900 border-amber-300" : "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                : r.status === 'Profitable'
                                 ? isLight ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                                : r.netProfit === 0
+                                : r.status === 'Break-Even'
                                 ? isLight ? "bg-slate-100 text-slate-800 border-slate-300" : "bg-slate-500/20 text-slate-300 border-slate-500/30"
                                 : isLight ? "bg-rose-100 text-rose-800 border-rose-300" : "bg-rose-500/20 text-rose-300 border-rose-500/30"
                             }`}>
-                              {r.status}
+                              {r.status === 'Pending Freight' ? '⏳ Pending' : r.status}
                             </Badge>
                           </td>
                         </tr>
@@ -2110,20 +2226,26 @@ export function ReportsView() {
 
                         <div className="text-right shrink-0">
                           <div className={`text-base font-black ${
-                            r.netProfit >= 0
-                              ? isLight ? "text-emerald-700" : "text-emerald-400"
-                              : isLight ? "text-rose-700" : "text-rose-400"
+                            r.hasFreightRevenue
+                              ? r.netProfit >= 0
+                                ? isLight ? "text-emerald-700" : "text-emerald-400"
+                                : isLight ? "text-rose-700" : "text-rose-400"
+                              : r.totalCost > 0
+                              ? isLight ? "text-rose-600" : "text-rose-400"
+                              : "text-slate-400"
                           }`}>
-                            {formatUSD(r.netProfit, true, 0)}
+                            {r.hasFreightRevenue ? formatUSD(r.netProfit, true, 0) : r.totalCost > 0 ? formatUSD(-r.totalCost, true, 0) : "$0"}
                           </div>
                           <Badge className={`${
-                            r.direction === 'Export'
+                            r.status === 'Pending Freight'
+                              ? isLight ? "bg-amber-100 text-amber-900 border-amber-300" : "bg-amber-950/60 text-amber-300 border-amber-700"
+                              : r.direction === 'Export'
                               ? isLight ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-emerald-950/60 text-emerald-300 border-emerald-700"
                               : r.direction === 'Import'
                               ? isLight ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-amber-950/60 text-amber-300 border-amber-700"
                               : isLight ? "bg-purple-100 text-purple-800 border-purple-300" : "bg-purple-950/60 text-purple-300 border-purple-700"
                           } font-bold text-[9px] px-1.5 py-0`}>
-                            {r.direction === 'Export' ? '↗ Export' : r.direction === 'Import' ? '↙ Import' : '↔ Transit'}
+                            {r.status === 'Pending Freight' ? '⏳ Pending Freight' : r.direction === 'Export' ? '↗ Export' : r.direction === 'Import' ? '↙ Import' : '↔ Transit'}
                           </Badge>
                         </div>
                       </div>
@@ -2137,8 +2259,10 @@ export function ReportsView() {
                             isLight ? "text-slate-500" : "text-slate-400"
                           }`}>Freight Rev</div>
                           <div className={`text-xs font-black ${
-                            isLight ? "text-blue-700" : "text-blue-400"
-                          }`}>{formatUSD(r.freightRevenue, false, 0)}</div>
+                            r.hasFreightRevenue
+                              ? isLight ? "text-blue-700" : "text-blue-400"
+                              : "text-amber-600 dark:text-amber-400"
+                          }`}>{r.hasFreightRevenue ? formatUSD(r.freightRevenue, false, 0) : "$0 (Pending)"}</div>
                         </div>
                         <div>
                           <div className={`text-[9.5px] font-bold uppercase ${
@@ -2153,10 +2277,12 @@ export function ReportsView() {
                             isLight ? "text-slate-500" : "text-slate-400"
                           }`}>Margin</div>
                           <div className={`text-xs font-black ${
-                            r.profitMargin >= 0
-                              ? isLight ? "text-emerald-700" : "text-emerald-400"
-                              : isLight ? "text-rose-700" : "text-rose-400"
-                          }`}>{formatMargin(r.profitMargin)}</div>
+                            r.hasFreightRevenue
+                              ? r.profitMargin >= 0
+                                ? isLight ? "text-emerald-700" : "text-emerald-400"
+                                : isLight ? "text-rose-700" : "text-rose-400"
+                              : "text-amber-600 dark:text-amber-400"
+                          }`}>{r.hasFreightRevenue ? formatMargin(r.profitMargin) : "⏳ Pending"}</div>
                         </div>
                       </div>
 
@@ -2583,7 +2709,13 @@ export function ReportsView() {
                       <td className={`p-3 truncate max-w-[180px] ${isLight ? "text-slate-700" : "text-slate-300"}`}>{d.consignee_name || "-"}</td>
                       <td className={`p-3 truncate max-w-[200px] ${isLight ? "text-slate-700" : "text-slate-300"}`}>{d.goods_description || d.cargo_description || "-"}</td>
                       <td className={`p-3 text-right font-mono font-bold ${isLight ? "text-slate-800" : "text-slate-200"}`}>{d.gross_weight || "-"}</td>
-                      <td className={`p-3 text-right font-bold ${isLight ? "text-emerald-700 font-black" : "text-emerald-400"}`}>{formatUSD(parseFloat(d.freight_amount || d.goods_value || 3200) || 3200, false, 0)}</td>
+                      <td className={`p-3 text-right font-bold ${isLight ? "text-emerald-700 font-black" : "text-emerald-400"}`}>
+                        {parseFloat(d.freight_amount || d.shipping_cost || "0") > 0 ? (
+                          formatUSD(parseFloat(d.freight_amount || d.shipping_cost || "0"), false, 0)
+                        ) : (
+                          <span className="text-slate-400 font-normal text-xs">$0 (Pending)</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -3253,10 +3385,10 @@ export function ReportsView() {
                         {r.origin} → {r.destination}
                       </td>
                       <td className="border border-slate-300 p-1 text-right font-mono">{(r.grossWeightKg / 1000).toFixed(1)} MT</td>
-                      <td className="border border-slate-300 p-1 text-right font-bold text-blue-950">{formatUSD(r.freightRevenue, false, 0)}</td>
-                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{formatUSD(r.shippingCost, false, 0)}</td>
-                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-700 font-bold">{r.driverCostDisplay || formatUSD(r.driverCost, false, 0)}</td>
-                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{formatUSD(r.handlingCost, false, 0)}</td>
+                      <td className="border border-slate-300 p-1 text-right font-bold text-blue-950">{r.hasFreightRevenue ? formatUSD(r.freightRevenue, false, 0) : "$0"}</td>
+                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{r.shippingCost > 0 ? formatUSD(r.shippingCost, false, 0) : "—"}</td>
+                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-700 font-bold">{r.driverCost > 0 ? (r.driverCostDisplay || formatUSD(r.driverCost, false, 0)) : "—"}</td>
+                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{r.handlingCost > 0 ? formatUSD(r.handlingCost, false, 0) : "—"}</td>
                       <td className="border border-slate-300 p-1 text-right font-bold text-slate-800">{formatUSD(r.totalCost, false, 0)}</td>
                       <td className={`border border-slate-300 p-1 text-right font-black ${
                         r.netProfit >= 0 ? "text-emerald-900 bg-emerald-50/40" : "text-rose-900 bg-rose-50/40"

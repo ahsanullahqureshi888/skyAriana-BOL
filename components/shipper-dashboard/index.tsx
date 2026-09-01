@@ -212,7 +212,7 @@ export function ShipperDashboardView() {
         grossWeight: bol.gross_weight || "24,500 KGS",
         netWeight: bol.net_weight || "22,000 KGS",
         packages: bol.number_of_packages || "1,450 CARTONS",
-        freightAmount: parseFloat(bol.freight_amount || bol.goods_value || "3200") || 3200,
+        freightAmount: parseFloat(bol.freight_amount || bol.shipping_cost || "0") || 0,
         status: isDelivered ? "Delivered" : isCustoms ? "Customs Clearance" : "In Transit",
         currentMilestone: isDelivered ? 5 : isCustoms ? 2 : 4,
         estimatedArrival: estArrival,
