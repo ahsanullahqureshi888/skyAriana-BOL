@@ -248,6 +248,112 @@ export const LedgerView = memo(function LedgerView() {
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
 
+  // Automatic beforeprint and afterprint listener for Ctrl+P / browser print
+  useEffect(() => {
+    const handleBeforePrint = () => {
+      document.body.classList.add('ledger-landscape-active')
+      document.documentElement.classList.add('ledger-landscape-active')
+      document.body.setAttribute('data-print-mode', 'ledger-landscape')
+      document.documentElement.setAttribute('data-print-mode', 'ledger-landscape')
+      document.body.setAttribute('data-print-active', 'ledger')
+      document.documentElement.setAttribute('data-print-active', 'ledger')
+
+      let styleEl = document.getElementById('sky-ledger-dynamic-print-style') as HTMLStyleElement | null
+      if (!styleEl) {
+        styleEl = document.createElement('style')
+        styleEl.id = 'sky-ledger-dynamic-print-style'
+        document.head.appendChild(styleEl)
+      }
+      styleEl.innerHTML = `
+        @page {
+          size: A4 landscape !important;
+          margin: 4mm 5mm !important;
+        }
+        @page :first {
+          margin-top: 4mm !important;
+        }
+        @media print {
+          @page {
+            size: A4 landscape !important;
+            margin: 4mm 5mm !important;
+          }
+          html, body {
+            background: #ffffff !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .ledger-print-root, #sky-ledger-print-root {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            overflow: visible !important;
+            page-break-inside: auto !important;
+            break-inside: auto !important;
+          }
+          .ledger-print-table {
+            display: table !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+            page-break-inside: auto !important;
+            break-inside: auto !important;
+          }
+          .ledger-print-table thead {
+            display: table-header-group !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          .ledger-print-table tbody {
+            display: table-row-group !important;
+            page-break-inside: auto !important;
+            break-inside: auto !important;
+          }
+          .ledger-print-table tr {
+            display: table-row !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          .print-header {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+          .totals-row, .driver-rent-banner, .print-signatures, .print-footer {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+        }
+      `
+    }
+
+    const handleAfterPrint = () => {
+      document.body.classList.remove('ledger-landscape-active')
+      document.documentElement.classList.remove('ledger-landscape-active')
+      document.body.removeAttribute('data-print-mode')
+      document.documentElement.removeAttribute('data-print-mode')
+      document.body.removeAttribute('data-print-active')
+      document.documentElement.removeAttribute('data-print-active')
+      const el = document.getElementById('sky-ledger-dynamic-print-style')
+      if (el) el.remove()
+    }
+
+    window.addEventListener('beforeprint', handleBeforePrint)
+    window.addEventListener('afterprint', handleAfterPrint)
+
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint)
+      window.removeEventListener('afterprint', handleAfterPrint)
+    }
+  }, [])
+
   const triggerDirectPrint = useCallback(() => {
     // Check if there's content to print
     if (!currentCompany || currentCompany.ledgerEntries.length === 0) {
@@ -265,12 +371,15 @@ export const LedgerView = memo(function LedgerView() {
     styleEl.innerHTML = `
       @page {
         size: A4 landscape !important;
-        margin: 3mm 4mm !important;
+        margin: 4mm 5mm !important;
+      }
+      @page :first {
+        margin-top: 4mm !important;
       }
       @media print {
         @page {
           size: A4 landscape !important;
-          margin: 3mm 4mm !important;
+          margin: 4mm 5mm !important;
         }
         html, body {
           background: #ffffff !important;
@@ -284,6 +393,8 @@ export const LedgerView = memo(function LedgerView() {
         }
         .ledger-print-root, #sky-ledger-print-root {
           display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
           width: 100% !important;
           max-width: 100% !important;
           height: auto !important;
@@ -299,18 +410,11 @@ export const LedgerView = memo(function LedgerView() {
           border-collapse: collapse !important;
           page-break-inside: auto !important;
           break-inside: auto !important;
-          page-break-before: auto !important;
-          break-before: auto !important;
-          page-break-after: auto !important;
-          break-after: auto !important;
-          margin-top: 0 !important;
         }
         .ledger-print-table thead {
           display: table-header-group !important;
           page-break-inside: avoid !important;
           break-inside: avoid !important;
-          page-break-after: avoid !important;
-          break-after: avoid !important;
         }
         .ledger-print-table tbody {
           display: table-row-group !important;
@@ -321,17 +425,13 @@ export const LedgerView = memo(function LedgerView() {
           display: table-row !important;
           page-break-inside: avoid !important;
           break-inside: avoid !important;
-          page-break-after: auto !important;
-          break-after: auto !important;
         }
         .print-header {
           page-break-inside: avoid !important;
           break-inside: avoid !important;
-          page-break-after: avoid !important;
-          break-after: avoid !important;
           margin-bottom: 0 !important;
         }
-        .totals-row, .print-signatures, .print-footer {
+        .totals-row, .driver-rent-banner, .print-signatures, .print-footer {
           page-break-inside: avoid !important;
           break-inside: avoid !important;
         }
@@ -341,6 +441,7 @@ export const LedgerView = memo(function LedgerView() {
 
     // 2. Set landscape markers on body and html
     document.body.classList.add('ledger-landscape-active')
+    document.documentElement.classList.add('ledger-landscape-active')
     document.body.setAttribute('data-print-mode', 'ledger-landscape')
     document.documentElement.setAttribute('data-print-mode', 'ledger-landscape')
     document.body.setAttribute('data-print-active', 'ledger')
@@ -348,6 +449,7 @@ export const LedgerView = memo(function LedgerView() {
 
     const cleanup = () => {
       document.body.classList.remove('ledger-landscape-active')
+      document.documentElement.classList.remove('ledger-landscape-active')
       document.body.removeAttribute('data-print-mode')
       document.documentElement.removeAttribute('data-print-mode')
       document.body.removeAttribute('data-print-active')
@@ -363,8 +465,8 @@ export const LedgerView = memo(function LedgerView() {
     setTimeout(() => {
       window.print()
       // Fallback cleanup after print dialog
-      setTimeout(cleanup, 2500)
-    }, 60)
+      setTimeout(cleanup, 3000)
+    }, 80)
   }, [currentCompany])
 
   const handlePrint = useCallback(() => {
@@ -2466,61 +2568,61 @@ export const LedgerView = memo(function LedgerView() {
               <table className="ledger-print-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', margin: '0' }}>
                 <thead>
                   <tr style={{ background: 'linear-gradient(to right, #dbeafe 0%, #eff6ff 50%, #ffffff 100%)' }}>
-                    <th style={{ width: '3.2%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>S.NO</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>مسلسل شمېره</div>
+                    <th style={{ width: '3.0%', border: '1px solid #93c5fd', padding: '3px 1px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>S.NO</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>شمېره</div>
                     </th>
-                    <th style={{ width: '6.8%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE / تاریخ</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>نېټه</div>
+                    <th style={{ width: '6.5%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>نېټه / تاریخ</div>
                     </th>
-                    <th style={{ width: '13.0%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>SHIPPER/Description</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>لیږدونکی / تفصیل</div>
+                    <th style={{ width: '13.5%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>SHIPPER / Description</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>لیږدونکی / تفصیل</div>
                     </th>
-                    <th style={{ width: '6.2%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>INVOICE.NO</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>انوایس</div>
+                    <th style={{ width: '5.5%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>INV.NO</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>انوایس</div>
                     </th>
-                    <th style={{ width: '6.6%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE-OF-SHIP</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د بار نېټه</div>
+                    <th style={{ width: '6.5%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE-OF-SHIP</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د بار نېټه</div>
                     </th>
-                    <th style={{ width: '7.6%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BARNAMEH NO</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بارنامه</div>
+                    <th style={{ width: '6.5%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BARNAMEH</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بارنامه</div>
                     </th>
-                    <th style={{ width: '6.8%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BILL OF LANDING</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>B/L NO / بی ال</div>
+                    <th style={{ width: '7.5%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>B/L NO</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بی ال</div>
                     </th>
-                    <th style={{ width: '7.0%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONTIANER.NO</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د کانټینر شمېره</div>
+                    <th style={{ width: '8.0%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONTAINER</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د کانټینر شمېره</div>
                     </th>
-                    <th style={{ width: '11.8%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONSIGNEE</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د مال وصول کوونکی</div>
+                    <th style={{ width: '11.5%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONSIGNEE</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د مال وصول کوونکی</div>
                     </th>
-                    <th style={{ width: '9.6%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>QUANTITY / تعداد</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د توکو بسته بندي</div>
+                    <th style={{ width: '9.5%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>QUANTITY / GOODS</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د توکو بسته بندي</div>
                     </th>
-                    <th style={{ width: '8.0%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DRIVER FREIGHT</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>کرایه موتر / دریور</div>
+                    <th style={{ width: '8.0%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DRIVER FREIGHT</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>کرایه موتر / دریور</div>
                     </th>
-                    <th style={{ width: '4.8%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DEBIT</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د پور حساب</div>
+                    <th style={{ width: '4.8%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#dc2626', whiteSpace: 'nowrap' }}>DEBIT</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#dc2626', direction: 'rtl', whiteSpace: 'nowrap' }}>د پور حساب</div>
                     </th>
-                    <th style={{ width: '4.8%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CREDIT</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>ترلاسه شوی مبلغ</div>
+                    <th style={{ width: '4.8%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#059669', whiteSpace: 'nowrap' }}>CREDIT</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#059669', direction: 'rtl', whiteSpace: 'nowrap' }}>ترلاسه شوی</div>
                     </th>
-                    <th style={{ width: '5.4%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BALANCE USD</div>
-                      <div className="header-ps" style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>(USD) بیلانس</div>
+                    <th style={{ width: '4.9%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                      <div className="header-en" style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BALANCE</div>
+                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>(USD) بیلانس</div>
                     </th>
                   </tr>
                 </thead>
@@ -2535,12 +2637,12 @@ export const LedgerView = memo(function LedgerView() {
                         height: '21px', 
                         pageBreakInside: 'avoid', 
                         breakInside: 'avoid',
-                        backgroundColor: isCredit ? '#d1fae5' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc')
+                        backgroundColor: isCredit ? '#ecfdf5' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc')
                       }}
                     >
-                      <td style={{ fontWeight: 600, color: isCredit ? '#065f46' : '#1e40af', textAlign: 'center', fontSize: '6.8pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px' }}>{entry.sNo}</td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.date}</td>
-                      <td style={{ textAlign: 'left', paddingLeft: '4px', fontWeight: isCredit ? 700 : 500, fontSize: '6.8pt', lineHeight: '1.15', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#0f172a' }}>
+                      <td style={{ fontWeight: 700, color: isCredit ? '#065f46' : '#1e40af', textAlign: 'center', fontSize: '7pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1px' }}>{entry.sNo}</td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '7pt', fontFamily: 'monospace', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.date}</td>
+                      <td style={{ textAlign: 'left', paddingLeft: '4px', paddingRight: '2px', fontWeight: isCredit ? 700 : 500, fontSize: '7pt', lineHeight: '1.2', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#0f172a' }}>
                         {isCredit ? (
                           <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                             <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981', flexShrink: 0 }}></span>
@@ -2548,11 +2650,11 @@ export const LedgerView = memo(function LedgerView() {
                           </span>
                         ) : entry.shipperDescription}
                       </td>
-                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 600, fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.invoiceNo}</td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.dateOfShip}</td>
+                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.invoiceNo}</td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '7pt', fontFamily: 'monospace', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.dateOfShip}</td>
                       <td style={{ textAlign: 'center', fontWeight: 'bold', fontFamily: 'monospace', color: '#1e3a8a', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', backgroundColor: isCredit ? '#ecfdf5' : '#ffffff' }}>{entry.barnamehNo || ''}</td>
-                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5px' }}>
+                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
                           <span style={{ color: isCredit ? '#064e3b' : '#1e3a8a', fontWeight: '700' }}>{entry.billOfLanding || '—'}</span>
                           {entry.surrenderedBL && (
                             <span style={{ 
@@ -2577,7 +2679,7 @@ export const LedgerView = memo(function LedgerView() {
                           )}
                         </div>
                       </td>
-                      <td style={{ textAlign: 'center', fontSize: '6.8pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>
+                      <td style={{ textAlign: 'center', fontSize: '7pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px' }}>
                           {entry.containerType && (
                             <span style={{ 
@@ -2595,7 +2697,7 @@ export const LedgerView = memo(function LedgerView() {
                               {entry.containerType}
                             </span>
                           )}
-                          <span style={{ fontFamily: 'monospace', fontWeight: '800', fontSize: '6.8pt', color: '#0f172a', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: '800', fontSize: '7pt', color: '#0f172a', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
                             {entry.containerNo || (entry.containerType ? "" : "—")}
                           </span>
                           {entry.containerDetails && (
@@ -2618,29 +2720,29 @@ export const LedgerView = memo(function LedgerView() {
                           )}
                         </div>
                       </td>
-                      <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.consignee}</td>
-                      <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', fontWeight: 600, border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.quantity}</td>
-                      <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '6.8pt', backgroundColor: '#fffdf5', lineHeight: '1.15', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', fontFamily: 'monospace' }}>
+                      <td style={{ textAlign: 'left', paddingLeft: '4px', paddingRight: '2px', fontSize: '7pt', lineHeight: '1.2', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.consignee}</td>
+                      <td style={{ textAlign: 'left', paddingLeft: '4px', paddingRight: '2px', fontSize: '7pt', lineHeight: '1.2', fontWeight: 600, border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.quantity}</td>
+                      <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '7pt', backgroundColor: '#fffdf5', lineHeight: '1.2', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', fontFamily: 'monospace' }}>
                         {entry.driverFreight && entry.driverFreight.trim() !== ''
                           ? entry.driverFreight
                           : ''}
                       </td>
-                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe' }}>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe' }}>
                         {entry.debit > 0 ? formatCurrency(entry.debit) : ''}
                       </td>
-                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#047857', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#a7f3d0' : '#ffffff' }}>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#047857', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#a7f3d0' : '#ffffff' }}>
                         {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
                       </td>
-                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: isCredit ? '#064e3b' : '#1e3a8a', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#d1fae5' : '#eff6ff' }}>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: isCredit ? '#064e3b' : '#1e3a8a', fontFamily: 'monospace', fontSize: '7.2pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#d1fae5' : '#eff6ff' }}>
                         {entry.debit > 0 || entry.credit > 0 ? formatCurrency(entry.balance) : ''}
                       </td>
                     </tr>
                   );
                   })}
-                  {/* Empty rows to fill to 10 matching Single Sheet A4 Landscape layout */}
-                  {filteredEntries.length < 10 && Array.from({ length: 10 - filteredEntries.length }).map((_, idx) => (
+                  {/* Empty rows only if very few entries (< 8) to fill single-sheet view cleanly without creating extra blank pages */}
+                  {filteredEntries.length < 8 && Array.from({ length: 8 - filteredEntries.length }).map((_, idx) => (
                     <tr key={`empty-${idx}`} style={{ height: '19px', pageBreakInside: 'avoid', breakInside: 'avoid', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                      <td style={{ textAlign: 'center', color: '#1e40af', fontSize: '6.8pt', border: '1px solid #bfdbfe' }}>{filteredEntries.length + idx + 1}</td>
+                      <td style={{ textAlign: 'center', color: '#1e40af', fontSize: '7pt', border: '1px solid #bfdbfe' }}>{filteredEntries.length + idx + 1}</td>
                       <td style={{ border: '1px solid #bfdbfe' }}></td>
                       <td style={{ border: '1px solid #bfdbfe' }}></td>
                       <td style={{ border: '1px solid #bfdbfe' }}></td>
@@ -2653,7 +2755,7 @@ export const LedgerView = memo(function LedgerView() {
                       <td style={{ border: '1px solid #bfdbfe' }}></td>
                       <td style={{ border: '1px solid #bfdbfe' }}></td>
                       <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ textAlign: 'right', paddingRight: '4px', color: '#1e3a8a', fontFamily: 'monospace', fontSize: '6.8pt', border: '1px solid #bfdbfe' }}>$0</td>
+                      <td style={{ textAlign: 'right', paddingRight: '4px', color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7pt', border: '1px solid #bfdbfe' }}>$0</td>
                     </tr>
                   ))}
                   {/* Totals row */}
@@ -2861,61 +2963,61 @@ export const LedgerView = memo(function LedgerView() {
                   <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', margin: '0' }}>
                     <thead>
                       <tr style={{ background: 'linear-gradient(to right, #dbeafe 0%, #eff6ff 50%, #ffffff 100%)' }}>
-                        <th style={{ width: '3.2%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>S.NO</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>مسلسل شمېره</div>
+                        <th style={{ width: '3.0%', border: '1px solid #93c5fd', padding: '3px 1px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>S.NO</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>شمېره</div>
                         </th>
-                        <th style={{ width: '6.8%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE / تاریخ</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>نېټه</div>
+                        <th style={{ width: '6.5%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>نېټه / تاریخ</div>
                         </th>
-                        <th style={{ width: '13.0%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>SHIPPER/Description</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>لیږدونکی / تفصیل</div>
+                        <th style={{ width: '13.5%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>SHIPPER / Description</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>لیږدونکی / تفصیل</div>
                         </th>
-                        <th style={{ width: '6.2%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>INVOICE.NO</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>انوایس</div>
+                        <th style={{ width: '5.5%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>INV.NO</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>انوایس</div>
                         </th>
-                        <th style={{ width: '6.6%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE-OF-SHIP</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د بار نېټه</div>
+                        <th style={{ width: '6.5%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE-OF-SHIP</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د بار نېټه</div>
                         </th>
-                        <th style={{ width: '7.6%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BARNAMEH NO</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بارنامه</div>
+                        <th style={{ width: '6.5%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BARNAMEH</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بارنامه</div>
                         </th>
-                        <th style={{ width: '6.8%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BILL OF LANDING</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>B/L NO / بی ال</div>
+                        <th style={{ width: '7.5%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>B/L NO</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بی ال</div>
                         </th>
-                        <th style={{ width: '7.0%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONTIANER.NO</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د کانټینر شمېره</div>
+                        <th style={{ width: '8.0%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONTAINER</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د کانټینر شمېره</div>
                         </th>
-                        <th style={{ width: '11.8%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONSIGNEE</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د مال وصول کوونکی</div>
+                        <th style={{ width: '11.5%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONSIGNEE</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د مال وصول کوونکی</div>
                         </th>
-                        <th style={{ width: '9.6%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>QUANTITY / تعداد</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د توکو بسته بندي</div>
+                        <th style={{ width: '9.5%', border: '1px solid #93c5fd', padding: '3px 2px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>QUANTITY / GOODS</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د توکو بسته بندي</div>
                         </th>
-                        <th style={{ width: '8.0%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DRIVER FREIGHT</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>کرایه موتر / دریور</div>
+                        <th style={{ width: '8.0%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DRIVER FREIGHT</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>کرایه موتر / دریور</div>
                         </th>
-                        <th style={{ width: '4.8%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DEBIT</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د پور حساب</div>
+                        <th style={{ width: '4.8%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#dc2626', whiteSpace: 'nowrap' }}>DEBIT</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#dc2626', direction: 'rtl', whiteSpace: 'nowrap' }}>د پور حساب</div>
                         </th>
-                        <th style={{ width: '4.8%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CREDIT</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>ترلاسه شوی مبلغ</div>
+                        <th style={{ width: '4.8%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#059669', whiteSpace: 'nowrap' }}>CREDIT</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#059669', direction: 'rtl', whiteSpace: 'nowrap' }}>ترلاسه شوی</div>
                         </th>
-                        <th style={{ width: '5.4%', border: '1px solid #bfdbfe', padding: '3px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '6.8pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BALANCE USD</div>
-                          <div style={{ fontSize: '5.6pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>(USD) بیلانس</div>
+                        <th style={{ width: '4.9%', border: '1px solid #93c5fd', padding: '3px 1.5px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '7pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BALANCE</div>
+                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>(USD) بیلانس</div>
                         </th>
                       </tr>
                     </thead>
@@ -2927,12 +3029,12 @@ export const LedgerView = memo(function LedgerView() {
                           key={entry.id}
                           style={{ 
                             height: '21px',
-                            backgroundColor: isCredit ? '#d1fae5' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc')
+                            backgroundColor: isCredit ? '#ecfdf5' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc')
                           }}
                         >
-                          <td style={{ fontWeight: 600, color: isCredit ? '#065f46' : '#1e40af', textAlign: 'center', fontSize: '6.8pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px' }}>{entry.sNo}</td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.date}</td>
-                          <td style={{ textAlign: 'left', paddingLeft: '4px', fontWeight: isCredit ? 700 : 500, fontSize: '6.8pt', lineHeight: '1.15', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#0f172a' }}>
+                          <td style={{ fontWeight: 700, color: isCredit ? '#065f46' : '#1e40af', textAlign: 'center', fontSize: '7pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1px' }}>{entry.sNo}</td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '7pt', fontFamily: 'monospace', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.date}</td>
+                          <td style={{ textAlign: 'left', paddingLeft: '4px', paddingRight: '2px', fontWeight: isCredit ? 700 : 500, fontSize: '7pt', lineHeight: '1.2', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#0f172a' }}>
                             {isCredit ? (
                               <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                                 <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981', flexShrink: 0 }}></span>
@@ -2940,11 +3042,11 @@ export const LedgerView = memo(function LedgerView() {
                               </span>
                             ) : entry.shipperDescription}
                           </td>
-                          <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 600, fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.invoiceNo}</td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '6.8pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.dateOfShip}</td>
+                          <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.invoiceNo}</td>
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '7pt', fontFamily: 'monospace', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.dateOfShip}</td>
                           <td style={{ textAlign: 'center', fontWeight: 'bold', fontFamily: 'monospace', color: '#1e3a8a', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', backgroundColor: isCredit ? '#ecfdf5' : '#ffffff' }}>{entry.barnamehNo || ''}</td>
-                          <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5px' }}>
+                          <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
                               <span style={{ color: isCredit ? '#064e3b' : '#1e3a8a', fontWeight: '700' }}>{entry.billOfLanding || '—'}</span>
                               {entry.surrenderedBL && (
                                 <span style={{ 
@@ -2969,7 +3071,7 @@ export const LedgerView = memo(function LedgerView() {
                               )}
                             </div>
                           </td>
-                          <td style={{ textAlign: 'center', fontSize: '6.8pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>
+                          <td style={{ textAlign: 'center', fontSize: '7pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px' }}>
                               {entry.containerType && (
                                 <span style={{ 
@@ -2987,7 +3089,7 @@ export const LedgerView = memo(function LedgerView() {
                                   {entry.containerType}
                                 </span>
                               )}
-                              <span style={{ fontFamily: 'monospace', fontWeight: '800', fontSize: '6.8pt', color: '#0f172a', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontFamily: 'monospace', fontWeight: '800', fontSize: '7pt', color: '#0f172a', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
                                 {entry.containerNo || (entry.containerType ? "" : "—")}
                               </span>
                               {entry.containerDetails && (
@@ -3010,29 +3112,29 @@ export const LedgerView = memo(function LedgerView() {
                               )}
                             </div>
                           </td>
-                          <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.consignee}</td>
-                          <td style={{ textAlign: 'left', paddingLeft: '4px', fontSize: '6.8pt', lineHeight: '1.15', fontWeight: 600, border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.quantity}</td>
-                          <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '6.8pt', backgroundColor: '#fffdf5', lineHeight: '1.15', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', fontFamily: 'monospace' }}>
+                          <td style={{ textAlign: 'left', paddingLeft: '4px', paddingRight: '2px', fontSize: '7pt', lineHeight: '1.2', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.consignee}</td>
+                          <td style={{ textAlign: 'left', paddingLeft: '4px', paddingRight: '2px', fontSize: '7pt', lineHeight: '1.2', fontWeight: 600, border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.quantity}</td>
+                          <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '7pt', backgroundColor: '#fffdf5', lineHeight: '1.2', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', fontFamily: 'monospace' }}>
                             {entry.driverFreight && entry.driverFreight.trim() !== ''
                               ? entry.driverFreight
                               : ''}
                           </td>
-                          <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe' }}>
+                          <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe' }}>
                             {entry.debit > 0 ? formatCurrency(entry.debit) : ''}
                           </td>
-                          <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#047857', fontFamily: 'monospace', fontSize: '6.8pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#a7f3d0' : '#ffffff' }}>
+                          <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#047857', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#a7f3d0' : '#ffffff' }}>
                             {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
                           </td>
-                          <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: isCredit ? '#064e3b' : '#1e3a8a', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#d1fae5' : '#eff6ff' }}>
+                          <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: isCredit ? '#064e3b' : '#1e3a8a', fontFamily: 'monospace', fontSize: '7.2pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#d1fae5' : '#eff6ff' }}>
                             {entry.debit > 0 || entry.credit > 0 ? formatCurrency(entry.balance) : ''}
                           </td>
                         </tr>
                       );
                       })}
-                      {/* Empty rows to fill to 10 matching Screen UI */}
-                      {filteredEntries.length < 10 && Array.from({ length: 10 - filteredEntries.length }).map((_, idx) => (
+                      {/* Empty rows only if very few entries (< 8) to fill single-sheet view cleanly without creating extra blank pages */}
+                      {filteredEntries.length < 8 && Array.from({ length: 8 - filteredEntries.length }).map((_, idx) => (
                         <tr key={`empty-${idx}`} style={{ height: '19px', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                          <td style={{ textAlign: 'center', color: '#1e40af', fontSize: '6.8pt', border: '1px solid #bfdbfe' }}>{filteredEntries.length + idx + 1}</td>
+                          <td style={{ textAlign: 'center', color: '#1e40af', fontSize: '7pt', border: '1px solid #bfdbfe' }}>{filteredEntries.length + idx + 1}</td>
                           <td style={{ border: '1px solid #bfdbfe' }}></td>
                           <td style={{ border: '1px solid #bfdbfe' }}></td>
                           <td style={{ border: '1px solid #bfdbfe' }}></td>
@@ -3045,7 +3147,7 @@ export const LedgerView = memo(function LedgerView() {
                           <td style={{ border: '1px solid #bfdbfe' }}></td>
                           <td style={{ border: '1px solid #bfdbfe' }}></td>
                           <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ textAlign: 'right', paddingRight: '4px', color: '#1e3a8a', fontFamily: 'monospace', fontSize: '6.8pt', border: '1px solid #bfdbfe' }}>$0</td>
+                          <td style={{ textAlign: 'right', paddingRight: '4px', color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7pt', border: '1px solid #bfdbfe' }}>$0</td>
                         </tr>
                       ))}
                       {/* Totals row */}

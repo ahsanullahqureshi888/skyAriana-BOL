@@ -345,8 +345,11 @@ export function computeAnalyticsData(options?: {
     }
   }
 
-  // 2. Gather Ledger Records
+  // 2. Gather Ledger Records & Invoices
   let rawLedgers: Record<string, any[]> = {}
+  let rawInvoices: any[] = []
+  let rawFinancialsMap: Record<string, any> = {}
+
   if (typeof window !== "undefined") {
     try {
       const ledgersJson = window.localStorage.getItem("skybol:account-ledgers")
@@ -355,6 +358,24 @@ export function computeAnalyticsData(options?: {
       }
     } catch (e) {
       console.warn("Analytics: Error reading ledgers from localStorage", e)
+    }
+
+    try {
+      const invJson = window.localStorage.getItem("skybol:saved-invoices")
+      if (invJson) {
+        rawInvoices = JSON.parse(invJson)
+      }
+    } catch (e) {
+      console.warn("Analytics: Error reading invoices from localStorage", e)
+    }
+
+    try {
+      const finJson = window.localStorage.getItem("skybol:financials-map")
+      if (finJson) {
+        rawFinancialsMap = JSON.parse(finJson)
+      }
+    } catch (e) {
+      console.warn("Analytics: Error reading financialsMap from localStorage", e)
     }
   }
 
@@ -368,6 +389,7 @@ export function computeAnalyticsData(options?: {
     dispatched: 0,
     inTransit: 0,
     delivered: 0,
+
     borderClearance: 0,
   }
 
@@ -605,7 +627,7 @@ export function computeAnalyticsData(options?: {
   // 8. Finalize Customer Debtor Profiles
   const debtorProfiles: CustomerDebtorProfile[] = Array.from(shipperMap.values())
     .map((s) => {
-      const balance = Math.max(0, s.totalDebitUSD - s.totalCreditUSD)
+      const balance = s.totalDebitUSD - s.totalCreditUSD
       let tier: CustomerDebtorProfile["agingTier"] = "0-30 Days"
       let risk: CustomerDebtorProfile["riskLevel"] = "Low"
 
@@ -622,9 +644,9 @@ export function computeAnalyticsData(options?: {
 
       return {
         shipperName: s.name,
-        totalBilledUSD: s.totalDebitUSD || (s.shipments * 3500),
+        totalBilledUSD: s.totalDebitUSD,
         totalPaidUSD: s.totalCreditUSD,
-        netBalanceUSD: balance || (s.shipments * 3500),
+        netBalanceUSD: balance,
         agingTier: tier,
         riskLevel: risk,
         lastActivityDate: "Recent",
@@ -697,35 +719,37 @@ export function computeAnalyticsData(options?: {
     .sort((a, b) => b.count - a.count)
 
   // 13. Aging Analysis (Receivables Aging)
-  const netOutstanding = Math.max(0, totalDebitUSD - totalCreditUSD) || 218678
+  const netOutstanding = totalDebitUSD - totalCreditUSD
+  const positiveOutstanding = Math.max(0, netOutstanding)
   const agingBuckets: AgingBucket[] = [
-    { range: "0 - 30 Days", amountUSD: Math.round(netOutstanding * 0.42), count: Math.round(flatLedgerRows.length * 0.42) || 15, percentage: 42 },
-    { range: "31 - 60 Days", amountUSD: Math.round(netOutstanding * 0.28), count: Math.round(flatLedgerRows.length * 0.28) || 9, percentage: 28 },
-    { range: "61 - 90 Days", amountUSD: Math.round(netOutstanding * 0.18), count: Math.round(flatLedgerRows.length * 0.18) || 6, percentage: 18 },
-    { range: "90+ Days (Overdue)", amountUSD: Math.round(netOutstanding * 0.12), count: Math.round(flatLedgerRows.length * 0.12) || 4, percentage: 12 },
+    { range: "0 - 30 Days", amountUSD: Math.round(positiveOutstanding * 0.42), count: Math.round(flatLedgerRows.length * 0.42) || 0, percentage: 42 },
+    { range: "31 - 60 Days", amountUSD: Math.round(positiveOutstanding * 0.28), count: Math.round(flatLedgerRows.length * 0.28) || 0, percentage: 28 },
+    { range: "61 - 90 Days", amountUSD: Math.round(positiveOutstanding * 0.18), count: Math.round(flatLedgerRows.length * 0.18) || 0, percentage: 18 },
+    { range: "90+ Days (Overdue)", amountUSD: Math.round(positiveOutstanding * 0.12), count: Math.round(flatLedgerRows.length * 0.12) || 0, percentage: 12 },
   ]
 
   // 14. Compute KPI summary
-  const collectionRate = totalDebitUSD > 0 ? Math.min(100, Math.round((totalCreditUSD / totalDebitUSD) * 100)) : 88
+  const collectionRate = totalDebitUSD > 0 ? Math.min(100, Math.round((totalCreditUSD / totalDebitUSD) * 100)) : 0
 
   const kpis: AnalyticsKPIs = {
     totalShipments: filteredBols.length,
     shipmentsChangePercent: 14.2,
     totalCargoWeightKgs: Math.round(totalWeightKgs),
     totalPackagesCount: totalPackages,
-    totalGrossReceivablesUSD: Math.round(totalDebitUSD) || (filteredBols.length * 3700),
-    totalReceivedUSD: Math.round(totalCreditUSD) || 18222,
-    netOutstandingBalanceUSD: Math.round(totalDebitUSD - totalCreditUSD) || 218678,
+    totalGrossReceivablesUSD: Math.round(totalDebitUSD),
+    totalReceivedUSD: Math.round(totalCreditUSD),
+    netOutstandingBalanceUSD: Math.round(totalDebitUSD - totalCreditUSD),
     collectionRatePercent: collectionRate,
     activeShippersCount: shipperMap.size,
     activeConsigneesCount: consigneeMap.size,
     totalContainersCount: totalContainers || filteredBols.length,
-    estimatedFreightVolumeUSD: Math.round(filteredBols.length * 3600),
+    estimatedFreightVolumeUSD: Math.round(totalDebitUSD > 0 ? totalDebitUSD : filteredBols.length * 3600),
     onTimeDeliveryRate: 96.5,
     averageTransitDays: 14,
-    overdueBalanceUSD: Math.round(netOutstanding * 0.12),
+    overdueBalanceUSD: Math.round(positiveOutstanding * 0.12),
     activeCorridorsCount: corridors.length,
   }
+
 
   // Sort audit logs chronologically
   auditLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())

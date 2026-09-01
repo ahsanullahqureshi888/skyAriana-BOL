@@ -145,12 +145,16 @@ export interface ContainerFreightRecord {
   driverCostCurrency: 'USD' | 'AFN'
   driverCostDisplay: string       // Formatted: e.g. "46,730 AFN ($668 USD)"
   handlingCost: number            // Border Transit & Port Handling ($ USD)
+  demurrageCost?: number          // Demurrage / Detention penalties ($ USD)
+  docFeeCost?: number             // Invoiced Documentation & Export fees ($ USD)
   totalCost: number               // Total Normalized Logistics Outflow ($ USD)
   netProfit: number               // freightRevenue - totalCost ($ USD)
   profitMargin: number            // (netProfit / freightRevenue) * 100
   status: 'Profitable' | 'Break-Even' | 'Loss' | 'Pending Freight'
+  lossReason?: string             // Primary cost driver causing financial loss
   exchangeRateUsed: number        // e.g., 70.0 AFN/USD
 }
+
 
 const DEFAULT_EXPENSE_CATEGORIES = [
   "Driver Freight",
@@ -355,8 +359,17 @@ export function ReportsView() {
     }
   }
 
-  // Load Saved BOL documents from localStorage
+  // Load Saved BOL documents, Invoices & Financials from localStorage
   const [bolDocs, setBolDocs] = useState<any[]>([])
+  const [savedInvoices, setSavedInvoices] = useState<any[]>([])
+  const [financialsMap, setFinancialsMap] = useState<Record<string, any>>({})
+
+  // Interactive PnL & Cost Sensitivity Simulator State (Data App Feature)
+  const [isSimulatorOpen, setIsSimulatorOpen] = useState(false)
+  const [simExchangeRate, setSimExchangeRate] = useState<number>(exchangeRate)
+  const [simOceanAdjustment, setSimOceanAdjustment] = useState<number>(0)
+  const [simDriverAdjustmentPercent, setSimDriverAdjustmentPercent] = useState<number>(0)
+  const [simMarginThreshold, setSimMarginThreshold] = useState<number>(0)
 
   const loadDocuments = useCallback(() => {
     if (typeof window === "undefined") return
@@ -380,6 +393,28 @@ export function ReportsView() {
     }
 
     try {
+      const rawInvs = window.localStorage.getItem("skybol:saved-invoices")
+      if (rawInvs) {
+        setSavedInvoices(JSON.parse(rawInvs))
+      } else {
+        setSavedInvoices([])
+      }
+    } catch (e) {
+      setSavedInvoices([])
+    }
+
+    try {
+      const rawFin = window.localStorage.getItem("skybol:financials-map")
+      if (rawFin) {
+        setFinancialsMap(JSON.parse(rawFin))
+      } else {
+        setFinancialsMap({})
+      }
+    } catch (e) {
+      setFinancialsMap({})
+    }
+
+    try {
       const savedExp = window.localStorage.getItem("skybol:custom-expenses")
       if (savedExp) {
         setCustomExpenses(JSON.parse(savedExp))
@@ -396,12 +431,17 @@ export function ReportsView() {
     loadDocuments()
     const handleUpdate = () => loadDocuments()
     window.addEventListener("skybol:documents-updated", handleUpdate)
+    window.addEventListener("skybol:invoices-updated", handleUpdate)
+    window.addEventListener("skybol:financials-updated", handleUpdate)
     window.addEventListener("storage", handleUpdate)
     return () => {
       window.removeEventListener("skybol:documents-updated", handleUpdate)
+      window.removeEventListener("skybol:invoices-updated", handleUpdate)
+      window.removeEventListener("skybol:financials-updated", handleUpdate)
       window.removeEventListener("storage", handleUpdate)
     }
   }, [loadDocuments])
+
 
   // Save Custom Expenses
   const saveExpensesList = (newList: CustomExpenseEntry[]) => {
@@ -460,11 +500,29 @@ export function ReportsView() {
     const list: ContainerFreightRecord[] = []
     const seen = new Set<string>()
 
+    // Helper to find invoice for BL / Container
+    const findMatchedInvoice = (blNum: string, ctnrNum: string, shipper: string) => {
+      const qBL = blNum.trim().toLowerCase()
+      const qC = ctnrNum.trim().toLowerCase()
+      const qS = shipper.trim().toLowerCase()
+
+      return savedInvoices.find(inv => {
+        const invBL = String(inv.bl_no || inv.bol_number || "").trim().toLowerCase()
+        const invTruck = String(inv.truck_no || "").trim().toLowerCase()
+        const invBuyer = String(inv.buyer_name || "").trim().toLowerCase()
+        const invNum = String(inv.invoice_number || "").trim().toLowerCase()
+
+        if (qBL && (invBL === qBL || invNum === qBL)) return true
+        if (qC && invTruck === qC) return true
+        if (qS && invBuyer && (invBuyer.includes(qS) || qS.includes(invBuyer))) return true
+        return false
+      })
+    }
+
     // 1. Process Accounts & Ledger Entries
     accounts.forEach((acc, accIdx) => {
       acc.companies?.forEach((comp, compIdx) => {
         comp.ledgerEntries?.forEach((entry, entryIdx) => {
-          // If it's a debit (freight billing) or has container/BL details
           if (!entry.debit && !entry.containerNo && !entry.billOfLanding) return
 
           const rawContainer = (entry.containerNo || "").trim()
@@ -487,7 +545,7 @@ export function ReportsView() {
             nw = parseFloat(nwMatch[1].replace(/,/g, "")) || 0
           }
           if (nw === 0 && pkgs > 0) {
-            nw = pkgs * 16 // Approximate 16kg standard dry fruit carton
+            nw = pkgs * 16
           }
           const gw = nw * 1.06
 
@@ -506,7 +564,7 @@ export function ReportsView() {
             size = nw > 18000 ? '40HQ' : '20FT'
           }
 
-          // Detect Trade Direction (Export vs Import vs Transit)
+          // Detect Trade Direction
           let direction: ContainerFreightRecord['direction'] = 'Export'
           const lowerAll = (rawQty + ' ' + rawBL + ' ' + shipper + ' ' + consignee).toLowerCase()
           if (
@@ -535,12 +593,21 @@ export function ReportsView() {
             size = '40RF'
           }
 
-          // Financial Metrics: Only use real debited or entered freight
+          // Invoiced charges matching
+          const matchedInv = findMatchedInvoice(rawBL, rawContainer, shipper)
+          const invDemurrage = matchedInv ? (parseFloat(matchedInv.demurrage_charges || "0") || 0) + (parseFloat(matchedInv.detention_charges || "0") || 0) : 0
+          const invDocFee = matchedInv ? (parseFloat(matchedInv.documentation_charges || "0") || 0) : 0
+          const invFreight = matchedInv ? (parseFloat(matchedInv.freight_charges || "0") || 0) : 0
+
+          // Financial Metrics
           let revenue = 0
           let hasFreightRevenue = false
           const rawDebit = typeof entry.debit === 'number' ? entry.debit : parseFloat(String(entry.debit || '0').replace(/,/g, '')) || 0
           if (rawDebit > 0) {
             revenue = rawDebit
+            hasFreightRevenue = true
+          } else if (invFreight > 0) {
+            revenue = invFreight
             hasFreightRevenue = true
           } else {
             const freightVal = (entry as any).freight || (entry as any).totalFreight || "";
@@ -572,46 +639,73 @@ export function ReportsView() {
             ? shippingParsed.formattedCombined 
             : "$0 USD"
 
-          // Handling Cost & Specialized Accessorials (Escort, Plugging, CMSN, Transit Trucking)
+          // Handling Cost & Specialized Accessorials
           let handlingCost = 0
 
           if (isMersinReefer) {
-            // Apply Company Multi-Leg Cost Breakdown for Dogharon to Nhava Sheva via Mersin:
-            // Ocean: $7,020 ($6,500 + 8% TRF), Plugging: $700, Escort: $1,050, Turkey Transit: $2,600, Iran: $800, CMSN: $200 = $12,370
             if (shippingCost === 0) {
               shippingCost = 7020
               shippingCostDisplay = "$7,020 USD (incl. 8% TRF)"
             }
-            handlingCost = 1050 + 700 + 200 // Escort ($1,050) + 7-Day Plugging ($700) + Commission ($200) = $1,950
+            handlingCost = 1050 + 700 + 200
             if (driverCost > 0) {
-              // Local driver rent entered + Turkey transit trucking ($2,600)
               driverCost = driverCost + 2600
               driverCostDisplay = `${driverParsed.rawAmount.toLocaleString()} AFN + $2,600 Turkey Transit`
             } else {
-              driverCost = 800 + 2600 // $800 Iran + $2,600 Turkey
+              driverCost = 800 + 2600
               driverCostRaw = 3400
               driverCostCurrency = 'USD'
               driverCostDisplay = "$3,400 USD (Inland Transit)"
             }
           }
 
-          // Total Logistics Direct Cost ($ USD)
-          const totalCost = Math.round((shippingCost + driverCost + handlingCost) * 100) / 100
+          // Financials Map Overrides
+          const finOverride = financialsMap[rawBL] || financialsMap[rawContainer] || financialsMap[String(entry.id)]
+          if (finOverride) {
+            if (typeof finOverride.freightRevenue === "number") {
+              revenue = finOverride.freightRevenue
+              hasFreightRevenue = true
+            }
+            if (typeof finOverride.shippingCost === "number") {
+              shippingCost = finOverride.shippingCost
+            }
+            if (typeof finOverride.driverCost === "number") {
+              driverCost = finOverride.driverCost
+            }
+            if (typeof finOverride.handlingCost === "number") {
+              handlingCost = finOverride.handlingCost
+            }
+          }
+
+          // Total Logistics Direct Cost
+          const totalCost = Math.round((shippingCost + driverCost + handlingCost + invDemurrage + invDocFee) * 100) / 100
           
           let netProfit = 0
           let profitMargin = 0
           let status: ContainerFreightRecord['status'] = 'Pending Freight'
+          let lossReason: string | undefined = undefined
 
           if (hasFreightRevenue) {
             netProfit = Math.round((revenue - totalCost) * 100) / 100
             profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0
             status = netProfit > 0 ? 'Profitable' : netProfit === 0 ? 'Break-Even' : 'Loss'
+            if (netProfit < 0) {
+              if (invDemurrage > 0 && invDemurrage >= Math.abs(netProfit)) {
+                lossReason = `Demurrage & Detention Penalties ($${invDemurrage.toLocaleString()})`
+              } else if (driverCost > revenue) {
+                lossReason = `Driver Rent ($${driverCost.toLocaleString()}) Exceeds Invoiced Freight ($${revenue.toLocaleString()})`
+              } else if (shippingCost > revenue) {
+                lossReason = `Ocean Shipping ($${shippingCost.toLocaleString()}) Exceeds Invoiced Freight ($${revenue.toLocaleString()})`
+              } else {
+                lossReason = "Total Direct Outflow Exceeds Invoiced Freight"
+              }
+            }
           } else {
-            // Freight NOT added yet
             if (totalCost > 0) {
-              netProfit = -totalCost // Direct expense outflow without billed revenue yet
+              netProfit = -totalCost
               profitMargin = 0
               status = 'Pending Freight'
+              lossReason = "Direct Outflow Incurred with Pending Freight Invoicing"
             } else {
               netProfit = 0
               profitMargin = 0
@@ -626,7 +720,7 @@ export function ReportsView() {
               id: `rec-ledg-${entry.id}`,
               source: 'ledger',
               bolNumber: rawBL,
-              invoiceNumber: entry.invoiceNo || `INV-${entry.sNo}`,
+              invoiceNumber: (matchedInv?.invoice_number || entry.invoiceNo || `INV-${entry.sNo}`),
               date: entry.date || entry.dateOfShip || '1404-09-10',
               shipperName: shipper,
               consigneeName: consignee,
@@ -650,10 +744,13 @@ export function ReportsView() {
               driverCostCurrency,
               driverCostDisplay,
               handlingCost,
+              demurrageCost: invDemurrage,
+              docFeeCost: invDocFee,
               totalCost,
               netProfit,
               profitMargin,
               status,
+              lossReason,
               exchangeRateUsed: exchangeRate
             })
           }
@@ -727,6 +824,12 @@ export function ReportsView() {
         size = '40RF'
       }
 
+      // Invoiced charges matching
+      const matchedInv = findMatchedInvoice(rawBL, rawContainer, shipper)
+      const invDemurrage = matchedInv ? (parseFloat(matchedInv.demurrage_charges || "0") || 0) + (parseFloat(matchedInv.detention_charges || "0") || 0) : 0
+      const invDocFee = matchedInv ? (parseFloat(matchedInv.documentation_charges || "0") || 0) : 0
+      const invFreight = matchedInv ? (parseFloat(matchedInv.freight_charges || "0") || 0) : 0
+
       // Financials: Check if user entered shipping_cost or freight_amount
       let revenue = 0
       let hasFreightRevenue = false
@@ -738,9 +841,12 @@ export function ReportsView() {
           revenue = p
           hasFreightRevenue = true
         }
+      } else if (invFreight > 0) {
+        revenue = invFreight
+        hasFreightRevenue = true
       }
 
-      // Driver Rent & Freight Normalization (Only if entered)
+      // Driver Rent & Freight Normalization
       const driverParsed = parseFreightCost(doc.driver_rent, doc.driver_rent_currency || "AFN", exchangeRate)
       let driverCost = driverParsed.rawAmount > 0 ? driverParsed.normalizedUSD : 0
       let driverCostRaw = driverParsed.rawAmount
@@ -749,7 +855,7 @@ export function ReportsView() {
         ? driverParsed.formattedCombined 
         : "$0 USD"
 
-      // Direct Ocean Line / Shipping Cost (Only if entered)
+      // Direct Ocean Line / Shipping Cost
       const oceanParsed = parseFreightCost(doc.ocean_freight, "USD", exchangeRate)
       let shippingCost = oceanParsed.rawAmount > 0 ? oceanParsed.normalizedUSD : 0
       let shippingCostDisplay = oceanParsed.rawAmount > 0 
@@ -763,7 +869,7 @@ export function ReportsView() {
           shippingCost = 7020
           shippingCostDisplay = "$7,020 USD (incl. 8% TRF)"
         }
-        handlingCost = 1050 + 700 + 200 // Escort ($1,050) + Plugging ($700) + CMSN ($200) = $1,950
+        handlingCost = 1050 + 700 + 200
         if (driverCost > 0) {
           driverCost = driverCost + 2600
           driverCostDisplay = `${driverParsed.rawAmount.toLocaleString()} AFN + $2,600 Turkey Transit`
@@ -775,21 +881,52 @@ export function ReportsView() {
         }
       }
 
-      const totalCost = Math.round((shippingCost + driverCost + handlingCost) * 100) / 100
+      // Financials Map Overrides
+      const finOverride = financialsMap[rawBL] || financialsMap[rawContainer] || financialsMap[String(doc.id)]
+      if (finOverride) {
+        if (typeof finOverride.freightRevenue === "number") {
+          revenue = finOverride.freightRevenue
+          hasFreightRevenue = true
+        }
+        if (typeof finOverride.shippingCost === "number") {
+          shippingCost = finOverride.shippingCost
+        }
+        if (typeof finOverride.driverCost === "number") {
+          driverCost = finOverride.driverCost
+        }
+        if (typeof finOverride.handlingCost === "number") {
+          handlingCost = finOverride.handlingCost
+        }
+      }
+
+      const totalCost = Math.round((shippingCost + driverCost + handlingCost + invDemurrage + invDocFee) * 100) / 100
 
       let netProfit = 0
       let profitMargin = 0
       let status: ContainerFreightRecord['status'] = 'Pending Freight'
+      let lossReason: string | undefined = undefined
 
       if (hasFreightRevenue) {
         netProfit = Math.round((revenue - totalCost) * 100) / 100
         profitMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0
         status = netProfit > 0 ? 'Profitable' : netProfit === 0 ? 'Break-Even' : 'Loss'
+        if (netProfit < 0) {
+          if (invDemurrage > 0 && invDemurrage >= Math.abs(netProfit)) {
+            lossReason = `Demurrage & Detention Penalties ($${invDemurrage.toLocaleString()})`
+          } else if (driverCost > revenue) {
+            lossReason = `Driver Rent ($${driverCost.toLocaleString()}) Exceeds Invoiced Freight ($${revenue.toLocaleString()})`
+          } else if (shippingCost > revenue) {
+            lossReason = `Ocean Shipping ($${shippingCost.toLocaleString()}) Exceeds Invoiced Freight ($${revenue.toLocaleString()})`
+          } else {
+            lossReason = "Total Direct Outflow Exceeds Invoiced Freight"
+          }
+        }
       } else {
         if (totalCost > 0) {
           netProfit = -totalCost
           profitMargin = 0
           status = 'Pending Freight'
+          lossReason = "Direct Outflow Incurred with Pending Freight Invoicing"
         } else {
           netProfit = 0
           profitMargin = 0
@@ -804,7 +941,7 @@ export function ReportsView() {
           id: `rec-bol-${doc.id || docIdx}`,
           source: 'bol',
           bolNumber: rawBL,
-          invoiceNumber: doc.invoice_no || `INV-${docIdx + 1}`,
+          invoiceNumber: (matchedInv?.invoice_number || doc.invoice_no || `INV-${docIdx + 1}`),
           date: doc.issue_date || '1404-09-15',
           shipperName: shipper,
           consigneeName: consignee,
@@ -828,17 +965,21 @@ export function ReportsView() {
           driverCostCurrency,
           driverCostDisplay,
           handlingCost,
+          demurrageCost: invDemurrage,
+          docFeeCost: invDocFee,
           totalCost,
           netProfit,
           profitMargin,
           status,
+          lossReason,
           exchangeRateUsed: exchangeRate
         })
       }
     })
 
     return list
-  }, [accounts, bolDocs, exchangeRate])
+  }, [accounts, bolDocs, savedInvoices, financialsMap, exchangeRate])
+
 
   // Unique Lists of Shippers and Consignees for filters
   const { allShippers, allConsignees } = useMemo(() => {
@@ -962,8 +1103,15 @@ export function ReportsView() {
     let shippingLineCostSum = 0
     let driverFreightCostSum = 0
     let borderHandlingCostSum = 0
+    let demurrageCostSum = 0
+    let docFeeCostSum = 0
     let pendingFreightCount = 0
     let billedContainersCount = 0
+    let lossContainersCount = 0
+    let lossContainersTotalLoss = 0
+    let profitableContainersCount = 0
+    let profitableContainersTotalProfit = 0
+    const lossReasonsBreakdown = new Map<string, { count: number; amount: number }>()
 
     filteredContainers.forEach(r => {
       totalContainers += 1
@@ -981,6 +1129,22 @@ export function ReportsView() {
       shippingLineCostSum += r.shippingCost || 0
       driverFreightCostSum += r.driverCost || 0
       borderHandlingCostSum += r.handlingCost || 0
+      demurrageCostSum += r.demurrageCost || 0
+      docFeeCostSum += r.docFeeCost || 0
+
+      if (r.status === 'Loss') {
+        lossContainersCount += 1
+        lossContainersTotalLoss += Math.abs(r.netProfit)
+        const reasonKey = r.lossReason || "Direct Outflow Exceeds Revenue"
+        const existing = lossReasonsBreakdown.get(reasonKey) || { count: 0, amount: 0 }
+        lossReasonsBreakdown.set(reasonKey, {
+          count: existing.count + 1,
+          amount: existing.amount + Math.abs(r.netProfit)
+        })
+      } else if (r.status === 'Profitable') {
+        profitableContainersCount += 1
+        profitableContainersTotalProfit += r.netProfit
+      }
 
       // Sizes
       if (r.containerSize === '20FT') total20ft += 1
@@ -1033,6 +1197,11 @@ export function ReportsView() {
       totalTEU: total20ft + (total40ft + total40hq + total40rf) * 2,
       pendingFreightCount,
       billedContainersCount,
+      lossContainersCount,
+      lossContainersTotalLoss,
+      profitableContainersCount,
+      profitableContainersTotalProfit,
+      lossReasonsList: Array.from(lossReasonsBreakdown.entries()).map(([reason, val]) => ({ reason, ...val })),
       exportCount,
       exportRevenue,
       exportCost,
@@ -1066,10 +1235,64 @@ export function ReportsView() {
       shippingLineCostSum,
       driverFreightCostSum,
       borderHandlingCostSum,
+      demurrageCostSum,
+      docFeeCostSum,
       customExpenseSum,
       customRevenueSum
     }
   }, [filteredContainers, customExpenses])
+
+  // Interactive Profit & Loss Sensitivity Simulator (Data App Feature)
+  const simulatedMetrics = useMemo(() => {
+    let simRevenue = 0
+    let simCost = 0
+    let simProfit = 0
+    let simProfitableCount = 0
+    let simLossCount = 0
+
+    filteredContainers.forEach(r => {
+      const rev = r.hasFreightRevenue ? r.freightRevenue : 0
+      const adjustedOcean = Math.max(0, (r.shippingCost || 0) + simOceanAdjustment)
+      
+      let adjustedDriver = r.driverCost || 0
+      if (r.driverCostRaw > 0 && r.driverCostCurrency === 'AFN' && simExchangeRate > 0) {
+        adjustedDriver = (r.driverCostRaw / simExchangeRate) * (1 + simDriverAdjustmentPercent / 100)
+      } else if (r.driverCost > 0) {
+        adjustedDriver = r.driverCost * (1 + simDriverAdjustmentPercent / 100)
+      }
+      
+      const adjustedHandling = r.handlingCost || 0
+      const adjustedDemurrage = r.demurrageCost || 0
+      const adjustedDocFee = r.docFeeCost || 0
+
+      const itemCost = Math.round((adjustedOcean + adjustedDriver + adjustedHandling + adjustedDemurrage + adjustedDocFee) * 100) / 100
+      const itemProfit = rev - itemCost
+
+      simRevenue += rev
+      simCost += itemCost
+      simProfit += itemProfit
+
+      if (itemProfit > 0) simProfitableCount += 1
+      else if (itemProfit < 0) simLossCount += 1
+    })
+
+    const simMargin = simRevenue > 0 ? (simProfit / simRevenue) * 100 : 0
+    const profitDelta = simProfit - containerMetrics.totalNetProfit
+    const costDelta = simCost - containerMetrics.totalDirectCost
+
+    return {
+      simRevenue,
+      simCost,
+      simProfit,
+      simMargin,
+      simProfitableCount,
+      simLossCount,
+      profitDelta,
+      costDelta,
+      simAvgProfitPerBox: filteredContainers.length > 0 ? Math.round(simProfit / filteredContainers.length) : 0
+    }
+  }, [filteredContainers, simExchangeRate, simOceanAdjustment, simDriverAdjustmentPercent, containerMetrics.totalNetProfit, containerMetrics.totalDirectCost])
+
 
   // Commodity Breakdown by Direction (Top Export vs Top Import Goods)
   const tradeCommodities = useMemo(() => {

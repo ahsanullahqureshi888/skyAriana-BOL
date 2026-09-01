@@ -4244,12 +4244,18 @@
 /* Print styles for Bill of Lading, Invoices, and Ledgers */
 @media print {
   @page {
-    size: A4 portrait !important;
-    margin: 0 !important;
+    size: auto;
+    margin: 0;
   }
 
   /* Dedicated A4 Landscape setup for Account Ledger printing */
+  @page ledger-landscape-page {
+    size: A4 landscape !important;
+    margin: 4mm 5mm !important;
+  }
+
   body.ledger-landscape-active,
+  html.ledger-landscape-active,
   html[data-print-mode="ledger-landscape"],
   body[data-print-mode="ledger-landscape"],
   html[data-print-active="ledger"],
@@ -4257,12 +4263,17 @@
     page: ledger-landscape-page !important;
   }
 
-  @page ledger-landscape-page {
+  /* Dedicated A4 Landscape & Portrait setup for Reports printing */
+  @page reports-landscape-page {
     size: A4 landscape !important;
-    margin: 4mm 5mm !important;
+    margin: 5mm 6mm !important;
   }
 
-  /* Dedicated A4 Landscape & Portrait setup for Reports printing */
+  @page reports-portrait-page {
+    size: A4 portrait !important;
+    margin: 6mm 6mm !important;
+  }
+
   body[data-print-active="reports"][data-print-orientation="landscape"],
   html[data-print-active="reports"][data-print-orientation="landscape"],
   body[data-print-active="reports"]:not([data-print-orientation="portrait"]),
@@ -4270,19 +4281,21 @@
     page: reports-landscape-page !important;
   }
 
-  @page reports-landscape-page {
-    size: A4 landscape !important;
-    margin: 5mm 6mm !important;
-  }
-
   body[data-print-active="reports"][data-print-orientation="portrait"],
   html[data-print-active="reports"][data-print-orientation="portrait"] {
     page: reports-portrait-page !important;
   }
 
-  @page reports-portrait-page {
+  @page bol-portrait-page {
     size: A4 portrait !important;
-    margin: 6mm 6mm !important;
+    margin: 0 !important;
+  }
+
+  body[data-print-active="invoice"],
+  html[data-print-active="invoice"],
+  body[data-print-active="bol"],
+  html[data-print-active="bol"] {
+    page: bol-portrait-page !important;
   }
 
   /* Reset heights & position on global containers to prevent blank page spillover */
