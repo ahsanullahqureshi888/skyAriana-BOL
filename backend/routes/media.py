@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
 from backend.models import MediaFile, UploadedDocument
@@ -35,32 +35,41 @@ def serialize_media(row: MediaFile | UploadedDocument) -> dict:
     }
 
 
-def find_media_row(db: Session, media_id: str) -> MediaFile | UploadedDocument | None:
-    return db.get(MediaFile, media_id) or db.get(UploadedDocument, media_id)
+async def find_media_row(db: AsyncSession, media_id: str) -> MediaFile | UploadedDocument | None:
+    return (await db.get(MediaFile, media_id)) or (await db.get(UploadedDocument, media_id))
 
 
 @media_router.get("")
-def list_media(
+async def list_media(
     linked_type: str | None = Query(default=None),
     linked_id: str | None = Query(default=None),
     media_type: str | None = Query(default=None),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
-    statement = select(MediaFile).order_by(MediaFile.created_at.desc())
-    if linked_type:
-        statement = statement.where(MediaFile.linked_type == linked_type)
-    if linked_id:
-        statement = statement.where(MediaFile.linked_id == linked_id)
-    if media_type:
-        statement = statement.where(MediaFile.media_type == media_type)
-    rows = db.execute(statement).scalars().all()
+    lt = str(linked_type).strip() if linked_type and not hasattr(linked_type, "default") else None
+    li = str(linked_id).strip() if linked_id and not hasattr(linked_id, "default") else None
+    mt = str(media_type).strip() if media_type and not hasattr(media_type, "default") else None
 
-    document_statement = select(UploadedDocument).order_by(UploadedDocument.created_at.desc())
-    if linked_type:
-        document_statement = document_statement.where(UploadedDocument.linked_type == linked_type)
-    if linked_id:
-        document_statement = document_statement.where(UploadedDocument.linked_id == linked_id)
-    document_rows = [] if media_type and media_type != "document" else db.execute(document_statement).scalars().all()
+    statement = select(MediaFile).order_by(MediaFile.created_at.desc())
+    if lt:
+        statement = statement.where(MediaFile.linked_type == lt)
+    if li:
+        statement = statement.where(MediaFile.linked_id == li)
+    if mt:
+        statement = statement.where(MediaFile.media_type == mt)
+    res = await db.execute(statement)
+    rows = list(res.scalars().all())
+
+    document_rows: list[UploadedDocument] = []
+    if not mt or mt == "document":
+        document_statement = select(UploadedDocument).order_by(UploadedDocument.created_at.desc())
+        if lt:
+            document_statement = document_statement.where(UploadedDocument.linked_type == lt)
+        if li:
+            document_statement = document_statement.where(UploadedDocument.linked_id == li)
+        doc_res = await db.execute(document_statement)
+        document_rows = list(doc_res.scalars().all())
+
 
     combined = [*rows, *document_rows]
     combined.sort(key=lambda row: row.created_at, reverse=True)
@@ -68,8 +77,8 @@ def list_media(
 
 
 @media_router.get("/{media_id}/file")
-def get_media_file(media_id: str, db: Session = Depends(get_db)):
-    row = find_media_row(db, media_id)
+async def get_media_file(media_id: str, db: AsyncSession = Depends(get_db)):
+    row = await find_media_row(db, media_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Media not found")
     path = Path(row.storage_path)
@@ -81,16 +90,16 @@ def get_media_file(media_id: str, db: Session = Depends(get_db)):
 
 
 @media_router.get("/{media_id}")
-def get_media(media_id: str, db: Session = Depends(get_db)):
-    row = find_media_row(db, media_id)
+async def get_media(media_id: str, db: AsyncSession = Depends(get_db)):
+    row = await find_media_row(db, media_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Media not found")
     return {"success": True, "data": serialize_media(row), "source": "python-fastapi"}
 
 
 @media_router.put("/{media_id}")
-def update_media(media_id: str, payload: dict, db: Session = Depends(get_db)):
-    row = find_media_row(db, media_id)
+async def update_media(media_id: str, payload: dict, db: AsyncSession = Depends(get_db)):
+    row = await find_media_row(db, media_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Media not found")
 
@@ -104,24 +113,24 @@ def update_media(media_id: str, payload: dict, db: Session = Depends(get_db)):
         row.shipment_reference = str(payload["shipment_reference"])
 
     db.add(row)
-    db.commit()
-    db.refresh(row)
+    await db.commit()
+    await db.refresh(row)
     return {"success": True, "data": serialize_media(row), "source": "python-fastapi"}
 
 
 @media_router.get("/{media_id}/download")
-def download_media(media_id: str, db: Session = Depends(get_db)):
-    return get_media_file(media_id, db)
+async def download_media(media_id: str, db: AsyncSession = Depends(get_db)):
+    return await get_media_file(media_id, db)
 
 
 @media_router.delete("/{media_id}")
-def delete_media(media_id: str, permanent: bool = Query(default=False), db: Session = Depends(get_db)):
-    row = find_media_row(db, media_id)
+async def delete_media(media_id: str, permanent: bool = Query(default=False), db: AsyncSession = Depends(get_db)):
+    row = await find_media_row(db, media_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Media not found")
     path = Path(row.storage_path)
-    db.delete(row)
-    db.commit()
+    await db.delete(row)
+    await db.commit()
     if permanent and path.exists():
         path.unlink()
     return {"success": True, "data": {"id": media_id, "permanent": permanent}, "source": "python-fastapi"}
@@ -167,7 +176,7 @@ async def upload_file(
     deleted_at: str = Form(default=""),
     is_archived: str = Form(default="false"),
     color_label: str = Form(default=""),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     saved = await save_upload(file)
     metadata = {
@@ -236,6 +245,7 @@ async def upload_file(
             metadata_json=metadata,
         )
     db.add(row)
-    db.commit()
-    db.refresh(row)
+    await db.commit()
+    await db.refresh(row)
     return {"success": True, "data": serialize_media(row), "source": "python-fastapi"}
+

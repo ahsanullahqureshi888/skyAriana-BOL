@@ -1,0 +1,16 @@
+from pathlib import Path
+
+path = Path('src/App.tsx')
+text = path.read_text(encoding='utf-8')
+text = text.replace("// removed TypeScript-only type import for compatibility\n", "import type { Language } from './i18n/translations'\n")
+text = text.replace("const AppContext = createContext(null)", "const AppContext = createContext<any>(null)")
+text = text.replace("const DashboardLayout = ({ children }) => {", "const DashboardLayout = ({ children }: { children: React.ReactNode }) => {")
+text = text.replace("  const can = (permission: string) => isSuperAdmin || userData.permissions?.includes(permission)", "  const can = (permission: string) => isSuperAdmin || (userData as any).permissions?.includes(permission)")
+text = text.replace("const PermissionRoute = ({ permission, children }) => {", "const PermissionRoute = ({ permission, children }: { permission: string; children: React.ReactNode }) => {")
+text = text.replace("const ProtectedRoute = ({ children }) => {", "const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {")
+text = text.replace("const getInitials = (name) => {", "const getInitials = (name: string) => {")
+text = text.replace("const [lang, setLang] = useState('en')", "const [lang, setLang] = useState<Language>('en')")
+text = text.replace("const [user, setUser] = useState(null)", "const [user, setUser] = useState<any>(null)")
+text = text.replace("const t = translations[lang]", "const t = translations[lang]")
+path.write_text(text, encoding='utf-8')
+print('patched types in App.tsx')

@@ -37,6 +37,11 @@
   ],
   "exclude": [
     "node_modules",
-    "bol-ledger"
+    "bol-ledger",
+    "SKY-ARIANA-DOC",
+    "SKY-CMR-BORDER",
+    "SKY-ARIANA-BANK",
+    "awesome-claude-code-subagents"
   ]
 }
+

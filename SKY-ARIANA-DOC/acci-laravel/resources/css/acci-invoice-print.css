@@ -1,0 +1,703 @@
+@page {
+    size: A4 portrait;
+    margin: 10mm;
+}
+
+.acci-document,
+.acci-document * {
+    box-sizing: border-box;
+}
+
+.acci-document {
+    position: relative;
+    width: 174mm;
+    min-height: 277mm;
+    margin: 0 auto;
+    color: #000;
+    background: #fff;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 9pt;
+    line-height: 1.13;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.acci-document p,
+.acci-document h1,
+.acci-document h2 {
+    margin: 0;
+}
+
+.acci-document table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.acci-document__title {
+    height: 24mm;
+    padding-top: 8mm;
+    text-align: center;
+}
+
+.acci-document__title h1 {
+    font-size: 14pt;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+}
+
+.acci-document__title p {
+    margin-top: 2.5mm;
+    margin-bottom: 3mm;
+    font-size: 11pt;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+}
+
+.acci-header-layout {
+    min-height: 62mm;
+    height: auto;
+}
+
+.acci-packing-list-doc .acci-header-layout {
+    min-height: 78mm;
+    height: auto;
+}
+
+.acci-header-layout > tbody > tr > td {
+    padding: 0;
+    vertical-align: top;
+}
+
+.acci-header-layout__left {
+    width: 49%;
+    padding-right: 1.6mm !important;
+}
+
+.acci-header-layout__right {
+    width: 51%;
+    padding-left: 1.6mm !important;
+}
+
+.acci-party-box {
+    height: 72mm;
+    padding: 2.1mm 2.4mm;
+    border: 1px solid #000 !important;
+    overflow: hidden;
+    box-sizing: border-box;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+}
+
+.acci-party-box p {
+    margin: 0 !important;
+    padding: 0 !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+}
+
+.acci-packing-list-doc .acci-party-box {
+    min-height: 78mm;
+    height: 78mm;
+    padding: 2.5mm 3.2mm;
+    font-size: 7.2pt;
+    line-height: 1.22;
+    overflow: hidden;
+    box-sizing: border-box;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+}
+
+.acci-party-block {
+    min-height: 24mm;
+}
+
+.acci-packing-list-doc .acci-party-block--seller {
+    min-height: 38mm;
+}
+
+.acci-packing-list-doc .acci-party-block--buyer {
+    min-height: 30mm;
+}
+
+.acci-party-divider {
+    margin: 1.5mm 0;
+    color: #000;
+    font-size: 7.5pt;
+    letter-spacing: -0.5px;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.acci-packing-list-doc .acci-party-divider {
+    margin: 1mm 0;
+    font-size: 7.5pt;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.acci-party-header {
+    font-size: 9.2pt;
+}
+
+.acci-party-label {
+    display: inline;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.acci-party-name {
+    display: inline;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.acci-party-address,
+.acci-party-contact {
+    margin-top: .55mm !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    max-width: 100% !important;
+}
+
+.acci-packing-list-doc .acci-party-header {
+    font-size: 9.5pt;
+    line-height: 1.25;
+    margin: 0 0 0.5mm 0 !important;
+}
+
+.acci-packing-list-doc .acci-party-address,
+.acci-packing-list-doc .acci-party-contact {
+    margin: 0.4mm 0 !important;
+    padding: 0 !important;
+    font-size: 7.8pt !important;
+    line-height: 1.25 !important;
+    letter-spacing: 0 !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    max-width: 100% !important;
+}
+
+/* Auto-scaling mode when text length is extremely long */
+.acci-packing-list-doc .acci-party-box.has-long-party-text {
+    padding: 1.8mm 2.2mm !important;
+    font-size: 7.0pt !important;
+    line-height: 1.15 !important;
+}
+
+.acci-packing-list-doc .acci-party-box.has-long-party-text .acci-party-header {
+    font-size: 8.0pt !important;
+    line-height: 1.18 !important;
+    margin: 0 0 0.3mm 0 !important;
+}
+
+.acci-packing-list-doc .acci-party-box.has-long-party-text .acci-party-address,
+.acci-packing-list-doc .acci-party-box.has-long-party-text .acci-party-contact {
+    margin: 0.3mm 0 !important;
+    padding: 0 !important;
+    font-size: 7.0pt !important;
+    line-height: 1.15 !important;
+    letter-spacing: 0 !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    max-width: 100% !important;
+}
+
+.acci-packing-list-doc .acci-detail-table {
+    height: 66mm;
+}
+
+.acci-packing-list-doc .acci-goods-table {
+    height: 176mm;
+    margin-top: 2mm;
+}
+
+.acci-packing-list-doc .acci-goods-row,
+.acci-packing-list-doc .acci-goods-row > td {
+    height: 166mm;
+}
+
+.acci-document-meta {
+    height: 12mm;
+    padding: .5mm 1mm 1.5mm 1.2mm;
+    font-size: 9.5pt;
+    line-height: 1.35;
+}
+
+.acci-document-meta p {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.acci-document-meta span:first-child {
+    display: inline-block;
+    width: 7.8mm;
+}
+
+.acci-detail-table {
+    height: 58mm;
+    border: 1px solid #000 !important;
+}
+
+.acci-detail-table td {
+    padding: 1.05mm 1.3mm;
+    border: .22mm solid #000;
+    vertical-align: top;
+}
+
+.acci-detail-table__heading {
+    height: 8mm;
+    text-align: center;
+    font-size: 8.7pt;
+}
+
+.acci-detail-table__awb {
+    height: 12mm;
+}
+
+.acci-detail-table__payment {
+    height: 15mm;
+    text-align: center;
+}
+
+.acci-detail-table__payment strong,
+.acci-detail-table__payment span {
+    display: block;
+}
+
+.acci-detail-table__split {
+    height: 10mm;
+}
+
+.acci-detail-table__split td {
+    width: 50%;
+}
+
+.acci-detail-table__route {
+    height: 13mm;
+}
+
+.acci-detail-label {
+    display: block;
+    margin-bottom: .6mm;
+    font-weight: 700;
+}
+
+.acci-goods-table {
+    height: 176mm;
+    margin-top: 4.5mm;
+    border: none;
+    /* We handle border collapse directly on the element or rely on it */
+    page-break-inside: avoid;
+}
+
+.acci-goods-table th,
+.acci-goods-table td {
+    border: .28mm solid #000;
+    box-sizing: border-box;
+}
+
+/* Thick outer borders for the NO column */
+.acci-goods-table__no, .acci-goods-row__number {
+    border: 1px solid #000 !important;
+}
+
+/* Thick outer borders for the Quantity...Total block Header */
+.acci-goods-table__quantity, .acci-goods-table__description, .acci-goods-table__unit, .acci-goods-table__total {
+    border-top: 1px solid #000 !important;
+    border-bottom: 1px solid #000 !important;
+}
+.acci-goods-table__quantity {
+    border-left: 1px solid #000 !important;
+}
+.acci-goods-table__total {
+    border-right: 1px solid #000 !important;
+}
+
+/* Thick outer borders for the Quantity...Total block Body */
+.acci-goods-row td:not(.acci-goods-row__number):not(.acci-spacer-col) {
+    border-top: 1px solid #000 !important;
+    border-bottom: 1px solid #000 !important;
+}
+.acci-goods-row .acci-goods-row__quantity {
+    border-left: 1px solid #000 !important;
+}
+.acci-goods-row td:last-child {
+    border-right: 1px solid #000 !important;
+}
+
+
+.acci-goods-table thead th {
+    height: 10mm;
+    padding: 1mm .8mm;
+    font-size: 8.4pt;
+    font-weight: 700;
+    line-height: 1.05;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.acci-goods-table__no {
+    width: 5.5%;
+}
+
+.acci-goods-table__quantity {
+    width: 17%;
+}
+
+.acci-goods-table__description {
+    width: 56%;
+}
+
+.acci-goods-table__unit {
+    width: 10.5%;
+}
+
+.acci-goods-table__total {
+    width: 11%;
+}
+
+.acci-goods-row {
+    height: 166mm;
+    page-break-inside: avoid;
+}
+
+.acci-goods-row > td {
+    position: relative;
+    height: 166mm;
+    padding: 4mm 1.5mm 2mm;
+    vertical-align: top;
+}
+
+.acci-goods-row__number {
+    padding-top: 9mm !important;
+    text-align: center;
+}
+
+.acci-quantity-lines {
+    padding-top: 1.5mm;
+    font-weight: 700;
+    line-height: 1.45;
+}
+
+.acci-quantity-lines p,
+.acci-goods-row td p {
+    margin-bottom: 3.5mm !important;
+}
+
+.acci-quantity-lines p:last-child,
+.acci-goods-row td p:last-child {
+    margin-bottom: 0 !important;
+}
+
+.acci-product-name {
+    padding-top: 2.1mm;
+    font-weight: 700;
+    text-align: left;
+    text-transform: uppercase;
+}
+
+.acci-price-top {
+    padding-top: 2.5mm;
+    font-weight: 700;
+    text-align: center;
+}
+
+.acci-description-summary {
+    position: absolute;
+    top: 48mm;
+    right: 2mm;
+    left: 2mm;
+    text-align: center;
+    font-family: 'Times New Roman', Times, serif;
+}
+
+.acci-description-summary__amount {
+    font-size: 10pt;
+    font-weight: 400;
+}
+
+.acci-description-summary__words {
+    max-width: 100%;
+    margin: 4.5mm auto 0 !important;
+    font-size: 10pt;
+    font-weight: 400;
+    line-height: 1.4;
+    text-transform: capitalize;
+}
+
+.acci-description-summary__origin {
+    margin-top: 6mm !important;
+    font-size: 10pt;
+    font-weight: 400;
+}
+
+.acci-receipt-box {
+    position: absolute;
+    z-index: 2;
+    top: 78mm;
+    left: 2.5%;
+    width: 86mm;
+    min-height: 33mm;
+    padding: 2.2mm;
+    border: .25mm solid #000;
+    border-radius: 0;
+    font-size: 8pt;
+    font-weight: 700;
+    line-height: 1.38;
+    text-align: left;
+}
+
+.acci-receipt-line {
+    display: block;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.acci-receipt-line--signature {
+    margin-top: 6mm;
+    font-weight: 700;
+}
+
+.acci-seal-layer {
+    position: absolute;
+    z-index: 5;
+    top: 58mm;
+    left: 18mm;
+    width: 90mm;
+    height: 63mm;
+    pointer-events: none;
+}
+
+.acci-packing-list-doc .acci-seal-layer {
+    left: auto;
+    right: -30mm;
+    top: 65mm;
+}
+
+.acci-signature-image,
+.acci-stamp-image {
+    position: absolute;
+    display: block;
+    max-width: none;
+    height: auto;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+}
+
+.acci-signature-image {
+    z-index: 1;
+    top: 2mm;
+    left: 2mm;
+    width: 60mm;
+    max-height: 35mm;
+}
+
+.acci-stamp-image {
+    z-index: 2;
+    top: 6mm;
+    left: 14mm;
+    width: 60mm;
+    max-height: 62mm;
+}
+
+.acci-authorized-block {
+    position: absolute;
+    top: 46mm;
+    right: 1mm;
+    left: 1mm;
+    text-align: center;
+}
+
+.acci-authorized-block__total {
+    margin-bottom: 6mm !important;
+    font-weight: 700;
+}
+
+.acci-authorized-block__total strong,
+.acci-authorized-block__total span {
+    display: block;
+    font-weight: 700;
+}
+
+.acci-authorized-block__price {
+    margin-bottom: 6mm !important;
+    font-size: 9.5pt;
+    font-weight: 700;
+}
+
+.acci-authorized-block__name {
+    display: block;
+    overflow-wrap: anywhere;
+    font-size: 9pt;
+    font-weight: 800;
+    line-height: 1.14;
+    text-transform: uppercase;
+}
+
+.acci-authorized-block__label {
+    display: block;
+    margin-top: 2mm;
+    font-size: 7.5pt;
+    font-weight: 700;
+}
+
+.acci-document__serial {
+    height: 10mm;
+    padding: 3mm 0 0 6mm;
+    font-size: 12pt;
+    font-weight: 700;
+    letter-spacing: .15mm;
+}
+
+.acci-document__serial span {
+    display: inline-block;
+    transform: rotate(-1deg);
+}
+
+/* DomPDF expands fixed-height table rows differently from Chromium. These
+   compact overrides preserve the same composition inside the 277 mm A4 area. */
+.acci-pdf .acci-document {
+    font-size: 8pt;
+    line-height: 1.05;
+}
+
+.acci-pdf .acci-document__title {
+    height: 24mm;
+    padding-top: 11mm;
+}
+
+.acci-pdf .acci-header-layout,
+.acci-pdf .acci-party-box {
+    height: 60mm;
+}
+
+.acci-pdf .acci-document-meta {
+    height: 10mm;
+    padding: .7mm 1mm;
+}
+
+.acci-pdf .acci-detail-table {
+    height: 50mm;
+}
+
+.acci-pdf .acci-detail-table td {
+    padding: .45mm .8mm;
+}
+
+.acci-pdf .acci-detail-table__heading {
+    height: 6mm;
+}
+
+.acci-pdf .acci-detail-table__awb {
+    height: 8mm;
+}
+
+.acci-pdf .acci-detail-table__payment {
+    height: 12mm;
+}
+
+.acci-pdf .acci-detail-table__split {
+    height: 8mm;
+}
+
+.acci-pdf .acci-detail-table__route {
+    height: 10mm;
+}
+
+.acci-pdf .acci-goods-table {
+    height: 158mm;
+    margin-top: 1.5mm;
+}
+
+.acci-pdf .acci-goods-row,
+.acci-pdf .acci-goods-row > td {
+    height: 148mm;
+}
+
+.acci-pdf .acci-document__serial {
+    height: 8mm;
+    padding-top: 2mm;
+}
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 0mm;
+    }
+
+    html,
+    body {
+        width: 100% !important;
+        height: auto !important;
+        min-height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        overflow: visible !important;
+    }
+
+    .print-toolbar {
+        display: none !important;
+    }
+
+    .print-sheet {
+        width: 100% !important;
+        min-height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .acci-document {
+        width: 174mm !important;
+        height: 265mm !important;
+        min-height: 0 !important;
+        max-height: 265mm !important;
+        margin: 4mm auto 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        page-break-after: avoid !important;
+        page-break-before: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    .acci-goods-table {
+        height: 160mm !important;
+        margin-top: 2.5mm !important;
+        page-break-inside: avoid !important;
+    }
+
+    .acci-goods-row,
+    .acci-goods-row > td {
+        height: 150mm !important;
+        page-break-inside: avoid !important;
+    }
+
+    .acci-packing-list-doc .acci-goods-table {
+        height: 176mm !important;
+        margin-top: 2mm !important;
+    }
+
+    .acci-packing-list-doc .acci-goods-row,
+    .acci-packing-list-doc .acci-goods-row > td {
+        height: 166mm !important;
+    }
+
+    .acci-header-layout,
+    .acci-party-box {
+        page-break-inside: avoid !important;
+    }
+}
+.acci-document.acci-blue { background-color: #d1efff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }

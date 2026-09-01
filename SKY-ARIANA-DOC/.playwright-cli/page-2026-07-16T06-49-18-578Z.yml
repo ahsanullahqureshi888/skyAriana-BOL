@@ -1,0 +1,182 @@
+- generic [ref=f4e3]:
+  - complementary [ref=f4e4]:
+    - button "Expand sidebar" [ref=f4e353] [cursor=pointer]:
+      - img "Sky Ariana Logo" [ref=f4e354]
+    - navigation [ref=f4e14]:
+      - link "Dashboard" [ref=f4e15] [cursor=pointer]:
+        - /url: /
+      - link "Invoices" [ref=f4e22] [cursor=pointer]:
+        - /url: /invoices
+      - link "Customers" [ref=f4e27] [cursor=pointer]:
+        - /url: /customers
+      - link "Products & Services" [ref=f4e34] [cursor=pointer]:
+        - /url: /products
+      - link "Company Settings" [ref=f4e40] [cursor=pointer]:
+        - /url: /settings
+      - link "Backup & Restore" [ref=f4e45] [cursor=pointer]:
+        - /url: /backups
+      - link "Activity History" [ref=f4e51] [cursor=pointer]:
+        - /url: /logs
+      - link "User Management" [ref=f4e57] [cursor=pointer]:
+        - /url: /user-management
+    - button [ref=f4e355] [cursor=pointer]
+  - generic [ref=f4e68]:
+    - banner [ref=f4e69]:
+      - img "Sky Ariana & Balam Bar Baran" [ref=f4e72]
+      - generic [ref=f4e75]:
+        - generic [ref=f4e76]:
+          - button "Switch Language" [ref=f4e77] [cursor=pointer]
+          - combobox [ref=f4e81] [cursor=pointer]:
+            - option "English (EN)" [selected]
+            - option "فارسی (FA)"
+            - option "پښتو (PS)"
+        - generic "Admin User (Super Admin)" [ref=f4e86]: AU
+    - main [ref=f4e87]:
+      - generic [ref=f4e88]:
+        - tablist "User management sections" [ref=f4e89]:
+          - tab "Users" [ref=f4e90] [cursor=pointer]
+          - tab "Roles" [ref=f4e357] [cursor=pointer]
+          - tab "Activity" [ref=f4e359] [cursor=pointer]
+          - tab "Sessions" [ref=f4e361] [cursor=pointer]
+          - tab "Security" [selected] [ref=f4e363] [cursor=pointer]
+        - generic [ref=f4e115]:
+          - generic [ref=f4e116]:
+            - generic [ref=f4e121]:
+              - generic [ref=f4e122]: Policy controls
+              - heading "Security Settings" [level=2] [ref=f4e123]
+              - paragraph [ref=f4e124]: Configure passwords, sessions, access protection, and account notifications.
+            - generic [ref=f4e125]:
+              - generic [ref=f4e126]: Unsaved changes
+              - generic [ref=f4e128]: Last updated Jul 15, 2026, 8:32 PM
+          - generic [ref=f4e129]:
+            - generic [ref=f4e130]:
+              - generic [ref=f4e136]:
+                - generic [ref=f4e137]: 1 · Password policy
+                - heading "Credential protection" [level=3] [ref=f4e138]
+                - paragraph [ref=f4e139]: Set the minimum strength and lifecycle for workspace passwords.
+              - generic [ref=f4e140]:
+                - generic [ref=f4e141]:
+                  - generic [ref=f4e142]: Minimum password length
+                  - spinbutton "Minimum password length" [ref=f4e143]: "10"
+                - generic [ref=f4e144]:
+                  - generic [ref=f4e145]: Password history
+                  - spinbutton "Password history Number of previous passwords to remember." [ref=f4e146]: "5"
+                  - generic [ref=f4e147]: Number of previous passwords to remember.
+                - generic [ref=f4e148]:
+                  - generic [ref=f4e149]: Expiration
+                  - spinbutton "Expiration Use 0 for passwords that do not expire." [ref=f4e150]: "0"
+                  - generic [ref=f4e151]: Use 0 for passwords that do not expire.
+              - generic [ref=f4e152]:
+                - generic [ref=f4e153] [cursor=pointer]:
+                  - generic [ref=f4e154]:
+                    - strong [ref=f4e155]: Uppercase letters
+                    - generic [ref=f4e156]: Require at least one uppercase character.
+                  - generic [ref=f4e157]:
+                    - checkbox "Uppercase letters, enabled" [checked] [ref=f4e158]
+                    - generic [ref=f4e160]: Enabled
+                - generic [ref=f4e161] [cursor=pointer]:
+                  - generic [ref=f4e162]:
+                    - strong [ref=f4e163]: Lowercase letters
+                    - generic [ref=f4e164]: Require at least one lowercase character.
+                  - generic [ref=f4e165]:
+                    - checkbox "Lowercase letters, enabled" [checked] [ref=f4e166]
+                    - generic [ref=f4e168]: Enabled
+                - generic [ref=f4e169] [cursor=pointer]:
+                  - generic [ref=f4e170]:
+                    - strong [ref=f4e171]: Numbers
+                    - generic [ref=f4e172]: Require at least one numeric character.
+                  - generic [ref=f4e173]:
+                    - checkbox "Numbers, enabled" [checked] [ref=f4e174]
+                    - generic [ref=f4e176]: Enabled
+                - generic [ref=f4e177] [cursor=pointer]:
+                  - generic [ref=f4e178]:
+                    - strong [ref=f4e179]: Special characters
+                    - generic [ref=f4e180]: Require punctuation or a symbol.
+                  - generic [ref=f4e181]:
+                    - checkbox "Special characters, enabled" [checked] [ref=f4e182]
+                    - generic [ref=f4e184]: Enabled
+            - generic [ref=f4e185]:
+              - generic [ref=f4e191]:
+                - generic [ref=f4e192]: 2 · Login protection
+                - heading "Protect sign-in attempts" [level=3] [ref=f4e193]
+                - paragraph [ref=f4e194]: Slow down repeated failures and require stronger authentication when appropriate.
+              - generic [ref=f4e195]:
+                - generic [ref=f4e196]:
+                  - generic [ref=f4e197]: Failed attempts before lock
+                  - spinbutton "Failed attempts before lock" [ref=f4e198]: "5"
+                - generic [ref=f4e199]:
+                  - generic [ref=f4e200]: Lock duration
+                  - spinbutton "Lock duration" [ref=f4e201]: "15"
+                - generic [ref=f4e202]:
+                  - generic [ref=f4e203]: Reset link lifetime
+                  - spinbutton "Reset link lifetime" [ref=f4e204]: "30"
+              - generic [ref=f4e205]:
+                - generic [ref=f4e206] [cursor=pointer]:
+                  - generic [ref=f4e207]:
+                    - strong [ref=f4e208]: Require two-factor authentication
+                    - generic [ref=f4e209]: Require a second factor for every workspace account.
+                  - generic [ref=f4e210]:
+                    - checkbox "Require two-factor authentication, disabled" [ref=f4e211]
+                    - generic [ref=f4e213]: Disabled
+                - generic [ref=f4e214] [cursor=pointer]:
+                  - generic [ref=f4e215]:
+                    - strong [ref=f4e216]: Password change on first login
+                    - generic [ref=f4e217]: Require invited users to replace their temporary password.
+                  - generic [ref=f4e218]:
+                    - checkbox "Password change on first login, enabled" [checked] [ref=f4e219]
+                    - generic [ref=f4e221]: Enabled
+            - generic [ref=f4e222]:
+              - generic [ref=f4e227]:
+                - generic [ref=f4e228]: 3 · Session security
+                - heading "Session security" [level=3] [ref=f4e229]
+                - paragraph [ref=f4e230]: Control how long sessions remain active and whether users can sign in on more than one device.
+              - generic [ref=f4e232]:
+                - generic [ref=f4e233]: Session timeout
+                - spinbutton "Session timeout 15 minutes to 30 days." [ref=f4e234]: "480"
+                - generic [ref=f4e235]: 15 minutes to 30 days.
+              - generic [ref=f4e237] [cursor=pointer]:
+                - generic [ref=f4e238]:
+                  - strong [ref=f4e239]: Allow multiple sessions
+                  - generic [ref=f4e240]: Allow a user to stay signed in on multiple devices.
+                - generic [ref=f4e241]:
+                  - checkbox "Allow multiple sessions, enabled" [checked] [ref=f4e242]
+                  - generic [ref=f4e244]: Enabled
+            - generic [ref=f4e245]:
+              - generic [ref=f4e253]:
+                - generic [ref=f4e254]: 4 · Invitations
+                - heading "Invitation lifecycle" [level=3] [ref=f4e255]
+                - paragraph [ref=f4e256]: Keep access invitations short-lived and easy to understand.
+              - generic [ref=f4e258]:
+                - generic [ref=f4e259]: Invitation expiry
+                - spinbutton "Invitation expiry 48 hours = 2 days. Invitations expire if they are not accepted within this period." [ref=f4e320]: "48"
+                - generic [ref=f4e261]: 48 hours = 2 days. Invitations expire if they are not accepted within this period.
+            - generic [ref=f4e262]:
+              - generic [ref=f4e270]:
+                - generic [ref=f4e271]: 5 · Login notifications
+                - heading "Invitations & Login Notifications" [level=3] [ref=f4e272]
+                - paragraph [ref=f4e273]: Configure invitation expiry and security alerts for user sign-ins.
+              - generic [ref=f4e274]:
+                - generic [ref=f4e275] [cursor=pointer]:
+                  - generic [ref=f4e276]:
+                    - strong [ref=f4e277]: Notify on successful login
+                    - generic [ref=f4e278]: Send an alert when an account signs in successfully.
+                  - generic [ref=f4e279]:
+                    - checkbox "Notify on successful login, enabled" [checked] [ref=f4e280]
+                    - generic [ref=f4e282]: Enabled
+                - generic [ref=f4e283] [cursor=pointer]:
+                  - generic [ref=f4e284]:
+                    - strong [ref=f4e285]: Notify on a new device
+                    - generic [ref=f4e286]: Send an alert when an account signs in from an unrecognized device.
+                  - generic [ref=f4e287]:
+                    - checkbox "Notify on a new device, enabled" [checked] [ref=f4e288]
+                    - generic [ref=f4e290]: Enabled
+              - generic [ref=f4e291]: Failed sign-ins, account locks, password changes, and role changes remain available in Activity History. The current policy API persists successful-login and new-device notifications only.
+          - generic [ref=f4e296]:
+            - generic [ref=f4e302]:
+              - generic [ref=f4e303]: 6 · Security review
+              - heading "Unsaved security policy changes" [level=3] [ref=f4e321]
+              - paragraph [ref=f4e305]: Review your changes before applying them. Changes that weaken security require explicit confirmation and are recorded in Activity History.
+            - generic [ref=f4e306]:
+              - button "Discard" [ref=f4e307] [cursor=pointer]
+              - button "Review changes" [active] [ref=f4e311] [cursor=pointer]
+              - button "Save policy" [ref=f4e315] [cursor=pointer]

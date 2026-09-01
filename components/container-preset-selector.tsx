@@ -353,7 +353,7 @@ export function ContainerPresetSelector({
           />
 
           {showQuickChips && (
-            <div className="flex flex-wrap gap-1 mt-1">
+            <div className="flex items-center gap-1 mt-1 overflow-x-auto no-scrollbar pb-0.5">
               {quickTypeChips.map((chip) => {
                 const isActive = containerType === chip.label
                 return (
@@ -361,7 +361,7 @@ export function ContainerPresetSelector({
                     key={chip.label}
                     type="button"
                     onClick={() => handleSelectType(chip.label)}
-                    className={`inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.2 rounded border transition-all ${
+                    className={`inline-flex items-center gap-0.5 text-[8.5px] font-bold px-1.5 py-0.5 rounded border transition-all whitespace-nowrap shrink-0 ${
                       isActive
                         ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
                         : "bg-white text-blue-900 border-blue-200 hover:bg-blue-50"
@@ -379,10 +379,10 @@ export function ContainerPresetSelector({
         {/* Field 2: Container No */}
         <div>
           <div className="flex items-center justify-between mb-0.5">
-            <label className="text-[10.5px] font-bold text-blue-900 block">
+            <label className="text-[10px] font-bold text-blue-900 block">
               Container No / د کانټینر شمېره
             </label>
-            <span className="text-[9px] font-medium text-slate-400">شمېره</span>
+            <span className="text-[8.5px] font-medium text-slate-400">شمېره</span>
           </div>
 
           <Input
@@ -394,14 +394,14 @@ export function ContainerPresetSelector({
           />
 
           {showQuickChips && (
-            <div className="flex flex-wrap items-center gap-1 mt-1">
-              <span className="text-[9px] font-bold text-slate-400">مختاړی:</span>
+            <div className="flex items-center gap-1 mt-1 overflow-x-auto no-scrollbar pb-0.5">
+              <span className="text-[8.5px] font-bold text-slate-400 shrink-0">مختاړی:</span>
               {CONTAINER_PREFIX_SHORTCUTS.map((pref) => (
                 <button
                   key={pref}
                   type="button"
                   onClick={() => handleApplyPrefix(pref)}
-                  className="text-[9px] font-mono font-bold px-1 py-0.2 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-200 rounded transition-colors"
+                  className="text-[8.5px] font-mono font-bold px-1.5 py-0.5 bg-slate-100 hover:bg-blue-100 text-slate-700 hover:text-blue-900 border border-slate-200 rounded transition-colors whitespace-nowrap shrink-0"
                 >
                   +{pref}
                 </button>
@@ -415,7 +415,7 @@ export function ContainerPresetSelector({
       {showDetailsField && (
         <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-200/70 space-y-1">
           <div className="flex items-center justify-between">
-            <label className="text-[10.5px] font-bold text-blue-950 flex items-center gap-1">
+            <label className="text-[10px] font-bold text-blue-950 flex items-center gap-1">
               <ThermometerSnowflake className="w-2.5 h-2.5 text-emerald-600" />
               <span>Container Details & Conditions / د کانټینر شرایط او تفصیلات</span>
             </label>
@@ -424,7 +424,7 @@ export function ContainerPresetSelector({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-0.5 text-[9.5px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded px-1.5 py-0.2 transition-colors shadow-2xs"
+                  className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded px-1.5 py-0.2 transition-colors shadow-2xs"
                 >
                   <Sparkles className="w-2.5 h-2.5 text-emerald-600" />
                   <span>انتخاب شرایط / تودوخه</span>
@@ -466,7 +466,7 @@ export function ContainerPresetSelector({
           />
 
           {showQuickChips && (
-            <div className="flex flex-wrap gap-1 pt-0.5">
+            <div className="flex items-center gap-1 pt-0.5 overflow-x-auto no-scrollbar pb-0.5">
               {CONTAINER_DETAILS_PRESETS.map((chip) => {
                 const isActive = (containerDetails || "").includes(chip.text)
                 return (
@@ -474,7 +474,7 @@ export function ContainerPresetSelector({
                     key={chip.text}
                     type="button"
                     onClick={() => handleSelectDetail(chip.text)}
-                    className={`inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.2 rounded border transition-all ${
+                    className={`inline-flex items-center gap-1 text-[8.5px] font-bold px-1.5 py-0.5 rounded border transition-all whitespace-nowrap shrink-0 ${
                       isActive
                         ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
                         : "bg-white text-emerald-900 border-emerald-200 hover:bg-emerald-50"

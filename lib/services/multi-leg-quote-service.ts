@@ -713,25 +713,39 @@ export function generateQuoteLedgerJournal(
   const entries: QuoteLedgerJournalEntry[] = []
   const today = new Date().toISOString().split("T")[0]
   const bolRef = bolNumber || quote.quoteNumber
+  const round2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100
 
-  // 1. Freight Receivable (Debit Client Account)
+  // Calculate separate accessorial portions
+  const escort = round2(quote.escortFeeUSD || 0)
+  const plugging = round2(quote.pluggingFeeUSD || 0)
+  const commission = round2(quote.commissionFeeUSD || 0)
+  const totalAccessorials = round2(escort + plugging + commission)
+
+  // Base Freight Receivable (excluding already itemized accessorials)
+  const baseFreight = round2(Math.max(0, quote.finalQuotedPriceUSD - totalAccessorials))
+
+  let runningBalance = 0
+
+  // 1. Base Freight
+  runningBalance = round2(runningBalance + baseFreight)
   entries.push({
-    debitUSD: quote.finalQuotedPriceUSD,
+    debitUSD: baseFreight,
     creditUSD: 0,
-    balanceUSD: quote.finalQuotedPriceUSD,
-    description: `Export ${quote.isReefer ? "Reefer (40RF)" : "Freight"} Corridor: ${quote.destinationPort} (${quote.quoteNumber})`,
-    descriptionPersian: `کرایه حمل صادراتی ${quote.isReefer ? "یخچالی (۴۰ فوت)" : "کانتینری"}: ${quote.destinationPort} (${quote.quoteNumber})`,
+    balanceUSD: runningBalance,
+    description: `Export ${quote.isReefer ? "Reefer (40RF)" : "Freight"} Base Freight: ${quote.destinationPort} (${quote.quoteNumber})`,
+    descriptionPersian: `کرایه پایه حمل صادراتی ${quote.isReefer ? "یخچالی (۴۰ فوت)" : "کانتینری"}: ${quote.destinationPort} (${quote.quoteNumber})`,
     feeCategory: "Freight",
     referenceBol: bolRef,
     date: today,
   })
 
   // 2. Escort Service / Bonded Security Fee
-  if (quote.escortFeeUSD > 0) {
+  if (escort > 0) {
+    runningBalance = round2(runningBalance + escort)
     entries.push({
-      debitUSD: quote.escortFeeUSD,
+      debitUSD: escort,
       creditUSD: 0,
-      balanceUSD: quote.escortFeeUSD,
+      balanceUSD: runningBalance,
       description: `Escort Service (مامور بدرقه): Bonded Transit Escort across Iran`,
       descriptionPersian: `خدمات مامور بدرقه و اسکورت امنیتی گمرک ترانزیت ایران`,
       feeCategory: "Documentation / Security Fee",
@@ -741,11 +755,12 @@ export function generateQuoteLedgerJournal(
   }
 
   // 3. Plugging Charges (Reefer Power & Monitoring)
-  if (quote.pluggingFeeUSD > 0) {
+  if (plugging > 0) {
+    runningBalance = round2(runningBalance + plugging)
     entries.push({
-      debitUSD: quote.pluggingFeeUSD,
+      debitUSD: plugging,
       creditUSD: 0,
-      balanceUSD: quote.pluggingFeeUSD,
+      balanceUSD: runningBalance,
       description: `Reefer Plugging Charges & Temperature Monitoring (${quote.destinationPort})`,
       descriptionPersian: `هزینه اتصال برق و پایش مداوم کانتینر یخچالی (${quote.destinationPort})`,
       feeCategory: "Demurrage / Port Handling",
@@ -755,11 +770,12 @@ export function generateQuoteLedgerJournal(
   }
 
   // 4. Admin Commission (CMSN)
-  if (quote.commissionFeeUSD > 0) {
+  if (commission > 0) {
+    runningBalance = round2(runningBalance + commission)
     entries.push({
-      debitUSD: quote.commissionFeeUSD,
+      debitUSD: commission,
       creditUSD: 0,
-      balanceUSD: quote.commissionFeeUSD,
+      balanceUSD: runningBalance,
       description: `Admin Commission (CMSN) Coordination Fee`,
       descriptionPersian: `حق‌العمل کاری و کمیسیون اداری (CMSN)`,
       feeCategory: "Documentation Fee",
@@ -770,3 +786,4 @@ export function generateQuoteLedgerJournal(
 
   return entries
 }
+

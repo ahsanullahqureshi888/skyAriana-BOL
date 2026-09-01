@@ -1,0 +1,179 @@
+- generic [ref=e19]:
+  - complementary [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - img "Sky Ariana Logo" [ref=e23]
+        - generic [ref=e24]:
+          - generic [ref=e25]: SKY ARIANA
+          - generic [ref=e26]: IMPORT & EXPORT
+      - button "Collapse sidebar" [ref=e27] [cursor=pointer]
+    - navigation [ref=e30]:
+      - link "Dashboard" [ref=e31] [cursor=pointer]:
+        - /url: /
+      - link "Invoices" [ref=e38] [cursor=pointer]:
+        - /url: /invoices
+      - link "Customers" [ref=e43] [cursor=pointer]:
+        - /url: /customers
+      - link "Products & Services" [ref=e50] [cursor=pointer]:
+        - /url: /products
+      - link "Company Settings" [ref=e56] [cursor=pointer]:
+        - /url: /settings
+      - link "Backup & Restore" [ref=e61] [cursor=pointer]:
+        - /url: /backups
+      - link "Activity History" [ref=e67] [cursor=pointer]:
+        - /url: /logs
+      - link "User Management" [ref=e73] [cursor=pointer]:
+        - /url: /user-management
+    - button "Logout" [ref=e79] [cursor=pointer]
+  - generic [ref=e84]:
+    - banner [ref=e85]:
+      - generic [ref=e87]:
+        - img "Sky Ariana & Balam Bar Baran" [ref=e88]
+        - generic [ref=e89]:
+          - text: Business Operations
+          - heading "SKY ARIANA & BALAM BAR BARAN" [level=1] [ref=e90]
+      - generic [ref=e91]:
+        - generic [ref=e92]:
+          - button "Switch Language" [ref=e93] [cursor=pointer]
+          - combobox [ref=e97] [cursor=pointer]:
+            - option "English (EN)" [selected]
+            - option "فارسی (FA)"
+            - option "پښتو (PS)"
+        - generic [ref=e98]:
+          - generic [ref=e99]:
+            - generic [ref=e100]: Admin User
+            - generic [ref=e101]: Super Admin
+          - generic "Admin User (Super Admin)" [ref=e102]: AU
+    - main [ref=e103]:
+      - generic [ref=e104]:
+        - generic [ref=e106]:
+          - generic [ref=e107]: OVERVIEW
+          - heading "Dashboard" [level=1] [ref=e108]
+          - paragraph [ref=e109]: Welcome back to your Sky Ariana commercial invoice workspace.
+        - generic [ref=e110]:
+          - article [ref=e111]:
+            - generic [ref=e116]:
+              - generic [ref=e117]: Total Invoices
+              - strong [ref=e118]: "1"
+              - generic [ref=e119]: All generated invoices
+          - article [ref=e120]:
+            - generic [ref=e125]:
+              - generic [ref=e126]: Paid Invoices
+              - strong [ref=e127]: "0"
+              - generic [ref=e128]: Fully cleared documents
+          - article [ref=e129]:
+            - generic [ref=e133]:
+              - generic [ref=e134]: Unpaid Invoices
+              - strong [ref=e135]: "0"
+              - generic [ref=e136]: Awaiting client payments
+          - article [ref=e137]:
+            - generic [ref=e142]:
+              - generic [ref=e143]: Partially Paid
+              - strong [ref=e144]: "0"
+              - generic [ref=e145]: Deposits or milestone paid
+          - article [ref=e146]:
+            - generic [ref=e150]:
+              - generic [ref=e151]: Overdue Invoices
+              - strong [ref=e152]: "1"
+              - generic [ref=e153]: Passed payment due dates
+          - article [ref=e154]:
+            - generic [ref=e158]:
+              - generic [ref=e159]: Total Invoiced
+              - strong [ref=e160]: $115,000.00
+              - generic [ref=e161]: Grand sum of all invoices
+          - article [ref=e162]:
+            - generic [ref=e166]:
+              - generic [ref=e167]: Amount Received
+              - strong [ref=e168]: $19,200.00
+              - generic [ref=e169]: Total cash received
+          - article [ref=e170]:
+            - generic [ref=e174]:
+              - generic [ref=e175]: Outstanding Balance
+              - strong [ref=e176]: $95,800.00
+              - generic [ref=e177]: Remaining outstanding
+        - generic [ref=e178]:
+          - generic [ref=e179]:
+            - generic [ref=e180]:
+              - generic [ref=e181]:
+                - heading "Recent Invoices" [level=3] [ref=e182]
+                - link "View All" [ref=e183] [cursor=pointer]:
+                  - /url: /invoices
+              - table [ref=e187]:
+                - rowgroup [ref=e188]:
+                  - row [ref=e189]:
+                    - columnheader "Invoice No" [ref=e190]
+                    - columnheader "Customer" [ref=e191]
+                    - columnheader "Grand Total" [ref=e192]
+                    - columnheader "Status" [ref=e193]
+                - rowgroup [ref=e194]:
+                  - row [ref=e195]:
+                    - cell [ref=e196]:
+                      - link "INV-SABBB-2026-001" [ref=e197] [cursor=pointer]:
+                        - /url: /invoices/1
+                    - cell "WAVELON IMPEX" [ref=e198]
+                    - cell "USD 115,000.00" [ref=e199]
+                    - cell "draft" [ref=e200]
+            - generic [ref=e202]:
+              - heading "Recent Activity" [level=3] [ref=e204]
+              - generic [ref=e205]:
+                - generic [ref=e206]:
+                  - generic [ref=e207]: 06:30 AM
+                  - generic [ref=e208]: "Admin User {\"description\": \"User signed in successfully.\", \"module\": \"authentication\", \"target_user_id\": 1, \"old_values\": null, \"new_values\": null, \"ip_address\": \"127.0.0.1\"}"
+                - generic [ref=e209]:
+                  - generic [ref=e210]: 10:03 PM
+                  - generic [ref=e211]: "Admin User {\"description\": \"User signed in successfully.\", \"module\": \"authentication\", \"target_user_id\": 1, \"old_values\": null, \"new_values\": null, \"ip_address\": \"127.0.0.1\"}"
+                - generic [ref=e212]:
+                  - generic [ref=e213]: 09:12 PM
+                  - generic [ref=e214]: "Viewer User {\"description\": \"User signed in successfully.\", \"module\": \"authentication\", \"target_user_id\": 4, \"old_values\": null, \"new_values\": null, \"ip_address\": \"127.0.0.1\"}"
+                - generic [ref=e215]:
+                  - generic [ref=e216]: 09:12 PM
+                  - generic [ref=e217]: "Admin User {\"description\": \"User signed in successfully.\", \"module\": \"authentication\", \"target_user_id\": 1, \"old_values\": null, \"new_values\": null, \"ip_address\": \"127.0.0.1\"}"
+                - generic [ref=e218]:
+                  - generic [ref=e219]: 08:56 PM
+                  - generic [ref=e220]: "Viewer User {\"description\": \"User signed in successfully.\", \"module\": \"authentication\", \"target_user_id\": 4, \"old_values\": null, \"new_values\": null, \"ip_address\": \"127.0.0.1\"}"
+                - generic [ref=e221]:
+                  - generic [ref=e222]: 08:56 PM
+                  - generic [ref=e223]: "Admin User {\"description\": \"User signed in successfully.\", \"module\": \"authentication\", \"target_user_id\": 1, \"old_values\": null, \"new_values\": null, \"ip_address\": \"127.0.0.1\"}"
+                - generic [ref=e224]:
+                  - generic [ref=e225]: 08:36 PM
+                  - generic [ref=e226]: "Admin User {\"description\": \"User signed in successfully.\", \"module\": \"authentication\", \"target_user_id\": 1, \"old_values\": null, \"new_values\": null, \"ip_address\": \"127.0.0.1\"}"
+                - generic [ref=e227]:
+                  - generic [ref=e228]: 08:36 PM
+                  - generic [ref=e229]: "Viewer User {\"description\": \"User signed in successfully.\", \"module\": \"authentication\", \"target_user_id\": 4, \"old_values\": null, \"new_values\": null, \"ip_address\": \"127.0.0.1\"}"
+                - generic [ref=e230]:
+                  - generic [ref=e231]: 08:35 PM
+                  - generic [ref=e232]: "Admin User {\"description\": \"User signed in successfully.\", \"module\": \"authentication\", \"target_user_id\": 1, \"old_values\": null, \"new_values\": null, \"ip_address\": \"127.0.0.1\"}"
+                - generic [ref=e233]:
+                  - generic [ref=e234]: 04:08 PM
+                  - generic [ref=e235]: "Admin User Invoice updated: INV-SABBB-2026-001"
+          - generic [ref=e236]:
+            - generic [ref=e237]:
+              - heading "Quick Actions" [level=3] [ref=e239]
+              - generic [ref=e240]:
+                - link "Create New Invoice" [ref=e241] [cursor=pointer]:
+                  - /url: /invoices/create
+                - link "Manage Customers" [ref=e244] [cursor=pointer]:
+                  - /url: /customers
+                - link "Backup / Database Tools" [ref=e250] [cursor=pointer]:
+                  - /url: /backups
+            - generic [ref=e255]:
+              - generic [ref=e256]:
+                - heading "New Customers" [level=3] [ref=e257]
+                - link "View All" [ref=e258] [cursor=pointer]:
+                  - /url: /customers
+              - generic [ref=e261]:
+                - generic [ref=e262]:
+                  - generic [ref=e263]:
+                    - generic [ref=e264]: TIYA GOODS WHOLESALERS L.L.C
+                    - generic [ref=e265]: Account No :- 0333580516001
+                  - generic [ref=e266]: UAE
+                - generic [ref=e267]:
+                  - generic [ref=e268]:
+                    - generic [ref=e269]: SKY ARIANA LTD
+                    - generic [ref=e270]: SIRAJ AHMAD ALOKO
+                  - generic [ref=e271]: AFGHANISTAN
+                - generic [ref=e272]:
+                  - generic [ref=e273]:
+                    - generic [ref=e274]: WAVELON IMPEX
+                    - generic [ref=e275]: Purchasing Director
+                  - generic [ref=e276]: India

@@ -8,6 +8,7 @@ import {
   Users,
   Lock,
   Building2,
+  HardDrive,
   Download,
   Shield,
   UserPlus,
@@ -58,6 +59,7 @@ import {
 import { PWAInstallButton } from "@/components/pwa-install-prompt"
 import { Button } from "@/components/ui/button"
 import { CloudSyncModal } from "@/components/bill-of-lading/cloud-sync-modal"
+import { DataBackupManager } from "@/components/data-backup-manager"
 import {
   COMPANY_STAMP_SIGNATURE_SRC,
   COMPANY_STAMP_SIGNATURE_DATA_URL,
@@ -120,7 +122,7 @@ const PRESET_SEALS = [
   },
 ]
 
-export type SettingsTab = "users" | "stamp" | "company" | "cloud" | "security" | "updates"
+export type SettingsTab = "users" | "stamp" | "company" | "cloud" | "security" | "updates" | "vault"
 
 const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; icon: string; desc: string }> = {
   superadmin: {
@@ -696,7 +698,21 @@ export function SettingsView() {
           <Smartphone className="w-4 h-4 text-emerald-400" />
           <span>App & System Build</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("vault")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+            activeTab === "vault"
+              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
+              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+          }`}
+        >
+          <HardDrive className="w-4 h-4 text-blue-400" />
+          <span>Data Vault & Snapshots</span>
+        </button>
       </div>
+
 
       {/* ========================================================================= */}
       {/* TAB 1: USER MANAGEMENT                                                    */}
@@ -2120,8 +2136,18 @@ export function SettingsView() {
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* TAB 7: DATA VAULT & SYSTEM SNAPSHOTS                                      */}
+      {/* ========================================================================= */}
+      {activeTab === "vault" && (
+        <div className="animate-in fade-in duration-300">
+          <DataBackupManager />
+        </div>
+      )}
+
       {/* Cloud Sync Hub Modal */}
       <CloudSyncModal open={isCloudSyncOpen} onOpenChange={setIsCloudSyncOpen} />
+
 
       {/* Reset Password Modal */}
       {resetModalUser && (

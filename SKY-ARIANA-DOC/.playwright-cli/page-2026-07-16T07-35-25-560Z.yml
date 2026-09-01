@@ -1,0 +1,883 @@
+- generic [ref=f18e3]:
+  - complementary [ref=f18e4]:
+    - generic [ref=f18e5]:
+      - generic [ref=f18e6]:
+        - img "Sky Ariana Logo" [ref=f18e7]
+        - generic [ref=f18e8]:
+          - generic [ref=f18e9]: SKY ARIANA
+          - generic [ref=f18e10]: IMPORT & EXPORT
+      - button "Collapse sidebar" [ref=f18e11] [cursor=pointer]
+    - navigation [ref=f18e14]:
+      - link "Dashboard" [ref=f18e15] [cursor=pointer]:
+        - /url: /
+      - link "Invoices" [ref=f18e22] [cursor=pointer]:
+        - /url: /invoices
+      - link "Customers" [ref=f18e27] [cursor=pointer]:
+        - /url: /customers
+      - link "Products & Services" [ref=f18e34] [cursor=pointer]:
+        - /url: /products
+      - link "Company Settings" [ref=f18e40] [cursor=pointer]:
+        - /url: /settings
+      - link "Backup & Restore" [ref=f18e45] [cursor=pointer]:
+        - /url: /backups
+      - link "Activity History" [ref=f18e51] [cursor=pointer]:
+        - /url: /logs
+      - link "User Management" [ref=f18e57] [cursor=pointer]:
+        - /url: /user-management
+    - button "Logout" [ref=f18e63] [cursor=pointer]
+  - generic [ref=f18e68]:
+    - banner [ref=f18e69]:
+      - generic [ref=f18e71]:
+        - img "Sky Ariana & Balam Bar Baran" [ref=f18e72]
+        - generic [ref=f18e73]:
+          - text: Business Operations
+          - heading "SKY ARIANA & BALAM BAR BARAN" [level=1] [ref=f18e74]
+      - generic [ref=f18e75]:
+        - generic [ref=f18e76]:
+          - button "Switch Language" [ref=f18e77] [cursor=pointer]
+          - combobox [ref=f18e81] [cursor=pointer]:
+            - option "English (EN)" [selected]
+            - option "فارسی (FA)"
+            - option "پښتو (PS)"
+        - generic [ref=f18e82]:
+          - generic [ref=f18e83]:
+            - generic [ref=f18e84]: Admin User
+            - generic [ref=f18e85]: Super Admin
+          - generic "Admin User (Super Admin)" [ref=f18e86]: AU
+    - main [ref=f18e87]:
+      - generic [ref=f18e88]:
+        - generic [ref=f18e89]:
+          - generic [ref=f18e90]:
+            - generic [ref=f18e91]: Saved
+            - link [ref=f18e92] [cursor=pointer]:
+              - /url: /invoices
+            - heading "Edit Invoice" [level=2] [ref=f18e95]
+          - generic [ref=f18e96]:
+            - generic [ref=f18e97]:
+              - button "EN" [ref=f18e98]
+              - button "FA" [ref=f18e99]
+              - button "PS" [ref=f18e100]
+            - button "Save Draft" [ref=f18e101] [cursor=pointer]
+            - button "Save Invoice" [ref=f18e106] [cursor=pointer]
+        - generic [ref=f18e111]:
+          - generic [ref=f18e112]:
+            - generic [ref=f18e113]:
+              - heading "General Invoice Info" [level=3] [ref=f18e114]
+              - generic [ref=f18e117]:
+                - generic [ref=f18e118]:
+                  - generic [ref=f18e119]: Invoice Number (Optional)
+                  - textbox "e.g. SA-2026-0001 (auto-gens if empty)" [ref=f18e120]: INV-SABBB-2026-001
+                - generic [ref=f18e121]:
+                  - generic [ref=f18e122]: Currency
+                  - combobox [ref=f18e123] [cursor=pointer]:
+                    - option "USD ($)" [selected]
+                    - option "AFN (؋)"
+                    - option "IRR (ریال)"
+              - generic [ref=f18e124]:
+                - generic [ref=f18e125]:
+                  - generic [ref=f18e126]: Invoice Date
+                  - textbox [ref=f18e127]: 2026-07-12
+                - generic [ref=f18e128]:
+                  - generic [ref=f18e129]: Due Date
+                  - textbox [ref=f18e130]: 2026-07-12
+            - generic [ref=f18e131]:
+              - generic [ref=f18e132]:
+                - heading "Invoice Template" [level=3] [ref=f18e133]
+                - paragraph [ref=f18e134]: Changing the design does not change invoice data or calculations.
+              - generic [ref=f18e135]:
+                - button "Premium Afghan Heritage Banknote-inspired Afghan landmarks with navy and muted-gold detailing. Selected" [ref=f18e800] [cursor=pointer]:
+                  - generic [ref=f18e141]:
+                    - strong [ref=f18e142]: Premium Afghan Heritage
+                    - generic [ref=f18e143]: Banknote-inspired Afghan landmarks with navy and muted-gold detailing.
+                  - generic [ref=f18e801]: Selected
+                - button "Premium Afghan Glass Modern pale-blue glass design with refined gold accents." [ref=f18e804] [cursor=pointer]:
+                  - generic [ref=f18e149]:
+                    - strong [ref=f18e150]: Premium Afghan Glass
+                    - generic [ref=f18e151]: Modern pale-blue glass design with refined gold accents.
+                - button "Classic Afghan Blue & Gold Formal compact layout with royal-blue headers and gold rules." [ref=f18e155] [cursor=pointer]:
+                  - generic [ref=f18e160]:
+                    - strong [ref=f18e161]: Classic Afghan Blue & Gold
+                    - generic [ref=f18e162]: Formal compact layout with royal-blue headers and gold rules.
+            - generic [ref=f18e163]:
+              - group [ref=f18e164]:
+                - generic "Shipper / Seller / Exporter Saved" [ref=f18e165] [cursor=pointer]:
+                  - strong [ref=f18e171]: Shipper / Seller / Exporter
+                  - generic [ref=f18e172]: Saved
+                - generic [ref=f18e175]:
+                  - generic [ref=f18e176]:
+                    - generic [ref=f18e177]:
+                      - generic [ref=f18e178]: Select Existing Shipper
+                      - combobox "Select Existing Shipper" [ref=f18e179]:
+                        - option "-- Manual invoice details --" [selected]
+                    - generic [ref=f18e180] [cursor=pointer]:
+                      - checkbox "Use Company Information as Shipper" [checked] [ref=f18e181]
+                      - generic [ref=f18e182]: Use Company Information as Shipper
+                  - generic [ref=f18e183]:
+                    - generic [ref=f18e184]:
+                      - generic [ref=f18e185]: Company Name *
+                      - textbox "Company Name *" [ref=f18e186]:
+                        - /placeholder: Enter company name
+                        - text: SKY ARIANA LTD
+                    - generic [ref=f18e187]:
+                      - generic [ref=f18e188]: Contact Person
+                      - textbox "Contact Person" [ref=f18e189]:
+                        - /placeholder: Enter contact person
+                    - generic [ref=f18e190]:
+                      - generic [ref=f18e191]: Licence Number
+                      - textbox "Licence Number" [ref=f18e192]:
+                        - /placeholder: e.g. LIC-2401
+                    - generic [ref=f18e193]:
+                      - generic [ref=f18e194]: Tax / Registration Number
+                      - textbox "Tax / Registration Number" [ref=f18e195]:
+                        - /placeholder: e.g. GST / VAT / TRN
+                        - text: 2401-2198
+                    - generic [ref=f18e196]:
+                      - generic [ref=f18e197]: Address Line 1 *
+                      - textbox "Address Line 1 *" [ref=f18e198]:
+                        - /placeholder: Street, building, market
+                        - text: Shahidanow Chowk Etimat Rahmai Market 16, No Office, KANDAHAR, Afghanistan
+                    - generic [ref=f18e199]:
+                      - generic [ref=f18e200]: Address Line 2
+                      - textbox "Address Line 2" [ref=f18e201]:
+                        - /placeholder: Office, floor, district
+                    - generic [ref=f18e202]:
+                      - generic [ref=f18e203]: City
+                      - textbox "City" [ref=f18e204]
+                    - generic [ref=f18e205]:
+                      - generic [ref=f18e206]: Province / State
+                      - textbox "Province / State" [ref=f18e207]:
+                        - /placeholder: Province or state
+                    - generic [ref=f18e208]:
+                      - generic [ref=f18e209]: Postal Code
+                      - textbox "Postal Code" [ref=f18e210]:
+                        - /placeholder: Postal code
+                    - generic [ref=f18e211]:
+                      - generic [ref=f18e212]: Country *
+                      - textbox "Country *" [ref=f18e213]:
+                        - /placeholder: Country
+                        - text: AF
+                    - generic [ref=f18e214]:
+                      - generic [ref=f18e215]: Phone Number
+                      - textbox "Phone Number" [ref=f18e216]:
+                        - /placeholder: Primary phone
+                    - generic [ref=f18e217]:
+                      - generic [ref=f18e218]: Alternative Phone
+                      - textbox "Alternative Phone" [ref=f18e219]:
+                        - /placeholder: Alternative phone
+                    - generic [ref=f18e220]:
+                      - generic [ref=f18e221]: Email Address
+                      - textbox "Email Address" [ref=f18e222]:
+                        - /placeholder: name@company.com
+                    - generic [ref=f18e223]:
+                      - generic [ref=f18e224]: Website
+                      - textbox "Website" [ref=f18e225]:
+                        - /placeholder: https://company.com
+                  - generic [ref=f18e226]:
+                    - button "Save Shipper Details" [ref=f18e227] [cursor=pointer]
+                    - button "Save as New Contact" [ref=f18e232] [cursor=pointer]
+                    - button "Update Existing Contact" [disabled] [ref=f18e236]
+              - group [ref=f18e240]:
+                - generic "Consignee / Buyer / Importer Saved" [ref=f18e241] [cursor=pointer]:
+                  - strong [ref=f18e247]: Consignee / Buyer / Importer
+                  - generic [ref=f18e248]: Saved
+                - generic [ref=f18e251]:
+                  - generic [ref=f18e253]:
+                    - generic [ref=f18e254]: Select Existing Consignee / Buyer
+                    - combobox "Select Existing Consignee / Buyer" [ref=f18e255]:
+                      - option "-- Manual invoice details --"
+                      - option "SKY ARIANA LTD"
+                      - option "TIYA GOODS WHOLESALERS L.L.C"
+                      - option "WAVELON IMPEX" [selected]
+                  - generic [ref=f18e256]:
+                    - generic [ref=f18e257]:
+                      - generic [ref=f18e258]: Company Name *
+                      - textbox "Company Name *" [ref=f18e259]:
+                        - /placeholder: Enter company name
+                        - text: WAVELON IMPEX
+                    - generic [ref=f18e260]:
+                      - generic [ref=f18e261]: Contact Person
+                      - textbox "Contact Person" [ref=f18e262]:
+                        - /placeholder: Enter contact person
+                        - text: Purchasing Director
+                    - generic [ref=f18e263]:
+                      - generic [ref=f18e264]: Licence Number
+                      - textbox "Licence Number" [ref=f18e265]:
+                        - /placeholder: e.g. LIC-2401
+                    - generic [ref=f18e266]:
+                      - generic [ref=f18e267]: Tax / Registration Number
+                      - textbox "Tax / Registration Number" [ref=f18e268]:
+                        - /placeholder: e.g. GST / VAT / TRN
+                        - text: GST-36WAVELON9
+                    - generic [ref=f18e269]:
+                      - generic [ref=f18e270]: Address Line 1 *
+                      - textbox "Address Line 1 *" [ref=f18e271]:
+                        - /placeholder: Street, building, market
+                        - text: A 4008, RKLP MARKET, SAROLI, SURAT, INDIA
+                    - generic [ref=f18e272]:
+                      - generic [ref=f18e273]: Address Line 2
+                      - textbox "Address Line 2" [ref=f18e274]:
+                        - /placeholder: Office, floor, district
+                    - generic [ref=f18e275]:
+                      - generic [ref=f18e276]: City
+                      - textbox "City" [ref=f18e277]
+                    - generic [ref=f18e278]:
+                      - generic [ref=f18e279]: Province / State
+                      - textbox "Province / State" [ref=f18e280]:
+                        - /placeholder: Province or state
+                    - generic [ref=f18e281]:
+                      - generic [ref=f18e282]: Postal Code
+                      - textbox "Postal Code" [ref=f18e283]:
+                        - /placeholder: Postal code
+                    - generic [ref=f18e284]:
+                      - generic [ref=f18e285]: Country *
+                      - textbox "Country *" [ref=f18e286]:
+                        - /placeholder: Country
+                        - text: India
+                    - generic [ref=f18e287]:
+                      - generic [ref=f18e288]: Phone Number
+                      - textbox "Phone Number" [ref=f18e289]:
+                        - /placeholder: Primary phone
+                        - text: +91 261 440 9901
+                    - generic [ref=f18e290]:
+                      - generic [ref=f18e291]: Alternative Phone
+                      - textbox "Alternative Phone" [ref=f18e292]:
+                        - /placeholder: Alternative phone
+                    - generic [ref=f18e293]:
+                      - generic [ref=f18e294]: Email Address
+                      - textbox "Email Address" [ref=f18e295]:
+                        - /placeholder: name@company.com
+                        - text: imports@wavelonimpex.in
+                    - generic [ref=f18e296]:
+                      - generic [ref=f18e297]: Website
+                      - textbox "Website" [ref=f18e298]:
+                        - /placeholder: https://company.com
+                  - generic [ref=f18e299]:
+                    - button "Save Consignee Details" [ref=f18e300] [cursor=pointer]
+                    - button "Save as New Contact" [ref=f18e305] [cursor=pointer]
+                    - button "Update Existing Contact" [ref=f18e309] [cursor=pointer]
+              - group [ref=f18e313]:
+                - generic "Notify Party Optional Saved" [ref=f18e314] [cursor=pointer]:
+                  - strong [ref=f18e320]: Notify Party
+                  - generic [ref=f18e321]: Optional
+                  - generic [ref=f18e322]: Saved
+                - generic [ref=f18e325]:
+                  - generic [ref=f18e326]:
+                    - generic [ref=f18e327]:
+                      - generic [ref=f18e328]: Select Existing Notify Party
+                      - combobox "Select Existing Notify Party" [ref=f18e329]:
+                        - option "-- Manual invoice details --" [selected]
+                    - generic [ref=f18e330] [cursor=pointer]:
+                      - checkbox "Notify Party is same as Consignee" [ref=f18e331]
+                      - generic [ref=f18e332]: Notify Party is same as Consignee
+                  - generic [ref=f18e333]:
+                    - generic [ref=f18e334]:
+                      - generic [ref=f18e335]: Company Name
+                      - textbox "Company Name" [ref=f18e336]:
+                        - /placeholder: Enter company name
+                    - generic [ref=f18e337]:
+                      - generic [ref=f18e338]: Contact Person
+                      - textbox "Contact Person" [ref=f18e339]:
+                        - /placeholder: Enter contact person
+                    - generic [ref=f18e340]:
+                      - generic [ref=f18e341]: Licence Number
+                      - textbox "Licence Number" [ref=f18e342]:
+                        - /placeholder: e.g. LIC-2401
+                    - generic [ref=f18e343]:
+                      - generic [ref=f18e344]: Tax / Registration Number
+                      - textbox "Tax / Registration Number" [ref=f18e345]:
+                        - /placeholder: e.g. GST / VAT / TRN
+                    - generic [ref=f18e346]:
+                      - generic [ref=f18e347]: Address Line 1
+                      - textbox "Address Line 1" [ref=f18e348]:
+                        - /placeholder: Street, building, market
+                    - generic [ref=f18e349]:
+                      - generic [ref=f18e350]: Address Line 2
+                      - textbox "Address Line 2" [ref=f18e351]:
+                        - /placeholder: Office, floor, district
+                    - generic [ref=f18e352]:
+                      - generic [ref=f18e353]: City
+                      - textbox "City" [ref=f18e354]
+                    - generic [ref=f18e355]:
+                      - generic [ref=f18e356]: Province / State
+                      - textbox "Province / State" [ref=f18e357]:
+                        - /placeholder: Province or state
+                    - generic [ref=f18e358]:
+                      - generic [ref=f18e359]: Postal Code
+                      - textbox "Postal Code" [ref=f18e360]:
+                        - /placeholder: Postal code
+                    - generic [ref=f18e361]:
+                      - generic [ref=f18e362]: Country
+                      - textbox "Country" [ref=f18e363]
+                    - generic [ref=f18e364]:
+                      - generic [ref=f18e365]: Phone Number
+                      - textbox "Phone Number" [ref=f18e366]:
+                        - /placeholder: Primary phone
+                    - generic [ref=f18e367]:
+                      - generic [ref=f18e368]: Alternative Phone
+                      - textbox "Alternative Phone" [ref=f18e369]:
+                        - /placeholder: Alternative phone
+                    - generic [ref=f18e370]:
+                      - generic [ref=f18e371]: Email Address
+                      - textbox "Email Address" [ref=f18e372]:
+                        - /placeholder: name@company.com
+                    - generic [ref=f18e373]:
+                      - generic [ref=f18e374]: Website
+                      - textbox "Website" [ref=f18e375]:
+                        - /placeholder: https://company.com
+                    - generic [ref=f18e376]:
+                      - generic [ref=f18e377]: Account Number
+                      - textbox "Account Number" [ref=f18e378]:
+                        - /placeholder: Bank account number
+                    - generic [ref=f18e379]:
+                      - generic [ref=f18e380]: Bank Name
+                      - textbox "Bank Name" [ref=f18e381]:
+                        - /placeholder: Bank name
+                    - generic [ref=f18e382]:
+                      - generic [ref=f18e383]: IBAN
+                      - textbox "IBAN" [ref=f18e384]:
+                        - /placeholder: International bank account number
+                    - generic [ref=f18e385]:
+                      - generic [ref=f18e386]: SWIFT / BIC
+                      - textbox "SWIFT / BIC" [ref=f18e387]:
+                        - /placeholder: 8 or 11 characters
+                    - generic [ref=f18e388]:
+                      - generic [ref=f18e389]: Routing Code
+                      - textbox "Routing Code" [ref=f18e390]:
+                        - /placeholder: Routing code
+                    - generic [ref=f18e391]:
+                      - generic [ref=f18e392]: Bank Address
+                      - textbox "Bank Address" [ref=f18e393]:
+                        - /placeholder: Branch or bank address
+                    - generic [ref=f18e394]:
+                      - generic [ref=f18e395]: Notes
+                      - textbox "Notes" [ref=f18e396]:
+                        - /placeholder: Optional Notify Party notes
+                  - generic [ref=f18e397]:
+                    - button "Save Notify Party Details" [ref=f18e398] [cursor=pointer]
+                    - button "Save as New Contact" [ref=f18e403] [cursor=pointer]
+                    - button "Update Existing Contact" [disabled] [ref=f18e407]
+                    - button "Clear Notify Party" [ref=f18e411] [cursor=pointer]
+            - generic [ref=f18e415]:
+              - heading "Shipment & Logistics" [level=3] [ref=f18e416]
+              - generic [ref=f18e417]:
+                - generic [ref=f18e418]:
+                  - generic [ref=f18e419]: Vessel / Plane Name
+                  - textbox "e.g. Kam Air Cargo / Voyage" [ref=f18e420]
+                - generic [ref=f18e421]:
+                  - generic [ref=f18e422]: Voyage No
+                  - textbox [ref=f18e423]
+              - generic [ref=f18e424]:
+                - generic [ref=f18e425]:
+                  - generic [ref=f18e426]: Port of Loading
+                  - textbox [ref=f18e427]: KABUL INTERNATIONAL AIRPORT, KABUL, AFGHANISTAN
+                - generic [ref=f18e428]:
+                  - generic [ref=f18e429]: Port of Discharge
+                  - textbox [ref=f18e430]: INDIRA GANDHI INTERNATIONAL AIRPORT, DELHI, INDIA
+              - generic [ref=f18e431]:
+                - generic [ref=f18e432]:
+                  - generic [ref=f18e433]: Incoterms
+                  - combobox [ref=f18e434] [cursor=pointer]:
+                    - option "CIP" [selected]
+                    - option "FOB"
+                    - option "CIF"
+                    - option "EXW"
+                    - option "CFR"
+                    - option "DDP"
+                - generic [ref=f18e435]:
+                  - generic [ref=f18e436]: Booking Number
+                  - textbox [ref=f18e437]
+                - generic [ref=f18e438]:
+                  - generic [ref=f18e439]: B/L / AWB No
+                  - textbox [ref=f18e440]
+              - generic [ref=f18e441]:
+                - generic [ref=f18e442]:
+                  - generic [ref=f18e443]: Container Number
+                  - textbox [ref=f18e444]: N/A - AIR CARGO
+                - generic [ref=f18e445]:
+                  - generic [ref=f18e446]: Seal Number
+                  - textbox [ref=f18e447]
+                - generic [ref=f18e448]:
+                  - generic [ref=f18e449]: Commodity
+                  - textbox [ref=f18e450]: DRY FIGS
+              - generic [ref=f18e451]:
+                - generic [ref=f18e452]:
+                  - generic [ref=f18e453]: Gross Wt
+                  - spinbutton [ref=f18e454]: "12960.00"
+                - generic [ref=f18e455]:
+                  - generic [ref=f18e456]: Net Wt
+                  - spinbutton [ref=f18e457]: "12000.00"
+                - generic [ref=f18e458]:
+                  - generic [ref=f18e459]: Pkg Count
+                  - spinbutton [ref=f18e460]: "1200"
+                - generic [ref=f18e461]:
+                  - generic [ref=f18e462]: Pkg Type
+                  - textbox "e.g. BAGS" [ref=f18e463]: BOXES
+            - region [ref=f18e464]:
+              - generic [ref=f18e465]:
+                - generic [ref=f18e466]:
+                  - text: Customs-ready detail
+                  - heading "Commercial Line Items" [level=3] [ref=f18e467]
+                  - paragraph [ref=f18e468]: Add product, packaging, weight and customs information.
+                - generic [ref=f18e469]:
+                  - generic [ref=f18e470]:
+                    - generic [ref=f18e471]: 1 line item
+                    - strong [ref=f18e472]: USD 96,000.00
+                  - button "Add Line Item" [ref=f18e473] [cursor=pointer]
+              - article [ref=f18e806]:
+                - generic [ref=f18e807]:
+                  - generic [ref=f18e808]:
+                    - button "Drag item 01 to reorder" [ref=f18e809]
+                    - generic [ref=f18e817]:
+                      - generic [ref=f18e818]: Commercial line item
+                      - heading "Item 01" [level=4] [ref=f18e819]
+                    - generic "DRY FIGS GRADE A" [ref=f18e820]:
+                      - strong [ref=f18e821]: DRY FIGS GRADE A
+                      - generic [ref=f18e822]: HS 0804.20.10 Net 12,000 KG
+                  - generic [ref=f18e824]:
+                    - button "Collapse line item" [expanded] [ref=f18e825] [cursor=pointer]
+                    - button "Move item up" [disabled] [ref=f18e828]
+                    - button "Move item down" [disabled] [ref=f18e831]
+                    - button "Duplicate line item" [ref=f18e834] [cursor=pointer]
+                    - button "Delete line item" [ref=f18e838] [cursor=pointer]
+                - generic [ref=f18e842]:
+                  - generic [ref=f18e843]:
+                    - generic [ref=f18e850]:
+                      - heading "Product details" [level=5] [ref=f18e851]
+                      - paragraph [ref=f18e852]: Catalog matching stays optional; every value remains editable.
+                    - generic [ref=f18e853]:
+                      - generic [ref=f18e854]:
+                        - generic [ref=f18e855]:
+                          - text: Product Autofill (Optional)
+                          - generic "Search product name, variety, grade, category or HS code." [ref=f18e856]:
+                            - img "Search product name, variety, grade, category or HS code." [ref=f18e857]
+                        - generic [ref=f18e859]:
+                          - combobox "Product Autofill (Optional) Search product name, variety, grade, category or HS code." [expanded] [active] [ref=f18e861]
+                          - listbox [ref=f18e1170]:
+                            - option "Dry Figs Dry Figs Premium · Extra Fancy · Fancy · Choice · Standard HS 0804.20.10" [ref=f18e1171] [cursor=pointer]:
+                              - generic [ref=f18e1172]:
+                                - strong [ref=f18e1173]: Dry Figs
+                                - generic [ref=f18e1174]: Dry Figs
+                              - generic [ref=f18e1175]:
+                                - generic [ref=f18e1176]: Premium · Extra Fancy · Fancy · Choice · Standard
+                                - generic [ref=f18e1177]: HS 0804.20.10
+                            - option "Black Mission Figs Black Mission Figs Premium · Extra Fancy · Fancy · Choice · Standard HS 0804.20.10" [ref=f18e1178] [cursor=pointer]:
+                              - generic [ref=f18e1179]:
+                                - strong [ref=f18e1180]: Black Mission Figs
+                                - generic [ref=f18e1181]: Black Mission Figs
+                              - generic [ref=f18e1182]:
+                                - generic [ref=f18e1183]: Premium · Extra Fancy · Fancy · Choice · Standard
+                                - generic [ref=f18e1184]: HS 0804.20.10
+                            - option "Calimyrna Figs Calimyrna Figs Premium · Extra Fancy · Fancy · Choice · Standard HS 0804.20.10" [ref=f18e1185] [cursor=pointer]:
+                              - generic [ref=f18e1186]:
+                                - strong [ref=f18e1187]: Calimyrna Figs
+                                - generic [ref=f18e1188]: Calimyrna Figs
+                              - generic [ref=f18e1189]:
+                                - generic [ref=f18e1190]: Premium · Extra Fancy · Fancy · Choice · Standard
+                                - generic [ref=f18e1191]: HS 0804.20.10
+                            - option "Turkish Figs Turkish Figs Premium · Extra Fancy · Fancy · Choice · Standard HS 0804.20.10" [ref=f18e1192] [cursor=pointer]:
+                              - generic [ref=f18e1193]:
+                                - strong [ref=f18e1194]: Turkish Figs
+                                - generic [ref=f18e1195]: Turkish Figs
+                              - generic [ref=f18e1196]:
+                                - generic [ref=f18e1197]: Premium · Extra Fancy · Fancy · Choice · Standard
+                                - generic [ref=f18e1198]: HS 0804.20.10
+                            - option "Afghan Dry Figs Afghan Dry Figs Premium · Grade A · Grade B · Grade C · Organic HS 0804.20.10" [ref=f18e1199] [cursor=pointer]:
+                              - generic [ref=f18e1200]:
+                                - strong [ref=f18e1201]: Afghan Dry Figs
+                                - generic [ref=f18e1202]: Afghan Dry Figs
+                              - generic [ref=f18e1203]:
+                                - generic [ref=f18e1204]: Premium · Grade A · Grade B · Grade C · Organic
+                                - generic [ref=f18e1205]: HS 0804.20.10
+                            - option "Iranian Dry Figs Iranian Dry Figs Premium · Grade A · Grade B · Standard · Organic HS 0804.20.10" [ref=f18e1206] [cursor=pointer]:
+                              - generic [ref=f18e1207]:
+                                - strong [ref=f18e1208]: Iranian Dry Figs
+                                - generic [ref=f18e1209]: Iranian Dry Figs
+                              - generic [ref=f18e1210]:
+                                - generic [ref=f18e1211]: Premium · Grade A · Grade B · Standard · Organic
+                                - generic [ref=f18e1212]: HS 0804.20.10
+                            - option "Natural Dry Figs Natural Dry Figs Premium · Extra Fancy · Fancy · Choice · Standard HS 0804.20.10" [ref=f18e1213] [cursor=pointer]:
+                              - generic [ref=f18e1214]:
+                                - strong [ref=f18e1215]: Natural Dry Figs
+                                - generic [ref=f18e1216]: Natural Dry Figs
+                              - generic [ref=f18e1217]:
+                                - generic [ref=f18e1218]: Premium · Extra Fancy · Fancy · Choice · Standard
+                                - generic [ref=f18e1219]: HS 0804.20.10
+                            - option "Pressed Dry Figs Pressed Dry Figs Premium · Extra Fancy · Fancy · Choice · Standard HS 0804.20.10" [ref=f18e1220] [cursor=pointer]:
+                              - generic [ref=f18e1221]:
+                                - strong [ref=f18e1222]: Pressed Dry Figs
+                                - generic [ref=f18e1223]: Pressed Dry Figs
+                              - generic [ref=f18e1224]:
+                                - generic [ref=f18e1225]: Premium · Extra Fancy · Fancy · Choice · Standard
+                                - generic [ref=f18e1226]: HS 0804.20.10
+                      - generic [ref=f18e862]:
+                        - generic [ref=f18e863]:
+                          - text: Custom HS Code
+                          - generic "Use digits and dots, for example 0804.20.10." [ref=f18e864]:
+                            - img "Use digits and dots, for example 0804.20.10." [ref=f18e865]
+                        - textbox "Custom HS Code Use digits and dots, for example 0804.20.10." [ref=f18e867]:
+                          - /placeholder: 0804.20.10
+                          - text: 0804.20.10
+                      - generic [ref=f18e868]:
+                        - generic [ref=f18e869]: Description / Product Name
+                        - textbox "Description / Product Name" [ref=f18e870]:
+                          - /placeholder: e.g. DRY FIGS
+                          - text: DRY FIGS GRADE A
+                      - generic [ref=f18e871]:
+                        - generic [ref=f18e872]: Grade
+                        - combobox "Grade" [ref=f18e873] [cursor=pointer]:
+                          - option "Select grade" [selected]
+                          - option "Custom Grade"
+                      - generic [ref=f18e874]:
+                        - generic [ref=f18e875]: Variety
+                        - textbox "Variety" [ref=f18e876]:
+                          - /placeholder: e.g. Afghan Dry Figs
+                  - generic [ref=f18e877]:
+                    - generic [ref=f18e884]:
+                      - heading "Quantity & packaging" [level=5] [ref=f18e885]
+                      - paragraph [ref=f18e886]: Keep trade units and package counts separate from physical weight.
+                    - generic [ref=f18e887]:
+                      - generic [ref=f18e888]:
+                        - generic [ref=f18e889]: Quantity
+                        - textbox "Quantity" [ref=f18e890]:
+                          - /placeholder: "0"
+                          - text: 12,000
+                      - generic [ref=f18e891]:
+                        - generic [ref=f18e892]: Quantity Unit
+                        - combobox "Quantity Unit" [ref=f18e893] [cursor=pointer]:
+                          - option "PCS" [selected]
+                          - option "CTN"
+                          - option "BAG"
+                          - option "BOX"
+                          - option "SACK"
+                          - option "PALLET"
+                          - option "DRUM"
+                          - option "BALE"
+                          - option "PACKAGE"
+                          - option "CASE"
+                          - option "BULK"
+                      - generic [ref=f18e894]:
+                        - generic [ref=f18e895]: Number of Packages
+                        - textbox "Number of Packages" [ref=f18e896]:
+                          - /placeholder: "0"
+                          - text: "0"
+                      - generic [ref=f18e897]:
+                        - generic [ref=f18e898]: Package Type
+                        - combobox "Package Type" [ref=f18e899] [cursor=pointer]:
+                          - option "Select package" [selected]
+                          - option "Carton"
+                          - option "Box"
+                          - option "Bag"
+                          - option "Sack"
+                          - option "Vacuum Bag"
+                          - option "Plastic Bag"
+                          - option "Jute Bag"
+                          - option "Wooden Case"
+                          - option "Tin"
+                          - option "Drum"
+                          - option "Pallet"
+                          - option "Bulk"
+                          - option "Custom"
+                  - generic [ref=f18e900]:
+                    - generic [ref=f18e907]:
+                      - heading "Weight" [level=5] [ref=f18e908]
+                      - paragraph [ref=f18e909]: Gross weight is checked against net weight when the field loses focus.
+                    - generic [ref=f18e910]:
+                      - generic [ref=f18e911]:
+                        - generic [ref=f18e912]:
+                          - text: Net Weight
+                          - generic "Net product weight, excluding packaging." [ref=f18e913]:
+                            - img "Net product weight, excluding packaging." [ref=f18e914]
+                        - textbox "Net Weight Net product weight, excluding packaging." [ref=f18e916]:
+                          - /placeholder: "0"
+                          - text: 12,000
+                      - generic [ref=f18e917]:
+                        - generic [ref=f18e918]:
+                          - text: Gross Weight
+                          - generic "Total shipped weight including packaging." [ref=f18e919]:
+                            - img "Total shipped weight including packaging." [ref=f18e920]
+                        - textbox "Gross Weight Total shipped weight including packaging." [ref=f18e922]:
+                          - /placeholder: "0"
+                          - text: 12,000
+                      - generic [ref=f18e923]:
+                        - generic [ref=f18e924]: Weight Unit
+                        - combobox "Weight Unit" [ref=f18e925] [cursor=pointer]:
+                          - option "KG" [selected]
+                          - option "MT"
+                          - option "G"
+                          - option "LB"
+                          - option "TON"
+                  - generic [ref=f18e926]:
+                    - generic [ref=f18e933]:
+                      - heading "Pricing" [level=5] [ref=f18e934]
+                      - paragraph [ref=f18e935]: Choose the basis used to calculate the line total.
+                    - generic [ref=f18e936]:
+                      - generic [ref=f18e937]:
+                        - generic [ref=f18e938]: Unit Price
+                        - textbox "Unit Price" [ref=f18e939]:
+                          - /placeholder: "0.00"
+                          - text: "8"
+                      - generic [ref=f18e940]:
+                        - generic [ref=f18e941]: Currency
+                        - combobox "Currency" [ref=f18e942] [cursor=pointer]:
+                          - option "USD" [selected]
+                          - option "AFN"
+                          - option "EUR"
+                          - option "GBP"
+                          - option "IRR"
+                      - generic [ref=f18e943]:
+                        - generic [ref=f18e944]:
+                          - text: Price Basis
+                          - generic "Per KG, MT and LB use net weight. Per Piece, Carton, Bag and Package use their matching count." [ref=f18e945]:
+                            - img "Per KG, MT and LB use net weight. Per Piece, Carton, Bag and Package use their matching count." [ref=f18e946]
+                        - combobox "Price Basis Per KG, MT and LB use net weight. Per Piece, Carton, Bag and Package use their matching count." [ref=f18e948] [cursor=pointer]:
+                          - option "Per KG" [selected]
+                          - option "Per MT"
+                          - option "Per LB"
+                          - option "Per Piece"
+                          - option "Per Carton"
+                          - option "Per Bag"
+                          - option "Per Package"
+                      - generic [ref=f18e949]:
+                        - generic [ref=f18e950]: Calculated total amount
+                        - strong [ref=f18e951]: USD 96,000.00
+                        - generic [ref=f18e952]: 12,000 KG x USD 8.00 (Per KG) = USD 96,000.00
+                  - group [ref=f18e953]:
+                    - generic "+ Additional details Country, lot and remarks" [ref=f18e954] [cursor=pointer]:
+                      - text: +
+                      - generic [ref=f18e955]: Additional details
+                      - generic [ref=f18e956]: Country, lot and remarks
+            - generic [ref=f18e628]:
+              - heading "Adjustments & Fees (USD)" [level=3] [ref=f18e629]
+              - generic [ref=f18e630]:
+                - generic [ref=f18e631]:
+                  - generic [ref=f18e632]: Freight Rate / Unit
+                  - spinbutton [ref=f18e633]: "1.55"
+                  - paragraph [ref=f18e634]: "Calculated freight: USD 18,600.00"
+                - generic [ref=f18e635]:
+                  - generic [ref=f18e636]: Transit Insurance
+                  - spinbutton [ref=f18e637]: "0"
+                - generic [ref=f18e638]:
+                  - generic [ref=f18e639]: Other Charges
+                  - spinbutton [ref=f18e640]: "0"
+                - generic [ref=f18e641]:
+                  - generic [ref=f18e642]: Discount (-)
+                  - spinbutton [ref=f18e643]: "0"
+                - generic [ref=f18e644]:
+                  - generic [ref=f18e645]: Tax / VAT (+)
+                  - spinbutton [ref=f18e646]: "0"
+              - generic [ref=f18e647]:
+                - heading "Additional Charges" [level=4] [ref=f18e648]
+                - generic [ref=f18e649]:
+                  - generic [ref=f18e650]:
+                    - generic [ref=f18e651]: Documentation Fees
+                    - spinbutton [ref=f18e652]: "400"
+                  - generic [ref=f18e653]:
+                    - generic [ref=f18e654]: Customs Clearance Fees
+                    - spinbutton [ref=f18e655]
+                - generic [ref=f18e656]:
+                  - generic [ref=f18e657]:
+                    - generic [ref=f18e658]: Additional Fees Total
+                    - strong [ref=f18e659]: USD 400.00
+                  - generic [ref=f18e660]:
+                    - generic [ref=f18e661]: Invoice Grand Total
+                    - strong [ref=f18e662]: USD 115,000.00
+                - generic [ref=f18e663]:
+                  - generic [ref=f18e664]: Amount in Words
+                  - strong [ref=f18e665]: ONE HUNDRED FIFTEEN THOUSAND US DOLLARS ONLY
+              - generic [ref=f18e666]:
+                - generic [ref=f18e667]: Special Notes / Declarations
+                - textbox "e.g. Air-freight charges only. Commercial value of goods documented separately." [ref=f18e668]: Standard commercial delivery by air cargo.
+          - complementary "Live invoice preview" [ref=f18e669]:
+            - article [ref=f18e671]:
+              - generic [ref=f18e672]:
+                - generic [ref=f18e673]:
+                  - generic [ref=f18e674]:
+                    - img "SKY ARIANA LTD logo" [ref=f18e957]
+                    - generic [ref=f18e958]:
+                      - heading "SKY ARIANA LTD" [level=1] [ref=f18e959]
+                      - paragraph [ref=f18e960]: IMPORT • EXPORT • LOGISTICS • TRANSPORT
+                  - region "Commercial invoice details" [ref=f18e677]:
+                    - heading "Commercial Invoice" [level=2] [ref=f18e678]
+                    - generic [ref=f18e679]:
+                      - term [ref=f18e680]: Invoice No.
+                      - definition [ref=f18e681]: INV-SABBB-2026-001
+                      - term [ref=f18e682]: Date
+                      - definition [ref=f18e683]: 2026-07-12
+                      - term [ref=f18e684]: Due Date
+                      - definition [ref=f18e685]: 2026-07-12
+                      - term [ref=f18e686]: Currency
+                      - definition [ref=f18e687]: USD
+                - generic [ref=f18e689]:
+                  - generic [ref=f18e690]:
+                    - generic [ref=f18e691]: Shipper / Exporter
+                    - generic [ref=f18e693]:
+                      - heading "SKY ARIANA LTD" [level=3] [ref=f18e961]
+                      - paragraph [ref=f18e962]: Shahidanow Chowk Etimat Rahmai Market 16, No Office, KANDAHAR, Afghanistan
+                      - paragraph [ref=f18e963]: AF
+                      - paragraph [ref=f18e964]:
+                        - generic [ref=f18e965]: "Tax / TIN:"
+                        - text: 2401-2198
+                  - generic [ref=f18e695]:
+                    - generic [ref=f18e696]: Consignee / Importer
+                    - generic [ref=f18e698]:
+                      - heading "WAVELON IMPEX" [level=3] [ref=f18e966]
+                      - paragraph [ref=f18e967]: Purchasing Director
+                      - paragraph [ref=f18e968]: A 4008, RKLP MARKET, SAROLI, SURAT, INDIA
+                      - paragraph [ref=f18e969]: India
+                      - paragraph [ref=f18e970]:
+                        - generic [ref=f18e971]: "Tax / TIN:"
+                        - text: GST-36WAVELON9
+                      - paragraph [ref=f18e972]:
+                        - generic [ref=f18e973]: "Phone:"
+                        - text: +91 261 440 9901
+                      - paragraph [ref=f18e974]:
+                        - generic [ref=f18e975]: "Email:"
+                        - text: imports@wavelonimpex.in
+                  - generic [ref=f18e700]:
+                    - generic [ref=f18e701]: Notify Party
+                    - paragraph [ref=f18e704]: No Notify Party Details
+                - generic [ref=f18e976]:
+                  - generic [ref=f18e977]: Shipment Information
+                  - generic [ref=f18e981]:
+                    - generic [ref=f18e982]:
+                      - generic [ref=f18e983]: Commodity
+                      - strong [ref=f18e990]: DRY FIGS
+                    - generic [ref=f18e991]:
+                      - generic [ref=f18e992]: Vessel / Carrier
+                      - strong [ref=f18e995]: Kam Air
+                    - generic [ref=f18e996]:
+                      - generic [ref=f18e997]: Net Weight
+                      - strong [ref=f18e1004]: 12,000 KG
+                    - generic [ref=f18e1005]:
+                      - generic [ref=f18e1006]: Gross Weight
+                      - strong [ref=f18e1013]: 12,960 KG
+                    - generic [ref=f18e1014]:
+                      - generic [ref=f18e1015]: Port of Loading
+                      - strong [ref=f18e1019]: KABUL INTERNATIONAL AIRPORT, KABUL, AFGHANISTAN
+                    - generic [ref=f18e1020]:
+                      - generic [ref=f18e1021]: Port of Discharge
+                      - strong [ref=f18e1025]: INDIRA GANDHI INTERNATIONAL AIRPORT, DELHI, INDIA
+                    - generic [ref=f18e1026]:
+                      - generic [ref=f18e1027]: Delivery Term
+                      - strong [ref=f18e1030]: CIP
+                - generic [ref=f18e705]:
+                  - generic [ref=f18e706]:
+                    - generic [ref=f18e707]: Goods Value
+                    - strong [ref=f18e708]: 1 line item priced by selected basis
+                    - generic [ref=f18e709]: USD 96,000.00
+                  - generic [ref=f18e710]:
+                    - generic [ref=f18e711]: Freight Charges
+                    - strong [ref=f18e712]: 12,000 KG shipment weight
+                    - generic [ref=f18e713]: USD 18,600.00
+                  - generic [ref=f18e714]:
+                    - generic [ref=f18e715]: CIF Unit Rate
+                    - strong [ref=f18e716]: USD 9.55 / KG
+                    - generic [ref=f18e717]: USD 114,600.00
+                - generic [ref=f18e718]:
+                  - generic [ref=f18e719]: Invoice Items
+                  - table [ref=f18e728]:
+                    - rowgroup [ref=f18e729]:
+                      - row [ref=f18e730]:
+                        - columnheader "No." [ref=f18e731]
+                        - columnheader "Product / Description" [ref=f18e732]
+                        - columnheader "Variety / Grade" [ref=f18e733]
+                        - columnheader "HS Code" [ref=f18e734]
+                        - columnheader "Qty / Unit" [ref=f18e735]
+                        - columnheader "Packages" [ref=f18e736]
+                        - columnheader "Net Wt." [ref=f18e737]
+                        - columnheader "Gross Wt." [ref=f18e738]
+                        - columnheader "Unit Price / Basis" [ref=f18e739]
+                        - columnheader "Total Amount" [ref=f18e740]
+                    - rowgroup [ref=f18e741]:
+                      - row [ref=f18e1031]:
+                        - cell "1" [ref=f18e1032]
+                        - cell [ref=f18e1033]:
+                          - strong [ref=f18e1034]: DRY FIGS GRADE A
+                        - cell "-" [ref=f18e1035]
+                        - cell "0804.20.10" [ref=f18e1036]
+                        - cell "12,000 PCS" [ref=f18e1037]
+                        - cell "-" [ref=f18e1038]
+                        - cell "12,000 KG" [ref=f18e1039]
+                        - cell "12,000 KG" [ref=f18e1040]
+                        - cell "USD 8.00 Per KG" [ref=f18e1041]:
+                          - strong [ref=f18e1042]: USD 8.00
+                          - generic [ref=f18e1043]: Per KG
+                        - cell "USD 96,000.00" [ref=f18e1044]
+                  - generic [ref=f18e755]:
+                    - generic [ref=f18e756]:
+                      - generic [ref=f18e757]: Total Packages
+                      - text: 1,200
+                    - generic [ref=f18e758]:
+                      - generic [ref=f18e759]: Total Net Weight
+                      - text: 12,000 KG
+                    - generic [ref=f18e760]:
+                      - generic [ref=f18e761]: Total Gross Weight
+                      - text: 12,960 KG
+                    - generic [ref=f18e762]:
+                      - generic [ref=f18e763]: Goods Value
+                      - text: USD 96,000.00
+                - generic [ref=f18e764]:
+                  - generic [ref=f18e765]:
+                    - generic [ref=f18e1045]:
+                      - generic [ref=f18e1046]: Beneficiary Bank Details
+                      - generic [ref=f18e1050]:
+                        - paragraph [ref=f18e1051]:
+                          - generic [ref=f18e1052]: "Bank Name:"
+                          - text: Islamic Bank of Afghanistan
+                        - paragraph [ref=f18e1053]:
+                          - generic [ref=f18e1054]: "Beneficiary:"
+                          - text: SKY ARIANA
+                        - paragraph [ref=f18e1055]:
+                          - generic [ref=f18e1056]: "SWIFT Code:"
+                          - text: IBAFAFKA
+                    - generic [ref=f18e1057]:
+                      - heading "Declaration & Terms" [level=3] [ref=f18e1058]
+                      - paragraph [ref=f18e1059]: Standard commercial delivery by air cargo.
+                  - generic [ref=f18e766]:
+                    - generic [ref=f18e767]: Invoice Value Summary
+                    - generic [ref=f18e772]:
+                      - generic [ref=f18e773]:
+                        - term [ref=f18e774]: Goods Value
+                        - definition [ref=f18e775]: USD 96,000.00
+                      - generic [ref=f18e776]:
+                        - term [ref=f18e777]: Freight Charges
+                        - definition [ref=f18e778]: USD 18,600.00
+                      - generic [ref=f18e779]:
+                        - term [ref=f18e780]: Total CIF Value
+                        - definition [ref=f18e781]: USD 114,600.00
+                      - generic [ref=f18e1060]:
+                        - term [ref=f18e1061]: Documentation Fees
+                        - definition [ref=f18e1062]: USD 400.00
+                      - generic [ref=f18e782]:
+                        - term [ref=f18e783]: Invoice Grand Total
+                        - definition [ref=f18e784]: USD 115,000.00
+                      - generic [ref=f18e1063]:
+                        - term [ref=f18e1064]: Delivery Term
+                        - definition [ref=f18e1065]: CIP
+                - generic [ref=f18e785]:
+                  - generic [ref=f18e786]: Amount in Words
+                  - strong [ref=f18e787]: ONE HUNDRED FIFTEEN THOUSAND US DOLLARS ONLY
+                - generic [ref=f18e788]:
+                  - generic [ref=f18e789]: Invoice Reference
+                  - generic [ref=f18e794]:
+                    - generic [ref=f18e795]: Invoice Barcode
+                    - img "Barcode for invoice INV-SABBB-2026-001" [ref=f18e1066]:
+                      - img [ref=f18e1067]:
+                        - generic [ref=f18e1069]: INV-SABBB-2026-001
+                    - generic [ref=f18e796]:
+                      - img "Company seal" [ref=f18e797]
+                      - img "Company stamp" [ref=f18e1135]
+                  - generic [ref=f18e798]:
+                    - img "Authorized signature" [ref=f18e1136]
+                    - generic [ref=f18e799]: Authorized Signature
+                - generic [ref=f18e1137]:
+                  - generic [ref=f18e1142]:
+                    - strong [ref=f18e1143]: Afghanistan Office
+                    - text: AFGHANISTAN OFFICE, 2nd Floor, Office No. 16, Etimad Rahimi Market, Shahidano Chowk, Kandahar, Afghanistan
+                  - generic [ref=f18e1148]:
+                    - strong [ref=f18e1149]: Iran Office
+                    - text: "IRAN OFFICE, Cubic Building, Bandar Abbas, Iran, P.O. Box: 7913973295"
+                  - generic [ref=f18e1150]: +93 700 939 365
+                  - generic [ref=f18e1154]: info@skyariana.com
+                  - generic [ref=f18e1159]: www.skyariana.com
+                  - generic [ref=f18e1165]: "Licence No: 2401-2198"

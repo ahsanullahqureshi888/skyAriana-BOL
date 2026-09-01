@@ -1,0 +1,14 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - img "Sky Ariana Logo" [ref=e6]
+    - heading "SKY ARIANA" [level=1] [ref=e7]
+    - paragraph [ref=e8]: Import & Export Logistics
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]: Email Address
+      - textbox "e.g. admin@skyariana.com" [ref=e12]
+    - generic [ref=e13]:
+      - generic [ref=e14]: Password
+      - textbox "••••••••" [ref=e15]
+    - button "Log In" [ref=e16] [cursor=pointer]
+  - paragraph [ref=e18]: SKY ARIANA & BALAM BAR BARAN © 2026

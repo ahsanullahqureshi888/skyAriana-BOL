@@ -1,5 +1,6 @@
 import React from 'react';
-import { useCmr } from '../context/CmrContext';
+import { useCmr, cleanCmrNumber } from '../context/CmrContext';
+import { PartyQuickSelector } from './PartyQuickSelector';
 
 export const CmrPad1 = () => {
   const { activeDocPage, fields, updateField, zoom } = useCmr();
@@ -26,9 +27,12 @@ export const CmrPad1 = () => {
               <tbody>
                 <tr>
                   <td style={{ width: '50%' }} className="h-b1">
-                    <div className="box-lbl">
-                      <span className="fa-title">1. فرستنده (نام، نشانی، کشور)</span>
-                      <span className="en-title">Consignor (name, address, country)</span>
+                    <div className="box-lbl" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <span className="fa-title">1. فرستنده (نام، نشانی، کشور)</span>
+                        <span className="en-title">Consignor (name, address, country)</span>
+                      </div>
+                      <PartyQuickSelector type="sender" />
                     </div>
                     <div
                       className="blue-field"
@@ -58,9 +62,9 @@ export const CmrPad1 = () => {
                             className="editable-cmr-badge"
                             contentEditable
                             suppressContentEditableWarning
-                            onBlur={(e) => updateField('f2_cmr_number', e.target.innerText)}
+                            onBlur={(e) => updateField('f2_cmr_number', cleanCmrNumber(e.target.innerText.trim()))}
                           >
-                            CMR NO {fields.f2_cmr_number || '75'}
+                            CMR NO {cleanCmrNumber(fields.f2_cmr_number) || cleanCmrNumber(fields.inv_number) || '75'}
                           </span>
                         </div>
                         <div className="clause-en">
@@ -73,9 +77,12 @@ export const CmrPad1 = () => {
 
                 <tr>
                   <td className="h-b2">
-                    <div className="box-lbl">
-                      <span className="fa-title">2. گیرنده (نام، نشانی، کشور)</span>
-                      <span className="en-title">Consignee (name, address, country)</span>
+                    <div className="box-lbl" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <span className="fa-title">2. گیرنده (نام، نشانی، کشور)</span>
+                        <span className="en-title">Consignee (name, address, country)</span>
+                      </div>
+                      <PartyQuickSelector type="consignee" />
                     </div>
                     <div
                       className="blue-field"
@@ -88,9 +95,12 @@ export const CmrPad1 = () => {
                     </div>
                   </td>
                   <td className="h-b16">
-                    <div className="box-lbl">
-                      <span className="fa-title">16. متصدی حمل (نام، نشانی، کشور)</span>
-                      <span className="en-title">Carrier (name, address, country)</span>
+                    <div className="box-lbl" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <span className="fa-title">16. متصدی حمل (نام، نشانی، کشور)</span>
+                        <span className="en-title">Carrier (name, address, country)</span>
+                      </div>
+                      <PartyQuickSelector type="carrier" />
                     </div>
                     <div
                       className="blue-field"

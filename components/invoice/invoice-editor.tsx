@@ -272,13 +272,7 @@ const toNumber = (value?: string | number | null) => {
   const number = Number(cleaned)
   return Number.isFinite(number) ? number : null
 }
-const calculateConvertedTotal = (total: string | number, exchangeRate: string) => {
-  const totalNumber = toNumber(total)
-  const rateNumber = toNumber(exchangeRate)
-  if (totalNumber === null || rateNumber === null) return null
-  return totalNumber * rateNumber
-}
-const formatMoney = (amount: string | number | null | undefined, currencyCode: string) => {
+const formatMoney = (amount: string | number | null | undefined, currencyCode: string = "USD") => {
   if (amount === null || amount === undefined || String(amount).trim() === "") {
     return ""
   }
@@ -304,6 +298,13 @@ const formatMoney = (amount: string | number | null | undefined, currencyCode: s
       return `${number.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currencyCode}`
   }
 }
+
+const money = (value: number | string | null | undefined, currency = "USD") => {
+  const num = typeof value === "number" ? value : Number(String(value || "").replace(/,/g, ""))
+  if (!Number.isFinite(num)) return ""
+  return formatMoney(num, currency)
+}
+
 const hasRealValue = (value?: string | null) => !isBlank(value)
 const hasPrintableCharge = (value?: string | null) => {
   if (isBlank(value)) return false
@@ -320,70 +321,86 @@ const formatCurrency = (value: string | number | undefined, currency = "USD") =>
   return Number.isFinite(amount) ? formatMoney(amount, currency) : "-"
 }
 
+const calculateConvertedTotal = (total: number, exchangeRate: string | number | undefined): number | null => {
+
+  const rate = Number(String(exchangeRate || "").replace(/,/g, ""))
+  if (!Number.isFinite(rate) || rate <= 0) return null
+  return Math.round(total * rate * 100) / 100
+}
+
+const normalizeInvoice = (raw: any): InvoiceForm => {
+  if (!raw) return emptyInvoice()
+  return {
+    ...emptyInvoice(),
+    ...raw,
+    items: Array.isArray(raw.items)
+      ? raw.items.map((item: any) => ({
+          id: item.id || `item-${Date.now()}-${Math.random()}`,
+          date: item.date || "",
+          description: item.description || "",
+          containerNo: item.containerNo || "",
+          commodity: item.commodity || "",
+          quantity: String(item.quantity ?? "1"),
+          unit: item.unit || "CTN",
+          unitPrice: String(item.unitPrice ?? "0"),
+          currency: item.currency || "USD",
+        }))
+      : [],
+    currencyExchange: {
+      ...emptyInvoice().currencyExchange,
+      ...(raw.currencyExchange || {}),
+    },
+  }
+}
+
 const formattedConvertedTotal = (invoice: InvoiceForm, totals: ReturnType<typeof calculateInvoice>) => {
   const convertedTotal = calculateConvertedTotal(totals.total, invoice.currencyExchange.exchangeRate)
   if (convertedTotal === null) return ""
   return formatMoney(convertedTotal, invoice.currencyExchange.targetCurrency || invoice.currency)
 }
 
-const money = (value: number, currency = "USD") => {
-  if (!Number.isFinite(value)) return ""
-  switch (currency) {
-    case "USD":
-      return `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    case "AFN":
-      return `AFN ${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    case "IRR":
-      return `IRR ${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`
-    case "TOMAN":
-      return `${value.toLocaleString("en-US", { maximumFractionDigits: 0 })} تومان`
-    case "AED":
-      return `AED ${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-    case "PKR":
-      return `Rs ${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`
-    case "INR":
-      return `₹${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`
-    default:
-      return new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "USD", maximumFractionDigits: 2 }).format(value)
-  }
-}
-
-function normalizeInvoice(data: Partial<InvoiceForm>): InvoiceForm {
-  const fallback = emptyInvoice()
-  return {
-    ...fallback,
-    ...data,
-    items: data.items?.length
-      ? data.items.map((item) => ({
-          ...emptyItem(),
-          ...item,
-          date: item.date || "",
-          containerNo: item.containerNo || "",
-          commodity: item.commodity || "",
-          unit: item.unit || "Unit",
-          currency: item.currency || "",
-        }))
-      : fallback.items,
-    currencyExchange: {
-      ...fallback.currencyExchange,
-      ...(data.currencyExchange || {}),
-    },
-  }
-}
 
 function calculateInvoice(invoice: InvoiceForm) {
-  const serviceSubtotal = invoice.items.reduce((sum, item) => sum + numberValue(item.quantity) * numberValue(item.unitPrice), 0)
-  const freight = numberValue(invoice.freight_charges)
-  const demurrage = numberValue(invoice.demurrage_charges)
-  const detention = numberValue(invoice.detention_charges)
-  const documentation = numberValue(invoice.documentation_charges)
-  const port = numberValue(invoice.port_charges)
-  const truck = numberValue(invoice.truck_charges)
-  const other = numberValue(invoice.other_charges)
-  const subtotal = serviceSubtotal + freight + demurrage + detention + documentation + port + truck + other
-  const tax = numberValue(invoice.tax)
-  const discount = numberValue(invoice.discount)
-  return { serviceSubtotal, freight, demurrage, detention, documentation, port, truck, other, subtotal, tax, discount, total: subtotal + tax - discount }
+  const round2 = (num: number) => Math.round((Number(num) || 0) * 100) / 100
+
+
+  const serviceSubtotal = round2(
+    invoice.items.reduce((sum, item) => {
+      const q = numberValue(item.quantity)
+      const p = numberValue(item.unitPrice)
+      return sum + round2(q * p)
+    }, 0)
+  )
+
+  const freight = round2(numberValue(invoice.freight_charges))
+  const demurrage = round2(numberValue(invoice.demurrage_charges))
+  const detention = round2(numberValue(invoice.detention_charges))
+  const documentation = round2(numberValue(invoice.documentation_charges))
+  const port = round2(numberValue(invoice.port_charges))
+  const truck = round2(numberValue(invoice.truck_charges))
+  const other = round2(numberValue(invoice.other_charges))
+
+  const subtotal = round2(
+    serviceSubtotal + freight + demurrage + detention + documentation + port + truck + other
+  )
+  const tax = round2(numberValue(invoice.tax))
+  const discount = round2(numberValue(invoice.discount))
+  const total = round2(subtotal + tax - discount)
+
+  return {
+    serviceSubtotal,
+    freight,
+    demurrage,
+    detention,
+    documentation,
+    port,
+    truck,
+    other,
+    subtotal,
+    tax,
+    discount,
+    total,
+  }
 }
 
 async function imageSourceForPdf(src?: string) {
@@ -577,8 +594,9 @@ async function invoicePdfBlob(invoiceInput: InvoiceForm) {
   doc.setTextColor(15, 23, 42)
   doc.setFontSize(7.5)
   const printablePdfItems = invoice.items.filter(
-    (item) => !isEmpty(item.description) || !isEmpty(item.date) || !isEmpty(item.containerNo) || !isEmpty(item.quantity) || !isEmpty(item.unitPrice)
+    (item: InvoiceItem) => !isEmpty(item.description) || !isEmpty(item.date) || !isEmpty(item.containerNo) || !isEmpty(item.quantity) || !isEmpty(item.unitPrice)
   )
+
 
   const totalPdfRows = Math.max(8, printablePdfItems.length)
   for (let index = 0; index < totalPdfRows; index++) {
@@ -1360,10 +1378,11 @@ function InvoicePreview({ invoice: invoiceInput, onDownloadPdf, onPrint, onEdit 
   const [zoom, setZoom] = useState<number>(1)
   const invoice = normalizeInvoice(invoiceInput)
   const totals = calculateInvoice(invoice)
-  const attachmentCount = invoice.attachments.split(",").map((item) => item.trim()).filter(Boolean).length
+  const attachmentCount = invoice.attachments.split(",").map((item: string) => item.trim()).filter(Boolean).length
   const printableItems = invoice.items.filter(
-    (item) => !isEmpty(item.description) || !isEmpty(item.date) || !isEmpty(item.containerNo) || !isEmpty(item.quantity) || !isEmpty(item.unitPrice)
+    (item: InvoiceItem) => !isEmpty(item.description) || !isEmpty(item.date) || !isEmpty(item.containerNo) || !isEmpty(item.quantity) || !isEmpty(item.unitPrice)
   )
+
   const showBillTo = ![invoice.buyer_name, invoice.buyer_address, invoice.buyer_contact_person, invoice.buyer_phone, invoice.buyer_email, invoice.buyer_tax_number].every(isEmpty)
   const showShipmentInfo = ![
     invoice.shipper, invoice.shipment_type, invoice.container_no, invoice.seal_no, invoice.truck_no,

@@ -10,8 +10,9 @@ import uvicorn
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-WORKDIR = r"e:\My-Softwares-+\SKY-CMR-BORDER"
+WORKDIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(WORKDIR, "cmr_database.db")
+
 
 # Initialize SQLite Database Connection Helper
 def get_db_connection():
@@ -98,7 +99,7 @@ def init_db():
             ("ent_car_2", "carrier", "MANDUZAY TRANSPORTATION", '“MANDUZAY TRANSPORTATION COMPANY”\nInternational Freight & Transit Services\nKabul - Mazar - Hairatan', 6, now_s),
             # Commodities
             ("ent_g_1", "commodity", "AFGHAN BROOM (360 BUNDLES 16000 PCS)", '1.   360 BUNDLES 16000 PCS 10000 KG AFGHAN BROOM', 10, now_s),
-            ("ent_g_2", "commodity", "BLACK RAISINS BEST (631 CTNS)", '1.   631 CTNS - BLACK-RAISNIS (BEST)', 8, now_s),
+            ("ent_g_2", "commodity", "BLACK RAISINS BEST (631 CTNS)", '1.   631 CTNS - BLACK-RAISINS (BEST)', 8, now_s),
             ("ent_g_3", "commodity", "GREEN RAISINS KANDAHAR (521 CTNS)", '1.   521 CTNS - GREEN RAISINS (KANDAHAR CHOICE)', 7, now_s),
             ("ent_g_4", "commodity", "DRIED FIGS AAA (450 BAGS)", '1.   450 BAGS - DRIED FIGS AAA QUALITY', 5, now_s),
             # Customs
@@ -430,6 +431,370 @@ def save_entity(ent: EntityModel):
     conn.commit()
     conn.close()
     return {"status": "saved", "id": ent_id, "name": ent.name}
+
+# ==========================================
+# DATA ANALYTICS & INTELLIGENCE SUITE
+# ==========================================
+import re
+
+def _clean_numeric_usd(val_str: Any) -> float:
+    if not val_str:
+        return 0.0
+    s = str(val_str).replace('$', '').replace('USD', '').replace('EUR', '').replace(',', '').strip()
+    matches = re.findall(r'[\d]+(?:\.\d+)?', s)
+    if matches:
+        try:
+            return float(matches[0])
+        except:
+            return 0.0
+    return 0.0
+
+def _clean_weight_kg(wt_str: Any) -> float:
+    if not wt_str:
+        return 0.0
+    s = str(wt_str).upper()
+    is_tons = 'TON' in s
+    s_clean = s.replace(',', '')
+    matches = re.findall(r'[\d]+(?:\.\d+)?', s_clean)
+    if matches:
+        try:
+            num = float(matches[0])
+            return num * 1000.0 if is_tons else num
+        except:
+            return 0.0
+    return 0.0
+
+def _detect_country(text: Any) -> str:
+    if not text:
+        return "International"
+    s = str(text).upper()
+    if "INDIA" in s or "DELHI" in s or "MUMBAI" in s:
+        return "India 🇮🇳"
+    if "UZBEKISTAN" in s or "TASHKENT" in s or "TERMEZ" in s:
+        return "Uzbekistan 🇺🇿"
+    if "GERMANY" in s or "HAMBURG" in s or "BERLIN" in s:
+        return "Germany 🇩🇪"
+    if "TURKEY" in s or "BURSA" in s or "ISTANBUL" in s:
+        return "Turkey 🇹🇷"
+    if "UAE" in s or "DUBAI" in s or "SHARJAH" in s:
+        return "UAE 🇦🇪"
+    if "IRAN" in s or "TEHRAN" in s or "MASHHAD" in s:
+        return "Iran 🇮🇷"
+    if "AFGHANISTAN" in s or "KANDAHAR" in s or "KABUL" in s or "MAZAR" in s:
+        return "Afghanistan 🇦🇫"
+    if "KAZAKHSTAN" in s or "ALMATY" in s:
+        return "Kazakhstan 🇰🇿"
+    return "Eurasia Transit 🌐"
+
+def _detect_commodity_category(commodity_str: Any) -> str:
+    if not commodity_str:
+        return "General Transit Cargo"
+    s = str(commodity_str).upper()
+    if "RAISIN" in s or "کشمش" in s:
+        return "Green & Black Raisins"
+    if "FIG" in s or "انجیر" in s:
+        return "Dried Figs AAA"
+    if "PISTACHIO" in s or "پسته" in s:
+        return "Roasted Pistachios"
+    if "BROOM" in s or "جارو" in s:
+        return "Afghan Brooms"
+    if "MILLING" in s or "CNC" in s or "MACHINE" in s or "EQUIPMENT" in s:
+        return "Industrial Machinery"
+    if "FOOD" in s or "FRUIT" in s:
+        return "Fresh / Dry Fruits"
+    return "General Cargo"
+
+@app.get("/api/analytics/overview")
+def get_analytics_overview():
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM documents ORDER BY updated_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    total_shipments = len(rows)
+    total_val_usd = 0.0
+    total_wt_kg = 0.0
+    status_counts = {"Dispatched": 0, "In Transit": 0, "Delivered": 0, "Customs Hold": 0}
+    unique_consignors = set()
+    unique_consignees = set()
+    unique_trucks = set()
+    unique_drivers = set()
+
+    for r in rows:
+        val = _clean_numeric_usd(r["declared_value"])
+        wt = _clean_weight_kg(r["gross_weight"])
+        total_val_usd += val
+        total_wt_kg += wt
+        
+        st = r["status"] or "🟢 Dispatched"
+        if "In Transit" in st or "🟡" in st:
+            status_counts["In Transit"] += 1
+        elif "Delivered" in st or "🔵" in st:
+            status_counts["Delivered"] += 1
+        elif "Hold" in st or "🔴" in st:
+            status_counts["Customs Hold"] += 1
+        else:
+            status_counts["Dispatched"] += 1
+
+        if r["consignor"]: unique_consignors.add(r["consignor"].strip())
+        if r["consignee"]: unique_consignees.add(r["consignee"].strip())
+        if r["truck_plate"]: unique_trucks.add(r["truck_plate"].strip())
+        if r["driver_name"]: unique_drivers.add(r["driver_name"].strip())
+
+    avg_val = (total_val_usd / total_shipments) if total_shipments > 0 else 0.0
+    avg_wt = (total_wt_kg / total_shipments) if total_shipments > 0 else 0.0
+
+    return {
+        "total_shipments": total_shipments,
+        "total_declared_value_usd": round(total_val_usd, 2),
+        "total_declared_value_formatted": f"${total_val_usd:,.2f} USD",
+        "total_gross_weight_kg": round(total_wt_kg, 2),
+        "total_gross_weight_tons": round(total_wt_kg / 1000.0, 2),
+        "total_gross_weight_formatted": f"{total_wt_kg:,.1f} KG ({total_wt_kg/1000.0:,.2f} T)",
+        "avg_shipment_value_usd": round(avg_val, 2),
+        "avg_shipment_weight_kg": round(avg_wt, 1),
+        "active_dispatched": status_counts["Dispatched"],
+        "in_transit": status_counts["In Transit"],
+        "delivered": status_counts["Delivered"],
+        "customs_hold": status_counts["Customs Hold"],
+        "fleet": {
+            "unique_consignors": len(unique_consignors),
+            "unique_consignees": len(unique_consignees),
+            "unique_trucks": len(unique_trucks),
+            "unique_drivers": len(unique_drivers)
+        },
+        "status_distribution": [
+            {"name": "Dispatched", "value": status_counts["Dispatched"], "color": "#10b981"},
+            {"name": "In Transit", "value": status_counts["In Transit"], "color": "#f59e0b"},
+            {"name": "Delivered", "value": status_counts["Delivered"], "color": "#3b82f6"},
+            {"name": "Customs Hold", "value": status_counts["Customs Hold"], "color": "#ef4444"}
+        ]
+    }
+
+@app.get("/api/analytics/timeseries")
+def get_analytics_timeseries():
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM documents ORDER BY updated_at ASC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    timeline_map = {}
+    for r in rows:
+        date_str = r["created_at"][:10] if r["created_at"] else "2026-08-20"
+        if date_str not in timeline_map:
+            timeline_map[date_str] = {"shipments": 0, "value_usd": 0.0, "weight_kg": 0.0}
+        timeline_map[date_str]["shipments"] += 1
+        timeline_map[date_str]["value_usd"] += _clean_numeric_usd(r["declared_value"])
+        timeline_map[date_str]["weight_kg"] += _clean_weight_kg(r["gross_weight"])
+
+    sorted_dates = sorted(timeline_map.keys())
+    return {
+        "dates": sorted_dates,
+        "shipments": [timeline_map[d]["shipments"] for d in sorted_dates],
+        "values_usd": [round(timeline_map[d]["value_usd"], 2) for d in sorted_dates],
+        "weights_kg": [round(timeline_map[d]["weight_kg"], 1) for d in sorted_dates]
+    }
+
+@app.get("/api/analytics/routes")
+def get_analytics_routes():
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM documents ORDER BY updated_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    dest_map = {}
+    corridor_map = {}
+    for r in rows:
+        country = _detect_country(r["destination"])
+        dest_map[country] = dest_map.get(country, 0) + 1
+        
+        orig = (r["origin"] or "Afghanistan").split(',')[0].strip()
+        dest = (r["destination"] or "International").split('\n')[0].strip()[:30]
+        corridor_key = f"{orig} ➔ {dest}"
+        if corridor_key not in corridor_map:
+            corridor_map[corridor_key] = {"count": 0, "total_value": 0.0, "total_weight": 0.0}
+        corridor_map[corridor_key]["count"] += 1
+        corridor_map[corridor_key]["total_value"] += _clean_numeric_usd(r["declared_value"])
+        corridor_map[corridor_key]["total_weight"] += _clean_weight_kg(r["gross_weight"])
+
+    countries_list = [{"name": k, "value": v} for k, v in sorted(dest_map.items(), key=lambda x: x[1], reverse=True)]
+    corridors_list = [{"corridor": k, "count": v["count"], "value_usd": round(v["total_value"], 2), "weight_kg": round(v["total_weight"], 1)} for k, v in sorted(corridor_map.items(), key=lambda x: x[1]["count"], reverse=True)]
+
+    return {
+        "countries": countries_list,
+        "corridors": corridors_list
+    }
+
+@app.get("/api/analytics/commodities")
+def get_analytics_commodities():
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM documents ORDER BY updated_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    cat_map = {}
+    for r in rows:
+        cat = _detect_commodity_category(r["commodity"])
+        if cat not in cat_map:
+            cat_map[cat] = {"count": 0, "total_weight": 0.0, "total_value": 0.0}
+        cat_map[cat]["count"] += 1
+        cat_map[cat]["total_weight"] += _clean_weight_kg(r["gross_weight"])
+        cat_map[cat]["total_value"] += _clean_numeric_usd(r["declared_value"])
+
+    result = [{"name": k, "value": v["count"], "weight_kg": round(v["total_weight"], 1), "value_usd": round(v["total_value"], 2)} for k, v in sorted(cat_map.items(), key=lambda x: x[1]["count"], reverse=True)]
+    return result
+
+@app.get("/api/analytics/entities")
+def get_analytics_entities():
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM documents ORDER BY updated_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    senders = {}
+    receivers = {}
+    drivers = {}
+    trucks = {}
+
+    for r in rows:
+        s_name = (r["consignor"] or "Unknown Sender").split('\n')[0].strip()
+        c_name = (r["consignee"] or "Unknown Consignee").split('\n')[0].strip()
+        d_name = (r["driver_name"] or "Standard Driver").split('\n')[0].strip()
+        t_name = (r["truck_plate"] or "Unassigned").split('\n')[0].strip()
+        val = _clean_numeric_usd(r["declared_value"])
+        wt = _clean_weight_kg(r["gross_weight"])
+
+        if s_name not in senders: senders[s_name] = {"count": 0, "value_usd": 0.0, "weight_kg": 0.0}
+        senders[s_name]["count"] += 1
+        senders[s_name]["value_usd"] += val
+        senders[s_name]["weight_kg"] += wt
+
+        if c_name not in receivers: receivers[c_name] = {"count": 0, "value_usd": 0.0, "weight_kg": 0.0}
+        receivers[c_name]["count"] += 1
+        receivers[c_name]["value_usd"] += val
+        receivers[c_name]["weight_kg"] += wt
+
+        if d_name not in drivers: drivers[d_name] = {"count": 0, "truck": t_name}
+        drivers[d_name]["count"] += 1
+
+        if t_name not in trucks: trucks[t_name] = {"count": 0, "driver": d_name}
+        trucks[t_name]["count"] += 1
+
+    return {
+        "top_consignors": [{"name": k, "count": v["count"], "value_usd": round(v["value_usd"], 2), "weight_kg": round(v["weight_kg"], 1)} for k, v in sorted(senders.items(), key=lambda x: x[1]["count"], reverse=True)],
+        "top_consignees": [{"name": k, "count": v["count"], "value_usd": round(v["value_usd"], 2), "weight_kg": round(v["weight_kg"], 1)} for k, v in sorted(receivers.items(), key=lambda x: x[1]["count"], reverse=True)],
+        "top_drivers": [{"name": k, "count": v["count"], "truck": v["truck"]} for k, v in sorted(drivers.items(), key=lambda x: x[1]["count"], reverse=True)],
+        "top_trucks": [{"plate": k, "count": v["count"], "driver": v["driver"]} for k, v in sorted(trucks.items(), key=lambda x: x[1]["count"], reverse=True)]
+    }
+
+class QueryRequest(BaseModel):
+    query: str
+    history: Optional[List[Dict[str, Any]]] = []
+
+@app.post("/api/analytics/query")
+def run_analytics_query(req: QueryRequest):
+    q = (req.query or "").strip().lower()
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM documents ORDER BY updated_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
+
+    total_shipments = len(rows)
+    total_val = sum(_clean_numeric_usd(r["declared_value"]) for r in rows)
+    total_wt = sum(_clean_weight_kg(r["gross_weight"]) for r in rows)
+
+    # Intent routing and response generator
+    if "consignee" in q or "receiver" in q or "who received" in q or "buyer" in q:
+        receivers = {}
+        for r in rows:
+            c = (r["consignee"] or "Unknown").split('\n')[0].strip()
+            v = _clean_numeric_usd(r["declared_value"])
+            receivers[c] = receivers.get(c, 0.0) + v
+        sorted_c = sorted(receivers.items(), key=lambda x: x[1], reverse=True)
+        top = sorted_c[0] if sorted_c else ("None", 0)
+        
+        table_rows = "\n".join([f"| **{name}** | ${val:,.2f} USD |" for name, val in sorted_c[:5]])
+        answer = f"### 🏢 Consignee Analysis\n\nThe top consignee by declared cargo value is **{top[0]}** with **${top[1]:,.2f} USD** across your transit records.\n\n| Consignee / Importer | Total Declared Value (USD) |\n| :--- | :--- |\n{table_rows}"
+        suggestions = ["Show all shipments for " + top[0][:20], "Breakdown freight by country", "What is the total weight?"]
+    
+    elif "weight" in q or "ton" in q or "kg" in q or "heavy" in q or "volume" in q:
+        commodities = {}
+        for r in rows:
+            cat = _detect_commodity_category(r["commodity"])
+            wt = _clean_weight_kg(r["gross_weight"])
+            commodities[cat] = commodities.get(cat, 0.0) + wt
+        sorted_comm = sorted(commodities.items(), key=lambda x: x[1], reverse=True)
+        
+        table_rows = "\n".join([f"| **{name}** | {wt:,.1f} KG ({wt/1000.0:,.2f} T) |" for name, wt in sorted_comm])
+        answer = f"### ⚖️ Freight Weight & Tonnage Report\n\nTotal aggregate freight weight across all active CMR waybills is **{total_wt:,.1f} KG ({total_wt/1000.0:,.2f} Metric Tons)**.\n\n| Commodity Category | Total Weight (KG & Tons) |\n| :--- | :--- |\n{table_rows}"
+        suggestions = ["Show shipments by driver", "Which route has highest value?", "List recent CMR documents"]
+
+    elif "india" in q or "delhi" in q or "germany" in q or "turkey" in q or "uzbekistan" in q or "destination" in q or "country" in q:
+        dest_filter = "india" if "india" in q else ("germany" if "germany" in q else ("turkey" if "turkey" in q else ("uzbekistan" if "uzbekistan" in q else "")))
+        matching_docs = []
+        for r in rows:
+            dest = (r["destination"] or "").lower()
+            if dest_filter and dest_filter in dest:
+                matching_docs.append(r)
+        
+        if matching_docs:
+            sub_val = sum(_clean_numeric_usd(d["declared_value"]) for d in matching_docs)
+            sub_wt = sum(_clean_weight_kg(d["gross_weight"]) for d in matching_docs)
+            doc_rows = "\n".join([f"| **{d['cmr_number']}** | {d['consignor'][:25]} | {d['consignee'][:25]} | {d['status']} | {d['declared_value']} |" for d in matching_docs[:8]])
+            answer = f"### 📍 Destination Corridors ({dest_filter.title()})\n\nFound **{len(matching_docs)} shipments** bound for **{dest_filter.title()}** totaling **${sub_val:,.2f} USD** and **{sub_wt:,.1f} KG**.\n\n| CMR # | Consignor | Consignee | Status | Value |\n| :--- | :--- | :--- | :--- | :--- |\n{doc_rows}"
+        else:
+            answer = f"### 🌍 Global Corridors\n\nAcross **{total_shipments} recorded waybills**, shipments are routed across **India 🇮🇳, Uzbekistan 🇺🇿, Germany 🇩🇪, Turkey 🇹🇷, and UAE 🇦🇪** with aggregate valuation of **${total_val:,.2f} USD**."
+        suggestions = ["Show top senders", "List Kamaz trucks in transit", "Summarize total declared value"]
+
+    elif "truck" in q or "driver" in q or "fleet" in q or "plate" in q:
+        drivers = {}
+        for r in rows:
+            d = (r["driver_name"] or "Standard Driver").split('\n')[0].strip()
+            t = (r["truck_plate"] or "Unassigned").split('\n')[0].strip()
+            drivers[d] = {"truck": t, "count": drivers.get(d, {}).get("count", 0) + 1}
+        d_rows = "\n".join([f"| **{d}** | {info['truck']} | {info['count']} CMRs |" for d, info in sorted(drivers.items(), key=lambda x: x[1]['count'], reverse=True)[:6]])
+        answer = f"### 🚛 Fleet & Driver Operations\n\nThere are **{len(drivers)} registered drivers and active transport units** in the Sky Ariana transit network.\n\n| Driver Name | Assigned Truck / Plate | Total Waybills |\n| :--- | :--- | :--- |\n{d_rows}"
+        suggestions = ["Show shipments in transit", "What is the top commodity?", "Export full backup JSON"]
+
+    else:
+        answer = f"### 📊 Sky Ariana International Transit Overview\n\n- **Total CMR Waybills**: `{total_shipments}` documents\n- **Total Declared Value**: `${total_val:,.2f} USD`\n- **Total Gross Freight Weight**: `{total_wt:,.1f} KG` (`{total_wt/1000.0:,.2f} T`)\n- **Active Corridors**: Afghanistan ➔ India, Uzbekistan, Germany, Turkey\n\nAsk me anything about your drivers, top commodities, consignors, consignees, or shipment values!"
+        suggestions = ["Top 5 consignees by value", "Breakdown freight by commodity", "Show India corridor shipments", "List active drivers"]
+
+    return {
+        "answer": answer,
+        "suggestions": suggestions,
+        "thought": f"Analyzed {total_shipments} CMR documents from SQLite database cmr_database.db",
+        "timestamp": datetime.datetime.now().strftime("%H:%M:%S")
+    }
+
+class StatusUpdateRequest(BaseModel):
+    document_id: str
+    status: str
+
+@app.post("/api/analytics/update-status")
+def update_document_status(req: StatusUpdateRequest):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("UPDATE documents SET status = ?, updated_at = ? WHERE id = ? OR cmr_number = ?", (req.status, now_str, req.document_id, req.document_id))
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    if affected == 0:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"status": "updated", "id": req.document_id, "new_status": req.status, "updated_at": now_str}
 
 @app.get("/api/documents")
 def list_documents(q: Optional[str] = None, tag: Optional[str] = None):

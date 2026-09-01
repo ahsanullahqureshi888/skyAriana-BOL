@@ -35,5 +35,6 @@ def export_excel(body: dict):
     if not filename.lower().endswith(".xlsx"):
         filename = f"{filename}.xlsx"
     output_path = EXPORTS_DIR / filename
-    write_excel(rows, output_path)
+    write_excel(output_path, rows)
     return FileResponse(output_path, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename=filename)
+

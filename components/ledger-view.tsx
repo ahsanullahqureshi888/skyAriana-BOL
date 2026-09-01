@@ -799,9 +799,57 @@ export const LedgerView = memo(function LedgerView() {
   }
 
   const handleSaveEditedEntry = async (updatedData: Partial<LedgerEntry>) => {
-    if (!editingEntry || !currentAccount || !currentCompany) return
+    if (!currentAccount || !currentCompany) return
 
     setAutoSaveStatus('saving')
+
+    if (!editingEntry) {
+      // Creating New Entry via unified modal
+      const debitNum = !updatedData.debit || (updatedData.debit as any) === '' ? 0 : Number(updatedData.debit) || 0
+      const creditNum = !updatedData.credit || (updatedData.credit as any) === '' ? 0 : Number(updatedData.credit) || 0
+      
+      saveFinancialsForEntry(updatedData.barnamehNo, undefined, {
+        ...updatedData,
+        debit: debitNum,
+        credit: creditNum,
+      })
+
+      addLedgerEntry(currentAccount.id, currentCompany.id, {
+        date: updatedData.date || new Date().toISOString().split('T')[0],
+        shipperDescription: updatedData.shipperDescription || '',
+        invoiceNo: updatedData.invoiceNo || '',
+        dateOfShip: updatedData.dateOfShip || '',
+        barnamehNo: updatedData.barnamehNo || '',
+        driverFreight: updatedData.driverFreight || '',
+        billOfLanding: updatedData.billOfLanding || '',
+        surrenderedBL: !!updatedData.surrenderedBL,
+        containerNo: updatedData.containerNo || '',
+        containerType: updatedData.containerType || '',
+        containerDetails: updatedData.containerDetails || '',
+        consignee: updatedData.consignee || '',
+        quantity: updatedData.quantity || '',
+        debit: debitNum,
+        credit: creditNum,
+        price: updatedData.price !== undefined ? updatedData.price : debitNum,
+        cost: updatedData.cost !== undefined ? updatedData.cost : 0,
+        profit: updatedData.profit !== undefined ? updatedData.profit : 0,
+        shippingCost: updatedData.shippingCost !== undefined ? updatedData.shippingCost : (updatedData.cost || 0),
+        pdfPathname: updatedData.pdfPathname,
+      })
+
+      setIsEditOpen(false)
+      setEditingEntry(null)
+
+      setTimeout(() => {
+        setAutoSaveStatus('saved')
+        setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))
+        toast.success('نوی ثبت په بریالیتوب سره اضافه او خوندي شو (New entry saved!)', {
+          duration: 3000,
+          icon: '✨',
+        })
+      }, 250)
+      return
+    }
 
     // Immediately save to financials map
     saveFinancialsForEntry(editingEntry.barnamehNo || (updatedData as any)?.barnamehNo, editingEntry.id, updatedData)
@@ -1329,7 +1377,10 @@ export const LedgerView = memo(function LedgerView() {
           {/* Primary Action Button First on Mobile */}
           <Button 
             type="button" 
-            onClick={() => setIsOpen(true)} 
+            onClick={() => {
+              setEditingEntry(null)
+              setIsEditOpen(true)
+            }} 
             className="w-full sm:w-auto gap-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 hover:from-blue-950 hover:to-indigo-950 text-white font-black shadow-lg shadow-blue-950/20 hover:scale-[1.02] active:scale-[0.98] transition-all h-11 sm:h-12 px-4 sm:px-6 text-xs sm:text-sm cursor-pointer order-first sm:order-last"
           >
             <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-amber-400" />
@@ -1946,7 +1997,10 @@ export const LedgerView = memo(function LedgerView() {
                   <p className="text-sm font-bold text-slate-700">No ledger entries found</p>
                   <Button
                     type="button"
-                    onClick={() => setIsOpen(true)}
+                    onClick={() => {
+                      setEditingEntry(null)
+                      setIsEditOpen(true)
+                    }}
                     className="h-10 px-4 bg-blue-900 text-white font-bold rounded-xl text-xs gap-1.5"
                   >
                     <Plus className="h-4 w-4 text-amber-400" />
@@ -2258,7 +2312,10 @@ export const LedgerView = memo(function LedgerView() {
                               variant="ghost"
                               size="icon"
                               className="h-5 w-5 hover:bg-blue-100 hover:text-blue-600"
-                              onClick={() => setIsOpen(true)}
+                              onClick={() => {
+                                setEditingEntry(null)
+                                setIsEditOpen(true)
+                              }}
                             >
                               <Plus className="h-3 w-3" />
                             </Button>

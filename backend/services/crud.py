@@ -49,16 +49,22 @@ def serialize_record(record: Any) -> dict[str, Any]:
 
 
 async def list_records(db: AsyncSession, model: Type[Any], q: str | None = None, limit: int = 200, offset: int = 0) -> list[dict[str, Any]]:
-    statement = select(model).order_by(desc(model.updated_at)).offset(offset).limit(min(max(limit, 1), 1000))
-    if q:
+    # Normalize parameters in case default FastAPI Query instances were passed directly
+    q_str = str(q).strip() if q and not hasattr(q, "default") else None
+    limit_int = int(limit) if limit and not hasattr(limit, "default") else 200
+    offset_int = int(offset) if offset and not hasattr(offset, "default") else 0
+
+    statement = select(model).order_by(desc(model.updated_at)).offset(max(offset_int, 0)).limit(min(max(limit_int, 1), 1000))
+    if q_str:
         searchable = []
         for name in ("invoice_number", "customer_name", "bol_number", "shipper_name", "consignee_name", "name", "driver_name", "container_number", "track_no", "destination"):
             if hasattr(model, name):
-                searchable.append(getattr(model, name).ilike(f"%{q}%"))
+                searchable.append(getattr(model, name).ilike(f"%{q_str}%"))
         if searchable:
             statement = statement.where(or_(*searchable))
     result = await db.execute(statement)
     return [serialize_record(record) for record in result.scalars().all()]
+
 
 
 async def get_record(db: AsyncSession, model: Type[Any], record_id: str) -> Any | None:
@@ -134,13 +140,14 @@ def apply_known_fields(record: Any, payload: dict[str, Any]) -> None:
         record.amount = parse_money(payload.get("amount", 0))
 
 
-def parse_money(value: Any) -> int:
+def parse_money(value: Any) -> float:
     if value is None or value == "":
-        return 0
+        return 0.0
     if isinstance(value, (int, float)):
-        return int(round(float(value) * 100))
+        return round(float(value), 2)
     cleaned = "".join(ch for ch in str(value) if ch.isdigit() or ch in ".-")
     try:
-        return int(round(float(cleaned or "0") * 100))
+        return round(float(cleaned or "0.0"), 2)
     except ValueError:
-        return 0
+        return 0.0
+

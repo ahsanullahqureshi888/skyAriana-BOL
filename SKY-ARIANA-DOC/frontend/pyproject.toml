@@ -1,0 +1,18 @@
+[project]
+name = "skyariana-doc"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi",
+  "uvicorn",
+  "sqlalchemy",
+  "pydantic",
+  "pydantic-settings",
+  "python-jose[cryptography]",
+  "passlib[bcrypt]",
+  "python-multipart",
+  "alembic",
+  "openpyxl",
+  "email-validator",
+  "bcrypt"
+]

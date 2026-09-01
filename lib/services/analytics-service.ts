@@ -729,26 +729,29 @@ export function computeAnalyticsData(options?: {
   ]
 
   // 14. Compute KPI summary
-  const collectionRate = totalDebitUSD > 0 ? Math.min(100, Math.round((totalCreditUSD / totalDebitUSD) * 100)) : 0
+  const round2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100
+  const collectionRate = totalDebitUSD > 0 ? Math.min(100, round2((totalCreditUSD / totalDebitUSD) * 100)) : 0
+  const netOutstandingBalance = round2(totalDebitUSD - totalCreditUSD)
 
   const kpis: AnalyticsKPIs = {
     totalShipments: filteredBols.length,
     shipmentsChangePercent: 14.2,
     totalCargoWeightKgs: Math.round(totalWeightKgs),
     totalPackagesCount: totalPackages,
-    totalGrossReceivablesUSD: Math.round(totalDebitUSD),
-    totalReceivedUSD: Math.round(totalCreditUSD),
-    netOutstandingBalanceUSD: Math.round(totalDebitUSD - totalCreditUSD),
+    totalGrossReceivablesUSD: round2(totalDebitUSD),
+    totalReceivedUSD: round2(totalCreditUSD),
+    netOutstandingBalanceUSD: netOutstandingBalance,
     collectionRatePercent: collectionRate,
     activeShippersCount: shipperMap.size,
     activeConsigneesCount: consigneeMap.size,
     totalContainersCount: totalContainers || filteredBols.length,
-    estimatedFreightVolumeUSD: Math.round(totalDebitUSD > 0 ? totalDebitUSD : filteredBols.length * 3600),
+    estimatedFreightVolumeUSD: round2(totalDebitUSD > 0 ? totalDebitUSD : filteredBols.length * 3600),
     onTimeDeliveryRate: 96.5,
     averageTransitDays: 14,
-    overdueBalanceUSD: Math.round(positiveOutstanding * 0.12),
+    overdueBalanceUSD: round2(positiveOutstanding * 0.12),
     activeCorridorsCount: corridors.length,
   }
+
 
 
   // Sort audit logs chronologically

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
 from backend.models import UploadedDocument
@@ -19,7 +19,7 @@ async def upload_pdf(
     file: UploadFile = File(...),
     linked_type: str = Form(default=""),
     linked_id: str = Form(default=""),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     if not (file.filename or "").lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
@@ -37,8 +37,8 @@ async def upload_pdf(
         metadata_json={"content_type": saved["file_type"]},
     )
     db.add(row)
-    db.commit()
-    db.refresh(row)
+    await db.commit()
+    await db.refresh(row)
     return {
         "success": True,
         "data": {
@@ -56,8 +56,8 @@ async def upload_pdf(
 
 
 @router.get("/preview")
-def preview_pdf(document_id: str = Query(...), db: Session = Depends(get_db)):
-    row = db.get(UploadedDocument, document_id)
+async def preview_pdf(document_id: str = Query(...), db: AsyncSession = Depends(get_db)):
+    row = await db.get(UploadedDocument, document_id)
     if row is None:
         raise HTTPException(status_code=404, detail="PDF not found")
     path = Path(row.storage_path)
@@ -67,18 +67,19 @@ def preview_pdf(document_id: str = Query(...), db: Session = Depends(get_db)):
 
 
 @router.get("/{document_id}")
-def get_pdf(document_id: str, db: Session = Depends(get_db)):
-    return preview_pdf(document_id=document_id, db=db)
+async def get_pdf(document_id: str, db: AsyncSession = Depends(get_db)):
+    return await preview_pdf(document_id=document_id, db=db)
 
 
 @router.delete("/{document_id}")
-def delete_pdf(document_id: str, permanent: bool = Query(default=False), db: Session = Depends(get_db)):
-    row = db.get(UploadedDocument, document_id)
+async def delete_pdf(document_id: str, permanent: bool = Query(default=False), db: AsyncSession = Depends(get_db)):
+    row = await db.get(UploadedDocument, document_id)
     if row is None:
         raise HTTPException(status_code=404, detail="PDF not found")
     path = Path(row.storage_path)
-    db.delete(row)
-    db.commit()
+    await db.delete(row)
+    await db.commit()
     if permanent and path.exists():
         path.unlink()
     return {"success": True, "data": {"id": document_id, "permanent": permanent}, "source": "python-fastapi"}
+

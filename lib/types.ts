@@ -23,6 +23,10 @@ export interface LedgerEntry {
   debit: number
   credit: number
   balance: number
+  price?: number
+  cost?: number
+  profit?: number
+  handlingCost?: number
   pdfPathname?: string
 }
 

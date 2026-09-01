@@ -1,0 +1,357 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]:
+        - img "Sky Ariana Logo" [ref=f1e7]
+        - generic [ref=f1e8]:
+          - generic [ref=f1e9]: SKY ARIANA
+          - generic [ref=f1e10]: IMPORT & EXPORT
+      - button "Collapse sidebar" [ref=f1e11] [cursor=pointer]
+    - navigation [ref=f1e14]:
+      - link "Dashboard" [ref=f1e15] [cursor=pointer]:
+        - /url: /
+      - link "Invoices" [ref=f1e22] [cursor=pointer]:
+        - /url: /invoices
+      - link "Customers" [ref=f1e27] [cursor=pointer]:
+        - /url: /customers
+      - link "Products & Services" [ref=f1e34] [cursor=pointer]:
+        - /url: /products
+      - link "Company Settings" [ref=f1e40] [cursor=pointer]:
+        - /url: /settings
+      - link "Backup & Restore" [ref=f1e45] [cursor=pointer]:
+        - /url: /backups
+      - link "Activity History" [ref=f1e51] [cursor=pointer]:
+        - /url: /logs
+      - link "User Management" [ref=f1e57] [cursor=pointer]:
+        - /url: /user-management
+    - button "Logout" [ref=f1e63] [cursor=pointer]
+  - generic [ref=f1e68]:
+    - banner [ref=f1e69]:
+      - generic [ref=f1e71]:
+        - img "Sky Ariana & Balam Bar Baran" [ref=f1e72]
+        - generic [ref=f1e73]:
+          - text: Business Operations
+          - heading "SKY ARIANA & BALAM BAR BARAN" [level=1] [ref=f1e74]
+      - generic [ref=f1e75]:
+        - generic [ref=f1e76]:
+          - button "Switch Language" [ref=f1e77] [cursor=pointer]
+          - combobox [ref=f1e81] [cursor=pointer]:
+            - option "English (EN)" [selected]
+            - option "فارسی (FA)"
+            - option "پښتو (PS)"
+        - generic [ref=f1e82]:
+          - generic [ref=f1e83]:
+            - generic [ref=f1e84]: Admin User
+            - generic [ref=f1e85]: Super Admin
+          - generic "Admin User (Super Admin)" [ref=f1e86]: AU
+    - main [ref=f1e87]:
+      - generic [ref=f1e88]:
+        - generic [ref=f1e89]:
+          - generic [ref=f1e90]:
+            - generic [ref=f1e91]: Audit center
+            - heading "Activity history" [level=1] [ref=f1e92]
+            - paragraph [ref=f1e97]: Review the people, systems, and security events that changed your workspace.
+          - generic [ref=f1e98]:
+            - generic [ref=f1e99]: 100 events
+            - button "Export CSV" [ref=f1e100] [cursor=pointer]
+        - region "Activity filters" [ref=f1e104]:
+          - textbox "Search activity" [ref=f1e109]:
+            - /placeholder: Search actor, action, target, IP…
+          - generic [ref=f1e110]:
+            - combobox "Filter by actor" [ref=f1e111]:
+              - option "All actors" [selected]
+              - option "Admin User"
+              - option "Viewer User"
+            - combobox "Filter by module" [ref=f1e112]:
+              - option "All modules" [selected]
+              - option "Authentication"
+              - option "Customer"
+              - option "Invoice"
+              - option "Product"
+              - option "Settings"
+            - combobox "Filter by action" [ref=f1e113]:
+              - option "All actions" [selected]
+              - option "Create Customer"
+              - option "Delete Invoice"
+              - option "Duplicate Invoice"
+              - option "Login Successful"
+              - option "Successful sign-in"
+              - option "Update Invoice"
+              - option "Update Product"
+              - option "Update Settings"
+              - option "Upload Signature"
+              - option "Upload Stamp"
+            - combobox "Filter by severity" [ref=f1e114]:
+              - option "All severity" [selected]
+              - option "Success"
+              - option "Informational"
+              - option "Warning"
+              - option "Critical"
+            - combobox "Filter by result" [ref=f1e115]:
+              - option "All results" [selected]
+              - option "Successful only"
+              - option "Failed only"
+              - option "Warnings only"
+            - textbox "Filter by IP address" [ref=f1e116]:
+              - /placeholder: IP address
+            - textbox [ref=f1e118]
+            - textbox [ref=f1e120]
+          - generic [ref=f1e121]: Showing the latest 100 recorded events
+        - generic [ref=f1e129]:
+          - generic [ref=f1e130]:
+            - generic [ref=f1e131]:
+              - heading "Today" [level=2] [ref=f1e134]
+              - generic [ref=f1e135]: 1 event
+            - article [ref=f1e137]:
+              - generic [ref=f1e138]:
+                - generic "Recorded activity" [ref=f1e139]
+                - time [ref=f1e142]: 6:30 AM
+                - generic [ref=f1e143]:
+                  - generic [ref=f1e144]: AU
+                  - generic [ref=f1e145]:
+                    - strong [ref=f1e146]: Admin User
+                    - generic [ref=f1e147]: Actor
+                - generic [ref=f1e148]:
+                  - generic [ref=f1e149]:
+                    - heading "Login Successful" [level=3] [ref=f1e150]
+                    - generic [ref=f1e151]: Authentication
+                  - paragraph [ref=f1e152]: User signed in successfully.
+                  - generic [ref=f1e153]:
+                    - generic [ref=f1e154]: "Authentication #1"
+                    - generic [ref=f1e158]: 127.0.0.1
+                - button "Hide details" [expanded] [active] [ref=f1e510] [cursor=pointer]
+              - generic [ref=f1e513]:
+                - generic [ref=f1e514]:
+                  - generic [ref=f1e515]:
+                    - text: Event details
+                    - heading "Login Successful" [level=4] [ref=f1e516]
+                  - generic [ref=f1e517]: Jul 16, 2026, 6:30 AM
+                - generic [ref=f1e518]:
+                  - generic [ref=f1e519]:
+                    - generic [ref=f1e520]: Actor
+                    - strong [ref=f1e521]: Admin User
+                  - generic [ref=f1e522]:
+                    - generic [ref=f1e523]: Target
+                    - strong [ref=f1e524]: "Authentication #1"
+                  - generic [ref=f1e525]:
+                    - generic [ref=f1e526]: Module
+                    - strong [ref=f1e527]: Authentication
+                  - generic [ref=f1e528]:
+                    - generic [ref=f1e529]: IP address
+                    - strong [ref=f1e530]: 127.0.0.1
+                  - generic [ref=f1e531]:
+                    - generic [ref=f1e532]: Device / browser
+                    - strong [ref=f1e533]: Not available
+                  - generic [ref=f1e536]:
+                    - generic [ref=f1e537]: Request ID
+                    - strong [ref=f1e538]: Not available
+                - group [ref=f1e542]:
+                  - generic "View redacted technical payload" [ref=f1e543] [cursor=pointer]
+          - generic [ref=f1e167]:
+            - generic [ref=f1e168]:
+              - heading "Yesterday" [level=2] [ref=f1e171]
+              - generic [ref=f1e172]: 11 events
+            - generic [ref=f1e173]:
+              - article [ref=f1e174]:
+                - generic [ref=f1e175]:
+                  - generic "Recorded activity" [ref=f1e176]
+                  - time [ref=f1e179]: 10:03 PM
+                  - generic [ref=f1e180]:
+                    - generic [ref=f1e181]: AU
+                    - generic [ref=f1e182]:
+                      - strong [ref=f1e183]: Admin User
+                      - generic [ref=f1e184]: Actor
+                  - generic [ref=f1e185]:
+                    - generic [ref=f1e186]:
+                      - heading "Login Successful" [level=3] [ref=f1e187]
+                      - generic [ref=f1e188]: Authentication
+                    - paragraph [ref=f1e189]: User signed in successfully.
+                    - generic [ref=f1e190]:
+                      - generic [ref=f1e191]: "Authentication #1"
+                      - generic [ref=f1e195]: 127.0.0.1
+                  - button "Details" [ref=f1e201] [cursor=pointer]
+              - article [ref=f1e204]:
+                - generic [ref=f1e205]:
+                  - generic "Recorded activity" [ref=f1e206]
+                  - time [ref=f1e209]: 9:12 PM
+                  - generic [ref=f1e210]:
+                    - generic [ref=f1e211]: VU
+                    - generic [ref=f1e212]:
+                      - strong [ref=f1e213]: Viewer User
+                      - generic [ref=f1e214]: Actor
+                  - generic [ref=f1e215]:
+                    - generic [ref=f1e216]:
+                      - heading "Login Successful" [level=3] [ref=f1e217]
+                      - generic [ref=f1e218]: Authentication
+                    - paragraph [ref=f1e219]: User signed in successfully.
+                    - generic [ref=f1e220]:
+                      - generic [ref=f1e221]: "Authentication #4"
+                      - generic [ref=f1e225]: 127.0.0.1
+                  - button "Details" [ref=f1e231] [cursor=pointer]
+              - article [ref=f1e234]:
+                - generic [ref=f1e235]:
+                  - generic "Recorded activity" [ref=f1e236]
+                  - time [ref=f1e239]: 9:12 PM
+                  - generic [ref=f1e240]:
+                    - generic [ref=f1e241]: AU
+                    - generic [ref=f1e242]:
+                      - strong [ref=f1e243]: Admin User
+                      - generic [ref=f1e244]: Actor
+                  - generic [ref=f1e245]:
+                    - generic [ref=f1e246]:
+                      - heading "Login Successful" [level=3] [ref=f1e247]
+                      - generic [ref=f1e248]: Authentication
+                    - paragraph [ref=f1e249]: User signed in successfully.
+                    - generic [ref=f1e250]:
+                      - generic [ref=f1e251]: "Authentication #1"
+                      - generic [ref=f1e255]: 127.0.0.1
+                  - button "Details" [ref=f1e261] [cursor=pointer]
+              - article [ref=f1e264]:
+                - generic [ref=f1e265]:
+                  - generic "Recorded activity" [ref=f1e266]
+                  - time [ref=f1e269]: 8:56 PM
+                  - generic [ref=f1e270]:
+                    - generic [ref=f1e271]: VU
+                    - generic [ref=f1e272]:
+                      - strong [ref=f1e273]: Viewer User
+                      - generic [ref=f1e274]: Actor
+                  - generic [ref=f1e275]:
+                    - generic [ref=f1e276]:
+                      - heading "Login Successful" [level=3] [ref=f1e277]
+                      - generic [ref=f1e278]: Authentication
+                    - paragraph [ref=f1e279]: User signed in successfully.
+                    - generic [ref=f1e280]:
+                      - generic [ref=f1e281]: "Authentication #4"
+                      - generic [ref=f1e285]: 127.0.0.1
+                  - button "Details" [ref=f1e291] [cursor=pointer]
+              - article [ref=f1e294]:
+                - generic [ref=f1e295]:
+                  - generic "Recorded activity" [ref=f1e296]
+                  - time [ref=f1e299]: 8:56 PM
+                  - generic [ref=f1e300]:
+                    - generic [ref=f1e301]: AU
+                    - generic [ref=f1e302]:
+                      - strong [ref=f1e303]: Admin User
+                      - generic [ref=f1e304]: Actor
+                  - generic [ref=f1e305]:
+                    - generic [ref=f1e306]:
+                      - heading "Login Successful" [level=3] [ref=f1e307]
+                      - generic [ref=f1e308]: Authentication
+                    - paragraph [ref=f1e309]: User signed in successfully.
+                    - generic [ref=f1e310]:
+                      - generic [ref=f1e311]: "Authentication #1"
+                      - generic [ref=f1e315]: 127.0.0.1
+                  - button "Details" [ref=f1e321] [cursor=pointer]
+              - article [ref=f1e324]:
+                - generic [ref=f1e325]:
+                  - generic "Recorded activity" [ref=f1e326]
+                  - time [ref=f1e329]: 8:36 PM
+                  - generic [ref=f1e330]:
+                    - generic [ref=f1e331]: AU
+                    - generic [ref=f1e332]:
+                      - strong [ref=f1e333]: Admin User
+                      - generic [ref=f1e334]: Actor
+                  - generic [ref=f1e335]:
+                    - generic [ref=f1e336]:
+                      - heading "Login Successful" [level=3] [ref=f1e337]
+                      - generic [ref=f1e338]: Authentication
+                    - paragraph [ref=f1e339]: User signed in successfully.
+                    - generic [ref=f1e340]:
+                      - generic [ref=f1e341]: "Authentication #1"
+                      - generic [ref=f1e345]: 127.0.0.1
+                  - button "Details" [ref=f1e351] [cursor=pointer]
+              - article [ref=f1e354]:
+                - generic [ref=f1e355]:
+                  - generic "Recorded activity" [ref=f1e356]
+                  - time [ref=f1e359]: 8:36 PM
+                  - generic [ref=f1e360]:
+                    - generic [ref=f1e361]: VU
+                    - generic [ref=f1e362]:
+                      - strong [ref=f1e363]: Viewer User
+                      - generic [ref=f1e364]: Actor
+                  - generic [ref=f1e365]:
+                    - generic [ref=f1e366]:
+                      - heading "Login Successful" [level=3] [ref=f1e367]
+                      - generic [ref=f1e368]: Authentication
+                    - paragraph [ref=f1e369]: User signed in successfully.
+                    - generic [ref=f1e370]:
+                      - generic [ref=f1e371]: "Authentication #4"
+                      - generic [ref=f1e375]: 127.0.0.1
+                  - button "Details" [ref=f1e381] [cursor=pointer]
+              - article [ref=f1e384]:
+                - generic [ref=f1e385]:
+                  - generic "Recorded activity" [ref=f1e386]
+                  - time [ref=f1e389]: 8:35 PM
+                  - generic [ref=f1e390]:
+                    - generic [ref=f1e391]: AU
+                    - generic [ref=f1e392]:
+                      - strong [ref=f1e393]: Admin User
+                      - generic [ref=f1e394]: Actor
+                  - generic [ref=f1e395]:
+                    - generic [ref=f1e396]:
+                      - heading "Login Successful" [level=3] [ref=f1e397]
+                      - generic [ref=f1e398]: Authentication
+                    - paragraph [ref=f1e399]: User signed in successfully.
+                    - generic [ref=f1e400]:
+                      - generic [ref=f1e401]: "Authentication #1"
+                      - generic [ref=f1e405]: 127.0.0.1
+                  - button "Details" [ref=f1e411] [cursor=pointer]
+              - article [ref=f1e414]:
+                - generic [ref=f1e415]:
+                  - generic "Recorded activity" [ref=f1e416]
+                  - time [ref=f1e419]: 4:08 PM
+                  - generic [ref=f1e420]:
+                    - generic [ref=f1e421]: AU
+                    - generic [ref=f1e422]:
+                      - strong [ref=f1e423]: Admin User
+                      - generic [ref=f1e424]: Actor
+                  - generic [ref=f1e425]:
+                    - generic [ref=f1e426]:
+                      - heading "Update Invoice" [level=3] [ref=f1e427]
+                      - generic [ref=f1e428]: Invoice
+                    - paragraph [ref=f1e429]: "Invoice updated: INV-SABBB-2026-001"
+                    - generic [ref=f1e430]:
+                      - generic [ref=f1e431]: "Invoice #1"
+                      - generic [ref=f1e435]: Not available
+                  - button "Details" [ref=f1e441] [cursor=pointer]
+              - article [ref=f1e444]:
+                - generic [ref=f1e445]:
+                  - generic "Recorded activity" [ref=f1e446]
+                  - time [ref=f1e449]: 4:07 PM
+                  - generic [ref=f1e450]:
+                    - generic [ref=f1e451]: AU
+                    - generic [ref=f1e452]:
+                      - strong [ref=f1e453]: Admin User
+                      - generic [ref=f1e454]: Actor
+                  - generic [ref=f1e455]:
+                    - generic [ref=f1e456]:
+                      - heading "Update Settings" [level=3] [ref=f1e457]
+                      - generic [ref=f1e458]: Settings
+                    - paragraph [ref=f1e459]: Company settings updated by admin
+                    - generic [ref=f1e460]:
+                      - generic [ref=f1e461]: "Settings #1"
+                      - generic [ref=f1e465]: Not available
+                  - button "Details" [ref=f1e471] [cursor=pointer]
+              - article [ref=f1e474]:
+                - generic [ref=f1e475]:
+                  - generic "Recorded activity" [ref=f1e476]
+                  - time [ref=f1e480]: 3:37 PM
+                  - generic [ref=f1e481]:
+                    - generic [ref=f1e482]: AU
+                    - generic [ref=f1e483]:
+                      - strong [ref=f1e484]: Admin User
+                      - generic [ref=f1e485]: Actor
+                  - generic [ref=f1e486]:
+                    - generic [ref=f1e487]:
+                      - heading "Successful sign-in" [level=3] [ref=f1e488]
+                      - generic [ref=f1e489]: Authentication
+                    - paragraph [ref=f1e490]: A user signed in successfully.
+                    - generic [ref=f1e491]:
+                      - generic [ref=f1e492]: Workspace
+                      - generic [ref=f1e496]: Not available
+                  - button "Details" [ref=f1e502] [cursor=pointer]
+        - generic [ref=f1e505]:
+          - generic [ref=f1e506]: Page 1 of 9 · 100 total
+          - generic [ref=f1e507]:
+            - button "Previous" [disabled] [ref=f1e508]
+            - button "Next" [ref=f1e509] [cursor=pointer]

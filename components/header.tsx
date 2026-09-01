@@ -33,6 +33,7 @@ import { PWAInstallButton } from '@/components/pwa-install-prompt'
 import { CloudSyncModal } from '@/components/bill-of-lading/cloud-sync-modal'
 import { CommandPalette } from '@/components/command-palette'
 import { preloadView } from '@/app/page'
+import { LiveCurrencyBar } from '@/components/live-currency-bar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,6 +81,8 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
     if (view === 'analytics') return 'Sky Ariana Executive Analytics'
     if (view === 'shipper-portal') return 'Sky Ariana Shipper Portal'
     if (view === 'reports') return 'Financial Reports & P&L Statement'
+    if (view === 'export-calculator') return 'Export Logistics & Reefer Quote Engine'
+    if (view === 'acci-portal') return 'ACCI Chamber of Commerce & Origin Suite'
     if (view === 'sky-doc') return 'Sky Ariana Document System (SKY DOC)'
     if (view === 'sky-cmr') return 'Sky CMR Express & Border Waybill'
     if (view === 'invoice-pad') return 'Commercial Invoice Pad'
@@ -97,6 +100,8 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
     if (view === 'analytics') return 'Multi-source Data Intelligence, Shipments & Ledger Statements • داشبورد تحلیل داده‌ها'
     if (view === 'shipper-portal') return 'Verified Client Consignments & Live Milestones • پورتال مشتریان'
     if (view === 'reports') return 'Executive Profit & Loss Statement, Cargo Volumes & Financial Aging • گزارشات مالی، سود و زیان'
+    if (view === 'export-calculator') return 'Multi-Leg Corridors, Reefer Escort & Ocean Freight Pricing • ماشین حساب صادرات و ترانزیت'
+    if (view === 'acci-portal') return 'Certificate of Origin, Packing Lists, SAFTA & Air Waybills • اسناد اتاق تجارت'
     if (view === 'sky-doc') return 'Enterprise Operating System & Document Management • سیستم جامع اسناد و عملیات'
     if (view === 'sky-cmr') return 'International Consignment Note, Border Transit & Waybills • بارنامه بین‌المللی سی‌ام‌آر'
     if (view === 'invoice-pad') return 'Print-Ready A4 Commercial Invoices & Customs Valuations • سیستم صدور فاکتور'
@@ -113,6 +118,8 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
     if (view === 'analytics') return { label: 'Analytics', color: 'bg-blue-50 text-blue-950 border-blue-300 ring-1 ring-blue-400/30' }
     if (view === 'shipper-portal') return { label: 'Shipper Portal', color: 'bg-amber-50 text-amber-900 border-amber-300 ring-1 ring-amber-400/30' }
     if (view === 'reports') return { label: 'Financial Reports', color: 'bg-emerald-50 text-emerald-950 border-emerald-300 ring-1 ring-emerald-400/30' }
+    if (view === 'export-calculator') return { label: 'Export Quote', color: 'bg-orange-50 text-orange-950 border-orange-300 ring-1 ring-orange-400/30' }
+    if (view === 'acci-portal') return { label: 'ACCI Suite', color: 'bg-amber-50 text-amber-950 border-amber-300 ring-1 ring-amber-400/30' }
     if (view === 'sky-doc') return { label: 'SKY DOC', color: 'bg-cyan-50 text-cyan-950 border-cyan-300 ring-1 ring-cyan-400/30' }
     if (view === 'sky-cmr') return { label: 'Sky CMR', color: 'bg-blue-50 text-blue-950 border-blue-300 ring-1 ring-blue-400/30' }
     if (view === 'invoice-pad') return { label: 'Invoice Pad', color: 'bg-indigo-50 text-indigo-900 border-indigo-300 ring-1 ring-indigo-400/30' }
@@ -127,10 +134,14 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   const badge = getViewBadge()
 
   // Secondary tools active status check
-  const isSecondaryActive = view === 'sky-cmr' || view === 'invoice-pad' || view === 'bank'
+  const isSecondaryActive = view === 'sky-cmr' || view === 'invoice-pad' || view === 'bank' || view === 'export-calculator' || view === 'acci-portal'
+
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/90 bg-white/95 backdrop-blur-2xl shadow-xs no-print transition-all duration-200 select-none">
+      {/* Live FX Rates & Fast Currency Converter Ribbon */}
+      <LiveCurrencyBar />
+
       <div className="max-w-[1880px] w-full mx-auto px-2.5 sm:px-4 py-1.5 sm:py-2">
         <div className="flex items-center justify-between gap-2 sm:gap-3">
           
@@ -305,6 +316,40 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
               {/* 5. Direct Buttons on Extra Wide Screens (>= 1440px) OR Collapsed Dropdown Menu */}
               <div className="hidden 2xl:flex items-center gap-1 border-l border-slate-200/80 pl-1">
+                {/* Export Logistics Calculator */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setView('export-calculator')}
+                  onMouseEnter={() => preloadView('export-calculator')}
+                  className={`gap-1 h-8 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    view === 'export-calculator' 
+                      ? 'bg-orange-600 text-white shadow-xs' 
+                      : 'text-orange-950 hover:bg-orange-50'
+                  }`}
+                  title="Export Logistics & Reefer Quote Engine • ماشین حساب ترانزیت"
+                >
+                  <Truck className="h-3.5 w-3.5 text-orange-600" />
+                  <span>Export Quote</span>
+                </Button>
+
+                {/* ACCI Chamber Portal */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setView('acci-portal')}
+                  onMouseEnter={() => preloadView('acci-portal')}
+                  className={`gap-1 h-8 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    view === 'acci-portal' 
+                      ? 'bg-amber-600 text-white shadow-xs' 
+                      : 'text-amber-950 hover:bg-amber-50'
+                  }`}
+                  title="ACCI Chamber of Commerce & Origin Suite • اسناد اتاق تجارت"
+                >
+                  <Building2 className="h-3.5 w-3.5 text-amber-600" />
+                  <span>ACCI Suite</span>
+                </Button>
+
                 {/* Sky CMR */}
                 <Button
                   variant="ghost"
@@ -376,11 +421,49 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
                       <ChevronDown className="h-3 w-3 opacity-60" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 p-1.5 bg-white rounded-2xl border-slate-200 shadow-xl">
+                  <DropdownMenuContent align="end" className="w-64 p-1.5 bg-white rounded-2xl border-slate-200 shadow-xl">
                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 px-2 py-1 tracking-wider">
-                      Logistics & Banking Modules
+                      Logistics, Trade & Banking Suite
                     </DropdownMenuLabel>
                     
+                    <DropdownMenuItem 
+                      onClick={() => setView('export-calculator')}
+                      onMouseEnter={() => preloadView('export-calculator')}
+                      className={`gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
+                        view === 'export-calculator' ? 'bg-orange-50 text-orange-950 font-black' : 'text-slate-700 hover:bg-orange-50/60'
+                      }`}
+                    >
+                      <div className="p-1.5 rounded-lg bg-orange-100/70 text-orange-700">
+                        <Truck className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-orange-950">Export Logistics Quote</span>
+                          <span className="text-[9px] font-[vazirmatn] text-orange-600 font-bold">صادرات</span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 truncate">Multi-leg reefer & pricing calculator</span>
+                      </div>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem 
+                      onClick={() => setView('acci-portal')}
+                      onMouseEnter={() => preloadView('acci-portal')}
+                      className={`gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold cursor-pointer transition-colors ${
+                        view === 'acci-portal' ? 'bg-amber-50 text-amber-950 font-black' : 'text-slate-700 hover:bg-amber-50/60'
+                      }`}
+                    >
+                      <div className="p-1.5 rounded-lg bg-amber-100/70 text-amber-700">
+                        <Building2 className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-amber-950">ACCI Chamber Portal</span>
+                          <span className="text-[9px] font-[vazirmatn] text-amber-600 font-bold">اتاق تجارت</span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 truncate">Origin, SAFTA, AWB & Packing List</span>
+                      </div>
+                    </DropdownMenuItem>
+
                     <DropdownMenuItem 
                       onClick={() => setView('sky-cmr')}
                       onMouseEnter={() => preloadView('sky-cmr')}
@@ -438,6 +521,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
                       </div>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
+
                 </DropdownMenu>
               </div>
 

@@ -1,0 +1,47 @@
+- generic [ref=f8e3]:
+  - complementary:
+    - generic:
+      - generic:
+        - img "Sky Ariana Logo"
+        - generic:
+          - generic: SKY ARIANA
+          - generic: IMPORT & EXPORT
+      - button "Collapse sidebar"
+    - navigation:
+      - link "Dashboard":
+        - /url: /
+      - link "Invoices":
+        - /url: /invoices
+      - link "Customers":
+        - /url: /customers
+      - link "Products & Services":
+        - /url: /products
+      - link "Company Settings":
+        - /url: /settings
+      - link "Backup & Restore":
+        - /url: /backups
+      - link "Activity History":
+        - /url: /logs
+      - link "User Management":
+        - /url: /user-management
+    - generic:
+      - button "Logout"
+  - generic [ref=f8e4]:
+    - banner [ref=f8e5]:
+      - button "Open navigation" [ref=f8e6] [cursor=pointer]
+      - img "Sky Ariana & Balam Bar Baran" [ref=f8e10]
+      - generic [ref=f8e11]:
+        - generic [ref=f8e12]:
+          - button "Switch Language" [ref=f8e13] [cursor=pointer]
+          - combobox [ref=f8e17] [cursor=pointer]:
+            - option "English (EN)" [selected]
+            - option "فارسی (FA)"
+            - option "پښتو (PS)"
+        - generic "Admin User (Super Admin)" [ref=f8e19]: AU
+    - main [ref=f8e20]:
+      - tablist "User management sections" [ref=f8e22]:
+        - tab "Users" [ref=f8e23] [cursor=pointer]
+        - tab "Roles" [ref=f8e29] [cursor=pointer]
+        - tab "Activity" [ref=f8e34] [cursor=pointer]
+        - tab "Sessions" [ref=f8e38] [cursor=pointer]
+        - tab "Security" [selected] [ref=f8e42] [cursor=pointer]

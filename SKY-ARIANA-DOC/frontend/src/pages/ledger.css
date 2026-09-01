@@ -1,0 +1,223 @@
+/* Multi-Ledger Styling matching screenshot */
+.ledger-page {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  zoom: 0.94;
+}
+
+.ledger-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ledger-eyebrow {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ledger-title {
+  font-size: 1.6rem;
+  font-weight: 850;
+  color: #0f172a;
+  margin: 0;
+}
+
+.ledger-account-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.ledger-account-select {
+  flex: 1;
+  min-width: 280px;
+  max-width: 540px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 750;
+  color: #0f172a;
+  outline: none;
+  cursor: pointer;
+}
+
+.ledger-account-select:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* KPI Badges matching screenshot */
+.kpi-pill {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  min-width: 110px;
+}
+
+.kpi-pill__label {
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.kpi-pill__value {
+  font-size: 1rem;
+  font-weight: 900;
+  font-family: monospace;
+}
+
+.kpi-pill--credit {
+  background: #fffbeb;
+  border-color: #fef3c7;
+  color: #b45309;
+}
+
+.kpi-pill--debit {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.kpi-pill--balance {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+/* Table styling matching screenshot */
+.ledger-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.ledger-table th {
+  background: #f8fafc !important;
+  color: #64748b !important;
+  font-size: 0.72rem !important;
+  font-weight: 850 !important;
+  padding: 10px 14px !important;
+}
+
+.ledger-table td {
+  padding: 12px 14px !important;
+  vertical-align: middle !important;
+  font-size: 0.85rem !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.ledger-table tbody tr:hover {
+  background-color: #f8fafc !important;
+}
+
+/* Print styling */
+.ledger-print-header, .ledger-print-footer {
+  display: none;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .no-print, nav, header.ledger-header, .ledger-toolbar-card {
+    display: none !important;
+  }
+
+  .ledger-page {
+    zoom: 1 !important;
+    max-width: 100% !important;
+  }
+
+  .ledger-print-header {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+    border-bottom: 2.5px solid #0f172a;
+  }
+
+  .ledger-print-logo-wrap {
+    flex: 0 0 160px;
+    width: 160px;
+    height: 90px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ledger-print-logo-wrap img {
+    width: 100%;
+    height: 100%;
+    max-height: 90px;
+    object-fit: contain;
+  }
+
+  .ledger-print-info {
+    text-align: right;
+  }
+
+  .ledger-print-info h1 {
+    font-size: 1.6rem !important;
+    font-weight: 900 !important;
+    color: #0f172a !important;
+    margin: 0 0 4px 0 !important;
+    text-transform: uppercase;
+  }
+
+  .ledger-print-info h2 {
+    font-size: 1.15rem !important;
+    font-weight: 850 !important;
+    color: #2563eb !important;
+    margin: 0 0 4px 0 !important;
+  }
+
+  .ledger-print-info p {
+    font-size: 0.75rem !important;
+    color: #475569 !important;
+    margin: 0 !important;
+  }
+
+  .ledger-table th, .ledger-table td {
+    padding: 8px 10px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .ledger-print-footer {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 50px;
+    padding-top: 25px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #475569;
+  }
+
+  .ledger-print-signature-line {
+    width: 190px;
+    border-top: 1.5px solid #0f172a;
+    padding-top: 6px;
+    text-align: center;
+  }
+}

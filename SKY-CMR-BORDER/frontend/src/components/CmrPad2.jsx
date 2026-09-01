@@ -1,5 +1,6 @@
 import React from 'react';
-import { useCmr } from '../context/CmrContext';
+import { useCmr, cleanCmrNumber } from '../context/CmrContext';
+import { PartyQuickSelector } from './PartyQuickSelector';
 
 export const CmrPad2 = () => {
   const { fields, updateField, zoom } = useCmr();
@@ -25,9 +26,12 @@ export const CmrPad2 = () => {
               {/* ROW 1: BOX 1 (SENDER) & TOP-RIGHT CMR HEADER */}
               <tr>
                 <td style={{ width: '56%', height: '105px', verticalAlign: 'top' }}>
-                  <div className="p2-box-header">
-                    <span className="p2-en-title">1. Sender (name,address,country)</span>
-                    <span className="p2-ru-title">Отправитель (имя,адрес,страна)</span>
+                  <div className="p2-box-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span className="p2-en-title">1. Sender (name,address,country)</span>
+                      <span className="p2-ru-title">Отправитель (имя,адрес,страна)</span>
+                    </div>
+                    <PartyQuickSelector type="sender" />
                   </div>
                   <div
                     className="blue-field p2-content-serif"
@@ -54,10 +58,10 @@ export const CmrPad2 = () => {
                           contentEditable
                           suppressContentEditableWarning
                           id="f2_cmr_number"
-                          title="Click to edit CMR No or syncs with Invoice No"
-                          onBlur={(e) => updateField('f2_cmr_number', e.target.innerText.trim())}
+                          title="Click to edit CMR No"
+                          onBlur={(e) => updateField('f2_cmr_number', cleanCmrNumber(e.target.innerText.trim()))}
                         >
-                          {fields.f2_cmr_number || fields.inv_number || 'SA-179'}
+                          {cleanCmrNumber(fields.f2_cmr_number) || cleanCmrNumber(fields.inv_number) || '110'}
                         </span>
                       </div>
                     </div>
@@ -72,9 +76,12 @@ export const CmrPad2 = () => {
               {/* ROW 2: BOX 2 (CONSIGNEE) & BOX 16 (COURIER / CARRIER) */}
               <tr>
                 <td style={{ width: '56%', height: '95px', verticalAlign: 'top' }}>
-                  <div className="p2-box-header">
-                    <span className="p2-en-title">2. Consignee (name,address,country)</span>
-                    <span className="p2-ru-title">Грузополчатель (имя,адрес,страна,дата)</span>
+                  <div className="p2-box-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span className="p2-en-title">2. Consignee (name,address,country)</span>
+                      <span className="p2-ru-title">Грузополчатель (имя,адрес,страна,дата)</span>
+                    </div>
+                    <PartyQuickSelector type="consignee" />
                   </div>
                   <div
                     className="blue-field p2-content-serif"
@@ -89,9 +96,12 @@ export const CmrPad2 = () => {
                 </td>
 
                 <td style={{ width: '44%', height: '95px', verticalAlign: 'top' }}>
-                  <div className="p2-box-header">
-                    <span className="p2-en-title">16. Courier (name, address, country)</span>
-                    <span className="p2-ru-title">Первозчик (ИМЯ ,адрес,страна)</span>
+                  <div className="p2-box-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <span className="p2-en-title">16. Courier (name, address, country)</span>
+                      <span className="p2-ru-title">Первозчик (ИМЯ ,адрес,страна)</span>
+                    </div>
+                    <PartyQuickSelector type="carrier" />
                   </div>
                   <div
                     className="blue-field p2-content-serif"

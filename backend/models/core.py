@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -65,8 +65,8 @@ class InvoiceItem(JsonPayloadMixin, Base):
     invoice_id: Mapped[str] = mapped_column(String(64), ForeignKey("invoices.id"), index=True, nullable=False)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     quantity: Mapped[str] = mapped_column(String(80), default="1", nullable=False)
-    unit_price: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    amount: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    unit_price: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    amount: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
 
 class BillOfLading(JsonPayloadMixin, Base):
@@ -94,13 +94,16 @@ class ExportAccount(JsonPayloadMixin, Base):
 
 class LedgerEntry(JsonPayloadMixin, Base):
     __tablename__ = "ledger_entries"
+    __table_args__ = (
+        Index("ix_ledger_account_lookup", "account_id", "account_type"),
+    )
 
     account_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
     account_type: Mapped[str] = mapped_column(String(40), default="export", index=True, nullable=False)
     invoice_no: Mapped[str] = mapped_column(String(120), default="", index=True, nullable=False)
     bill_of_lading: Mapped[str] = mapped_column(String(160), default="", index=True, nullable=False)
-    debit: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    credit: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    debit: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    credit: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     pdf_file: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
@@ -123,6 +126,9 @@ class Container(JsonPayloadMixin, Base):
 
 class MediaFile(TimestampMixin, Base):
     __tablename__ = "media_files"
+    __table_args__ = (
+        Index("ix_media_linked", "linked_type", "linked_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
     original_name: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -139,6 +145,9 @@ class MediaFile(TimestampMixin, Base):
 
 class UploadedDocument(TimestampMixin, Base):
     __tablename__ = "uploaded_documents"
+    __table_args__ = (
+        Index("ix_document_linked", "linked_type", "linked_id"),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=new_id)
     original_name: Mapped[str] = mapped_column(String(500), nullable=False)

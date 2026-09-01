@@ -1,0 +1,86 @@
+- generic [ref=f2e3]:
+  - complementary [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - generic [ref=f2e6]:
+        - img "Sky Ariana Logo" [ref=f2e7]
+        - generic [ref=f2e8]:
+          - generic [ref=f2e9]: SKY ARIANA
+          - generic [ref=f2e10]: IMPORT & EXPORT
+      - button "Collapse sidebar" [ref=f2e11] [cursor=pointer]
+    - navigation [ref=f2e14]:
+      - link "Dashboard" [ref=f2e15] [cursor=pointer]:
+        - /url: /
+      - link "Invoices" [ref=f2e22] [cursor=pointer]:
+        - /url: /invoices
+      - link "Customers" [ref=f2e27] [cursor=pointer]:
+        - /url: /customers
+      - link "Shippers & Exporters" [ref=f2e34] [cursor=pointer]:
+        - /url: /shippers
+      - link "Notify Parties" [ref=f2e40] [cursor=pointer]:
+        - /url: /notify-parties
+      - link "Products & Services" [ref=f2e47] [cursor=pointer]:
+        - /url: /products
+      - link "Company Settings" [ref=f2e53] [cursor=pointer]:
+        - /url: /settings
+      - link "Backup & Restore" [ref=f2e58] [cursor=pointer]:
+        - /url: /backups
+      - link "Activity History" [ref=f2e64] [cursor=pointer]:
+        - /url: /logs
+      - link "User Management" [ref=f2e70] [cursor=pointer]:
+        - /url: /user-management
+    - button "Logout" [ref=f2e76] [cursor=pointer]
+  - generic [ref=f2e81]:
+    - banner [ref=f2e82]:
+      - generic [ref=f2e84]:
+        - img "Sky Ariana & Balam Bar Baran" [ref=f2e85]
+        - generic [ref=f2e86]:
+          - text: Business Operations
+          - heading "SKY ARIANA & BALAM BAR BARAN" [level=1] [ref=f2e87]
+      - generic [ref=f2e88]:
+        - generic [ref=f2e89]:
+          - button "Switch Language" [ref=f2e90] [cursor=pointer]
+          - combobox [ref=f2e94] [cursor=pointer]:
+            - option "English (EN)" [selected]
+            - option "فارسی (FA)"
+            - option "پښتو (PS)"
+        - generic [ref=f2e95]:
+          - generic [ref=f2e96]:
+            - generic [ref=f2e97]: Admin User
+            - generic [ref=f2e98]: Super Admin
+          - generic "Admin User (Super Admin)" [ref=f2e99]: AU
+    - main [ref=f2e100]:
+      - generic [ref=f2e101]:
+        - generic [ref=f2e102]:
+          - generic [ref=f2e103]:
+            - generic [ref=f2e104]: Business directory
+            - heading "Notify Parties" [level=2] [ref=f2e105]
+            - paragraph [ref=f2e111]: Manage saved parties that receive shipment and invoice notifications.
+          - generic [ref=f2e112]:
+            - button "Export" [ref=f2e113] [cursor=pointer]
+            - button "Import reviewed PDF" [ref=f2e117] [cursor=pointer]
+            - button "Add Notify Party" [ref=f2e121] [cursor=pointer]
+        - generic [ref=f2e123]:
+          - generic [ref=f2e124]:
+            - generic [ref=f2e125]: Total records
+            - strong [ref=f2e126]: —
+          - generic [ref=f2e127]:
+            - generic [ref=f2e128]: Active
+            - strong [ref=f2e129]: —
+          - generic [ref=f2e130]:
+            - generic [ref=f2e131]: Archived
+            - strong [ref=f2e132]: —
+          - generic [ref=f2e133]:
+            - generic [ref=f2e134]: Used in invoices
+            - strong [ref=f2e135]: —
+        - generic [ref=f2e136]:
+          - textbox "Search name, alias, address, license, TRN, phone..." [ref=f2e141]
+          - generic [ref=f2e142]:
+            - checkbox "Include archived" [ref=f2e143]
+            - text: Include archived
+        - generic [ref=f2e149]:
+          - generic [ref=f2e150]:
+            - generic [ref=f2e151]:
+              - generic [ref=f2e152]: Saved registry
+              - heading "0 notify parties" [level=3] [ref=f2e153]
+            - generic [ref=f2e154]: ALL-SHIPPERS--.pdf · 16 pages
+          - paragraph [ref=f2e164]: Loading directory...

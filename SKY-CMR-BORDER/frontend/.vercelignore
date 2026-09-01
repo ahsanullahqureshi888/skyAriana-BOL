@@ -1,14 +1,4 @@
-node_modules
-frontend/node_modules
+﻿node_modules
 .git
-.venv
-__pycache__
-*.py
-*.pdf
-*.png
-!frontend/public/**
-!sky_ariana_logo.jpg
-react_*.png
-test_*.pdf
-scratch/
-.system_generated/
+.DS_Store
+dist

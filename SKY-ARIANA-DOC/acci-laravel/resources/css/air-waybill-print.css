@@ -1,0 +1,741 @@
+@page {
+    size: A4 portrait;
+    margin: 5mm;
+}
+
+.awb-page,
+.awb-page * {
+    box-sizing: border-box;
+}
+
+.awb-page {
+    position: relative;
+    width: 200mm;
+    min-height: 287mm;
+    margin: 0 auto;
+    color: #000;
+    background: #fff;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 8pt;
+    line-height: 1.08;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+.awb-page p,
+.awb-page h1,
+.awb-page h2,
+.awb-page ol {
+    margin: 0;
+}
+
+.awb-page table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.awb-perforation {
+    height: 7mm;
+    padding-top: 1mm;
+    font-family: Arial, sans-serif;
+    font-size: 12pt;
+    font-weight: 700;
+    text-align: center;
+}
+
+.awb-number-strip {
+    height: 8mm;
+    font-family: Arial, sans-serif;
+    font-size: 9.5pt;
+}
+
+.awb-number-strip td {
+    padding: 0 1.5mm;
+    vertical-align: middle;
+}
+
+.awb-number-strip__prefix {
+    width: 5%;
+    border-right: .2mm solid #000;
+    text-align: right;
+}
+
+.awb-number-strip__carrier {
+    width: 4.3%;
+    border-right: .2mm solid #000;
+    text-align: center;
+}
+
+.awb-number-strip__serial {
+    width: 22%;
+}
+
+.awb-number-strip__full {
+    font-size: 11pt;
+    font-weight: 700;
+    text-align: right;
+}
+
+.awb-grid {
+    margin-top: -.2mm;
+}
+
+.awb-half {
+    width: 50%;
+}
+
+.awb-cell {
+    position: relative;
+    padding: 1mm 1.1mm;
+    border: .2mm solid #000;
+    vertical-align: top;
+}
+
+.awb-label {
+    display: block;
+    margin-bottom: .45mm;
+    font-size: 6.7pt;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.awb-preline {
+    display: block;
+    white-space: pre-line;
+}
+
+.awb-grid--header,
+.awb-grid--header > tbody > tr > td {
+    height: 28mm;
+}
+
+.awb-party-cell {
+    padding: 1.2mm 1.1mm;
+    overflow: hidden;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    white-space: pre-wrap !important;
+    max-width: 100% !important;
+}
+
+.awb-party-cell * {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    max-width: 100% !important;
+}
+
+.awb-party-name {
+    display: block;
+    margin: 1mm 0 1.5mm;
+    font-size: 9.5pt;
+    font-weight: 400;
+    text-transform: uppercase;
+}
+
+.awb-notify-line {
+    display: block;
+    margin-top: .5mm;
+    font-size: 7.1pt;
+    line-height: 1.08;
+}
+
+.awb-account-box {
+    position: absolute;
+    top: -.2mm;
+    right: -.2mm;
+    width: 50%;
+    min-height: 10.5mm;
+    padding: 1mm;
+    border: .2mm solid #000;
+    text-align: center;
+}
+
+.awb-title-cell h1 {
+    margin: .8mm 0 1mm;
+    font-family: Arial, sans-serif;
+    font-size: 13pt;
+    line-height: 1;
+}
+
+.awb-issued-by {
+    display: grid;
+    grid-template-columns: 13mm 1fr;
+    column-gap: 1mm;
+    align-items: baseline;
+    font-family: Arial, sans-serif;
+}
+
+.awb-issued-by span {
+    grid-row: 1 / span 2;
+    font-size: 7.5pt;
+}
+
+.awb-issued-by strong {
+    display: block;
+    margin-bottom: .5mm;
+    font-size: 9.5pt;
+    font-weight: 400;
+}
+
+.awb-grid--consignee,
+.awb-grid--consignee > tbody > tr > td {
+    height: 25mm;
+}
+
+.awb-originals-note {
+    height: 5mm;
+    padding: 1mm;
+    margin: -1mm -1.1mm 1mm;
+    border-bottom: .2mm solid #000;
+    font-size: 7pt;
+}
+
+.awb-contract-cell p {
+    font-size: 6.9pt;
+    line-height: 1.06;
+    text-align: justify;
+}
+
+.awb-grid--agent,
+.awb-grid--agent > tbody > tr > td {
+    height: 24mm;
+}
+
+.awb-agent-cell {
+    padding: 0;
+}
+
+.awb-agent-name {
+    height: 14mm;
+    padding: 1mm;
+}
+
+.awb-agent-value {
+    font-size: 9pt;
+}
+
+.awb-agent-codes {
+    height: 10mm;
+    border-top: .2mm solid #000;
+}
+
+.awb-agent-codes td {
+    width: 50%;
+    padding: 1mm;
+    border-right: .2mm solid #000;
+    vertical-align: top;
+}
+
+.awb-agent-codes td:last-child {
+    border-right: 0;
+}
+
+.awb-agent-codes strong {
+    display: block;
+    margin-top: 1mm;
+    font-size: 9.5pt;
+    font-weight: 400;
+}
+
+.awb-accounting-cell {
+    font-size: 8pt;
+}
+
+.awb-grid--departure-ref,
+.awb-grid--departure-ref > tbody > tr > td {
+    height: 10mm;
+}
+
+.awb-grid--departure-ref strong {
+    display: block;
+    margin-top: 1.8mm;
+    font-size: 9pt;
+    font-weight: 400;
+}
+
+.awb-reference-cell {
+    padding-left: 10mm;
+}
+
+.awb-optional-label {
+    position: absolute;
+    top: 1mm;
+    right: 8mm;
+    font-size: 6.7pt;
+}
+
+.awb-routing-table {
+    height: 8mm;
+    margin-top: -.2mm;
+}
+
+.awb-routing-table td {
+    height: 8mm;
+    padding: .7mm .7mm;
+    border: .2mm solid #000;
+    vertical-align: top;
+    text-align: center;
+}
+
+.awb-routing-table strong {
+    display: block;
+    margin-top: .8mm;
+    font-size: 9pt;
+    font-weight: 400;
+}
+
+.awb-flight-table {
+    height: 8mm;
+    margin-top: -.2mm;
+}
+
+.awb-flight-table td {
+    height: 8mm;
+    padding: .7mm 1mm;
+    border: .2mm solid #000;
+    vertical-align: top;
+}
+
+.awb-flight-table strong {
+    display: block;
+    margin-top: .8mm;
+    font-size: 8.5pt;
+    font-weight: 400;
+    text-align: center;
+}
+
+.awb-flight-table__destination { width: 21.5%; text-align: center; }
+.awb-flight-table__flight { width: 29.5%; text-align: center; }
+.awb-flight-table__insurance { width: 16%; text-align: center; }
+.awb-flight-table__notice { width: 33%; font-size: 6.3pt; line-height: 1.03; }
+
+.awb-handling-cell {
+    height: 14mm;
+    margin-top: -.2mm;
+    font-size: 8.5pt;
+}
+
+.awb-handling-cell > .awb-preline {
+    padding-top: 1mm;
+}
+
+.awb-sci-box {
+    position: absolute;
+    right: -.2mm;
+    bottom: -.2mm;
+    width: 30mm;
+    height: 6.5mm;
+    padding-top: .6mm;
+    border: .2mm solid #000;
+    text-align: center;
+}
+
+.awb-sci-box span,
+.awb-sci-box strong {
+    display: block;
+}
+
+.awb-sci-box strong {
+    font-family: Arial, sans-serif;
+    font-size: 10pt;
+    font-weight: 400;
+}
+
+.awb-cargo-table {
+    height: 48mm;
+    margin-top: -.2mm;
+    page-break-inside: avoid;
+}
+
+.awb-cargo-table th,
+.awb-cargo-table td {
+    border: .2mm solid #000;
+}
+
+.awb-cargo-table thead th {
+    height: 10mm;
+    padding: .7mm .5mm;
+    font-size: 7pt;
+    font-weight: 400;
+    line-height: 1.04;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.awb-cargo-table thead th span {
+    display: block;
+    margin-top: .4mm;
+    padding-top: .4mm;
+    border-top: .2mm solid #000;
+}
+
+.awb-cargo-table tbody tr,
+.awb-cargo-table tbody td {
+    height: 38mm;
+}
+
+.awb-cargo-table tbody td {
+    padding: 2.5mm 1.2mm;
+    font-family: Arial, sans-serif;
+    font-size: 8pt;
+    line-height: 1.12;
+    vertical-align: top;
+}
+
+.awb-spacer-col,
+.awb-spacer-cell {
+    background: #eef2f2;
+}
+
+.awb-cargo-table tbody td:last-child strong,
+.awb-cargo-table tbody td:last-child span {
+    display: block;
+}
+
+.awb-bottom-table {
+    height: 72mm;
+    margin-top: -.2mm;
+    page-break-inside: avoid;
+}
+
+.awb-bottom-table > tbody > tr > td {
+    height: 72mm;
+    padding: 0;
+    border: .2mm solid #000;
+    vertical-align: top;
+}
+
+.awb-bottom-table__charges {
+    width: 38.3%;
+}
+
+.awb-bottom-table__signatures {
+    position: relative;
+    width: 61.7%;
+}
+
+.awb-charge-table,
+.awb-charge-table tbody {
+    height: 100%;
+}
+
+.awb-charge-table td {
+    position: relative;
+    height: 7mm;
+    padding: .8mm 1mm;
+    border: .2mm solid #000;
+    font-size: 6.8pt;
+    text-align: center;
+    vertical-align: top;
+}
+
+.awb-charge-table td span {
+    display: block;
+}
+
+.awb-charge-table td strong {
+    display: block;
+    min-height: 2.5mm;
+    margin-top: .8mm;
+    font-size: 7.8pt;
+    font-weight: 400;
+}
+
+.awb-charge-table__blank td {
+    height: 7.5mm;
+    background: #eef2f2;
+}
+
+.awb-signature-spacer {
+    height: 24mm;
+    border-bottom: .2mm solid #000;
+}
+
+.awb-certification {
+    height: 16mm;
+    padding: 2mm 2.5mm 1mm;
+    border-bottom: .2mm solid #000;
+    font-size: 6.8pt;
+    line-height: 1.07;
+    text-align: justify;
+}
+
+.awb-shipper-signature-area {
+    position: relative;
+    height: 12mm;
+    padding-top: 4mm;
+    border-bottom: .2mm solid #000;
+    text-align: center;
+}
+
+.awb-shipper-signature-area strong {
+    display: block;
+    font-family: Arial, sans-serif;
+    font-size: 9pt;
+    font-weight: 400;
+}
+
+.awb-shipper-signature-area span {
+    display: block;
+    margin-top: 1mm;
+    border-top: .2mm dotted #000;
+    font-size: 6.5pt;
+}
+
+.awb-shipper-signature-area img {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    left: 50%;
+    width: 45mm;
+    max-height: 10mm;
+    transform: translateX(-50%);
+    object-fit: contain;
+}
+
+.awb-carrier-execution {
+    position: relative;
+    height: 20mm;
+    padding-top: 12mm;
+}
+
+.awb-carrier-assets {
+    position: absolute;
+    top: 2mm;
+    right: 12mm;
+    width: 42mm;
+    height: 9mm;
+    text-align: center;
+}
+
+.awb-carrier-logo {
+    max-width: 40mm;
+    max-height: 8mm;
+}
+
+.awb-carrier-stamp {
+    position: absolute;
+    z-index: 3;
+    top: -4mm;
+    right: 8mm;
+    width: 24mm;
+    max-height: 18mm;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+}
+
+.awb-carrier-signature {
+    position: absolute;
+    z-index: 2;
+    top: 2mm;
+    left: 20mm;
+    width: 42mm;
+    max-height: 10mm;
+    object-fit: contain;
+}
+
+.awb-execution-line {
+    display: table;
+    width: 100%;
+    padding-top: 1mm;
+    border-top: .2mm dotted #000;
+    font-size: 6.4pt;
+}
+
+.awb-execution-line span {
+    display: table-cell;
+    width: 33.33%;
+    padding: 0 1mm;
+    text-align: center;
+}
+
+.awb-execution-line strong {
+    font-weight: 400;
+}
+
+.awb-footer-number {
+    height: 7mm;
+    padding: 2mm 1.5mm 0 0;
+    font-family: Arial, sans-serif;
+    font-size: 10.5pt;
+    font-weight: 400;
+    text-align: right;
+}
+
+.awb-page--front {
+    page-break-after: always;
+    page-break-inside: avoid;
+}
+
+.awb-page--terms {
+    page-break-before: always;
+    page-break-after: avoid;
+    padding: 1mm 3mm 0;
+    font-family: Arial, sans-serif;
+    font-size: 8.2pt;
+    line-height: 1.18;
+}
+
+.awb-page--terms h1 {
+    margin: 1mm 0 4mm;
+    font-size: 12pt;
+    text-align: center;
+}
+
+.awb-terms-intro {
+    margin: 0 0 3mm !important;
+    font-size: 10pt;
+    line-height: 1.25;
+}
+
+.awb-page--terms h2 {
+    margin: 0 0 4mm;
+    font-size: 12pt;
+    text-align: center;
+}
+
+.awb-terms-columns td {
+    width: 50%;
+    padding: 0 4mm 0 2mm;
+    vertical-align: top;
+}
+
+.awb-terms-columns td + td {
+    padding-right: 2mm;
+    padding-left: 4mm;
+}
+
+.awb-terms-columns ol {
+    padding-left: 5mm;
+}
+
+.awb-terms-columns li {
+    margin-bottom: 3mm;
+    padding-left: 1mm;
+    text-align: justify;
+}
+
+.awb-terms-columns li p {
+    margin-top: 2mm;
+}
+
+.awb-pdf .awb-page {
+    font-size: 7.6pt;
+    min-height: 0;
+}
+
+.awb-pdf .awb-page--front {
+    page-break-inside: auto;
+}
+
+.awb-pdf .awb-grid--header,
+.awb-pdf .awb-grid--header > tbody > tr > td {
+    height: 24mm;
+}
+
+.awb-pdf .awb-grid--consignee,
+.awb-pdf .awb-grid--consignee > tbody > tr > td {
+    height: 22mm;
+}
+
+.awb-pdf .awb-grid--agent,
+.awb-pdf .awb-grid--agent > tbody > tr > td {
+    height: 20mm;
+}
+
+.awb-pdf .awb-agent-name {
+    height: 11mm;
+}
+
+.awb-pdf .awb-agent-codes {
+    height: 8mm;
+}
+
+.awb-pdf .awb-grid--departure-ref,
+.awb-pdf .awb-grid--departure-ref > tbody > tr > td {
+    height: 8mm;
+}
+
+.awb-pdf .awb-routing-table,
+.awb-pdf .awb-routing-table td,
+.awb-pdf .awb-flight-table,
+.awb-pdf .awb-flight-table td {
+    height: 7mm;
+}
+
+.awb-pdf .awb-handling-cell {
+    height: 12mm;
+}
+
+.awb-pdf .awb-cargo-table {
+    height: 36mm;
+}
+
+.awb-pdf .awb-cargo-table thead th {
+    height: 8mm;
+    padding-top: .35mm;
+    padding-bottom: .35mm;
+}
+
+.awb-pdf .awb-cargo-table tbody tr,
+.awb-pdf .awb-cargo-table tbody td {
+    height: 28mm;
+}
+
+.awb-pdf .awb-cargo-table tbody td {
+    padding-top: 1.2mm;
+    padding-bottom: 1.2mm;
+}
+
+.awb-pdf .awb-charge-table,
+.awb-pdf .awb-charge-table tbody {
+    height: auto;
+}
+
+.awb-pdf .awb-charge-table td {
+    height: 6mm;
+    padding: .6mm .8mm;
+}
+
+.awb-pdf .awb-charge-table__blank td {
+    height: 6mm;
+}
+
+.awb-pdf .awb-certification {
+    height: 13mm;
+}
+
+.awb-pdf .awb-shipper-signature-area {
+    height: 8mm;
+}
+
+.awb-pdf .awb-carrier-execution {
+    height: 8mm;
+}
+
+.awb-pdf .awb-page--terms {
+    font-size: 7.8pt;
+    min-height: 0;
+    page-break-before: auto;
+    page-break-after: auto;
+}
+
+@media print {
+    html,
+    body {
+        width: 200mm !important;
+        min-width: 200mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+    }
+
+    .awb-page {
+        width: 200mm !important;
+        min-height: 287mm !important;
+        margin: 0 !important;
+    }
+}

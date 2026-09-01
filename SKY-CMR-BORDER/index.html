@@ -1415,6 +1415,308 @@ body.theme-dark .modal-box { background: var(--panel-bg-dark); }
     padding: 0 !important;
   }
 }
+
+/* =================================================== */
+/* SECURE LOGIN SCREEN & AUTHENTICATION STYLING        */
+/* =================================================== */
+.login-screen-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 30%, #1e3a8a 0%, #0f172a 75%, #020617 100%);
+  overflow-y: auto;
+  padding: 20px;
+  box-sizing: border-box;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.login-backdrop-glow {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(37, 99, 235, 0.05) 50%, transparent 70%);
+  pointer-events: none;
+  animation: pulseGlow 6s ease-in-out infinite alternate;
+}
+
+@keyframes pulseGlow {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  100% { transform: scale(1.15); opacity: 1; }
+}
+
+.login-card-container {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 20px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.2);
+  padding: 36px 32px 28px 32px;
+  box-sizing: border-box;
+  z-index: 2;
+  backdrop-filter: blur(12px);
+}
+
+.login-brand-header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.login-logo-ring {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 14px auto;
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  box-shadow: 0 8px 20px rgba(30, 58, 138, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-logo-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #ffffff;
+}
+
+.login-company-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #1e3a8a;
+  letter-spacing: -0.3px;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.login-portal-subtitle {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #475569;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+}
+
+.login-security-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  font-size: 8.5px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.4px;
+}
+
+.login-error-banner {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-bottom: 18px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.login-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.login-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: 0.4px;
+}
+
+.login-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 14px;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.login-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 42px 0 38px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f8fafc;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.login-input:focus {
+  border-color: #2563eb;
+  background: #ffffff;
+  box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.15);
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: #64748b;
+}
+
+.login-remember-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #475569;
+  margin-top: -2px;
+}
+
+.remember-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+}
+
+.custom-checkbox {
+  width: 15px;
+  height: 15px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.quick-fill-link {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.login-submit-btn {
+  height: 46px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.login-footer {
+  text-align: center;
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f5f9;
+  font-size: 10px;
+  color: #64748b;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.user-header-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 3px 9px 3px 6px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.user-avatar-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.btn-logout-btn {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  color: #fca5a5 !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  cursor: pointer;
+}
+
+.btn-logout-btn:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #dc2626 !important;
+}
 </style>
 </head>
 <body class="active-pad-2">
@@ -1460,6 +1762,17 @@ body.theme-dark .modal-box { background: var(--panel-bg-dark); }
         <button class="btn" onclick="document.getElementById('cmrJsonFileInput').click()">📂 Open</button>
         <button class="btn" id="themeToggleBtn" onclick="toggleTheme()">🌙 Dark</button>
         <button class="btn btn-danger" onclick="clearForm()" title="Clear form">🗑️</button>
+      </div>
+
+      <!-- USER PROFILE & LOGOUT -->
+      <div class="btn-group user-header-group">
+        <div class="user-profile-badge" title="Logged in as Ahsanullah Qureshi (ahsanullah@skyariana.com)">
+          <span class="user-avatar-circle">👤</span>
+          <span>Ahsanullah</span>
+        </div>
+        <button class="btn btn-logout-btn" onclick="logoutUser()" title="Sign Out of Portal">
+          🚪 <span class="btn-text">Sign Out</span>
+        </button>
       </div>
     </div>
   </header>
@@ -3793,7 +4106,80 @@ GROSS WEIGHT: 23,450.00 KG`
     });
   }
 
+  // ==========================================
+  // AUTHENTICATION & ACCESS CONTROL
+  // ==========================================
+  function checkAuth() {
+    const auth = localStorage.getItem('sky_cmr_auth_session') || sessionStorage.getItem('sky_cmr_auth_session');
+    const loginWrap = document.getElementById('loginScreenWrapper');
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        if (parsed && parsed.authenticated) {
+          if (loginWrap) loginWrap.style.display = 'none';
+          return true;
+        }
+      } catch (e) {}
+    }
+    if (loginWrap) loginWrap.style.display = 'flex';
+    return false;
+  }
+
+  function handleLoginSubmit(e) {
+    if (e) e.preventDefault();
+    const email = (document.getElementById('loginEmail')?.value || '').trim().toLowerCase();
+    const pass = (document.getElementById('loginPass')?.value || '').trim();
+    const remember = document.getElementById('loginRemember')?.checked ?? true;
+    const errEl = document.getElementById('loginErrorBanner');
+    const errMsg = document.getElementById('loginErrorMessage');
+
+    if ((email === 'ahsanullah@skyariana.com' || email === 'ahsanullah') && pass === 'Qur78Ahs@@') {
+      const session = {
+        authenticated: true,
+        user: { name: 'Ahsanullah Qureshi', email: 'ahsanullah@skyariana.com', role: 'Chief Logistics Administrator' },
+        timestamp: new Date().toISOString()
+      };
+      if (remember) {
+        localStorage.setItem('sky_cmr_auth_session', JSON.stringify(session));
+      } else {
+        sessionStorage.setItem('sky_cmr_auth_session', JSON.stringify(session));
+      }
+      if (errEl) errEl.style.display = 'none';
+      const loginWrap = document.getElementById('loginScreenWrapper');
+      if (loginWrap) loginWrap.style.display = 'none';
+      showToast('🔐 Welcome back, Ahsanullah! Authenticated securely.', 'success');
+    } else {
+      if (errEl && errMsg) {
+        errMsg.innerText = 'Invalid username or password. Please check your credentials.';
+        errEl.style.display = 'flex';
+      }
+    }
+  }
+
+  function logoutUser() {
+    localStorage.removeItem('sky_cmr_auth_session');
+    sessionStorage.removeItem('sky_cmr_auth_session');
+    const loginWrap = document.getElementById('loginScreenWrapper');
+    if (loginWrap) loginWrap.style.display = 'flex';
+    showToast('👋 You have been logged out securely.', 'info');
+  }
+
+  function togglePasswordVisibility() {
+    const pwInput = document.getElementById('loginPass');
+    const toggleBtn = document.getElementById('pwdToggleBtn');
+    if (pwInput) {
+      if (pwInput.type === 'password') {
+        pwInput.type = 'text';
+        if (toggleBtn) toggleBtn.innerText = '👁️';
+      } else {
+        pwInput.type = 'password';
+        if (toggleBtn) toggleBtn.innerText = '🙈';
+      }
+    }
+  }
+
   window.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
     initTheme();
     setupFieldListeners();
     applyResponsiveScale();
@@ -3805,6 +4191,62 @@ GROSS WEIGHT: 23,450.00 KG`
     syncCMRToInvoice();
   });
 </script>
+
+<!-- SECURE LOGIN SCREEN OVERLAY -->
+<div id="loginScreenWrapper" class="login-screen-wrapper">
+  <div class="login-backdrop-glow"></div>
+  <div class="login-card-container">
+    <div class="login-brand-header">
+      <div class="login-logo-ring">
+        <img src="/sky_ariana_logo.jpg" alt="Sky Ariana Logo" class="login-logo-img" onerror="this.style.display='none'">
+      </div>
+      <h1 class="login-company-title">SKY ARIANA LIMITED</h1>
+      <div class="login-portal-subtitle">INTERNATIONAL FREIGHT • CMR &amp; INVOICE PORTAL</div>
+      <div class="login-security-badge">
+        <span>🔒</span>
+        <span>SECURE TRANSIT GATEWAY</span>
+      </div>
+    </div>
+
+    <div id="loginErrorBanner" class="login-error-banner animate-shake">
+      <span>⚠️</span>
+      <span id="loginErrorMessage">Invalid username or password.</span>
+    </div>
+
+    <form onsubmit="handleLoginSubmit(event)" class="login-form" autocomplete="off">
+      <div class="login-input-group">
+        <label class="login-label"><span>USERNAME OR EMAIL</span></label>
+        <div class="login-input-wrapper">
+          <span class="input-icon">👤</span>
+          <input type="text" id="loginEmail" class="login-input" placeholder="Enter username or email" autocomplete="off" required autofocus>
+        </div>
+      </div>
+
+      <div class="login-input-group">
+        <label class="login-label"><span>PASSWORD</span></label>
+        <div class="login-input-wrapper">
+          <span class="input-icon">🔑</span>
+          <input type="password" id="loginPass" class="login-input" placeholder="Enter password" autocomplete="new-password" required>
+          <button type="button" id="pwdToggleBtn" class="password-toggle-btn" onclick="togglePasswordVisibility()" tabIndex="-1">🙈</button>
+        </div>
+      </div>
+
+      <div class="login-remember-row">
+        <label class="remember-checkbox-label">
+          <input type="checkbox" id="loginRemember" checked class="custom-checkbox">
+          <span>Remember me on this device</span>
+        </label>
+      </div>
+
+      <button type="submit" class="login-submit-btn">Sign In to System →</button>
+    </form>
+
+    <div class="login-footer">
+      <div>Authorized Personnel &amp; Customs Desk Only</div>
+      <div style="font-size:8.5px; color:#94a3b8; font-weight:700; margin-top:2px;">REG: 2401-2198 • KANDAHAR &amp; KABUL TRANSIT OFFICES</div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

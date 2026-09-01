@@ -409,7 +409,37 @@ export function LedgerView() {
   }
 
   const handleSaveEditedEntry = async (updatedData: Partial<LedgerEntry>) => {
-    if (!editingEntry) return
+    if (!currentAccount || !currentCompany) return
+
+    if (!editingEntry) {
+      const debitNum = !updatedData.debit || (updatedData.debit as any) === '' ? 0 : Number(updatedData.debit) || 0
+      const creditNum = !updatedData.credit || (updatedData.credit as any) === '' ? 0 : Number(updatedData.credit) || 0
+      addLedgerEntry(currentAccount.id, currentCompany.id, {
+        date: updatedData.date || new Date().toISOString().split('T')[0],
+        shipperDescription: updatedData.shipperDescription || '',
+        invoiceNo: updatedData.invoiceNo || '',
+        dateOfShip: updatedData.dateOfShip || '',
+        barnamehNo: updatedData.barnamehNo || '',
+        driverFreight: updatedData.driverFreight || '',
+        billOfLanding: updatedData.billOfLanding || '',
+        surrenderedBL: !!updatedData.surrenderedBL,
+        containerNo: updatedData.containerNo || '',
+        containerType: updatedData.containerType || '',
+        containerDetails: updatedData.containerDetails || '',
+        consignee: updatedData.consignee || '',
+        quantity: updatedData.quantity || '',
+        debit: debitNum,
+        credit: creditNum,
+        price: updatedData.price !== undefined ? updatedData.price : debitNum,
+        cost: updatedData.cost !== undefined ? updatedData.cost : 0,
+        profit: updatedData.profit !== undefined ? updatedData.profit : 0,
+        shippingCost: updatedData.shippingCost !== undefined ? updatedData.shippingCost : (updatedData.cost || 0),
+        pdfPathname: updatedData.pdfPathname,
+      })
+      setIsEditOpen(false)
+      setEditingEntry(null)
+      return
+    }
 
     try {
       const response = await fetch('/api/ledger-entries', {
@@ -674,7 +704,7 @@ export function LedgerView() {
             <Settings2 className="h-4 w-4" />
             Settings
           </Button>
-          <Button type="button" onClick={() => setIsOpen(true)} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30">
+          <Button type="button" onClick={() => { setEditingEntry(null); setIsEditOpen(true); }} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30">
             <Plus className="h-4 w-4" />
             Add Entry
           </Button>
@@ -1152,7 +1182,7 @@ export function LedgerView() {
                               variant="ghost"
                               size="icon"
                               className="h-5 w-5 hover:bg-blue-100 hover:text-blue-600"
-                              onClick={() => setIsOpen(true)}
+                              onClick={() => { setEditingEntry(null); setIsEditOpen(true); }}
                             >
                               <Plus className="h-3 w-3" />
                             </Button>

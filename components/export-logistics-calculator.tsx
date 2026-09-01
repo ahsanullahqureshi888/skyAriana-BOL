@@ -40,6 +40,8 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { useApp } from "@/lib/app-context"
+import { useAutoSave } from "@/lib/services/auto-save-engine"
+import { AutoSaveBadge } from "@/components/auto-save-badge"
 import {
   dougharounToMersinLegs,
   nimrozToBandarAbbasLegs,
@@ -84,6 +86,41 @@ export function ExportLogisticsCalculator({
   // Copy state
   const [copiedEnglish, setCopiedEnglish] = useState(false)
   const [copiedPersian, setCopiedPersian] = useState(false)
+
+  // Auto-Save Active Simulation Draft
+  const currentQuoteDraft = useMemo(
+    () => ({
+      selectedCorridorId,
+      legs,
+      equipmentType,
+      temperatureSetting,
+      oceanFreight,
+      riskBuffer,
+      targetMargin,
+      pricingMethod,
+      destinationPortName,
+      shipperName,
+    }),
+    [
+      selectedCorridorId,
+      legs,
+      equipmentType,
+      temperatureSetting,
+      oceanFreight,
+      riskBuffer,
+      targetMargin,
+      pricingMethod,
+      destinationPortName,
+      shipperName,
+    ]
+  )
+
+  const { status: autoSaveStatus, lastSavedAt } = useAutoSave(
+    "skybol:active-export-quote-draft",
+    currentQuoteDraft,
+    { debounceMs: 400 }
+  )
+
 
   // Switch Corridor Preset
   const handleSelectCorridor = (preset: ExportCorridorPreset) => {
@@ -230,7 +267,7 @@ export function ExportLogisticsCalculator({
               <Calculator className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-xl md:text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
                   Export & Reverse-Transit Logistics Engine
                 </h2>
@@ -240,7 +277,9 @@ export function ExportLogisticsCalculator({
                     Reefer ({equipmentType})
                   </Badge>
                 )}
+                <AutoSaveBadge status={autoSaveStatus} lastSavedAt={lastSavedAt} />
               </div>
+
               <p className="text-xs md:text-sm text-zinc-500 dark:text-zinc-400">
                 Inland Border Clearance, Plugging Charges, Escort Service (مامور بدرقه), TRF Taxes & Multi-Leg Quotes
               </p>

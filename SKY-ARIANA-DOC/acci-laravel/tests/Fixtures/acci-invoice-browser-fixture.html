@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ACCI Invoice Visual Fixture</title>
+    <link rel="stylesheet" href="../../resources/css/acci-invoice-print.css">
+    <style>
+        html, body { width: 210mm; min-height: 297mm; margin: 0; background: #fff; }
+        .fixture-sheet { width: 210mm; min-height: 297mm; box-sizing: border-box; padding: 10mm; background: #fff; }
+    </style>
+</head>
+<body>
+<main class="fixture-sheet">
+    <article class="acci-document" aria-label="ACCI invoice ACCI-120892">
+        <header class="acci-document__title">
+            <h1>INVOICE</h1>
+            <p>****************</p>
+        </header>
+
+        <table class="acci-header-layout"><tbody><tr>
+            <td class="acci-header-layout__left">
+                <section class="acci-party-box">
+                    <div class="acci-party-block">
+                        <p><span class="acci-party-label">FROM:</span> <span class="acci-party-name">PAHLAWAN NOORI LTD</span></p>
+                        <p class="acci-party-address">TL NO: 1173-27 SHORANDAM INDUSTRIAL AREA
+KANDAHAR AFGHANISTAN TEL: +93707 070 975
+NOTIFY PARTY:
+YAQOUB HAMDAN FOODSTUFF TRADING CO LLC
+SHOP NO-28 AL HAWAI BUILDING AL RAS STREET
+DEIRA DUBAI UAE TRN.NO:100340961000003</p>
+                    </div>
+                    <div class="acci-party-block">
+                        <p><span class="acci-party-label">TO:</span> <span class="acci-party-name">S V INTERNATIONAL</span></p>
+                        <p class="acci-party-address">71, GANDHI GALI, FATEHPURI, KHARI BAOLI
+CHANDNI CHOWK, DELHI, 110006 INDIA.</p>
+                    </div>
+                </section>
+            </td>
+            <td class="acci-header-layout__right">
+                <div class="acci-document-meta"><p><strong>No:</strong> 009</p><p><strong>Date:</strong> 25/05/2026</p></div>
+                <table class="acci-detail-table"><tbody>
+                    <tr><td colspan="2" class="acci-detail-table__heading">Afghan Transit Form Airway Bill</td></tr>
+                    <tr><td colspan="2" class="acci-detail-table__awb">No: A00002838 <span style="float:right">Date: 25/05/2026</span></td></tr>
+                    <tr><td colspan="2" class="acci-detail-table__payment"><span>Terms of Payment</span><strong>THIRD PARTY PAYMENTS ACCEPTABLE</strong><span>100% ADVANCE PAYMENT</span></td></tr>
+                    <tr class="acci-detail-table__split"><td><span class="acci-detail-label">Letter Of Credit</span>No:</td><td><span class="acci-detail-label">Collection Basis</span></td></tr>
+                    <tr><td colspan="2" class="acci-detail-table__route"><span class="acci-detail-label">Through:</span><span>VIA GOODS IN TRANSIT BY ROAD FROM KANDAHAR AFGHANISTAN TO INDIA</span></td></tr>
+                </tbody></table>
+            </td>
+        </tr></tbody></table>
+
+        <table class="acci-goods-table">
+            <thead><tr>
+                <th class="acci-goods-table__no">NO</th><th class="acci-goods-table__quantity">Quantity</th><th class="acci-goods-table__description">Description of Goods</th><th class="acci-goods-table__unit">Unit price<br>USD</th><th class="acci-goods-table__total">Total price<br>USD</th>
+            </tr></thead>
+            <tbody><tr class="acci-goods-row">
+                <td class="acci-goods-row__number">1</td>
+                <td><div class="acci-quantity-lines"><p>1407 CTNS</p><p>22512 KGS</p></div></td>
+                <td>
+                    <p class="acci-product-name">BLACK RAISINS (BEST)</p>
+                    <div class="acci-description-summary"><p class="acci-description-summary__amount">Total Amount Say: USD:</p><p class="acci-description-summary__words">Seventy-Six Thousand Ninety US Dollars And Fifty-Six Cents Only</p><p class="acci-description-summary__origin">(Origin Afghanistan)</p></div>
+                    <div class="acci-receipt-box"><span class="acci-receipt-line">Reg No : ---------------- 18398</span><span class="acci-receipt-line">Fee No : ---------------- 16195</span><span class="acci-receipt-line">Received the sum of: 4,953.00</span><span class="acci-receipt-line">Date : ---------------- 14/03/2026</span><span class="acci-receipt-line acci-receipt-line--signature">Signature: --------------------------------</span></div>
+                    <div class="acci-seal-layer"><img class="acci-stamp-image" src="../Artifacts/sample-stamp-signature.png" alt="Company stamp and signature"></div>
+                </td>
+                <td><p class="acci-price-top">3.38</p></td>
+                <td><p class="acci-price-top">76,090.56</p><div class="acci-authorized-block"><p class="acci-authorized-block__total"><strong>TOTAL</strong><span>C&amp;F</span></p><span class="acci-authorized-block__name">PAHLAWAN NOORI LTD</span><span class="acci-authorized-block__label">Authorized Person</span></div></td>
+            </tr></tbody>
+        </table>
+        <footer class="acci-document__serial"><span>ACCI-120892</span></footer>
+    </article>
+</main>
+</body>
+</html>

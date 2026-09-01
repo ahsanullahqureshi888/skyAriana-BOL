@@ -39,6 +39,8 @@ const viewLoaders: Record<string, () => Promise<any>> = {
   reports: () => import('@/components/reports-view'),
   'shipper-portal': () => import('@/components/shipper-dashboard'),
   analytics: () => import('@/components/analytics-dashboard-view'),
+  'export-calculator': () => import('@/components/export-calculator-view'),
+  'acci-portal': () => import('@/components/acci-portal-view'),
 }
 
 export function preloadView(viewName: string) {
@@ -81,7 +83,10 @@ const SkyDocView = dynamic(safeLazy(() => import('@/components/sky-doc-view').th
 const ReportsView = dynamic(safeLazy(() => import('@/components/reports-view').then(m => m.ReportsView)), { loading: ViewLoadingSkeleton })
 const ShipperDashboardView = dynamic(safeLazy(() => import('@/components/shipper-dashboard').then(m => m.ShipperDashboardView)), { loading: ViewLoadingSkeleton })
 const AnalyticsDashboardView = dynamic(safeLazy(() => import('@/components/analytics-dashboard-view').then(m => m.AnalyticsDashboardView)), { loading: ViewLoadingSkeleton })
+const ExportCalculatorView = dynamic(safeLazy(() => import('@/components/export-calculator-view').then(m => m.ExportCalculatorView)), { loading: ViewLoadingSkeleton })
+const AcciPortalView = dynamic(safeLazy(() => import('@/components/acci-portal-view').then(m => m.AcciPortalView)), { loading: ViewLoadingSkeleton })
 const QuickActionsWidget = dynamic(safeLazy(() => import('@/components/quick-actions-widget').then(m => m.QuickActionsWidget)), { ssr: false })
+
 
 function MainContent() {
   const { view, isAuthenticated, currentUser, setView } = useApp()
@@ -292,7 +297,7 @@ function MainContent() {
     return <ShipperDashboardView />
   }
 
-  const isFullBleedView = view === "bank" || view === "invoice-pad" || view === "sky-cmr" || view === "sky-doc"
+  const isFullBleedView = view === "bank" || view === "invoice-pad" || view === "sky-cmr" || view === "sky-doc" || view === "acci-portal"
 
   return (
     <div className={isFullBleedView ? "h-screen w-full flex flex-col overflow-hidden bg-slate-950" : "min-h-screen flex flex-col"}>
@@ -333,6 +338,13 @@ function MainContent() {
           </div>
         )}
 
+        {/* Export Logistics & Reverse Transit Calculator */}
+        {visitedViews.has('export-calculator') && (
+          <div className={view === 'export-calculator' ? 'w-full' : 'hidden'}>
+            <ExportCalculatorView />
+          </div>
+        )}
+
         {/* Settings View */}
         {visitedViews.has('settings') && (
           <div className={view === 'settings' ? 'w-full' : 'hidden'}>
@@ -361,6 +373,13 @@ function MainContent() {
           </div>
         )}
 
+        {/* ACCI Chamber of Commerce Portal */}
+        {visitedViews.has('acci-portal') && (
+          <div className={view === 'acci-portal' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
+            <AcciPortalView />
+          </div>
+        )}
+
         {visitedViews.has('invoice-pad') && (
           <div className={view === 'invoice-pad' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
             <InvoicePadView />
@@ -379,6 +398,7 @@ function MainContent() {
           </div>
         )}
       </main>
+
 
       {/* Global Floating Quick Actions Speed Dial */}
       {!isFullBleedView && (

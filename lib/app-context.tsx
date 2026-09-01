@@ -84,7 +84,8 @@ interface AppState {
   invoices: Invoice[]
   currentAccount: Account | null
   currentCompany: Company | null
-  view: 'accounts' | 'companies' | 'ledger' | 'invoice' | 'bol' | 'settings' | 'bank' | 'invoice-pad' | 'sky-cmr' | 'sky-doc' | 'reports' | 'shipper-portal' | 'analytics'
+  view: 'accounts' | 'companies' | 'ledger' | 'invoice' | 'bol' | 'settings' | 'bank' | 'invoice-pad' | 'sky-cmr' | 'sky-doc' | 'reports' | 'shipper-portal' | 'analytics' | 'export-calculator' | 'acci-portal'
+
   isAuthenticated: boolean
   currentUser: User | null
   users: User[]
@@ -1001,10 +1002,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const calculateBalances = (entries: LedgerEntry[]): LedgerEntry[] => {
     let runningBalance = 0
     return entries.map((entry, index) => {
-      runningBalance = runningBalance + entry.debit - entry.credit
-      return { ...entry, sNo: index + 1, balance: runningBalance }
+      const debit = typeof entry.debit === "number" ? entry.debit : parseFloat(String(entry.debit || 0)) || 0
+      const credit = typeof entry.credit === "number" ? entry.credit : parseFloat(String(entry.credit || 0)) || 0
+      runningBalance = Math.round((runningBalance + debit - credit) * 100) / 100
+      return {
+        ...entry,
+        sNo: index + 1,
+        debit,
+        credit,
+        balance: runningBalance,
+      }
     })
   }
+
 
   const persistLedgersDirectly = useCallback((accountsToSave: Account[], deletedItems: DeletedLedgerEntryItem[] = []) => {
     try {

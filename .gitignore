@@ -26,3 +26,12 @@ __pycache__/
 .env*
 .local-*.json
 *.log
+audit_*.json
+validation_report.json
+backend/data/*.db-shm
+backend/data/*.db-wal
+SKY-ARIANA-DOC/tmp/
+awesome-claude-code-subagents/
+*.exe
+*.dll
+*.so

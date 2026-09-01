@@ -1,0 +1,8 @@
+fastapi>=0.115.6
+uvicorn[standard]>=0.34.0
+sqlalchemy>=2.0.36
+pydantic>=2.10.4
+python-multipart>=0.0.20
+pytesseract>=0.3.10
+pdf2image>=1.17.0
+pillow>=10.4.0

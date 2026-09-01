@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
 from backend.models import BillOfLading, ExportAccount, ImportAccount, Invoice, LedgerEntry, Truck
@@ -11,7 +11,7 @@ router = APIRouter(tags=["search"])
 
 
 @router.get("")
-def global_search(q: str = Query(default=""), db: Session = Depends(get_db)):
+async def global_search(q: str = Query(default=""), db: AsyncSession = Depends(get_db)):
     sources = [
         ("invoices", Invoice),
         ("bill_of_lading", BillOfLading),
@@ -22,7 +22,8 @@ def global_search(q: str = Query(default=""), db: Session = Depends(get_db)):
     ]
     results = []
     for source, model in sources:
-        for row in list_records(db, model, q=q, limit=25):
+        rows = await list_records(db, model, q=q, limit=25)
+        for row in rows:
             payload = row.get("payload") or {}
             title = (
                 row.get("invoice_number")
@@ -35,3 +36,4 @@ def global_search(q: str = Query(default=""), db: Session = Depends(get_db)):
             )
             results.append({"source": source, "id": row["id"], "title": title, "payload": payload})
     return {"success": True, "data": results, "source": "python-fastapi"}
+

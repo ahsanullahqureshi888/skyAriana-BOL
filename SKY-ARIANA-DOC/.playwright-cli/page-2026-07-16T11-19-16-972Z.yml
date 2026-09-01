@@ -1,0 +1,86 @@
+- generic [ref=f1e3]:
+  - complementary [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]:
+        - img "Sky Ariana Logo" [ref=f1e7]
+        - generic [ref=f1e8]:
+          - generic [ref=f1e9]: SKY ARIANA
+          - generic [ref=f1e10]: IMPORT & EXPORT
+      - button "Collapse sidebar" [ref=f1e11] [cursor=pointer]
+    - navigation [ref=f1e14]:
+      - link "Dashboard" [ref=f1e15] [cursor=pointer]:
+        - /url: /
+      - link "Invoices" [ref=f1e22] [cursor=pointer]:
+        - /url: /invoices
+      - link "Customers" [ref=f1e27] [cursor=pointer]:
+        - /url: /customers
+      - link "Shippers & Exporters" [ref=f1e34] [cursor=pointer]:
+        - /url: /shippers
+      - link "Notify Parties" [ref=f1e40] [cursor=pointer]:
+        - /url: /notify-parties
+      - link "Products & Services" [ref=f1e47] [cursor=pointer]:
+        - /url: /products
+      - link "Company Settings" [ref=f1e53] [cursor=pointer]:
+        - /url: /settings
+      - link "Backup & Restore" [ref=f1e58] [cursor=pointer]:
+        - /url: /backups
+      - link "Activity History" [ref=f1e64] [cursor=pointer]:
+        - /url: /logs
+      - link "User Management" [ref=f1e70] [cursor=pointer]:
+        - /url: /user-management
+    - button "Logout" [ref=f1e76] [cursor=pointer]
+  - generic [ref=f1e81]:
+    - banner [ref=f1e82]:
+      - generic [ref=f1e84]:
+        - img "Sky Ariana & Balam Bar Baran" [ref=f1e85]
+        - generic [ref=f1e86]:
+          - text: Business Operations
+          - heading "SKY ARIANA & BALAM BAR BARAN" [level=1] [ref=f1e87]
+      - generic [ref=f1e88]:
+        - generic [ref=f1e89]:
+          - button "Switch Language" [ref=f1e90] [cursor=pointer]
+          - combobox [ref=f1e94] [cursor=pointer]:
+            - option "English (EN)" [selected]
+            - option "فارسی (FA)"
+            - option "پښتو (PS)"
+        - generic [ref=f1e95]:
+          - generic [ref=f1e96]:
+            - generic [ref=f1e97]: Admin User
+            - generic [ref=f1e98]: Super Admin
+          - generic "Admin User (Super Admin)" [ref=f1e99]: AU
+    - main [ref=f1e100]:
+      - generic [ref=f1e101]:
+        - generic [ref=f1e102]:
+          - generic [ref=f1e103]:
+            - generic [ref=f1e104]: Business directory
+            - heading "Shippers & Exporters" [level=2] [ref=f1e105]
+            - paragraph [ref=f1e110]: Manage saved shipper and exporter information used on invoices.
+          - generic [ref=f1e111]:
+            - button "Export" [ref=f1e112] [cursor=pointer]
+            - button "Import reviewed PDF" [ref=f1e116] [cursor=pointer]
+            - button "Add Shipper" [ref=f1e120] [cursor=pointer]
+        - generic [ref=f1e122]:
+          - generic [ref=f1e123]:
+            - generic [ref=f1e124]: Total records
+            - strong [ref=f1e125]: —
+          - generic [ref=f1e126]:
+            - generic [ref=f1e127]: Active
+            - strong [ref=f1e128]: —
+          - generic [ref=f1e129]:
+            - generic [ref=f1e130]: Archived
+            - strong [ref=f1e131]: —
+          - generic [ref=f1e132]:
+            - generic [ref=f1e133]: Used in invoices
+            - strong [ref=f1e134]: —
+        - generic [ref=f1e135]:
+          - textbox "Search name, alias, address, license, TRN, phone..." [ref=f1e140]
+          - generic [ref=f1e141]:
+            - checkbox "Include archived" [ref=f1e142]
+            - text: Include archived
+        - generic [ref=f1e148]:
+          - generic [ref=f1e149]:
+            - generic [ref=f1e150]:
+              - generic [ref=f1e151]: Saved registry
+              - heading "0 shippers" [level=3] [ref=f1e152]
+            - generic [ref=f1e153]: ALL-SHIPPERS--.pdf · 16 pages
+          - paragraph [ref=f1e163]: Loading directory...

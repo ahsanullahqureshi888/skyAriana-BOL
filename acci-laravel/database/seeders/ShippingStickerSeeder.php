@@ -1,0 +1,142 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\ShippingSticker;
+use Illuminate\Database\Seeder;
+
+class ShippingStickerSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $stickers = [
+            [
+                'sticker_no' => 'STK-000101',
+                'sticker_date' => '2026-07-28',
+                'exporter_name' => 'Pahlawan Noori LTD',
+                'exporter_address' => 'Shorandam, Industrial Park Kandahar Afghanistan',
+                'exporter_phone' => '+93707070975',
+                'exporter_licence_no' => '27-1173',
+                'importer_name' => 'Uttam Chand Rakesh Kumar Private Limited',
+                'importer_address' => "573, Katra Ishwar Bhawan, Khari, Baoli\nDelhi-110006(India)",
+                'importer_gst' => '07AADCU4808L1Z2',
+                'importer_fssai' => '13324999000404',
+                'importer_phone' => '011-45784868',
+                'importer_email' => 'akshaykbhatia@hotmail.com',
+                'importer_pan' => 'AADCU4808L',
+                'commodity_name' => 'BLACK RAISINS',
+                'net_wt' => '16 Kg',
+                'date_of_packing' => 'JUL / 2026',
+                'date_of_expiry' => 'JUL / 2028',
+                'lot_no' => '210',
+            ],
+            [
+                'sticker_no' => 'STK-000102',
+                'sticker_date' => '2026-08-08',
+                'exporter_name' => 'SARWAR HEMATYAR LTD',
+                'exporter_address' => 'KANDAHAR AFGHANISTAN',
+                'exporter_phone' => '0093-785226400',
+                'exporter_licence_no' => '27-10186',
+                'importer_name' => 'MANOCHA ENTERPRISES',
+                'importer_address' => "26 GROUND FLOOR KATRA ISHWAR BHAWAN GANDHI GALI KHARI BAOLI DELHI 110006 INDIA",
+                'importer_gst' => '07MRPM3332J1ZG',
+                'importer_fssai' => '10015011002643',
+                'importer_phone' => '+9810355677',
+                'importer_email' => 'RMANOCHA31@GMAIL.COM',
+                'importer_pan' => 'MRPM3332J',
+                'commodity_name' => 'BLACK RAISINS',
+                'net_wt' => '16 Kg',
+                'date_of_packing' => 'JUL / 2026',
+                'date_of_expiry' => 'JUL / 2028',
+                'lot_no' => '118',
+            ],
+            [
+                'sticker_no' => 'STK-000103',
+                'sticker_date' => '2026-08-05',
+                'exporter_name' => 'SKY ARIANA TRADING LTD',
+                'exporter_address' => 'Industrial Zone 2, Kandahar, Afghanistan',
+                'exporter_phone' => '+93-799-887766',
+                'exporter_licence_no' => '27-44910',
+                'importer_name' => 'HALWAI SONS EXPORTS',
+                'importer_address' => "Plot 42, Dry Fruit Market, Khari Baoli, Delhi-110006",
+                'importer_gst' => '07AAAFH1234F1Z1',
+                'importer_fssai' => '10019011005541',
+                'importer_phone' => '011-23948811',
+                'importer_email' => 'info@halwaisons.com',
+                'importer_pan' => 'AAAFH1234F',
+                'commodity_name' => 'GREEN RAISINS',
+                'net_wt' => '12 Kg',
+                'date_of_packing' => 'AUG / 2026',
+                'date_of_expiry' => 'AUG / 2028',
+                'lot_no' => '205',
+            ],
+            [
+                'sticker_no' => 'STK-000104',
+                'sticker_date' => '2026-08-02',
+                'exporter_name' => 'ARIANA AFGHAN TRADING LTD',
+                'exporter_address' => 'Kabul Industrial Park, Kabul, Afghanistan',
+                'exporter_phone' => '+93-700-112233',
+                'exporter_licence_no' => '27-09921',
+                'importer_name' => 'DIPAK TRADING CO.',
+                'importer_address' => "102, Grain Market, Naya Bazar, Delhi-110006",
+                'importer_gst' => '07AABCD5678K1Z5',
+                'importer_fssai' => '13322001004412',
+                'importer_phone' => '011-43219988',
+                'importer_email' => 'dipaktrading@gmail.com',
+                'importer_pan' => 'AABCD5678K',
+                'commodity_name' => 'WALNUTS IN SHELL',
+                'net_wt' => '20 Kg',
+                'date_of_packing' => 'AUG / 2026',
+                'date_of_expiry' => 'AUG / 2028',
+                'lot_no' => '309',
+            ],
+            [
+                'sticker_no' => 'STK-000105',
+                'sticker_date' => '2026-07-30',
+                'exporter_name' => 'PAHLAWAN NOORI LTD',
+                'exporter_address' => 'Shorandam, Industrial Park Kandahar Afghanistan',
+                'exporter_phone' => '+93707070975',
+                'exporter_licence_no' => '27-1173',
+                'importer_name' => 'BRIDGE AGRO PRODUCTS PVT LTD',
+                'importer_address' => "Building B, Dry Fruit Complex, Azadpur, Delhi-110033",
+                'importer_gst' => '07AABCB9988E1Z9',
+                'importer_fssai' => '10018011009988',
+                'importer_phone' => '011-27654321',
+                'importer_email' => 'import@bridgeagro.in',
+                'importer_pan' => 'AABCB9988E',
+                'commodity_name' => 'FIGS (ANJEER)',
+                'net_wt' => '10 Kg',
+                'date_of_packing' => 'JUL / 2026',
+                'date_of_expiry' => 'JUL / 2028',
+                'lot_no' => '142',
+            ],
+            [
+                'sticker_no' => 'STK-000106',
+                'sticker_date' => '2026-07-25',
+                'exporter_name' => 'SARWAR HEMATYAR LTD',
+                'exporter_address' => 'KANDAHAR AFGHANISTAN',
+                'exporter_phone' => '0093-785226400',
+                'exporter_licence_no' => '27-10186',
+                'importer_name' => 'GOPAL INTERNATIONAL',
+                'importer_address' => "415, Katra Ishwar Bhawan, Khari Baoli, Delhi-110006",
+                'importer_gst' => '07AABCG1122D1Z3',
+                'importer_fssai' => '10017011003322',
+                'importer_phone' => '011-45678901',
+                'importer_email' => 'gopalintl@yahoo.com',
+                'importer_pan' => 'AABCG1122D',
+                'commodity_name' => 'ALMONDS (GIRDI)',
+                'net_wt' => '15 Kg',
+                'date_of_packing' => 'JUL / 2026',
+                'date_of_expiry' => 'JUL / 2028',
+                'lot_no' => '188',
+            ],
+        ];
+
+        foreach ($stickers as $stickerData) {
+            ShippingSticker::updateOrCreate(
+                ['sticker_no' => $stickerData['sticker_no']],
+                $stickerData
+            );
+        }
+    }
+}

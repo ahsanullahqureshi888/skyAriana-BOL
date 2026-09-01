@@ -111,24 +111,76 @@ export function saveCustomRates(rates: Partial<Record<SupportedCurrency, number>
   } catch (e) {}
 }
 
+export function roundMoney(amount: number, precision: number = 2): number {
+  if (isNaN(amount) || !isFinite(amount)) return 0
+  const factor = Math.pow(10, precision)
+  return Math.round((Number(amount) || 0) * factor) / factor
+}
+
 export function convertFromUSD(amountUSD: number, targetCurrency: SupportedCurrency, customRates?: Record<SupportedCurrency, number>): number {
-  if (targetCurrency === "USD" || !amountUSD) return amountUSD
+  if (targetCurrency === "USD" || !amountUSD) return roundMoney(amountUSD, 2)
   const rates = customRates || getCustomRates()
   const rate = rates[targetCurrency] || CURRENCY_CONFIGS[targetCurrency]?.defaultRateToUSD || 1.0
-  return amountUSD * rate
+  const precision = CURRENCY_CONFIGS[targetCurrency]?.precision ?? 2
+  return roundMoney(amountUSD * rate, precision)
+}
+
+export function convertToUSD(amount: number, fromCurrency: SupportedCurrency, customRates?: Record<SupportedCurrency, number>): number {
+  if (fromCurrency === "USD" || !amount) return roundMoney(amount, 2)
+  const rates = customRates || getCustomRates()
+  const rate = rates[fromCurrency] || CURRENCY_CONFIGS[fromCurrency]?.defaultRateToUSD || 1.0
+  if (rate <= 0) return 0
+  return roundMoney(amount / rate, 2)
+}
+
+export function convertCurrency(
+  amount: number,
+  fromCurrency: SupportedCurrency,
+  toCurrency: SupportedCurrency,
+  customRates?: Record<SupportedCurrency, number>
+): number {
+  if (fromCurrency === toCurrency) return roundMoney(amount, CURRENCY_CONFIGS[toCurrency]?.precision ?? 2)
+  const usdAmount = convertToUSD(amount, fromCurrency, customRates)
+  return convertFromUSD(usdAmount, toCurrency, customRates)
+}
+
+export function calculateNetBalance(debit: number | string, credit: number | string): number {
+  const d = Number(debit) || 0
+  const c = Number(credit) || 0
+  return roundMoney(d - c, 2)
+}
+
+export function recalculateRunningBalances<T extends { debit?: number | string; credit?: number | string; balance?: number; sNo?: number }>(
+  entries: T[]
+): (T & { balance: number; sNo: number })[] {
+  let running = 0
+  return entries.map((entry, index) => {
+    const debit = Number(entry.debit) || 0
+    const credit = Number(entry.credit) || 0
+    running = roundMoney(running + debit - credit, 2)
+    return {
+      ...entry,
+      sNo: index + 1,
+      debit,
+      credit,
+      balance: running,
+    }
+  })
 }
 
 export function formatCurrencyAmount(amount: number, currency: SupportedCurrency = "USD"): string {
   const config = CURRENCY_CONFIGS[currency] || CURRENCY_CONFIGS.USD
+  const safeAmount = roundMoney(amount, config.precision)
   const formattedNum = new Intl.NumberFormat("en-US", {
     minimumFractionDigits: config.precision,
     maximumFractionDigits: config.precision,
-  }).format(amount)
+  }).format(safeAmount)
 
   if (currency === "USD") return `$${formattedNum}`
   if (currency === "EUR") return `€${formattedNum}`
   return `${formattedNum} ${config.symbol}`
 }
+
 
 /**
  * Export tabular data to CSV with UTF-8 BOM so Persian/Pashto/Arabic text renders properly in Excel

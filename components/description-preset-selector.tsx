@@ -367,7 +367,7 @@ export function DescriptionPresetSelector({
             </div>
 
             {/* Scrollable Options List */}
-            <div dir="rtl" className="overflow-y-auto p-3 space-y-3 flex-1 divide-y divide-slate-100 max-h-[300px]">
+            <div dir="rtl" className="overflow-y-auto p-3 space-y-3 flex-1 divide-y divide-slate-100 max-h-[380px]">
               {filteredCategories.length === 0 ? (
                 <div className="text-center py-8 text-xs text-slate-400 flex flex-col items-center gap-1.5">
                   <Search className="w-6 h-6 text-slate-300 stroke-[1.5]" />
@@ -474,17 +474,17 @@ export function DescriptionPresetSelector({
 
       {/* Quick 1-Click Preset Chips below Input */}
       {showQuickChips && (
-        <div className="flex flex-wrap gap-1 pt-0.5">
+        <div className="flex items-center gap-1 pt-0.5 overflow-x-auto no-scrollbar pb-0.5">
           {quickChips.map((chip) => (
             <button
               key={chip.label}
               type="button"
               onClick={() => handleSelectOption(chip.label)}
-              className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-900 border border-blue-200 px-1.5 py-0.2 rounded cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.98] shadow-2xs"
+              className="inline-flex items-center gap-1 text-[8.5px] font-bold bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-900 border border-blue-200 px-2 py-0.5 rounded-md cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] shadow-2xs whitespace-nowrap shrink-0"
               title={`Click to fill: ${chip.label}`}
             >
-              <span className="text-[9.5px]">{chip.icon}</span>
-              <span className="truncate max-w-[160px] sm:max-w-none">{chip.short}</span>
+              <span className="text-[9px]">{chip.icon}</span>
+              <span>{chip.short}</span>
             </button>
           ))}
         </div>

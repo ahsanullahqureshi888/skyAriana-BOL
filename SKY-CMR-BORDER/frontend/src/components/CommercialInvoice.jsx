@@ -1,5 +1,7 @@
 import React from 'react';
 import { useCmr } from '../context/CmrContext';
+import { PartyQuickSelector } from './PartyQuickSelector';
+import { FieldQuickPicker } from './FieldQuickPicker';
 
 export const CommercialInvoice = () => {
   const { fields, updateField, zoom } = useCmr();
@@ -103,12 +105,29 @@ export const CommercialInvoice = () => {
                     style={{ fontWeight: 800 }}
                     onBlur={(e) => updateField('inv_cmr_ref', e.target.innerText)}
                   >
-                    {fields.inv_cmr_ref || 'CMR #75'}
+                    {fields.inv_cmr_ref || 'CMR #179'}
                   </div>
                 </div>
 
                 <div className="inv-meta-item">
-                  <span className="inv-meta-lbl">TERMS OF DELIVERY:</span>
+                  <span className="inv-meta-lbl">CONTRACT REF:</span>
+                  <div
+                    className="blue-field inv-meta-val"
+                    contentEditable
+                    suppressContentEditableWarning
+                    id="inv_contract_no"
+                    style={{ fontWeight: 800 }}
+                    onBlur={(e) => updateField('inv_contract_no', e.target.innerText)}
+                  >
+                    {fields.inv_contract_no || 'EXP-2026-AF-UZB'}
+                  </div>
+                </div>
+
+                <div className="inv-meta-item">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="inv-meta-lbl">TERMS OF DELIVERY:</span>
+                    <FieldQuickPicker fieldKey="inv_incoterms" presetGroup="incoterms" />
+                  </div>
                   <div
                     className="blue-field inv-meta-val"
                     contentEditable
@@ -122,7 +141,10 @@ export const CommercialInvoice = () => {
                 </div>
 
                 <div className="inv-meta-item">
-                  <span className="inv-meta-lbl">TERMS OF PAYMENT:</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="inv-meta-lbl">TERMS OF PAYMENT:</span>
+                    <FieldQuickPicker fieldKey="inv_payment_terms" presetGroup="payment_terms" />
+                  </div>
                   <div
                     className="blue-field inv-meta-val"
                     contentEditable
@@ -153,9 +175,9 @@ export const CommercialInvoice = () => {
               {/* SELLER & BUYER GRID */}
               <div className="inv-parties-grid">
                 <div className="inv-party-col">
-                  <div className="inv-party-header">
+                  <div className="inv-party-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>1. SELLER / EXPORTER (فرستنده و صادرکننده)</span>
-                    <span style={{ fontSize: '8px', opacity: 0.85 }}>ORIGIN</span>
+                    <PartyQuickSelector type="sender" />
                   </div>
                   <div className="inv-party-body">
                     <div
@@ -172,9 +194,9 @@ export const CommercialInvoice = () => {
                 </div>
 
                 <div className="inv-party-col">
-                  <div className="inv-party-header">
+                  <div className="inv-party-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>2. BUYER / IMPORTER / NOTIFY PARTY (گیرنده و واردکننده)</span>
-                    <span style={{ fontSize: '8px', opacity: 0.85 }}>DESTINATION</span>
+                    <PartyQuickSelector type="consignee" />
                   </div>
                   <div className="inv-party-body">
                     <div
@@ -200,7 +222,7 @@ export const CommercialInvoice = () => {
                     contentEditable
                     suppressContentEditableWarning
                     id="inv_origin"
-                    style={{ fontWeight: 800 }}
+                    style={{ fontWeight: 800, fontSize: '8.8px', textTransform: 'uppercase', color: '#0f172a', whiteSpace: 'nowrap' }}
                     onBlur={(e) => updateField('inv_origin', e.target.innerText)}
                   >
                     {fields.inv_origin || 'AFGHANISTAN'}
@@ -208,42 +230,53 @@ export const CommercialInvoice = () => {
                 </div>
 
                 <div className="inv-route-cell">
-                  <span className="r-lbl">FINAL DESTINATION</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="r-lbl">FINAL DESTINATION</span>
+                    <FieldQuickPicker fieldKey="inv_dest_country" presetGroup="dest_countries" />
+                  </div>
                   <div
                     className="blue-field r-val"
                     contentEditable
                     suppressContentEditableWarning
                     id="inv_dest_country"
-                    style={{ fontWeight: 800 }}
+                    style={{ fontWeight: 800, fontSize: '8.6px', textTransform: 'uppercase', color: '#0f172a' }}
                     onBlur={(e) => updateField('inv_dest_country', e.target.innerText)}
                   >
-                    {fields.inv_dest_country || 'REPUBLIC OF UZBEKISTAN'}
+                    {fields.inv_dest_country || 'INDIA'}
                   </div>
                 </div>
 
                 <div className="inv-route-cell">
-                  <span className="r-lbl">PORT OF LOADING</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="r-lbl">PORT OF LOADING</span>
+                    <FieldQuickPicker fieldKey="inv_loading_place" presetGroup="loading_ports" />
+                  </div>
                   <div
                     className="blue-field r-val"
                     contentEditable
                     suppressContentEditableWarning
                     id="inv_loading_place"
+                    style={{ fontWeight: 700, fontSize: '8.2px', lineHeight: '1.22', color: '#1e293b' }}
                     onBlur={(e) => updateField('inv_loading_place', e.target.innerText)}
                   >
-                    {fields.inv_loading_place || 'Hairatan Customs Terminal, Afghanistan'}
+                    {fields.inv_loading_place || 'HAIRATAN BORDER / CUSTOMS, AFGHANISTAN'}
                   </div>
                 </div>
 
                 <div className="inv-route-cell">
-                  <span className="r-lbl">PORT OF DISCHARGE / DELIVERY</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span className="r-lbl">PORT OF DISCHARGE / DELIVERY</span>
+                    <FieldQuickPicker fieldKey="inv_delivery_place" presetGroup="discharge_ports" />
+                  </div>
                   <div
                     className="blue-field r-val"
                     contentEditable
                     suppressContentEditableWarning
                     id="inv_delivery_place"
+                    style={{ fontWeight: 700, fontSize: '8.0px', lineHeight: '1.22', color: '#1e293b' }}
                     onBlur={(e) => updateField('inv_delivery_place', e.target.innerText)}
                   >
-                    {fields.inv_delivery_place || 'Termiz Customs Post (Code: 22005), Uzbekistan'}
+                    {fields.inv_delivery_place || 'NEW DELHI, INDIA (VIA TASHKENT AIR TRANSIT)'}
                   </div>
                 </div>
 
@@ -254,10 +287,10 @@ export const CommercialInvoice = () => {
                     contentEditable
                     suppressContentEditableWarning
                     id="inv_vehicle_no"
-                    style={{ fontWeight: 900, color: '#1e3a8a' }}
+                    style={{ fontWeight: 900, color: '#1e3a8a', fontSize: '8.6px', letterSpacing: '0.1px', whiteSpace: 'nowrap' }}
                     onBlur={(e) => updateField('inv_vehicle_no', e.target.innerText)}
                   >
-                    {fields.inv_vehicle_no || 'BLH815L / BLH815L'}
+                    {fields.inv_vehicle_no || (fields.f2_truck_no ? `${fields.f2_truck_no} / ${fields.f2_trailer_no || ''}` : '') || 'KBL2877 / 75W415XA / 75-8267AA'}
                   </div>
                 </div>
 
@@ -268,9 +301,10 @@ export const CommercialInvoice = () => {
                     contentEditable
                     suppressContentEditableWarning
                     id="inv_driver_name"
+                    style={{ fontWeight: 700, fontSize: '8.5px', color: '#1e293b' }}
                     onBlur={(e) => updateField('inv_driver_name', e.target.innerText)}
                   >
-                    {fields.inv_driver_name || 'Mohammad Anwar'}
+                    {fields.inv_driver_name || fields.inv_carrier_name || 'SKY ARIANA LIMITED'}
                   </div>
                 </div>
               </div>
@@ -280,13 +314,13 @@ export const CommercialInvoice = () => {
                 <table className="inv-items-table">
                   <thead>
                     <tr>
-                      <th style={{ width: '5%', textAlign: 'center' }}>NO.</th>
-                      <th style={{ width: '38%' }}>DESCRIPTION OF GOODS & COMMODITY</th>
-                      <th style={{ width: '13%', textAlign: 'center' }}>HS CODE</th>
-                      <th style={{ width: '15%', textAlign: 'center' }}>PACKAGES / QTY</th>
+                      <th style={{ width: '4%', textAlign: 'center' }}>NO.</th>
+                      <th style={{ width: '30%' }}>DESCRIPTION OF GOODS & COMMODITY</th>
+                      <th style={{ width: '9%', textAlign: 'center' }}>HS CODE</th>
+                      <th style={{ width: '16%', textAlign: 'center' }}>PACKAGES / QTY</th>
                       <th style={{ width: '13%', textAlign: 'center' }}>NET WT / GW</th>
-                      <th style={{ width: '16%', textAlign: 'center' }}>UNIT PRICE</th>
-                      <th style={{ width: '15%', textAlign: 'right', paddingRight: '8px' }}>AMOUNT (USD)</th>
+                      <th style={{ width: '13%', textAlign: 'center' }}>UNIT PRICE</th>
+                      <th style={{ width: '15%', textAlign: 'right', paddingRight: '6px' }}>AMOUNT (USD)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -297,24 +331,24 @@ export const CommercialInvoice = () => {
                           contentEditable
                           suppressContentEditableWarning
                           id="inv_item_no"
-                          style={{ textAlign: 'center', fontWeight: 'bold' }}
+                          style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '10px' }}
                           onBlur={(e) => updateField('inv_item_no', e.target.innerText)}
                         >
                           {fields.inv_item_no || '1'}
                         </div>
                       </td>
-                      <td style={{ verticalAlign: 'top', padding: '6px 8px' }}>
+                      <td style={{ verticalAlign: 'top', padding: '5px 6px' }}>
                         <div
                           className="blue-field"
                           contentEditable
                           suppressContentEditableWarning
                           id="inv_item_desc"
-                          style={{ minHeight: '60px', fontWeight: 'bold', fontSize: '10.5px', lineHeight: 1.35 }}
+                          style={{ minHeight: '58px', fontWeight: 'bold', fontSize: '10px', lineHeight: 1.35, wordBreak: 'normal' }}
                           onBlur={(e) => updateField('inv_item_desc', e.target.innerText)}
                         >
                           {fields.inv_item_desc}
                         </div>
-                        <div style={{ fontSize: '8.5px', color: '#64748b', marginTop: '3px' }}>
+                        <div style={{ fontSize: '8px', color: '#64748b', marginTop: '3px' }}>
                           Standard Export Transit Cargo • Inspected & Cleared
                         </div>
                       </td>
@@ -324,7 +358,7 @@ export const CommercialInvoice = () => {
                           contentEditable
                           suppressContentEditableWarning
                           id="inv_item_hs"
-                          style={{ fontWeight: 'bold', textAlign: 'center', minHeight: '22px', fontSize: '10px' }}
+                          style={{ fontWeight: 'bold', textAlign: 'center', minHeight: '22px', fontSize: '9.5px', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}
                           onBlur={(e) => updateField('inv_item_hs', e.target.innerText)}
                         >
                           {fields.inv_item_hs || '9603100000'}
@@ -336,7 +370,7 @@ export const CommercialInvoice = () => {
                           contentEditable
                           suppressContentEditableWarning
                           id="inv_item_qty"
-                          style={{ fontWeight: 'bold', textAlign: 'center', minHeight: '22px', fontSize: '10px' }}
+                          style={{ fontWeight: 'bold', textAlign: 'center', minHeight: '22px', fontSize: '9.2px', lineHeight: 1.25, wordBreak: 'normal', overflowWrap: 'normal' }}
                           onBlur={(e) => updateField('inv_item_qty', e.target.innerText)}
                         >
                           {fields.inv_item_qty || '360 BUNDLES (16000 PCS)'}
@@ -349,7 +383,7 @@ export const CommercialInvoice = () => {
                             contentEditable
                             suppressContentEditableWarning
                             id="inv_item_net_wt"
-                            style={{ fontWeight: 'bold', textAlign: 'center', minHeight: '18px', fontSize: '9.5px', width: '95%' }}
+                            style={{ fontWeight: 'bold', textAlign: 'center', minHeight: '18px', fontSize: '9px', width: '100%', whiteSpace: 'nowrap', lineHeight: 1.2 }}
                             onBlur={(e) => updateField('inv_item_net_wt', e.target.innerText)}
                             title="Net Weight"
                           >
@@ -360,7 +394,7 @@ export const CommercialInvoice = () => {
                             contentEditable
                             suppressContentEditableWarning
                             id="inv_item_gross_wt"
-                            style={{ fontWeight: '600', textAlign: 'center', minHeight: '18px', fontSize: '9px', width: '95%', color: '#475569' }}
+                            style={{ fontWeight: '600', textAlign: 'center', minHeight: '18px', fontSize: '8.5px', width: '100%', color: '#475569', whiteSpace: 'nowrap', lineHeight: 1.2 }}
                             onBlur={(e) => updateField('inv_item_gross_wt', e.target.innerText)}
                             title="Gross Weight"
                           >
@@ -374,19 +408,19 @@ export const CommercialInvoice = () => {
                           contentEditable
                           suppressContentEditableWarning
                           id="inv_item_unitprice"
-                          style={{ fontWeight: 'bold', textAlign: 'center', minHeight: '22px', fontSize: '10px', color: '#1e3a8a' }}
+                          style={{ fontWeight: 'bold', textAlign: 'center', minHeight: '22px', fontSize: '9.2px', color: '#1e3a8a', lineHeight: 1.25 }}
                           onBlur={(e) => updateField('inv_item_unitprice', e.target.innerText)}
                         >
                           {fields.inv_item_unitprice || '4.45 USD / KG'}
                         </div>
                       </td>
-                      <td style={{ textAlign: 'right', verticalAlign: 'middle', paddingRight: '8px' }}>
+                      <td style={{ textAlign: 'right', verticalAlign: 'middle', paddingRight: '6px' }}>
                         <div
                           className="blue-field"
                           contentEditable
                           suppressContentEditableWarning
                           id="inv_item_total"
-                          style={{ fontWeight: 900, textAlign: 'right', minHeight: '22px', fontSize: '11.5px', color: '#0f172a' }}
+                          style={{ fontWeight: 900, textAlign: 'right', minHeight: '22px', fontSize: '11px', color: '#0f172a', whiteSpace: 'nowrap' }}
                           onBlur={(e) => updateField('inv_item_total', e.target.innerText)}
                         >
                           {fields.inv_item_total || fields.inv_subtotal || '44,500.00 USD'}

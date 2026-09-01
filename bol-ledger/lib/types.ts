@@ -5,14 +5,28 @@ export interface LedgerEntry {
   shipperDescription: string
   invoiceNo: string
   dateOfShip: string
+  barnamehNo?: string
+  driverFreight?: string
+  driverFreightCurrency?: "USD" | "AFN"
+  driverFreightUSD?: number
+  shippingCost?: number
+  shippingCostCurrency?: "USD" | "AFN"
+  shippingCostUSD?: number
+  afnToUsdRate?: number
   billOfLanding: string
   surrenderedBL: boolean
   containerNo: string
+  containerType?: string
+  containerDetails?: string
   consignee: string
   quantity: string
   debit: number
   credit: number
   balance: number
+  price?: number
+  cost?: number
+  profit?: number
+  handlingCost?: number
   pdfPathname?: string
 }
 

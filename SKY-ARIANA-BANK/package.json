@@ -1,0 +1,24 @@
+{
+  "name": "sky-banking",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "postinstall": "npm install --prefix frontend",
+    "build": "node scripts/build.mjs",
+    "lint": "oxlint frontend",
+    "preview": "npm run preview --prefix frontend"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "oxlint": "^1.71.0",
+    "vite": "^5.4.11"
+  }
+}

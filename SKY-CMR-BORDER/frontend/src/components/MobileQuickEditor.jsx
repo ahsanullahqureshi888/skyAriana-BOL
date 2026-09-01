@@ -138,7 +138,7 @@ export const MobileQuickEditor = () => {
                       updateField('f2_cmr_number', e.target.value);
                       setCmrSerial(e.target.value);
                     }}
-                    placeholder="e.g. SA-179"
+                    placeholder="e.g. 110"
                   />
                 </div>
                 <div className="m-field-group flex-1">
@@ -160,7 +160,7 @@ export const MobileQuickEditor = () => {
                   style={{ width: '100%', fontSize: '11px', padding: '6px 10px', background: '#0284c7', color: '#fff', borderColor: '#0369a1', fontWeight: 800 }}
                   onClick={getCmrNoFromInvoice}
                 >
-                  🔗 Get CMR No from Invoice No ({fields.inv_number || 'SA-179'})
+                  🔗 Get CMR No from Invoice No ({fields.inv_number || '110'})
                 </button>
               </div>
             </div>

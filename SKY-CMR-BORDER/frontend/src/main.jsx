@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { CmrProvider } from './context/CmrContext';
 import './index.css';
+import './analytics.css';
 
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {

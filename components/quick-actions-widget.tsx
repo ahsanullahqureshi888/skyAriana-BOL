@@ -107,7 +107,67 @@ export function QuickActionsWidget({
             <span>New Bill of Lading (BOL)</span>
           </button>
 
-          {/* Action 2: Company Ledger */}
+          {/* Action 2: Export Logistics Quote */}
+          <button
+            onClick={() => {
+              setView("export-calculator")
+              setIsOpen(false)
+              toast.success("Opened Export Logistics & Reefer Quote Engine")
+            }}
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-orange-50 dark:hover:bg-orange-950/60 hover:text-orange-600 dark:hover:text-orange-400 transition-all text-left cursor-pointer group"
+          >
+            <div className="p-1.5 rounded-lg bg-orange-100 dark:bg-orange-950 text-orange-600 dark:text-orange-400 group-hover:scale-105 transition-transform">
+              <Truck className="w-3.5 h-3.5" />
+            </div>
+            <span>Export & Reefer Quote Engine</span>
+          </button>
+
+          {/* Action 3: ACCI Chamber Suite */}
+          <button
+            onClick={() => {
+              setView("acci-portal")
+              setIsOpen(false)
+              toast.success("Opened ACCI Chamber Documents Portal")
+            }}
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-amber-50 dark:hover:bg-amber-950/60 hover:text-amber-600 dark:hover:text-amber-400 transition-all text-left cursor-pointer group"
+          >
+            <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform">
+              <ShieldCheck className="w-3.5 h-3.5" />
+            </div>
+            <span>ACCI Origin & Trade Suite</span>
+          </button>
+
+          {/* Action 4: Sky Bank Portal */}
+          <button
+            onClick={() => {
+              setView("bank")
+              setIsOpen(false)
+              toast.success("Opened Sky Bank Portal")
+            }}
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all text-left cursor-pointer group"
+          >
+            <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
+              <DollarSign className="w-3.5 h-3.5" />
+            </div>
+            <span>Sky Bank & Treasury Ledgers</span>
+          </button>
+
+          {/* Action 5: Sky CMR Waybill */}
+          <button
+            onClick={() => {
+              setView("sky-cmr")
+              setIsOpen(false)
+              toast.success("Opened Sky CMR Express")
+            }}
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-600 dark:hover:text-blue-400 transition-all text-left cursor-pointer group"
+          >
+            <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 group-hover:scale-105 transition-transform">
+              <Truck className="w-3.5 h-3.5" />
+            </div>
+            <span>Sky CMR International Waybill</span>
+          </button>
+
+          {/* Action 6: Company Ledger */}
           <button
             onClick={() => {
               setView("ledger")
@@ -122,7 +182,7 @@ export function QuickActionsWidget({
             <span>Company Account Ledger</span>
           </button>
 
-          {/* Action 3: Executive Analytics */}
+          {/* Action 7: Executive Analytics */}
           <button
             onClick={() => {
               setView("analytics")
@@ -137,7 +197,7 @@ export function QuickActionsWidget({
             <span>Executive Analytics Dashboard</span>
           </button>
 
-          {/* Action 4: Invoice Pad */}
+          {/* Action 8: Invoice Pad */}
           <button
             onClick={() => {
               setView("invoice-pad")
@@ -152,7 +212,7 @@ export function QuickActionsWidget({
             <span>Commercial Invoice Pad</span>
           </button>
 
-          {/* Action 5: Run Ledger Health Audit */}
+          {/* Action 9: Run Ledger Health Audit */}
           <button
             onClick={handleRunAudit}
             disabled={isAuditing}
@@ -163,6 +223,7 @@ export function QuickActionsWidget({
             </div>
             <span>Ledger Integrity Audit</span>
           </button>
+
 
           {/* Action 6: Command Palette Shortcut */}
           <button

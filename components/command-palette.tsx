@@ -139,6 +139,30 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
         },
       },
       {
+        id: "nav-export-calculator",
+        title: "Export Logistics & Reefer Quote Engine (محاسبه ترانزیت و صادرات)",
+        subtitle: "Multi-leg transit corridors, reefer plugging, escort & ocean freight pricing",
+        category: "Navigation",
+        icon: Truck,
+        badge: "Quote",
+        perform: () => {
+          setView("export-calculator")
+          onOpenChange(false)
+        },
+      },
+      {
+        id: "nav-acci-portal",
+        title: "ACCI Chamber of Commerce & Origin Suite (اتاق تجارت)",
+        subtitle: "Certificate of Origin, SAFTA, Air Waybill & Packing List documents",
+        category: "Navigation",
+        icon: Building2,
+        badge: "ACCI",
+        perform: () => {
+          setView("acci-portal")
+          onOpenChange(false)
+        },
+      },
+      {
         id: "nav-sky-cmr",
         title: "Sky CMR Border & International Consignment Note",
         subtitle: "Create, edit, auto-calculate & print international CMR border waybills",
@@ -150,6 +174,7 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
           onOpenChange(false)
         },
       },
+
       {
         id: "nav-invoice-pad",
         title: "Commercial Invoice Pad",

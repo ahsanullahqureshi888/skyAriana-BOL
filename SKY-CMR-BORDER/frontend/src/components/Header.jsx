@@ -4,17 +4,18 @@ import { useCmr } from '../context/CmrContext';
 export const Header = () => {
   const {
     activePad, setActivePad,
-    activeDocPage, setActiveDocPage,
     theme, toggleTheme,
     autoGenerateInvoice, generateNewCmr,
     getCmrNoFromInvoice,
-    saveToArchive, setIsSavedDocsOpen, setIsAutoFillOpen,
+    saveToArchive, saveCurrentDocAsCopy, setIsSavedDocsOpen, setIsAutoFillOpen,
+    openAddressBook,
     triggerPrint, triggerDownloadPdf,
     setFields,
     isMobile,
     isMobileEditorOpen, setIsMobileEditorOpen,
     isInstallable, triggerInstallPrompt,
-    fitToScreen
+    fitToScreen,
+    currentUser, logout
   } = useCmr();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -28,118 +29,222 @@ export const Header = () => {
 
   return (
     <div className="app-header-container">
-      <header className="app-header">
-        {/* APP BRAND */}
-        <div className="app-brand">
-          <div className="brand-logo">CMR</div>
-          <div className="brand-text">
-            <h1>Sky Ariana Transit</h1>
-            <span className="sub-title">Trilingual CMR & Auto-Invoice</span>
+      {/* ========================================================
+          TIER 1: MAIN NAVIGATION & BRAND BAR
+          ======================================================== */}
+      <header className="app-header-top">
+        {/* BRAND & STATUS */}
+        <div className="app-brand-section">
+          <div className="brand-logo" onClick={() => setActivePad(2)} style={{ cursor: 'pointer' }} title="Sky Ariana Logistics">
+            CMR
           </div>
-          <div className="autosave-badge">
-            <span className="pulse-dot"></span> <span className="autosave-text">Auto-Saved</span>
+          <div className="brand-text">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h1>Sky Ariana Transit</h1>
+              <div className="autosave-badge">
+                <span className="pulse-dot"></span> <span className="autosave-text">Auto-Saved</span>
+              </div>
+            </div>
+            <span className="sub-title">Trilingual Customs CMR & Export Invoice Portal</span>
           </div>
         </div>
 
-        {/* MOBILE TOP CONTROLS (ONLY ON MOBILE) */}
-        <div className="mobile-header-actions">
+        {/* CENTER: MODE TABS (DESKTOP) */}
+        <nav className="header-nav-tabs desktop-only-flex">
+          <button
+            id="padPill1"
+            className={`nav-tab-btn ${activePad === 1 ? 'active' : ''}`}
+            onClick={() => setActivePad(1)}
+            title="CMR Trilingual Form 1 (English / Persian)"
+          >
+            <span className="tab-icon">📋</span>
+            <span className="tab-label">CMR Pad 1</span>
+            <span className="tab-tag">EN/FA</span>
+          </button>
+
+          <button
+            id="padPill2"
+            className={`nav-tab-btn ${activePad === 2 ? 'active' : ''}`}
+            onClick={() => setActivePad(2)}
+            title="CMR International Waybill Form 2 (English / Russian / Persian)"
+          >
+            <span className="tab-icon">📑</span>
+            <span className="tab-label">CMR-PAD-2</span>
+            <span className="tab-tag">EN/RU</span>
+          </button>
+
+          <button
+            id="padPillInv"
+            className={`nav-tab-btn tab-invoice ${activePad === 3 ? 'active' : ''}`}
+            onClick={() => setActivePad(3)}
+            title="Official Commercial Export Invoice"
+          >
+            <span className="tab-icon">🧾</span>
+            <span className="tab-label">Commercial Invoice</span>
+          </button>
+
+          <button
+            id="padPillAnalytics"
+            className={`nav-tab-btn tab-analytics ${activePad === 4 ? 'active' : ''}`}
+            onClick={() => setActivePad(4)}
+            title="Logistics Analytics & Data Intelligence"
+          >
+            <span className="tab-icon">📊</span>
+            <span className="tab-label">Analytics & Data</span>
+            <span className="tab-pulse-badge">LIVE</span>
+          </button>
+        </nav>
+
+        {/* RIGHT: SYSTEM & USER PROFILE */}
+        <div className="header-system-controls desktop-only-flex">
           {isInstallable && (
             <button
               className="btn btn-install-pwa"
               onClick={triggerInstallPrompt}
-              title="Install Web App on Phone"
+              title="Install Web Application"
             >
-              📲 <span className="btn-text">Install</span>
+              📲 App
+            </button>
+          )}
+
+          <button
+            className="btn btn-icon-round"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+
+          <div className="user-profile-badge" title={`Logged in as ${currentUser?.name || 'Ahsanullah'} (${currentUser?.email || 'ahsanullah@skyariana.com'})`}>
+            <span className="user-avatar-circle">👤</span>
+            <span className="user-name-label">{currentUser?.name || 'Ahsanullah'}</span>
+            <span className="user-online-status" title="Active Session"></span>
+          </div>
+
+          <button
+            className="btn btn-logout-btn"
+            onClick={logout}
+            title="Sign Out of Portal"
+          >
+            🚪 <span className="logout-text">Sign Out</span>
+          </button>
+        </div>
+
+        {/* MOBILE HEADER ACTIONS */}
+        <div className="mobile-header-actions">
+          {isInstallable && (
+            <button className="btn btn-install-pwa" onClick={triggerInstallPrompt} title="Install App">
+              📲
             </button>
           )}
           <button
             className={`btn ${isMobileEditorOpen ? 'btn-primary' : 'btn-mobile-edit'}`}
             onClick={() => setIsMobileEditorOpen(prev => !prev)}
-            title="Toggle Phone Quick Edit Form"
+            title="Toggle Mobile Form Editor"
           >
-            ✏️ <span className="btn-text">{isMobileEditorOpen ? 'View Sheet' : 'Edit Form'}</span>
+            ✏️ {isMobileEditorOpen ? 'Sheet' : 'Edit'}
           </button>
-          <button
-            className="btn btn-icon-only"
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-          >
+          <button className="btn btn-icon-only" onClick={toggleTheme}>
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
-          <button
-            className="btn btn-icon-only"
-            onClick={() => setIsMobileMenuOpen(prev => !prev)}
-            title="Menu & Tools"
-          >
+          <button className="btn btn-icon-only" onClick={() => setIsMobileMenuOpen(prev => !prev)}>
             {isMobileMenuOpen ? '✕' : '☰'}
           </button>
         </div>
-
-        {/* DESKTOP TOOLBAR (HIDDEN ON MOBILE, DISPLAYED ON DESKTOP) */}
-        <div className="toolbar-actions desktop-toolbar">
-          {/* PAD SELECTION PILLS */}
-          <div className="pad-selector-pills">
-            <button
-              id="padPill1"
-              className={`pad-pill-btn ${activePad === 1 ? 'active' : ''}`}
-              onClick={() => setActivePad(1)}
-            >
-              📋 CMR Pad 1 (EN/FA)
-            </button>
-            <button
-              id="padPill2"
-              className={`pad-pill-btn ${activePad === 2 ? 'active' : ''}`}
-              onClick={() => setActivePad(2)}
-            >
-              📑 CMR-PAD-2 (EN/RU)
-            </button>
-            <button
-              id="padPillInv"
-              className={`pad-pill-btn ${activePad === 3 ? 'active-invoice' : ''}`}
-              onClick={() => setActivePad(3)}
-            >
-              🧾 Commercial Invoice
-            </button>
-          </div>
-
-          {/* ACTION BUTTONS */}
-          <button className="btn btn-amber" id="btnAutoGenerate" onClick={autoGenerateInvoice} title="Auto-Extract from CMR">
-            ⚡ Auto-Generate Invoice
-          </button>
-          <button className="btn" onClick={getCmrNoFromInvoice} title="Get CMR No from Invoice No" style={{ background: '#0284c7', color: '#fff', borderColor: '#0369a1' }}>
-            🔗 Get CMR No from Inv
-          </button>
-          <button className="btn btn-accent" id="btnAutoFill" onClick={() => setIsAutoFillOpen(true)} title="OCR / Preset Loader">
-            📸 Auto-Fill OCR
-          </button>
-          <button className="btn btn-success" id="btnNewCmr" onClick={generateNewCmr} title="Generate Next Serial">
-            🔄 New CMR
-          </button>
-
-          <div className="btn-group">
-            <button className="btn" onClick={saveToArchive} style={{ color: '#2563eb' }}>💾 Save</button>
-            <button className="btn" id="btnOpenDocs" onClick={() => setIsSavedDocsOpen(true)}>📋 Docs</button>
-            <button className="btn btn-primary" id="btnDownloadPdf" onClick={triggerDownloadPdf}>📥 Download PDF</button>
-            <button className="btn" id="btnPrint" onClick={triggerPrint}>🖨️ Print</button>
-          </div>
-
-          <div className="btn-group">
-            {isInstallable && (
-              <button className="btn btn-install-pwa" onClick={triggerInstallPrompt}>
-                📲 App
-              </button>
-            )}
-            <button className="btn" id="themeToggleBtn" onClick={toggleTheme}>
-              {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
-            </button>
-            <button className="btn btn-danger" onClick={handleClear} title="Clear form">
-              🗑️
-            </button>
-          </div>
-        </div>
       </header>
 
-      {/* MOBILE SEGMENTED TABS & ACTION STRIP */}
+      {/* ========================================================
+          TIER 2: ACTION TOOLBAR STRIP (DESKTOP)
+          ======================================================== */}
+      <div className="app-toolbar-strip desktop-only-flex">
+        {/* LEFT GROUP: SMART AUTOMATION */}
+        <div className="toolbar-btn-group">
+          <button
+            className="btn btn-amber"
+            id="btnAutoGenerate"
+            onClick={autoGenerateInvoice}
+            title="Automatically populate Commercial Invoice from active CMR"
+          >
+            ⚡ Auto-Generate Invoice
+          </button>
+          <button
+            className="btn btn-cyan"
+            onClick={getCmrNoFromInvoice}
+            title="Sync & clean CMR number from active Invoice number"
+          >
+            🔗 Get CMR No from Inv
+          </button>
+          <button
+            className="btn btn-accent"
+            id="btnAutoFill"
+            onClick={() => setIsAutoFillOpen(true)}
+            title="Smart OCR Text Extraction & Logistics Presets"
+          >
+            📸 Auto-Fill OCR
+          </button>
+          <button
+            className="btn btn-success"
+            id="btnNewCmr"
+            onClick={generateNewCmr}
+            title="Generate Next Sequential CMR Number"
+          >
+            🔄 New CMR
+          </button>
+        </div>
+
+        {/* RIGHT GROUP: DOCUMENT & DIRECTORY ACTIONS */}
+        <div className="toolbar-btn-group">
+          <button
+            className="btn btn-save"
+            onClick={saveToArchive}
+            title="Save current shipment details to local archive & cloud"
+          >
+            💾 Save Form
+          </button>
+          <button
+            className="btn btn-directory"
+            onClick={() => openAddressBook('sender')}
+            title="Open Senders & Consignees Address Book"
+          >
+            🏢 Directory
+          </button>
+          <button
+            className="btn"
+            id="btnOpenDocs"
+            onClick={() => setIsSavedDocsOpen(true)}
+            title="Open CMR Archive & History Manager"
+          >
+            📋 Saved Docs
+          </button>
+          <button
+            className="btn btn-primary"
+            id="btnDownloadPdf"
+            onClick={triggerDownloadPdf}
+            title="Download crisp 1-Page PDF"
+          >
+            📥 Download PDF
+          </button>
+          <button
+            className="btn btn-print"
+            id="btnPrint"
+            onClick={triggerPrint}
+            title="Print document on clean paper layout"
+          >
+            🖨️ Print
+          </button>
+          <button
+            className="btn btn-danger"
+            onClick={handleClear}
+            title="Clear all fields in active form"
+          >
+            🗑️
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================
+          MOBILE VIEW: TABS & ACTION TOOLBAR
+          ======================================================== */}
       <div className="mobile-sub-toolbar">
         <div className="mobile-pad-tabs">
           <button
@@ -152,13 +257,19 @@ export const Header = () => {
             className={`m-pad-tab ${activePad === 2 ? 'active' : ''}`}
             onClick={() => setActivePad(2)}
           >
-            📑 Pad 2 (EN/RU/FA)
+            📑 Pad 2 (EN/RU)
           </button>
           <button
             className={`m-pad-tab ${activePad === 3 ? 'active-inv' : ''}`}
             onClick={() => setActivePad(3)}
           >
             🧾 Invoice
+          </button>
+          <button
+            className={`m-pad-tab ${activePad === 4 ? 'active-analytics' : ''}`}
+            onClick={() => setActivePad(4)}
+          >
+            📊 Analytics
           </button>
         </div>
 
@@ -167,8 +278,8 @@ export const Header = () => {
           <button className="m-action-btn m-btn-amber" onClick={autoGenerateInvoice} title="Auto-Generate Invoice">
             ⚡ Invoice
           </button>
-          <button className="m-action-btn" onClick={getCmrNoFromInvoice} title="Get CMR No from Invoice No" style={{ background: '#0284c7', color: '#fff', borderColor: '#0369a1' }}>
-            🔗 Get CMR#
+          <button className="m-action-btn" onClick={getCmrNoFromInvoice} title="Get CMR No" style={{ background: '#0284c7', color: '#fff' }}>
+            🔗 CMR#
           </button>
           <button className="m-action-btn m-btn-accent" onClick={() => setIsAutoFillOpen(true)} title="Auto-Fill OCR">
             📸 OCR
@@ -176,13 +287,16 @@ export const Header = () => {
           <button className="m-action-btn m-btn-success" onClick={generateNewCmr} title="New CMR Serial">
             🔄 New
           </button>
+          <button className="m-action-btn" onClick={() => openAddressBook('sender')} title="Address Book">
+            🏢 Directory
+          </button>
           <button className="m-action-btn m-btn-primary" onClick={triggerDownloadPdf} title="Download PDF">
             📥 PDF
           </button>
           <button className="m-action-btn" onClick={triggerPrint} title="Print">
             🖨️ Print
           </button>
-          <button className="m-action-btn" onClick={saveToArchive} title="Save">
+          <button className="m-action-btn" onClick={saveToArchive} title="Save Document">
             💾 Save
           </button>
           <button className="m-action-btn" onClick={() => setIsSavedDocsOpen(true)} title="Saved Documents">
@@ -191,7 +305,7 @@ export const Header = () => {
         </div>
       </div>
 
-      {/* MOBILE DROPDOWN / MENU DRAWER */}
+      {/* MOBILE DRAWER */}
       {isMobileMenuOpen && (
         <div className="mobile-menu-drawer">
           <div className="mobile-menu-content">
@@ -200,6 +314,20 @@ export const Header = () => {
               <button className="mobile-menu-close" onClick={() => setIsMobileMenuOpen(false)}>✕</button>
             </div>
             <div className="mobile-menu-grid">
+              <button className="m-menu-item" onClick={() => { setActivePad(4); setIsMobileMenuOpen(false); }}>
+                <span className="m-menu-icon">📊</span>
+                <div className="m-menu-text">
+                  <strong>Analytics & Data Dashboard</strong>
+                  <small>Real-time transit metrics, revenue & routes</small>
+                </div>
+              </button>
+              <button className="m-menu-item" onClick={() => { openAddressBook('sender'); setIsMobileMenuOpen(false); }}>
+                <span className="m-menu-icon">🏢</span>
+                <div className="m-menu-text">
+                  <strong>Party Directory & Address Book</strong>
+                  <small>Saved Senders, Consignees & Carriers</small>
+                </div>
+              </button>
               <button className="m-menu-item" onClick={() => { getCmrNoFromInvoice(); setIsMobileMenuOpen(false); }}>
                 <span className="m-menu-icon">🔗</span>
                 <div className="m-menu-text">
@@ -229,60 +357,46 @@ export const Header = () => {
                 </div>
               </button>
               <button className="m-menu-item" onClick={() => { setIsSavedDocsOpen(true); setIsMobileMenuOpen(false); }}>
-                <span className="m-menu-icon">📂</span>
+                <span className="m-menu-icon">📋</span>
                 <div className="m-menu-text">
-                  <strong>Saved Archive (Docs)</strong>
-                  <small>Browse, search, and reload waybills</small>
+                  <strong>Saved Documents Archive</strong>
+                  <small>Manage past waybills & invoices</small>
                 </div>
               </button>
-              {isInstallable && (
-                <button className="m-menu-item" onClick={() => { triggerInstallPrompt(); setIsMobileMenuOpen(false); }}>
-                  <span className="m-menu-icon">📲</span>
-                  <div className="m-menu-text">
-                    <strong>Install App on Phone</strong>
-                    <small>Add Sky CMR to Home Screen</small>
-                  </div>
-                </button>
-              )}
-              <button className="m-menu-item" onClick={() => { toggleTheme(); setIsMobileMenuOpen(false); }}>
-                <span className="m-menu-icon">{theme === 'dark' ? '☀️' : '🌙'}</span>
+              <button className="m-menu-item" onClick={() => { triggerDownloadPdf(); setIsMobileMenuOpen(false); }}>
+                <span className="m-menu-icon">📥</span>
                 <div className="m-menu-text">
-                  <strong>{theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}</strong>
-                  <small>Change app color theme</small>
+                  <strong>Download PDF</strong>
+                  <small>Export clean single-page PDF</small>
                 </div>
               </button>
-              <button className="m-menu-item m-menu-item-danger" onClick={handleClear}>
-                <span className="m-menu-icon">🗑️</span>
+              <button className="m-menu-item" onClick={() => { triggerPrint(); setIsMobileMenuOpen(false); }}>
+                <span className="m-menu-icon">🖨️</span>
                 <div className="m-menu-text">
-                  <strong>Clear All Form Fields</strong>
-                  <small>Reset all inputs to blank</small>
+                  <strong>Print Document</strong>
+                  <small>Send directly to printer</small>
+                </div>
+              </button>
+
+              <div className="m-user-profile-divider"></div>
+              <div className="m-user-profile-box">
+                <span className="m-user-avatar">👤</span>
+                <div className="m-user-meta">
+                  <strong>{currentUser?.name || 'Ahsanullah'}</strong>
+                  <small>{currentUser?.email || 'ahsanullah@skyariana.com'}</small>
+                </div>
+              </div>
+              <button className="m-menu-item m-menu-item-signout" onClick={logout}>
+                <span className="m-menu-icon">🚪</span>
+                <div className="m-menu-text">
+                  <strong style={{ color: '#ef4444' }}>Sign Out</strong>
+                  <small>Log out of Sky Ariana Portal</small>
                 </div>
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* SUB BAR FOR PAD 1 PAGES */}
-      {activePad === 1 && (
-        <div className="desktop-sub-bar" style={{ paddingBottom: '6px' }}>
-          <div className="doc-page-tabs">
-            <button
-              className={`page-tab-btn ${activeDocPage === 1 ? 'active' : ''}`}
-              onClick={() => setActiveDocPage(1)}
-            >
-              📄 Page 1: Consignment Note
-            </button>
-            <button
-              className={`page-tab-btn ${activeDocPage === 2 ? 'active' : ''}`}
-              onClick={() => setActiveDocPage(2)}
-            >
-              📄 Page 2: Carrier Execution
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
-
