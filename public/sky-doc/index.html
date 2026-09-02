@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKY ARIANA GROUP OF COMPANIES - Commercial Invoice Workspace</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
+    <link rel="apple-touch-icon" href="icon-512x512.png">
+    <!-- Google Fonts: Inter and Amiri (for Persian/Pashto text styling) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <!-- FontAwesome for UI Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Workspace Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .panel-footer .footer-grid {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Control Panel (Sidebar Editor) -->
+        <aside class="control-panel">
+            <header class="panel-header">
+                <div class="logo-area">
+                    <img class="brand-logo" src="logo.png" alt="SKY ARIANA GROUP OF COMPANIES Logo">
+                    <div>
+                        <h1 style="font-size: 1.1rem; line-height: 1.1;">SKY ARIANA</h1>
+                        <p style="font-weight: 700; color: var(--text-muted, #64748b);">GROUP OF COMPANIES</p>
+                    </div>
+                </div>
+                <div class="actions-top" style="display:flex;gap:8px;align-items:center;">
+                    <a href="http://127.0.0.1:5173/" target="_blank" class="btn-icon" title="Open Main Logistics Suite" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;width:38px;height:38px;border-radius:8px;background:#10b981;color:#fff;">
+                        <i class="fa-solid fa-rocket"></i>
+                    </a>
+                    <a href="http://127.0.0.1:8000/" target="_blank" class="btn-icon" title="Open SAFTA & Document Suite" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;width:38px;height:38px;border-radius:8px;background:#3b82f6;color:#fff;">
+                        <i class="fa-solid fa-file-contract"></i>
+                    </a>
+                    <button id="theme-toggle" class="btn-icon" title="Toggle Theme">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
+                </div>
+            </header>
+
+            <nav class="sidebar-mode-nav" aria-label="Workspace sections">
+                <button type="button" class="sidebar-mode-btn active" id="sidebar-invoice-tab" aria-current="page"><i class="fa-solid fa-file-invoice"></i><span>Invoice Editor</span></button>
+                <button type="button" class="sidebar-mode-btn" id="sidebar-settings-tab"><i class="fa-solid fa-sliders"></i><span>Settings</span></button>
+            </nav>
+
+            <!-- Invoice-level workspace settings -->
+            <div class="workspace-settings-section">
+                <div class="form-group">
+                    <label for="lang-switcher"><i class="fa-solid fa-language"></i> Document Language</label>
+                    <select id="lang-switcher">
+                        <option value="en">English (US)</option>
+                        <option value="fa">Persian (فارسی - RTL)</option>
+                        <option value="ps">Pashto (پښتو - RTL)</option>
+                    </select>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="input-currency"><i class="fa-solid fa-coins"></i> Currency</label>
+                        <select id="input-currency">
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                            <option value="AED">AED (د.إ)</option>
+                            <option value="AFN">AFN (؋)</option>
+                            <option value="IRR">IRR (﷼)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="input-status"><i class="fa-solid fa-circle-info"></i> Status</label>
+                        <select id="input-status">
+                            <option value="unpaid">Unpaid</option>
+                            <option value="paid">Paid</option>
+                            <option value="partial">Partial</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Presets -->
+            <div class="presets-section">
+                <button id="load-preset-1" class="btn btn-secondary btn-sm">
+                    <i class="fa-solid fa-ship"></i> Ocean Cargo (Dubai-Kabul)
+                </button>
+                <button id="load-preset-2" class="btn btn-secondary btn-sm">
+                    <i class="fa-solid fa-plane"></i> Air Freight (Istanbul-Kabul)
+                </button>
+            </div>
+
+            <div class="editor-sections">
+                <!-- Section 1: Customer & Product Database Shortcuts -->
+                <details open class="editor-card">
+                    <summary class="card-title">
+                        <span><i class="fa-solid fa-database"></i> Local Databases</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </summary>
+                    <div class="card-content">
+                        <div class="form-group">
+                            <label for="select-customer-db">Load Buyer Details</label>
+                            <select id="select-customer-db">
+                                <option value="">-- Select Saved Buyer --</option>
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="select-product-db">Append Saved Product</label>
+                            <select id="select-product-db">
+                                <option value="">-- Add Saved Product --</option>
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Section 2: Logo and Branding Upload -->
+                <details class="editor-card settings-only" open>
+                    <summary class="card-title">
+                        <span><i class="fa-solid fa-palette"></i> Brand Identity & Document</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </summary>
+                    <div class="card-content">
+                        <div class="settings-card-intro"><span class="settings-card-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></span><div><strong>Document appearance</strong><p>Manage invoice language and company branding.</p></div></div>
+                        <div id="settings-document-controls"></div>
+                        <div class="form-group">
+                            <label for="input-logo-upload"><i class="fa-regular fa-image"></i> Company Logo</label>
+                            <input type="file" id="input-logo-upload" accept="image/*">
+                            <span class="field-help">Use a clear PNG or JPG with a transparent or white background.</span>
+                        </div>
+                    </div>
+                </details>
+
+                <details class="editor-card settings-only" id="company-office-settings">
+                    <summary class="card-title"><span><i class="fa-solid fa-building"></i> Company Office Settings</span><i class="fa-solid fa-chevron-down arrow"></i></summary>
+                    <div class="card-content">
+                        <div class="office-settings-group"><h4>Afghanistan Office</h4><label>Address</label><textarea id="input-office-af-address" rows="3">2nd Floor, Office No. 16&#10;Etimad Rahimi Market, Shahidano Chowk&#10;Kandahar, Afghanistan</textarea><label>Phones (one per line)</label><textarea id="input-office-af-phones" rows="2">+93 700 939 365&#10;+93 711 435 529</textarea><label>Emails (one per line)</label><textarea id="input-office-af-emails" rows="2">info@skyariana.com&#10;transport@skyariana.com</textarea></div>
+                        <div class="office-settings-group"><h4>Kabul Office</h4><label>Address</label><textarea id="input-office-kabul-address" rows="2">SHAHR-E-NOW, HAJI YAQOUB SQUARE,&#10;KABUL, AFGHANISTAN</textarea><label>Phones (one per line)</label><textarea id="input-office-kabul-phones" rows="2">+93 700 700 123&#10;+93 700 156 010</textarea><label>Email</label><input id="input-office-kabul-emails" type="email" value="cargo@skyariana.com"></div>
+                        <div class="office-settings-group"><h4>Iran Office</h4><label>Address</label><textarea id="input-office-iran-address" rows="3">Cubic Building&#10;Bandar Abbas, Iran&#10;P.O. Box: 7913973295</textarea><label>Phones (one per line)</label><textarea id="input-office-iran-phones" rows="2">+98 76 32226028&#10;+98 917 232 5086</textarea><label>Emails (one per line)</label><textarea id="input-office-iran-emails" rows="2">info@balambarbaran.com&#10;ceo@balambarbaran.com</textarea></div>
+                        <p class="settings-help">Office changes are saved automatically and reused for preview, print, and PDF.</p>
+                    </div>
+                </details>
+
+                <!-- Section 3: Header Meta -->
+                <details class="editor-card">
+                    <summary class="card-title">
+                        <span><i class="fa-solid fa-file-invoice"></i> Invoice Details</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </summary>
+                    <div class="card-content">
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="input-inv-no">Invoice Number</label>
+                                <div style="display:flex; gap:0.25rem;">
+                                    <input type="text" id="input-inv-no" value="SKY-BBB-2026-9042">
+                                    <button type="button" id="btn-gen-inv-no" class="btn btn-secondary btn-sm" title="Auto Number"><i class="fa-solid fa-arrows-rotate"></i></button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ref-no">Reference No.</label>
+                                <input type="text" id="input-ref-no" value="REF-A81093-X">
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="input-inv-date">Invoice Date</label>
+                                <input type="date" id="input-inv-date">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-due-date">Due Date</label>
+                                <input type="date" id="input-due-date">
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Section 4: Seller Info -->
+                <details class="editor-card">
+                    <summary class="card-title">
+                        <span><i class="fa-solid fa-building-flag"></i> Seller (Exporter Details)</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </summary>
+                    <div class="card-content">
+                        <div class="form-group">
+                            <label for="input-company-name">Company Name</label>
+                            <input type="text" id="input-company-name" value="SKY ARIANA & BALAM BAR BARAN">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-company-addr">Address</label>
+                            <textarea id="input-company-addr" rows="2">Suite 12, Ariana Logistics Plaza, Airport Road, Kabul, Afghanistan</textarea>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="input-company-phone">Phone Numbers</label>
+                                <input type="text" id="input-company-phone" value="+93 79 912 3456 / +93 78 898 7654">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-company-email">Email Address</label>
+                                <input type="email" id="input-company-email" value="ops@sky-balam.com">
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="input-company-web">Website</label>
+                                <input type="text" id="input-company-web" value="www.sky-balam.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-company-tax">Tax ID (TIN)</label>
+                                <input type="text" id="input-company-tax" value="TIN-90812490-K">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-company-license">Business License Number</label>
+                            <input type="text" id="input-company-license" value="L-AFG-908234-BBB">
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Section 5: Buyer Info -->
+                <details class="editor-card">
+                    <summary class="card-title">
+                        <span><i class="fa-solid fa-user-tie"></i> Buyer (Importer Details)</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </summary>
+                    <div class="card-content">
+                        <div class="form-group">
+                            <label for="input-buyer-name">Buyer Company Name</label>
+                            <input type="text" id="input-buyer-name" value="WAVELON IMPEX">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-buyer-contact">Contact Person</label>
+                            <input type="text" id="input-buyer-contact" value="Purchasing Director">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-buyer-addr">Full Address</label>
+                            <textarea id="input-buyer-addr" rows="2">A 4008, RKLP MARKET, SAROLI, SURAT, INDIA</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-buyer-country">Country</label>
+                            <input type="text" id="input-buyer-country" value="India">
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="input-buyer-phone">Phone</label>
+                                <input type="text" id="input-buyer-phone" value="+91 261 440 9901">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-buyer-email">Email</label>
+                                <input type="email" id="input-buyer-email" value="imports@wavelonimpex.in">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-buyer-tax">Tax Number / TIN</label>
+                            <input type="text" id="input-buyer-tax" value="GST-36WAVELON9">
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Section 5b: Notify Party Details -->
+                <details class="editor-card">
+                    <summary class="card-title">
+                        <span><i class="fa-solid fa-bell"></i> Notify Party Details</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </summary>
+                    <div class="card-content">
+                        <div class="form-group">
+                            <label for="input-notify-name">Notify Party Company Name</label>
+                            <input type="text" id="input-notify-name" value="">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-notify-addr">Notify Party Location</label>
+                            <textarea id="input-notify-addr" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-notify-license">Trade Licence Number</label>
+                            <input type="text" id="input-notify-license" value="">
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Section 6: Shipment Info -->
+                <details class="editor-card">
+                    <summary class="card-title">
+                        <span><i class="fa-solid fa-truck-container"></i> Shipment & Logistics</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </summary>
+                    <div class="card-content">
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="input-ship-booking">Booking Number</label>
+                                <input type="text" id="input-ship-booking" value="BKG-AC-99401">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-bl">B/L / AWB Number</label>
+                                <input type="text" id="input-ship-bl" value="AWB-098-1124908">
+                            </div>
+                        </div>
+                        <div class="grid-3">
+                            <div class="form-group">
+                                <label for="input-ship-container">Container No.</label>
+                                <input type="text" id="input-ship-container" value="N/A - AIR CARGO">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-type">Type</label>
+                                <select id="input-ship-type">
+                                    <option value="40HC">40' HC Container</option>
+                                    <option value="20GP">20' GP Container</option>
+                                    <option value="40RF">40' RF (Reefer)</option>
+                                    <option value="AIR" selected>Air Cargo</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-seal">Seal No.</label>
+                                <input type="text" id="input-ship-seal" value="N/A">
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="input-ship-commodity">Commodity</label>
+                                <input type="text" id="input-ship-commodity" value="DRY FIGS">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-hscode">Global HS Code</label>
+                                <input type="text" id="input-ship-hscode" value="0804.20.10">
+                            </div>
+                        </div>
+                        <div class="grid-3">
+                            <div class="form-group">
+                                <label for="input-ship-gross">Gross Wt (kg)</label>
+                                <input type="number" id="input-ship-gross" step="0.1" value="12000.0">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-net">Net Wt (kg)</label>
+                                <input type="number" id="input-ship-net" step="0.1" value="12000.0">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-packages">Packages</label>
+                                <input type="number" id="input-ship-packages" min="1" step="1" value="400">
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="input-ship-origin">Origin Country</label>
+                                <input type="text" id="input-ship-origin" value="Afghanistan">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-dest">Destination</label>
+                                <input type="text" id="input-ship-dest" value="India">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-pol">Port of Loading</label>
+                                <input type="text" id="input-ship-pol" value="KABUL INTERNATIONAL AIRPORT, KABUL, AFGHANISTAN">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-pod">Port of Discharge</label>
+                                <input type="text" id="input-ship-pod" value="INDIRA GANDHI INTERNATIONAL AIRPORT, DELHI, INDIA">
+                            </div>
+                        </div>
+                        <div class="grid-3">
+                            <div class="form-group">
+                                <label for="input-ship-vessel">Vessel / Carrier</label>
+                                <input type="text" id="input-ship-vessel" value="Ariana Sea Express">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-voyage">Voyage No.</label>
+                                <input type="text" id="input-ship-voyage" value="V.045E">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-line">Shipping Line</label>
+                                <input type="text" id="input-ship-line" value="Sky Ariana Logistics Line">
+                            </div>
+                        </div>
+                        <div class="grid-3">
+                            <div class="form-group">
+                                <label for="input-ship-etd">ETD</label>
+                                <input type="date" id="input-ship-etd">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-eta">ETA</label>
+                                <input type="date" id="input-ship-eta">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-incoterms">Incoterms</label>
+                                <select id="input-ship-incoterms">
+                                    <option value="CIF NHAVA SHEVA PORT, INDIA" selected>CIF NHAVA SHEVA PORT, INDIA</option>
+                                    <option value="DDP">DDP - Delivered Duty Paid</option>
+                                    <option value="FOB">FOB - Free On Board</option>
+                                    <option value="CIF">CIF - Cost, Insurance & Freight</option>
+                                    <option value="CFR">CFR - Cost and Freight</option>
+                                    <option value="EXW">EXW - Ex Works</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="input-ship-cargo-weight">Cargo Weight</label>
+                                <input type="text" id="input-ship-cargo-weight" value="12 METRIC TONS">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-total-weight">Total Weight</label>
+                                <input type="text" id="input-ship-total-weight" value="12,000 KG">
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="input-ship-mode">Mode of Transportation</label>
+                                <input type="text" id="input-ship-mode" value="AIR CARGO">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-ship-route">Shipping Route</label>
+                                <input type="text" id="input-ship-route" value="KABUL, AFGHANISTAN → DELHI, INDIA">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-ship-cargo-desc">Cargo Description</label>
+                            <textarea id="input-ship-cargo-desc" rows="2">TRANSPORTATION OF 12 METRIC TONS (12,000 KG) OF DRY FIGS BY AIR CARGO FROM KABUL, AFGHANISTAN TO DELHI, INDIA.</textarea>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Section 7: Goods Table -->
+                <details class="editor-card">
+                    <summary class="card-title">
+                        <span><i class="fa-solid fa-box-open"></i> Line Items</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </summary>
+                    <div class="card-content">
+                        <div id="items-list-container">
+                            <!-- Populated in app.js -->
+                        </div>
+                        <button id="add-item-btn" type="button" class="btn btn-secondary btn-full">
+                            <i class="fa-solid fa-plus"></i> Add Invoice Item
+                        </button>
+                    </div>
+                </details>
+
+                <!-- Section 8: Financial Logistics Charges -->
+                <details class="editor-card">
+                    <summary class="card-title">
+                        <span><i class="fa-solid fa-receipt"></i> Adjustments & Fees</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </summary>
+                    <div class="card-content grid-2">
+                        <div class="form-group">
+                            <label for="input-charge-freight">Freight Rate per KG (USD)</label>
+                            <input type="number" id="input-charge-freight" min="0" step="0.01" value="1.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-charge-insurance">Transit Insurance</label>
+                            <input type="number" id="input-charge-insurance" min="0" step="0.01" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-charge-customs">Customs Clearance Fee</label>
+                            <input type="number" id="input-charge-customs" step="0.01" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-charge-docs">Documentation / BL Fee</label>
+                            <input type="number" id="input-charge-docs" step="0.01" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-charge-handling">Port Handling Fees</label>
+                            <input type="number" id="input-charge-handling" step="0.01" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-charge-discount">Loyalty Discount</label>
+                            <input type="number" id="input-charge-discount" step="0.01" value="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-charge-tax">Vat / Sales Tax (%)</label>
+                            <input type="number" id="input-charge-tax" step="0.1" value="0.0">
+                        </div>
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label for="input-amount-words">Amount in Words (Calculated)</label>
+                            <input type="text" id="input-amount-words" value="ONE HUNDRED EIGHT THOUSAND US DOLLARS ONLY" readonly>
+                        </div>
+                        <div class="cif-calculation-card" style="grid-column: span 2;">
+                            <div><span>Goods Value</span><strong id="calc-goods-value">USD 96,000.00</strong></div>
+                            <div><span>Freight Value</span><strong id="calc-freight-value">USD 12,000.00</strong></div>
+                            <div><span>CIF Unit Rate</span><strong id="calc-cif-rate">USD 9.00 / KG</strong></div>
+                            <div class="cif-calculation-total"><span>Total CIF Invoice Value</span><strong id="calc-cif-total">USD 108,000.00</strong></div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Section 9: Bank Settlement -->
+                <details class="editor-card">
+                    <summary class="card-title">
+                        <span><i class="fa-solid fa-wallet"></i> Bank & Payment Settlement</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </summary>
+                    <div class="card-content">
+                        <div class="form-group">
+                            <label for="input-bank-name">Bank Name</label>
+                            <input type="text" id="input-bank-name" value="KOTAK MAHINDRA BANK">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-bank-acc-name">Beneficiary Name</label>
+                            <input type="text" id="input-bank-acc-name" value="WAVELON IMPEX">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-bank-acc-num">Account Number</label>
+                            <input type="text" id="input-bank-acc-num" value="9898015500">
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="input-bank-iban">IBAN</label>
+                                <input type="text" id="input-bank-iban" value="N/A">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-bank-swift">SWIFT Code</label>
+                                <input type="text" id="input-bank-swift" value="KKBKINBBCPC">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-bank-branch">Bank Branch</label>
+                            <input type="text" id="input-bank-branch" value="SURAT, INDIA">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-bank-address">Bank Address</label>
+                            <textarea id="input-bank-address" rows="2">2ND FLOOR, BAKHTAWAR BUILDING, 229 NARIMAN POINT, MUMBAI, INDIA – 400021</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-bank-terms">Payment Terms (Days/Milestones)</label>
+                            <input type="text" id="input-bank-terms" value="Advanced T/T Bank Transfer">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-terms">Standard Declaration & Terms</label>
+                            <textarea id="input-terms" rows="2">Air-freight charges only. Commercial value of goods documented separately under separate cover.</textarea>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Section 10: Digital Signatures & Stamp -->
+                <details class="editor-card">
+                    <summary class="card-title">
+                        <span><i class="fa-solid fa-signature"></i> Signature Pad & Verification</span>
+                        <i class="fa-solid fa-chevron-down arrow"></i>
+                    </summary>
+                    <div class="card-content">
+                        <div class="form-group">
+                            <label><i class="fa-solid fa-pencil"></i> Draw Signature Here</label>
+                            <div class="signature-canvas-container">
+                                <canvas id="sig-canvas" width="340" height="110"></canvas>
+                            </div>
+                            <div style="display:flex; justify-content: flex-end; margin-top: 0.5rem;">
+                                <button type="button" id="btn-clear-sig" class="btn btn-secondary btn-sm"><i class="fa-solid fa-eraser"></i> Clear Pad</button>
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="input-sig-name">Signatory Name</label>
+                                <input type="text" id="input-sig-name" value="Ahsanullah Qureshi">
+                            </div>
+                            <div class="form-group">
+                                <label for="input-sig-title">Signatory Title</label>
+                                <input type="text" id="input-sig-title" value="Director Operations, Sky">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-sig-stamp">Approved Stamp Label</label>
+                            <input type="text" id="input-sig-stamp" value="SKY-BBB LOGISTICS DEPT.">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-tracking-url">QR Code Tracking URL</label>
+                            <input type="url" id="input-tracking-url" value="https://tracking.skyariana.com/bl/BL-SABBB-440129">
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Footer Action Buttons -->
+            <div class="panel-footer">
+                <div class="grid-2" style="margin-bottom: 0.5rem;">
+                    <button id="btn-excel-export" class="btn btn-secondary">
+                        <i class="fa-solid fa-file-excel"></i> Excel Export
+                    </button>
+                    <button id="btn-print" class="btn btn-primary">
+                        <i class="fa-solid fa-print"></i> One-Click Print
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Document Preview Canvas (Right Side) -->
+        <main class="preview-area">
+            <div class="preview-toolbar">
+                <div class="preview-toolbar-copy"><span class="preview-badge"><i class="fa-solid fa-file-pdf"></i> A4 Commercial Invoice</span><span class="zoom-level" id="zoom-level">100%</span></div>
+                <div class="preview-actions no-print" aria-label="Print preview controls">
+                    <button type="button" class="toolbar-button" id="btn-fit"><i class="fa-solid fa-expand"></i> Fit</button><button type="button" class="toolbar-button" id="btn-actual">Actual size</button><button type="button" class="toolbar-icon" id="btn-zoom-out" title="Zoom out"><i class="fa-solid fa-minus"></i></button><button type="button" class="toolbar-icon" id="btn-zoom-in" title="Zoom in"><i class="fa-solid fa-plus"></i></button><button type="button" class="toolbar-button toolbar-button-primary" id="btn-preview-print"><i class="fa-solid fa-print"></i> Print / PDF</button>
+                </div>
+            </div>
+
+            <!-- A4 Document Page -->
+            <div id="invoice-page" class="invoice-a4">
+
+                <!-- Watermark: purely decorative, behind all content -->
+                <div class="watermark-overlay" aria-hidden="true">
+                    <img id="view-watermark-img" class="watermark-img" src="logo.png" alt="">
+                </div>
+
+                <!-- =====================================================
+                     1. INVOICE HEADER — 3-column: Brand | Title | Meta
+                     ===================================================== -->
+                <header class="invoice-header">
+
+                    <!-- LEFT: Company brand -->
+                    <section class="invoice-brand">
+                        <img id="custom-logo-preview" class="invoice-logo" src="logo.png" alt="SKY ARIANA &amp; BALAM BAR BARAN Logo">
+                        <div class="brand-name" id="view-company-name">SKY ARIANA &amp; BALAM BAR BARAN</div>
+                        <div class="brand-sub">IMPORT &bull; EXPORT &bull; LOGISTICS &bull; TRANSPORT</div>
+                    </section>
+
+                    <!-- CENTER: Invoice title -->
+                    <section class="invoice-title-block">
+                        <h1 data-translate="commercial_invoice">COMMERCIAL INVOICE</h1>
+                    </section>
+
+                    <!-- RIGHT: Invoice metadata -->
+                    <section class="invoice-meta">
+                        <div class="meta-item">
+                            <span class="meta-label" data-translate="invoice_no">INVOICE NO:</span>
+                            <span class="meta-value bold text-primary" id="view-inv-no">SKY-BBB-2026-9042</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label" data-translate="reference_no">REFERENCE NO:</span>
+                            <span class="meta-value bold" id="view-ref-no">REF-A81093-X</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label" data-translate="invoice_date">INVOICE DATE:</span>
+                            <span class="meta-value" id="view-inv-date">12 JUL 2026</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label" data-translate="due_date">DUE DATE:</span>
+                            <span class="meta-value" id="view-due-date">11 AUG 2026</span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label" data-translate="currency">CURRENCY:</span>
+                            <span class="meta-value bold" id="view-currency">USD ($)</span>
+                        </div>
+                        <div class="meta-item align-center-y">
+                            <span class="meta-label" data-translate="status">STATUS:</span>
+                            <span class="status-badge" id="view-status-badge">UNPAID</span>
+                        </div>
+                    </section>
+
+                </header>
+
+                <!-- =====================================================
+                     2. COMPANY OFFICES — full-width 3-column section
+                     ===================================================== -->
+                <section class="company-offices-section">
+                    <div class="offices-heading">
+                        <i class="fa-solid fa-building"></i>
+                        <span>COMPANY OFFICES</span>
+                    </div>
+                    <div class="offices-grid">
+                        <article class="office-col" data-office="af">
+                            <div class="office-country-title"><i class="fa-solid fa-location-dot"></i> AFGHANISTAN OFFICE</div>
+                            <div class="office-field-label">Address</div>
+                            <div class="office-address" id="view-office-af-address"></div>
+                            <div class="office-field-label">Phone</div>
+                            <div class="office-contacts" id="view-office-af-phones"></div>
+                            <div class="office-field-label">Email</div>
+                            <div class="office-contacts office-email" id="view-office-af-emails"></div>
+                        </article>
+                        <article class="office-col" data-office="kabul">
+                            <div class="office-country-title"><i class="fa-solid fa-location-dot"></i> KABUL OFFICE</div>
+                            <div class="office-field-label">Address</div>
+                            <div class="office-address" id="view-office-kabul-address"></div>
+                            <div class="office-field-label">Phone</div>
+                            <div class="office-contacts" id="view-office-kabul-phones"></div>
+                            <div class="office-field-label">Email</div>
+                            <div class="office-contacts office-email" id="view-office-kabul-emails"></div>
+                        </article>
+                        <article class="office-col" data-office="iran">
+                            <div class="office-country-title"><i class="fa-solid fa-location-dot"></i> IRAN OFFICE</div>
+                            <div class="office-field-label">Address</div>
+                            <div class="office-address" id="view-office-iran-address"></div>
+                            <div class="office-field-label">Phone</div>
+                            <div class="office-contacts" id="view-office-iran-phones"></div>
+                            <div class="office-field-label">Email</div>
+                            <div class="office-contacts office-email" id="view-office-iran-emails"></div>
+                        </article>
+                    </div>
+                </section>
+
+                <div class="divider"></div>
+
+
+                <!-- 3. Addresses Block (Shipper vs Buyer) -->
+                <div class="address-section">
+                    <div class="address-card">
+                        <div class="address-title" data-translate="seller_exporter">SELLER / EXPORTER</div>
+                        <div class="address-body">
+                            <p><strong class="company-text" id="view-company-name-card">Sky Ariana & Balam Bar Baran Logistics Ltd.</strong></p>
+                            <p id="view-company-addr-card">Suite 12, Ariana Logistics Plaza, Airport Road, Kabul, Afghanistan</p>
+                            <p>TIN: <span id="view-company-tax-card">TIN-90812490-K</span> | License: <span id="view-company-license-card">L-AFG-908234-BBB</span></p>
+                            <p>Tel: <span id="view-company-phone-card">+93 79 912 3456 / +93 78 898 7654</span></p>
+                            <p>Email: <span id="view-company-email-card">ops@sky-balam.com</span></p>
+                        </div>
+                    </div>
+                    <div class="address-card">
+                        <div class="address-title" data-translate="buyer_importer">BUYER / IMPORTER (CONSIGNEE)</div>
+                        <div class="address-body">
+                            <p><strong class="company-text" id="view-buyer-name">Asia Transit Trading LLC</strong></p>
+                            <p id="view-buyer-contact">Ahmad Wali (Operations Manager)</p>
+                            <p id="view-buyer-addr">Sector 3, Zarghoon Boulevard, Kandahar, Afghanistan</p>
+                            <p><span data-translate="country">Country:</span> <span id="view-buyer-country">Afghanistan</span></p>
+                            <p><span data-translate="tax_no">Tax/TIN:</span> <span id="view-buyer-tax">TIN-77890124-T</span></p>
+                            <p>Tel: <span id="view-buyer-phone">+93 70 011 2233</span> | Email: <span id="view-buyer-email">transit@asiatrading.af</span></p>
+                        </div>
+                    </div>
+                    <div class="address-card">
+                        <div class="address-title" data-translate="notify_party">NOTIFY PARTY</div>
+                        <div class="address-body">
+                            <p id="view-notify-empty" class="empty-state">No Notify Party Details</p>
+                            <p hidden><strong class="company-text" id="view-notify-name"></strong></p>
+                            <p id="view-notify-addr" hidden></p>
+                            <p hidden>Licence: <span id="view-notify-license"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Shipment Logistics Details Grid -->
+                <div class="shipment-details-block">
+                    <div class="section-subtitle-bar"><i class="fa-solid fa-plane-departure"></i> <span data-translate="shipment_logistics">SHIPMENT & LOGISTICS INFORMATION</span></div>
+                    <div class="shipment-grid">
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="booking_no">BOOKING NUMBER:</span>
+                            <span class="cell-val bold" id="view-ship-booking">BKG-908124</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="bl_no">BILL OF LADING NO:</span>
+                            <span class="cell-val bold text-primary" id="view-ship-bl">BL-SABBB-440129</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="container_no">CONTAINER NO:</span>
+                            <span class="cell-val" id="view-ship-container">SABU-890471-2</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="container_type">CONTAINER TYPE:</span>
+                            <span class="cell-val" id="view-ship-type">40' HC Container</span>
+                        </div>
+
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="seal_no">SEAL NUMBER:</span>
+                            <span class="cell-val" id="view-ship-seal">SL-908722</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="commodity">COMMODITY Description:</span>
+                            <span class="cell-val" id="view-ship-commodity">Electronics & IT Hardware</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="hs_code">HS CODE (GLOBAL):</span>
+                            <span class="cell-val" id="view-ship-hscode">8471.30.10</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="incoterms">INCOTERMS:</span>
+                            <span class="cell-val bold text-primary" id="view-ship-incoterms">DDP</span>
+                        </div>
+
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="gross_weight">GROSS WEIGHT (KG):</span>
+                            <span class="cell-val" id="view-ship-gross">14,250.0 kg</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="net_weight">NET WEIGHT (KG):</span>
+                            <span class="cell-val" id="view-ship-net">13,800.0 kg</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="packages">NO. OF PACKAGES:</span>
+                            <span class="cell-val" id="view-ship-packages">450 PKGS</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="shipping_line">SHIPPING LINE:</span>
+                            <span class="cell-val" id="view-ship-line">Sky Ariana Logistics Line</span>
+                        </div>
+
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="origin">ORIGIN COUNTRY:</span>
+                            <span class="cell-val" id="view-ship-origin">United Arab Emirates</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="destination">FINAL DESTINATION:</span>
+                            <span class="cell-val" id="view-ship-dest">Afghanistan</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="pol">PORT OF LOADING / PLACE OF LOADING:</span>
+                            <span class="cell-val" id="view-ship-pol">Port Jebel Ali, Dubai (AEJEA)</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="pod">PORT OF DISCHARGE / DESTINATION AIRPORT:</span>
+                            <span class="cell-val" id="view-ship-pod">Kabul Customs Depot, AFG</span>
+                        </div>
+
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="vessel">VESSEL / CARRIER:</span>
+                            <span class="cell-val" id="view-ship-vessel">Ariana Sea Express</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="voyage">VOYAGE NO:</span>
+                            <span class="cell-val" id="view-ship-voyage">V.045E</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="etd">EST. DEPARTURE (ETD):</span>
+                            <span class="cell-val" id="view-ship-etd">15 JUL 2026</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label" data-translate="eta">EST. ARRIVAL (ETA):</span>
+                            <span class="cell-val" id="view-ship-eta">28 JUL 2026</span>
+                        </div>
+                        
+                        <div class="grid-cell">
+                            <span class="cell-label">MODE OF TRANSPORTATION:</span>
+                            <span class="cell-val bold text-primary" id="view-ship-mode">AIR CARGO</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label">CARGO WEIGHT:</span>
+                            <span class="cell-val" id="view-ship-cargo-weight">12 METRIC TONS</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label">TOTAL WEIGHT:</span>
+                            <span class="cell-val" id="view-ship-total-weight">12,000 KG</span>
+                        </div>
+                        <div class="grid-cell">
+                            <span class="cell-label">SHIPPING ROUTE:</span>
+                            <span class="cell-val" id="view-ship-route">KABUL, AFGHANISTAN → DELHI, INDIA</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cargo Description Block -->
+                <div class="cargo-description-section" id="view-cargo-desc-section">
+                    <div class="cargo-description-title">CARGO DESCRIPTION</div>
+                    <div class="cargo-description-body" id="view-ship-cargo-desc">
+                        TRANSPORTATION OF 12 METRIC TONS (12,000 KG) OF DRY FIGS BY AIR CARGO FROM KABUL, AFGHANISTAN TO DELHI, INDIA.
+                    </div>
+                </div>
+
+                <!-- 5. Line Items Table -->
+                <div class="table-container">
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th>No.</th><th>Description of Goods</th><th>HS Code</th><th>Quantity</th><th>Unit</th><th>Goods Rate</th><th>Freight Rate</th><th>CIF Unit Price</th><th>Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoice-items-tbody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 6. Totals, Terms, Signatures layout (Bottom section) -->
+                <div class="invoice-bottom-grid">
+                    <!-- Left Column: Payment & Terms -->
+                    <div class="bottom-left">
+                        <div class="bank-details-card">
+                            <div class="card-small-header"><i class="fa-solid fa-bank"></i> <span data-translate="beneficiary_bank_details">BENEFICIARY BANK DETAILS</span></div>
+                            <div class="bank-details-body">
+                                <table>
+                                    <tr>
+                                        <td>Beneficiary Bank:</td>
+                                        <td><strong id="view-bank-name">KOTAK MAHINDRA BANK</strong></td>
+                                    </tr>
+                                    <tr id="row-bank-branch">
+                                        <td>Bank Branch:</td>
+                                        <td><span id="view-bank-branch">SURAT, INDIA</span></td>
+                                    </tr>
+                                    <tr id="row-bank-acc-name">
+                                        <td data-translate="beneficiary">Beneficiary:</td>
+                                        <td><span id="view-bank-acc-name">WAVELON IMPEX</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td data-translate="account_no">Account No:</td>
+                                        <td><strong id="view-bank-acc-num">9898015500</strong></td>
+                                    </tr>
+                                    <tr id="row-bank-iban">
+                                        <td>IBAN:</td>
+                                        <td><strong id="view-bank-iban">N/A</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td data-translate="swift_code">SWIFT Code:</td>
+                                        <td><strong id="view-bank-swift">KKBKINBBCPC</strong></td>
+                                    </tr>
+                                    <tr id="row-bank-address">
+                                        <td>Bank Address:</td>
+                                        <td><span id="view-bank-address">2ND FLOOR, BAKHTAWAR BUILDING, 229 NARIMAN POINT, MUMBAI, INDIA – 400021</span></td>
+                                    </tr>
+                                    <tr id="row-bank-terms">
+                                        <td data-translate="payment_terms">Payment Terms:</td>
+                                        <td><span id="view-bank-terms" class="bold text-primary">Net 30 days from ETD date</span></td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="terms-card">
+                            <div class="card-small-header"><i class="fa-solid fa-scale-balanced"></i> <span data-translate="terms_conditions">DECLARATION & TERMS</span></div>
+                            <p class="invoice-declaration">WE HEREBY CERTIFY THAT THE INFORMATION PROVIDED IN THIS INVOICE IS TRUE AND CORRECT.</p>
+                            <div class="terms-body" id="view-terms">
+                                Goods sold as per agreed contract.
+                                Payment according to agreed terms.
+                                All disputes subject to seller's jurisdiction.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Summary Table, QR, and Signature Area -->
+                    <div class="bottom-right">
+                        <!-- Summary calculations -->
+                        <div class="summary-card">
+                            <table class="summary-table">
+                                <tr>
+                                    <td>Goods Value:</td>
+                                    <td class="text-right" id="view-subtotal">$0.00</td>
+                                </tr>
+                                <tr>
+                                    <td>Freight Charges:</td>
+                                    <td class="text-right" id="view-freight">$0.00</td>
+                                </tr>
+                                <tr>
+                                    <td>Insurance:</td>
+                                    <td class="text-right" id="view-insurance">$0.00</td>
+                                </tr>
+                                <tr class="delivery-term-row"><td>Delivery Term:</td><td class="text-right" id="view-delivery-term">CIF NHAVA SHEVA PORT, INDIA</td></tr>
+                                <tr>
+                                    <td data-translate="customs_charges">Customs Clearance:</td>
+                                    <td class="text-right" id="view-customs">$0.00</td>
+                                </tr>
+                                <tr>
+                                    <td data-translate="docs_charges">Documentation/BL:</td>
+                                    <td class="text-right" id="view-docs">$0.00</td>
+                                </tr>
+                                <tr>
+                                    <td data-translate="handling_charges">Port Handling Fees:</td>
+                                    <td class="text-right" id="view-handling">$0.00</td>
+                                </tr>
+                                <tr class="discount-row">
+                                    <td data-translate="discount">Loyalty Discount:</td>
+                                    <td class="text-right text-danger" id="view-discount">-$0.00</td>
+                                </tr>
+                                <tr>
+                                    <td><span data-translate="tax">Sales Tax / VAT</span> (<span id="view-tax-rate">4%</span>):</td>
+                                    <td class="text-right" id="view-tax">$0.00</td>
+                                </tr>
+                                <tr class="grand-total-row">
+                                    <td><span>TOTAL CIF INVOICE VALUE</span> (<span id="view-currency-lbl">USD</span>):</td>
+                                    <td class="text-right" id="view-grand-total">$0.00</td>
+                                </tr>
+                            </table>
+                            <div class="amount-words-container">
+                                <strong>Amount in Words:</strong> <span id="view-amount-words">ONE HUNDRED EIGHT THOUSAND US DOLLARS ONLY</span>
+                            </div>
+                        </div>
+
+                        <!-- QR Code and Signature Box Grid -->
+                        <div class="qr-signature-grid">
+                            <div class="qr-box">
+                                <div id="qrcode-canvas"></div>
+                                <span class="qr-text" data-translate="scan_track">Scan to Track</span>
+                            </div>
+                            
+                            <div class="signature-box">
+                                <div class="stamp-container">
+                                    <div class="stamp-circle" id="view-stamp">
+                                        <span class="stamp-inner-text">SKY-BBB LOGISTICS DEPT.</span>
+                                    </div>
+                                </div>
+                                <div class="signature-line">
+                                    <!-- Image drawing placeholder for interactive pad signature -->
+                                    <img id="view-sig-img" class="rendered-signature" src="" alt="Authorized Signature" style="display:none;">
+                                    <span id="view-sig-name-fallback" class="mock-sig">M. Balam</span>
+                                </div>
+                                <div class="sig-title" id="view-sig-name">M. Balam</div>
+                                <div class="sig-subtitle" id="view-sig-title">Director Operations, BBB</div>
+                                <div class="sig-date-line">Date: <span id="view-sig-date">12 JUL 2026</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Footer -->
+                <footer class="invoice-footer">
+                    <p class="thanks-msg" data-translate="footer_thanks">Thank you for your business. We look forward to managing your international supply chain.</p>
+                    <div class="footer-brand-area">
+                        <span class="footer-brand-name">SKY ARIANA & BALAM BAR BARAN</span>
+                    </div>
+                    <!-- Compact Two-Column Office Footer -->
+                    <div class="footer-offices-grid">
+                        <!-- Afghanistan Office -->
+                        <div class="footer-office-col">
+                            <div class="footer-office-title"><i class="fa-solid fa-location-dot"></i> AFGHANISTAN OFFICE</div>
+                            <div class="footer-office-line">2nd Fl., Off. 16, Etimad Rahimi Market, Shahidano Chowk, Kandahar, Afghanistan</div>
+                            <div class="footer-office-line"><i class="fa-solid fa-id-card"></i> Lic: 2401-2198</div>
+                            <div class="footer-office-contacts">
+                                <a href="mailto:info@skyariana.com" class="footer-office-link"><i class="fa-solid fa-envelope"></i> info@skyariana.com</a>
+                                <a href="mailto:transport@skyariana.com" class="footer-office-link"><i class="fa-solid fa-envelope"></i> transport@skyariana.com</a>
+                                <a href="tel:+93700939365" class="footer-office-link"><i class="fa-solid fa-mobile-screen-button"></i> +93 700 939 365</a>
+                                <a href="tel:+93711435529" class="footer-office-link"><i class="fa-solid fa-mobile-screen-button"></i> +93 711 435 529</a>
+                            </div>
+                        </div>
+                        <!-- Vertical Divider -->
+                        <div class="footer-v-divider"></div>
+                        <!-- Iran Office -->
+                        <div class="footer-office-col">
+                            <div class="footer-office-title"><i class="fa-solid fa-location-dot"></i> IRAN OFFICE</div>
+                            <div class="footer-office-line">Cubic Building, Bandar Abbas, Iran &nbsp;|&nbsp; P.O. Box: 7913973295</div>
+                            <div class="footer-office-contacts">
+                                <a href="tel:+987632226028" class="footer-office-link"><i class="fa-solid fa-fax"></i> +98 76 32226028</a>
+                                <a href="tel:+989172325086" class="footer-office-link"><i class="fa-solid fa-mobile-screen-button"></i> +98 917 232 5086</a>
+                                <a href="mailto:info@balambarbaran.com" class="footer-office-link"><i class="fa-solid fa-envelope"></i> info@balambarbaran.com</a>
+                                <a href="mailto:ceo@balambarbaran.com" class="footer-office-link"><i class="fa-solid fa-envelope"></i> ceo@balambarbaran.com</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="footer-page-indicator">Page 1 of 1</div>
+                </footer>
+            </div>
+        </main>
+    </div>
+
+    <!-- QRCode JS Library from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Main JS Application script -->
+    <script src="app.js"></script>
+</body>
+</html>

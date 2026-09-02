@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useRef, useEffect } from "react"
 import { 
@@ -21,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button"
 
 export function SkyDocView() {
-  const [currentUrl, setCurrentUrl] = useState("https://skyariana-doc-ten.vercel.app/")
+  const [currentUrl, setCurrentUrl] = useState("/sky-doc/index.html")
   const [isLoading, setIsLoading] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [zoomLevel, setZoomLevel] = useState(100)
@@ -32,9 +32,10 @@ export function SkyDocView() {
     setIsLoading(true)
     setLoadError(false)
     if (iframeRef.current) {
-      iframeRef.current.src = currentUrl
+      iframeRef.current.src = currentUrl + (currentUrl.includes("?") ? "&" : "?") + "t=" + Date.now()
     }
   }
+
 
   const handleOpenExternal = () => {
     window.open(currentUrl, "_blank", "noopener,noreferrer")

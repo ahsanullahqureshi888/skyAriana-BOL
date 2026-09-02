@@ -4,7 +4,7 @@ import { useState, useRef } from "react"
 import { Landmark, RefreshCw, Maximize2, Minimize2, ArrowUpRight, Wallet, CreditCard } from "lucide-react"
 
 export function SkyBankView() {
-  const [currentUrl, setCurrentUrl] = useState("https://skyariana-bank.vercel.app/transactions")
+  const [currentUrl, setCurrentUrl] = useState("/sky-bank/index.html")
   const [isLoading, setIsLoading] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
@@ -12,7 +12,7 @@ export function SkyBankView() {
   const handleRefresh = () => {
     setIsLoading(true)
     if (iframeRef.current) {
-      iframeRef.current.src = currentUrl
+      iframeRef.current.src = currentUrl + (currentUrl.includes("?") ? "&" : "?") + "t=" + Date.now()
     }
   }
 
@@ -22,12 +22,13 @@ export function SkyBankView() {
 
   const handleNavigate = (path: string) => {
     setIsLoading(true)
-    const target = `https://skyariana-bank.vercel.app${path}`
+    const target = path === "/" ? "/sky-bank/index.html" : `/sky-bank/index.html#${path}`
     setCurrentUrl(target)
     if (iframeRef.current) {
       iframeRef.current.src = target
     }
   }
+
 
   const toggleFullscreen = () => {
     if (!isFullscreen) {
