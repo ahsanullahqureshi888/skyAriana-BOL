@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "sky-ariana-sqlite": {
+      "command": "python",
+      "args": [
+        "-m",
+        "mcp_server_sqlite",
+        "--db-path",
+        "backend/sky_ariana.db"
+      ],
+      "env": {
+        "DB_READONLY": "true"
+      }
+    },
+    "sky-ariana-filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "d:\\skybalam-26-bol-V3.2\\skybalam-26-bol-V3.2"
+      ]
+    }
+  }
+}
