@@ -24,7 +24,10 @@ import {
   TrendingUp,
   Activity,
   BarChart3,
+  Compass,
+  Layers,
 } from "lucide-react"
+
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
 interface CommandPaletteProps {
@@ -271,6 +274,31 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
           if (onOpenCloudSync) onOpenCloudSync()
         },
       },
+      {
+        id: "action-route-optimizer",
+        title: "Multi-Corridor Route Cost Optimizer (تحلیل مسیرهای ترانزیت)",
+        subtitle: "Compare Dogharon, Mersin, Chabahar & Bandar Abbas routes, transit days & margins",
+        category: "Actions",
+        icon: Compass,
+        badge: "Corridors",
+        perform: () => {
+          onOpenChange(false)
+          window.dispatchEvent(new CustomEvent("skybol:open-route-optimizer"))
+        },
+      },
+      {
+        id: "action-batch-bundle",
+        title: "1-Click Complete Logistics Document Docket (پک کامل اسناد صادرات)",
+        subtitle: "Generate and print BOL, CMR, Customs Invoice, Packing List & SAFTA Origin pack",
+        category: "Actions",
+        icon: Layers,
+        badge: "Docket",
+        perform: () => {
+          onOpenChange(false)
+          window.dispatchEvent(new CustomEvent("skybol:open-batch-bundle"))
+        },
+      },
+
       {
         id: "action-ledger-audit",
         title: "Ledger Data Integrity & Math Verification Audit",

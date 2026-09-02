@@ -92,7 +92,7 @@ export function QuickActionsWidget({
             </Badge>
           </div>
 
-          {/* Action 1: Create New BOL */}
+          {/* Action 1: New Bill of Lading */}
           <button
             onClick={() => {
               setView("bol")
@@ -107,7 +107,35 @@ export function QuickActionsWidget({
             <span>New Bill of Lading (BOL)</span>
           </button>
 
-          {/* Action 2: Export Logistics Quote */}
+          {/* Action 2: Route Cost Optimizer */}
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("skybol:open-route-optimizer"))
+              setIsOpen(false)
+            }}
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-600 dark:hover:text-blue-400 transition-all text-left cursor-pointer group"
+          >
+            <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 group-hover:scale-105 transition-transform">
+              <Truck className="w-3.5 h-3.5" />
+            </div>
+            <span>Route Cost Optimizer (Corridors)</span>
+          </button>
+
+          {/* Action 3: Complete Docket Pack */}
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("skybol:open-batch-bundle"))
+              setIsOpen(false)
+            }}
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all text-left cursor-pointer group"
+          >
+            <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 group-hover:scale-105 transition-transform">
+              <Layers className="w-3.5 h-3.5" />
+            </div>
+            <span>1-Click Complete Docket Pack</span>
+          </button>
+
+          {/* Action 4: Export Logistics Quote */}
           <button
             onClick={() => {
               setView("export-calculator")
@@ -122,7 +150,7 @@ export function QuickActionsWidget({
             <span>Export & Reefer Quote Engine</span>
           </button>
 
-          {/* Action 3: ACCI Chamber Suite */}
+          {/* Action 5: ACCI Chamber Suite */}
           <button
             onClick={() => {
               setView("acci-portal")
@@ -136,6 +164,7 @@ export function QuickActionsWidget({
             </div>
             <span>ACCI Origin & Trade Suite</span>
           </button>
+
 
           {/* Action 4: Sky Bank Portal */}
           <button

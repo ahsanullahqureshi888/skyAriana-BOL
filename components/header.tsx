@@ -25,7 +25,9 @@ import {
   LayoutGrid,
   Activity,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  Compass,
+  Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useApp } from '@/lib/app-context'
@@ -34,6 +36,8 @@ import { CloudSyncModal } from '@/components/bill-of-lading/cloud-sync-modal'
 import { CommandPalette } from '@/components/command-palette'
 import { preloadView } from '@/app/page'
 import { LiveCurrencyBar } from '@/components/live-currency-bar'
+import { RouteOptimizerModal } from '@/components/route-optimizer-modal'
+import { BatchDocumentBundleModal } from '@/components/batch-document-bundle-modal'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +57,8 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   const { goBack, currentAccount, currentCompany, view, setView, currentUser, logout } = useApp()
   const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false)
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
+  const [isRouteOptimizerOpen, setIsRouteOptimizerOpen] = useState(false)
+  const [isBatchBundleOpen, setIsBatchBundleOpen] = useState(false)
   const [isOnline, setIsOnline] = useState(true)
 
   // Track online/offline status
@@ -63,18 +69,25 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
       const handleOffline = () => setIsOnline(false)
       const handleOpenPalette = () => setIsCommandPaletteOpen(true)
       const handleOpenSync = () => setIsCloudSyncOpen(true)
+      const handleOpenRouteOptimizer = () => setIsRouteOptimizerOpen(true)
+      const handleOpenBatchBundle = () => setIsBatchBundleOpen(true)
       window.addEventListener('online', handleOnline)
       window.addEventListener('offline', handleOffline)
       window.addEventListener('skybol:open-command-palette', handleOpenPalette)
       window.addEventListener('skybol:open-cloud-sync', handleOpenSync)
+      window.addEventListener('skybol:open-route-optimizer', handleOpenRouteOptimizer)
+      window.addEventListener('skybol:open-batch-bundle', handleOpenBatchBundle)
       return () => {
         window.removeEventListener('online', handleOnline)
         window.removeEventListener('offline', handleOffline)
         window.removeEventListener('skybol:open-command-palette', handleOpenPalette)
         window.removeEventListener('skybol:open-cloud-sync', handleOpenSync)
+        window.removeEventListener('skybol:open-route-optimizer', handleOpenRouteOptimizer)
+        window.removeEventListener('skybol:open-batch-bundle', handleOpenBatchBundle)
       }
     }
   }, [])
+
 
   const getTitle = () => {
     if (title) return title
@@ -520,6 +533,40 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
                         <span className="text-[10px] text-slate-500 truncate">Online transactions & ledgers</span>
                       </div>
                     </DropdownMenuItem>
+
+                    <DropdownMenuSeparator className="my-1" />
+
+                    <DropdownMenuItem 
+                      onClick={() => setIsRouteOptimizerOpen(true)}
+                      className="gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold cursor-pointer text-slate-700 hover:bg-blue-50/70 transition-colors"
+                    >
+                      <div className="p-1.5 rounded-lg bg-blue-100/70 text-blue-700">
+                        <Compass className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-blue-950">Route Cost Optimizer</span>
+                          <span className="text-[9px] font-[vazirmatn] text-blue-600 font-bold">مسیرها</span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 truncate">Compare Afghan export corridors & margins</span>
+                      </div>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem 
+                      onClick={() => setIsBatchBundleOpen(true)}
+                      className="gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold cursor-pointer text-slate-700 hover:bg-emerald-50/70 transition-colors"
+                    >
+                      <div className="p-1.5 rounded-lg bg-emerald-100/70 text-emerald-700">
+                        <Layers className="h-4 w-4" />
+                      </div>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-emerald-950">Complete Docket Pack</span>
+                          <span className="text-[9px] font-[vazirmatn] text-emerald-600 font-bold">پک کامل</span>
+                        </div>
+                        <span className="text-[10px] text-slate-500 truncate">1-Click BOL, CMR, Invoice & Origin bundle</span>
+                      </div>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
 
                 </DropdownMenu>
@@ -550,13 +597,10 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               title="Cloud Sync: Sync all BOLs, accounts, and ledgers between PC, Phone, and other devices • همگام‌سازی ابری"
             >
               <div className="relative">
-                <Cloud className="h-3.5 w-3.5 text-blue-600 group-hover:scale-110 transition-transform" />
-                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                <Cloud className="h-3.5 w-3.5 text-blue-600 group-hover:scale-110 transition-all" />
+                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full border border-white ${isOnline ? 'bg-emerald-500' : 'bg-amber-500'}`} />
               </div>
-              <span className="font-extrabold text-blue-950 hidden sm:inline">Sync</span>
-              <span className="hidden xl:inline text-[9px] font-black bg-blue-200/80 text-blue-900 px-1.5 py-0.2 rounded-md">
-                همگام‌سازی
-              </span>
+              <span className="hidden xs:inline">Cloud Sync</span>
             </Button>
 
             {/* Settings (Admin/Accountants) */}
@@ -583,9 +627,9 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
             {/* User Profile Capsule & Logout */}
             {currentUser && (
-              <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200/80">
-                <div className="hidden xl:flex flex-col text-right">
-                  <span className="text-[11px] font-black text-slate-900 leading-tight">
+              <div className="flex items-center gap-1.5 pl-1 sm:pl-2 border-l border-slate-200/80">
+                <div className="hidden sm:flex flex-col items-end">
+                  <span className="text-xs font-black text-slate-900 leading-tight">
                     {currentUser.name}
                   </span>
                   <span className="text-[8.5px] font-black text-amber-700 uppercase tracking-tight leading-tight">
@@ -615,6 +659,12 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
       {/* Cloud Sync Modal */}
       <CloudSyncModal open={isCloudSyncOpen} onOpenChange={setIsCloudSyncOpen} />
+
+      {/* Route Optimizer Modal */}
+      <RouteOptimizerModal open={isRouteOptimizerOpen} onOpenChange={setIsRouteOptimizerOpen} />
+
+      {/* Complete Docket Pack Modal */}
+      <BatchDocumentBundleModal open={isBatchBundleOpen} onOpenChange={setIsBatchBundleOpen} />
 
       {/* Command Palette Modal */}
       <CommandPalette 
