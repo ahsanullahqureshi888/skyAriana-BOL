@@ -11,10 +11,55 @@ interface MemoryCacheEntry {
 
 const fileCache = new Map<string, MemoryCacheEntry>()
 
+/**
+ * Crash-proof atomic write helper:
+ * 1. Writes payload to a unique temporary file
+ * 2. Optionally creates a .bak backup of the previous target
+ * 3. Atomically replaces targetPath via fs.promises.rename with retry on Windows
+ */
+async function atomicWriteFile(targetPath: string, content: string): Promise<void> {
+  const dir = path.dirname(targetPath)
+  const tempPath = path.join(dir, `.${path.basename(targetPath)}.tmp.${Date.now()}_${Math.random().toString(36).substring(2, 8)}`)
+
+  // Ensure directory exists
+  if (!fs.existsSync(dir)) {
+    await fs.promises.mkdir(dir, { recursive: true })
+  }
+
+  // 1. Write to temp file
+  await fs.promises.writeFile(tempPath, content, "utf-8")
+
+  // 2. If target exists, create a backup copy (.bak)
+  try {
+    if (fs.existsSync(targetPath)) {
+      const bakPath = `${targetPath}.bak`
+      await fs.promises.copyFile(targetPath, bakPath)
+    }
+  } catch (_) {}
+
+  // 3. Atomically rename temp file to target with retry for Windows locks
+  let attempts = 0
+  while (attempts < 5) {
+    try {
+      await fs.promises.rename(tempPath, targetPath)
+      break
+    } catch (err: any) {
+      attempts++
+      if (attempts >= 5) {
+        // Fallback: copy and unlink
+        await fs.promises.copyFile(tempPath, targetPath)
+        await fs.promises.unlink(tempPath).catch(() => {})
+        break
+      }
+      await new Promise((r) => setTimeout(r, 20 * attempts))
+    }
+  }
+}
+
 export async function readJsonFile<T>(filePath: string, fallback: T): Promise<T> {
   const token = process.env.BLOB_READ_WRITE_TOKEN
   const fileName = path.basename(filePath)
-  const blobName = `databases/${fileName.replace(/^\.+/, '')}`
+  const blobName = `databases/${fileName.replace(/^\.+/, "")}`
 
   if (token) {
     try {
@@ -24,7 +69,7 @@ export async function readJsonFile<T>(filePath: string, fallback: T): Promise<T>
       }
 
       const blobs = await list({ prefix: blobName, token })
-      const file = blobs.blobs.find(b => b.pathname === blobName)
+      const file = blobs.blobs.find((b) => b.pathname === blobName)
       if (file) {
         const response = await fetch(file.url, { cache: "no-store" })
         if (response.ok) {
@@ -52,7 +97,15 @@ export async function readJsonFile<T>(filePath: string, fallback: T): Promise<T>
       return parsed
     }
   } catch (error) {
-    // ignore
+    // Check if backup .bak exists in case of corruption
+    try {
+      const bakPath = `${filePath}.bak`
+      if (fs.existsSync(bakPath)) {
+        const raw = await fs.promises.readFile(bakPath, "utf-8")
+        const parsed = JSON.parse(raw) as T
+        return parsed
+      }
+    } catch (_) {}
   }
 
   // 2. Try reading from os.tmpdir() fallback
@@ -79,7 +132,7 @@ export async function readJsonFile<T>(filePath: string, fallback: T): Promise<T>
 export async function writeJsonFile<T>(filePath: string, value: T): Promise<void> {
   const token = process.env.BLOB_READ_WRITE_TOKEN
   const fileName = path.basename(filePath)
-  const blobName = `databases/${fileName.replace(/^\.+/, '')}`
+  const blobName = `databases/${fileName.replace(/^\.+/, "")}`
   const jsonStr = JSON.stringify(value, null, 2)
   const now = Date.now()
 
@@ -87,9 +140,9 @@ export async function writeJsonFile<T>(filePath: string, value: T): Promise<void
   fileCache.set(filePath, { mtimeMs: now, data: value, timestamp: now })
   fileCache.set(`blob:${blobName}`, { mtimeMs: now, data: value, timestamp: now })
 
-  // 1. Try writing to requested path
+  // 1. Try atomic write to requested path
   try {
-    await fs.promises.writeFile(filePath, jsonStr, "utf-8")
+    await atomicWriteFile(filePath, jsonStr)
     try {
       const stat = await fs.promises.stat(filePath)
       fileCache.set(filePath, { mtimeMs: stat.mtimeMs, data: value, timestamp: Date.now() })
@@ -98,7 +151,7 @@ export async function writeJsonFile<T>(filePath: string, value: T): Promise<void
     // 2. Fallback to writing to os.tmpdir() (Vercel serverless writable path)
     try {
       const tmpPath = path.join(os.tmpdir(), fileName)
-      await fs.promises.writeFile(tmpPath, jsonStr, "utf-8")
+      await atomicWriteFile(tmpPath, jsonStr)
       const stat = await fs.promises.stat(tmpPath)
       fileCache.set(tmpPath, { mtimeMs: stat.mtimeMs, data: value, timestamp: Date.now() })
     } catch (tmpErr) {
@@ -119,5 +172,6 @@ export async function writeJsonFile<T>(filePath: string, value: T): Promise<void
     }
   }
 }
+
 
 

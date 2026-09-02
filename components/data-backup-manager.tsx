@@ -30,13 +30,39 @@ interface Snapshot {
   data: any
 }
 
+interface TableStat {
+  tableName: string
+  fileName: string
+  recordCount: number
+  fileSizeBytes: number
+  status: string
+}
+
 export function DataBackupManager() {
   const [snapshots, setSnapshots] = useState<Snapshot[]>([])
   const [isCreating, setIsCreating] = useState<boolean>(false)
   const [isRestoring, setIsRestoring] = useState<boolean>(false)
+  const [isVacuuming, setIsVacuuming] = useState<boolean>(false)
+  const [dbStats, setDbStats] = useState<TableStat[]>([])
+  const [totalStorage, setTotalStorage] = useState<number>(0)
 
-  // Load existing snapshots from localStorage
+  // Fetch live database health from server API
+  const fetchDbHealth = async () => {
+    try {
+      const res = await fetch("/api/database")
+      if (res.ok) {
+        const json = await res.json()
+        if (json.tables && Array.isArray(json.tables)) {
+          setDbStats(json.tables)
+          setTotalStorage(json.totalStorageBytes || 0)
+        }
+      }
+    } catch (_) {}
+  }
+
+  // Load existing snapshots from localStorage and fetch db stats
   useEffect(() => {
+    fetchDbHealth()
     try {
       const raw = window.localStorage.getItem("skybol:system-snapshots")
       if (raw) {
@@ -45,6 +71,31 @@ export function DataBackupManager() {
       }
     } catch (_) {}
   }, [])
+
+  const handleVacuum = async () => {
+    setIsVacuuming(true)
+    try {
+      const res = await fetch("/api/database", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "vacuum" }),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        toast.success("Database Vacuum Complete", {
+          description: `Compacted ${json.result?.compactedTables || 7} tables. Reclaimed ${json.result?.bytesReclaimed || 0} bytes.`,
+        })
+        fetchDbHealth()
+      } else {
+        toast.error("Failed to vacuum database")
+      }
+    } catch (e: any) {
+      toast.error(`Vacuum error: ${e.message}`)
+    } finally {
+      setIsVacuuming(false)
+    }
+  }
+
 
   // Save snapshots list
   const saveSnapshots = (newList: Snapshot[]) => {
@@ -286,6 +337,16 @@ export function DataBackupManager() {
 
           <Button
             variant="outline"
+            onClick={handleVacuum}
+            disabled={isVacuuming}
+            className="bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border-emerald-500/40 text-xs font-bold rounded-xl cursor-pointer"
+          >
+            <Database className={`h-3.5 w-3.5 mr-1.5 ${isVacuuming ? "animate-spin" : ""}`} />
+            {isVacuuming ? "Compacting..." : "Vacuum DB"}
+          </Button>
+
+          <Button
+            variant="outline"
             onClick={handleExportFullJSON}
             className="bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 text-xs font-bold rounded-xl cursor-pointer"
           >
@@ -301,12 +362,51 @@ export function DataBackupManager() {
         </div>
       </div>
 
+      {/* Live Database Engine Telemetry & Health */}
+      {dbStats.length > 0 && (
+        <Card className="bg-slate-900/80 border-slate-800 shadow-xl rounded-2xl overflow-hidden">
+          <CardHeader className="pb-3 border-b border-slate-800 bg-slate-950/40">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-black text-white flex items-center gap-2">
+                  <Database className="h-4 w-4 text-emerald-400" />
+                  Database Engine & Table Telemetry
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-400">
+                  Crash-proof atomic storage with automated (.bak) snapshots and microsecond in-memory indexing.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-emerald-950/80 text-emerald-300 border-emerald-500/30 font-mono text-[10px]">
+                  Storage: {(totalStorage / 1024).toFixed(1)} KB
+                </Badge>
+                <Badge className="bg-blue-950/80 text-blue-300 border-blue-500/30 font-mono text-[10px]">
+                  POSIX Atomic Writes
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+              {dbStats.map((table) => (
+                <div key={table.fileName} className="bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-center space-y-1">
+                  <span className="text-[10px] text-slate-400 font-bold truncate block">{table.tableName}</span>
+                  <div className="text-sm font-black font-mono text-emerald-400">{table.recordCount}</div>
+                  <span className="text-[9px] text-slate-500 font-mono block">{(table.fileSizeBytes / 1024).toFixed(1)} KB</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Snapshots History Table */}
       <Card className="bg-slate-900/80 border-slate-800 shadow-xl rounded-2xl overflow-hidden">
         <CardHeader className="pb-3 border-b border-slate-800">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-sm font-black text-white flex items-center gap-2">
+
                 <Clock className="h-4 w-4 text-blue-400" />
                 Snapshot History ({snapshots.length})
               </CardTitle>
