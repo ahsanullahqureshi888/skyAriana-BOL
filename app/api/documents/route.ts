@@ -1,23 +1,20 @@
 import { NextResponse } from "next/server"
-import fs from "fs"
 import path from "path"
+import { readJsonFile, writeJsonFile } from "@/lib/services/blob-db"
 
 const DOCS_FILE = path.join(process.cwd(), ".local-cmr-documents.json")
 
-function getDocuments(): any[] {
+async function getDocuments(): Promise<any[]> {
   try {
-    if (fs.existsSync(DOCS_FILE)) {
-      const data = fs.readFileSync(DOCS_FILE, "utf-8")
-      const parsed = JSON.parse(data)
-      if (Array.isArray(parsed)) return parsed
-    }
+    const parsed = await readJsonFile<any[]>(DOCS_FILE, [])
+    if (Array.isArray(parsed)) return parsed
   } catch (e) {}
   return []
 }
 
-function saveDocuments(docs: any[]) {
+async function saveDocuments(docs: any[]): Promise<void> {
   try {
-    fs.writeFileSync(DOCS_FILE, JSON.stringify(docs, null, 2), "utf-8")
+    await writeJsonFile(DOCS_FILE, docs)
   } catch (e) {}
 }
 
@@ -26,7 +23,7 @@ export async function GET(request: Request) {
   const q = searchParams.get("q")?.toLowerCase()
   const tag = searchParams.get("tag")?.toLowerCase()
 
-  let list = getDocuments()
+  let list = await getDocuments()
 
   if (q) {
     list = list.filter((item: any) => {
@@ -58,7 +55,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const doc = await request.json()
-    const list = getDocuments()
+    const list = await getDocuments()
     const docId = doc.id || `doc_${Date.now()}`
     const nowStr = new Date().toLocaleString([], { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
 
@@ -76,7 +73,7 @@ export async function POST(request: Request) {
       list.unshift(docRecord)
     }
 
-    saveDocuments(list)
+    await saveDocuments(list)
     return NextResponse.json({ status: "success", id: docId, cmr_number: doc.cmr_number, saved_at: nowStr })
   } catch (error) {
     return NextResponse.json(

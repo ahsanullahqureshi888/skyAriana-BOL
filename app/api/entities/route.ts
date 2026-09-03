@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
-import fs from "fs"
 import path from "path"
+import { readJsonFile, writeJsonFile } from "@/lib/services/blob-db"
 
 const ENTITIES_FILE = path.join(process.cwd(), ".local-cmr-entities.json")
 
@@ -27,20 +27,17 @@ const DEFAULT_PRESET_ENTITIES = [
   { id: "ent_cus_2", type: "customs", name: "TOSHKENT AVIA YUKLAR", details: 'COUSTOM POST : TOSHKENT AVIA YUKLAR\nVED CODE:00102', usage_count: 8 },
 ]
 
-function getEntities(): any[] {
+async function getEntities(): Promise<any[]> {
   try {
-    if (fs.existsSync(ENTITIES_FILE)) {
-      const data = fs.readFileSync(ENTITIES_FILE, "utf-8")
-      const parsed = JSON.parse(data)
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed
-    }
+    const parsed = await readJsonFile<any[]>(ENTITIES_FILE, [])
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed
   } catch (e) {}
   return DEFAULT_PRESET_ENTITIES
 }
 
-function saveEntities(list: any[]) {
+async function saveEntities(list: any[]): Promise<void> {
   try {
-    fs.writeFileSync(ENTITIES_FILE, JSON.stringify(list, null, 2), "utf-8")
+    await writeJsonFile(ENTITIES_FILE, list)
   } catch (e) {}
 }
 
@@ -49,7 +46,7 @@ export async function GET(request: Request) {
   const type = searchParams.get("type")?.toLowerCase()
   const q = searchParams.get("q")?.toLowerCase()
 
-  let list = getEntities()
+  let list = await getEntities()
 
   if (type) {
     list = list.filter((item: any) => (item.type || "").toLowerCase() === type)
@@ -69,7 +66,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const ent = await request.json()
-    let list = getEntities()
+    let list = await getEntities()
     const entId = ent.id || `ent_${Date.now()}`
     const existingIndex = list.findIndex((e: any) => e.type === ent.type && e.name === ent.name)
 
@@ -87,7 +84,7 @@ export async function POST(request: Request) {
       })
     }
 
-    saveEntities(list)
+    await saveEntities(list)
     return NextResponse.json({ status: "saved", id: entId, name: ent.name })
   } catch (error) {
     return NextResponse.json(

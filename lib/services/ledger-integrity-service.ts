@@ -176,6 +176,8 @@ export function reconcileAllLedgers(): { fixedCount: number; message: string } {
           if (!acc || !Array.isArray(acc.companies)) continue
           for (const comp of acc.companies) {
             if (!comp || !Array.isArray(comp.ledgerEntries)) continue
+            // Enforce chronological sorting before reconciling balances
+            comp.ledgerEntries.sort((a: any, b: any) => (a.date || "0000-00-00").localeCompare(b.date || "0000-00-00"))
             let runningBalance = 0
             comp.ledgerEntries.forEach((entry: any, idx: number) => {
               const debit = Number(entry.debit) || 0
@@ -202,6 +204,8 @@ export function reconcileAllLedgers(): { fixedCount: number; message: string } {
       Object.keys(ledgerMap).forEach((key) => {
         const entries = ledgerMap[key]
         if (!Array.isArray(entries)) return
+        // Enforce chronological sorting before reconciling balances
+        entries.sort((a: any, b: any) => (a.date || "0000-00-00").localeCompare(b.date || "0000-00-00"))
         let runningBalance = 0
         entries.forEach((entry: any, idx: number) => {
           const debit = Number(entry.debit) || 0

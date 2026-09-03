@@ -101,14 +101,24 @@ export async function getAccountLedgerDatabase() {
   }
 }
 
+export function isCleanCompanyName(name: string): boolean {
+  if (!name || typeof name !== "string") return false
+  const trimmed = name.trim()
+  if (trimmed.length < 3 || trimmed.length > 80) return false
+  if (/^(?:1X|2X|1\s*X|2\s*X)?\s*\d+\s*(?:FT|J|HC|GP|CTN)/i.test(trimmed)) return false
+  if (/کندهار څخه|له کندهار|بندر ته|ټرنسپورټ/i.test(trimmed)) return false
+  if (/(?:Raisins|Dry Figs|Apricots|Seeds|CTNS|KGS|BAGS)\s*[,|-]/i.test(trimmed)) return false
+  return true
+}
+
 export async function saveAccountLedgerDatabase(data: Partial<AccountLedgerDatabase>) {
   const existing = await getAccountLedgerDatabase()
 
-  // Safely merge accounts
+  // Safely merge accounts and filter out non-company noise
   const mergedAccounts = Array.from(new Set([
     ...(Array.isArray(existing.accounts) ? existing.accounts : []),
     ...(Array.isArray(data.accounts) ? data.accounts : []),
-  ]))
+  ])).filter(isCleanCompanyName)
 
   // Smart row-by-row merge for each company key
   const mergedLedgerEntries: Record<string, any[]> = { ...(existing.ledgerEntries || {}) }

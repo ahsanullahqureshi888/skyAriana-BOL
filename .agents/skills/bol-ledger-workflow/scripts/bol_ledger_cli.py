@@ -158,7 +158,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     else:
         bol_ids = set()
         for idx, bol in enumerate(bols_data):
-            bol_id = bol.get("id") or bol.get("bol_number")
+            bol_id = bol.get("id") or bol.get("bol_number") or bol.get("billOfLadingNumber") or bol.get("bolNo")
             if not bol_id:
                 issues.append({"file": ".local-bols.json", "index": idx, "severity": "WARNING", "message": "Missing BOL ID/Number"})
             else:
@@ -166,7 +166,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
                     issues.append({"file": ".local-bols.json", "index": idx, "severity": "WARNING", "message": f"Duplicate BOL ID: {bol_id}"})
                 bol_ids.add(bol_id)
 
-            issue_date = bol.get("issue_date")
+            issue_date = bol.get("issue_date") or bol.get("issueDate")
             if issue_date and not validate_date_str(issue_date):
                 issues.append({"file": ".local-bols.json", "bol_id": bol_id, "severity": "WARNING", "message": f"Invalid issue_date format: {issue_date}"})
 
@@ -290,14 +290,14 @@ def cmd_summary(args: argparse.Namespace) -> int:
     if isinstance(bols_data, list):
         for bol in bols_data[:limit]:
             recent_bols.append({
-                "bol_number": bol.get("bol_number") or bol.get("id"),
-                "issue_date": bol.get("issue_date"),
-                "shipper": bol.get("shipper_name"),
-                "consignee": bol.get("consignee_name"),
-                "truck_number": bol.get("truck_number"),
-                "driver_name": bol.get("driver_name"),
-                "packages": bol.get("number_of_packages"),
-                "net_weight": bol.get("net_weight")
+                "bol_number": bol.get("bol_number") or bol.get("billOfLadingNumber") or bol.get("id"),
+                "issue_date": bol.get("issue_date") or bol.get("issueDate"),
+                "shipper": bol.get("shipper_name") or bol.get("shipperName"),
+                "consignee": bol.get("consignee_name") or bol.get("consigneeName"),
+                "truck_number": bol.get("truck_number") or bol.get("truckNumber"),
+                "driver_name": bol.get("driver_name") or bol.get("driverName"),
+                "packages": bol.get("number_of_packages") or bol.get("numberOfPackages"),
+                "net_weight": bol.get("net_weight") or bol.get("netWeight")
             })
 
     # Summarize Invoices & Documentation Fees

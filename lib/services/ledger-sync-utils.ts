@@ -18,6 +18,16 @@ export interface EntryFinancials {
   quantity?: string
 }
 
+export function isCleanCompanyName(name: string): boolean {
+  if (!name || typeof name !== "string") return false
+  const trimmed = name.trim()
+  if (trimmed.length < 3 || trimmed.length > 80) return false
+  if (/^(?:1X|2X|1\s*X|2\s*X)?\s*\d+\s*(?:FT|J|HC|GP|CTN)/i.test(trimmed)) return false
+  if (/کندهار څخه|له کندهار|بندر ته|ټرنسپورټ/i.test(trimmed)) return false
+  if (/(?:Raisins|Dry Figs|Apricots|Seeds|CTNS|KGS|BAGS)\s*[,|-]/i.test(trimmed)) return false
+  return true
+}
+
 export function getFinancialsMap(): Record<string, EntryFinancials> {
   if (typeof window === "undefined") return {}
   try {

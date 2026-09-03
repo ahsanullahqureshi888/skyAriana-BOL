@@ -77,7 +77,7 @@ export function QuickActionsWidget({
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 no-print flex flex-col items-end gap-2 select-none font-sans">
+    <div className="fixed bottom-3 right-3 sm:bottom-4 sm:right-4 z-40 no-print flex flex-col items-end gap-2 select-none font-sans">
       
       {/* Expanded Speed Dial Menu */}
       {isOpen && (
@@ -283,31 +283,31 @@ export function QuickActionsWidget({
           <Button
             size="icon"
             onClick={onOpenChat}
-            className="h-11 w-11 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-blue-500/25 cursor-pointer active:scale-95 transition-all"
+            className="h-9.5 w-9.5 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md shadow-blue-500/20 cursor-pointer active:scale-95 transition-all"
             title="Launch Gemini AI Data Copilot"
           >
-            <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
+            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
           </Button>
         )}
 
         {/* Speed Dial Menu Toggle Button */}
         <Button
           onClick={() => setIsOpen((prev) => !prev)}
-          className={`h-12 px-4 rounded-2xl font-bold transition-all shadow-xl cursor-pointer active:scale-95 flex items-center gap-2 ${
+          className={`h-9.5 px-3.5 rounded-full font-extrabold text-xs transition-all shadow-md cursor-pointer active:scale-95 flex items-center gap-1.5 ${
             isOpen
               ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950"
-              : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/30"
+              : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20"
           }`}
         >
           {isOpen ? (
             <>
-              <X className="w-5 h-5" />
-              <span className="text-xs">Close</span>
+              <X className="w-4 h-4" />
+              <span>Close</span>
             </>
           ) : (
             <>
-              <Plus className="w-5 h-5" />
-              <span className="text-xs">Quick Actions</span>
+              <Plus className="w-4 h-4" />
+              <span>Quick Actions</span>
             </>
           )}
         </Button>

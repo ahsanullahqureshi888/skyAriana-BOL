@@ -444,6 +444,7 @@ export function isMeaningfulBOL(d: any): boolean {
   if (!d) return false
   const s = (d.shipper_name || "").trim().toLowerCase()
   const hasShipper = s !== "" && s !== "no shipper" && s !== "no-shipper" && s !== "none"
+  const hasBol = Boolean(d.bol_number && String(d.bol_number).trim().length > 3)
 
   const q = (d.number_of_packages || "").trim().toLowerCase()
   const hasPkg = q !== "" && q !== "0" && q !== "0-ctns" && q !== "0 ctns"
@@ -453,9 +454,10 @@ export function isMeaningfulBOL(d: any): boolean {
   const val = (d.goods_value || "").trim()
   const cName = (d.consignee_name || "").trim().toLowerCase()
   const hasConsignee = cName !== "" && cName !== "no consignee"
-  const hasDesc = (d.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 5
+  const hasDesc = (d.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 3
+  const hasDriver = Boolean((d.driver_name || "").trim() || (d.driver_rent || "").trim() || (d.truck_number || "").trim())
 
-  return hasShipper || hasPkg || nw !== "" || gw !== "" || val !== "" || (hasConsignee && hasDesc)
+  return hasShipper || hasBol || hasPkg || nw !== "" || gw !== "" || val !== "" || hasConsignee || hasDesc || hasDriver
 }
 
 export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "sidebar" }: SavedDocumentsProps) {
@@ -853,8 +855,8 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   const latestTopBOLs = useMemo(() => {
     return [...documents]
       .sort((a, b) => {
-        const dateA = new Date(a.created_at || a.issue_date || 0).getTime()
-        const dateB = new Date(b.created_at || b.issue_date || 0).getTime()
+        const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
+        const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
         if (dateB !== dateA) return dateB - dateA
         return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
       })

@@ -1,35 +1,29 @@
 import { NextResponse } from "next/server"
-import fs from "fs"
 import path from "path"
+import { readJsonFile, writeJsonFile } from "@/lib/services/blob-db"
 
 const SETTINGS_FILE = path.join(process.cwd(), ".local-cmr-settings.json")
 
-function getCounter(): number {
+async function getCounter(): Promise<number> {
   try {
-    if (fs.existsSync(SETTINGS_FILE)) {
-      const data = fs.readFileSync(SETTINGS_FILE, "utf-8")
-      const parsed = JSON.parse(data)
-      if (parsed && typeof parsed.cmr_serial_counter === "number") {
-        return parsed.cmr_serial_counter
-      }
+    const parsed = await readJsonFile<any>(SETTINGS_FILE, null)
+    if (parsed && typeof parsed.cmr_serial_counter === "number") {
+      return parsed.cmr_serial_counter
     }
   } catch (e) {}
   return 5
 }
 
-function saveCounter(val: number) {
+async function saveCounter(val: number): Promise<void> {
   try {
-    let settings: any = {}
-    if (fs.existsSync(SETTINGS_FILE)) {
-      settings = JSON.parse(fs.readFileSync(SETTINGS_FILE, "utf-8"))
-    }
+    const settings = await readJsonFile<any>(SETTINGS_FILE, {})
     settings.cmr_serial_counter = val
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), "utf-8")
+    await writeJsonFile(SETTINGS_FILE, settings)
   } catch (e) {}
 }
 
 export async function GET() {
-  const currentVal = getCounter()
+  const currentVal = await getCounter()
   return NextResponse.json({
     counter: currentVal,
     current_formatted: `NO - ${String(currentVal).padStart(3, "0")}`,
@@ -46,10 +40,10 @@ export async function POST(request: Request) {
 
     if (value === null || isNaN(value)) {
       const body = await request.json().catch(() => ({}))
-      value = body.value ? parseInt(body.value, 10) : getCounter()
+      value = body.value ? parseInt(body.value, 10) : await getCounter()
     }
 
-    saveCounter(value)
+    await saveCounter(value)
     return NextResponse.json({
       counter: value,
       cmr_number: `NO - ${String(value).padStart(3, "0")}`,

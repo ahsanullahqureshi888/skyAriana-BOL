@@ -1899,8 +1899,24 @@ export function A4Preview({
       data-bol-a4="true"
       data-pdf-export={pdfMode ? "true" : undefined}
       data-color-strip={includeColorStrip ? "true" : "false"}
-      className="mx-auto flex min-h-[297mm] w-[210mm] max-w-[210mm] h-[297mm] max-h-[297mm] flex-col justify-between overflow-hidden text-slate-950 shadow-2xl shadow-blue-200/50 ring-1 ring-blue-100 print:m-0 print:p-0 print:h-full print:min-h-0 print:max-h-[297mm] print:w-[210mm] print:max-w-[210mm] print:shadow-none print:ring-0 print:overflow-hidden relative box-border"
-      style={pdfMode ? { ...a4ShellStyle, width: "210mm", minHeight: "297mm", height: "297mm", maxHeight: "297mm", overflow: "hidden", boxSizing: "border-box" } : a4ShellStyle}
+      className={`mx-auto flex min-h-[297mm] w-[210mm] max-w-[210mm] h-[297mm] max-h-[297mm] flex-col justify-between overflow-hidden text-slate-950 print:m-0 print:p-0 print:h-full print:min-h-0 print:max-h-[297mm] print:w-[210mm] print:max-w-[210mm] print:shadow-none print:ring-0 print:overflow-hidden relative box-border ${
+        pdfMode ? "shadow-none ring-0 border-0 m-0" : "shadow-2xl shadow-blue-200/50 ring-1 ring-blue-100"
+      }`}
+      style={
+        pdfMode
+          ? {
+              ...a4ShellStyle,
+              width: "210mm",
+              minHeight: "297mm",
+              height: "297mm",
+              maxHeight: "297mm",
+              overflow: "hidden",
+              boxSizing: "border-box",
+              margin: 0,
+              boxShadow: "none",
+            }
+          : a4ShellStyle
+      }
     >
       <div data-bol-page="true" className="relative flex h-full flex-col justify-between p-[2.5mm] print:p-[2.5mm] pb-[3mm] print:pb-[3mm] gap-[0.5mm] print:gap-[0.4mm] overflow-hidden box-border">
         {/* Technical Blueprint & Mountain Scenery Background Overlay */}

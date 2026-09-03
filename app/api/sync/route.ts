@@ -115,16 +115,28 @@ export async function GET(request: Request) {
         }
       }
 
+      // Helper to resolve alias pointers in sync codes
+      const resolvePayload = (entry: any): any => {
+        if (!entry) return null
+        if (entry.aliasOf && storedCodes[entry.aliasOf]) {
+          return storedCodes[entry.aliasOf]
+        }
+        return entry
+      }
+
       // Check persistent sync codes file
       const storedCodes = await readJsonFile<Record<string, any>>(syncCodesFile, {})
       for (const candidate of [rawCode, fullCode, numCode, cleanCode]) {
         if (storedCodes[candidate]) {
-          return NextResponse.json({
-            success: true,
-            data: storedCodes[candidate],
-            source: "sync-code-file",
-            code: fullCode,
-          })
+          const payload = resolvePayload(storedCodes[candidate])
+          if (payload) {
+            return NextResponse.json({
+              success: true,
+              data: payload,
+              source: "sync-code-file",
+              code: fullCode,
+            })
+          }
         }
       }
 
@@ -132,12 +144,15 @@ export async function GET(request: Request) {
       if (numCode.length >= 3) {
         for (const [k, v] of Object.entries(storedCodes)) {
           if (k.includes(numCode) || numCode.includes(k.replace(/^SKY-?/, ""))) {
-            return NextResponse.json({
-              success: true,
-              data: v,
-              source: "sync-code-matched",
-              code: k,
-            })
+            const payload = resolvePayload(v)
+            if (payload) {
+              return NextResponse.json({
+                success: true,
+                data: payload,
+                source: "sync-code-matched",
+                code: k,
+              })
+            }
           }
         }
       }
@@ -331,11 +346,8 @@ export async function POST(request: Request) {
       }
 
       const allMergedBols = Array.from(bolMap.values())
-      for (const b of allMergedBols) {
-        const num = b.bol_number || b.id
-        if (num) {
-          await localStorage.storeLocalBOL(num, b)
-        }
+      if (allMergedBols.length > 0) {
+        await localStorage.storeLocalBOLsBatch(allMergedBols)
       }
       mergedDocsCount = allMergedBols.length
     }
@@ -351,13 +363,25 @@ export async function POST(request: Request) {
       }
     }
 
+    // Helper to validate and clean company names
+    const isCleanCompanyName = (name: string): boolean => {
+      if (!name || typeof name !== "string") return false
+      const trimmed = name.trim()
+      if (trimmed.length < 3 || trimmed.length > 80) return false
+      if (/^(?:1X|2X|1\s*X|2\s*X)?\s*\d+\s*(?:FT|J|HC|GP|CTN)/i.test(trimmed)) return false
+      if (/کندهار څخه|له کندهار|بندر ته|ټرنسپورټ/i.test(trimmed)) return false
+      if (/(?:Raisins|Dry Figs|Apricots|Seeds|CTNS|KGS|BAGS)\s*[,|-]/i.test(trimmed)) return false
+      return true
+    }
+
     // 3. Merge accounts and ledger entries locally
     if (payload.ledgerRecords || payload.accounts) {
       const currentLedgerDb = await getBolAccountLedgerDatabase()
+      const incomingCompanies = (payload.accounts || []).filter(isCleanCompanyName)
       const mergedCompanies = Array.from(
         new Set([
-          ...(currentLedgerDb.customCompanies || []),
-          ...(payload.accounts || []),
+          ...(currentLedgerDb.customCompanies || []).filter(isCleanCompanyName),
+          ...incomingCompanies,
         ])
       )
 
@@ -381,7 +405,7 @@ export async function POST(request: Request) {
     const masterSnapshot = {
       documents: payload.documents || [],
       invoices: payload.invoices || [],
-      accounts: payload.accounts || [],
+      accounts: (payload.accounts || []).filter(isCleanCompanyName),
       ledgerRecords: payload.ledgerRecords || {},
       financialsMap: payload.financialsMap || {},
       deletedLedgerEntries: payload.deletedLedgerEntries || [],
@@ -409,9 +433,11 @@ export async function POST(request: Request) {
 
     try {
       const storedCodes = await readJsonFile<Record<string, any>>(syncCodesFile, {})
+      // Store full snapshot under canonical syncCode
       storedCodes[syncCode] = masterSnapshot
-      storedCodes[codeNum] = masterSnapshot
-      storedCodes[`SKY${codeNum}`] = masterSnapshot
+      // Store lightweight alias pointers to save 90%+ disk space
+      storedCodes[codeNum] = { aliasOf: syncCode, generated_at: now }
+      storedCodes[`SKY${codeNum}`] = { aliasOf: syncCode, generated_at: now }
       await writeJsonFile(syncCodesFile, storedCodes)
     } catch (e) {}
 

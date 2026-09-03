@@ -78,13 +78,70 @@ function InvoicePrintPortal({ children }: { children: ReactNode }) {
 }
 
 export function InvoiceView() {
-  const { currentAccount, currentCompany, invoices, addInvoice, deleteInvoice, setView } = useApp()
+  const { accounts, currentAccount, currentCompany, invoices, addInvoice, deleteInvoice, setView, selectAccount, selectCompany } = useApp()
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [newInvoice, setNewInvoice] = useState(emptyInvoice)
   const [newItem, setNewItem] = useState(emptyItem)
 
-  if (!currentAccount || !currentCompany) return null
+  // Auto-select first account/company if none selected
+  useEffect(() => {
+    if (!currentAccount && accounts && accounts.length > 0) {
+      const firstAcc = accounts[0]
+      selectAccount(firstAcc)
+      if (firstAcc.companies && firstAcc.companies.length > 0) {
+        selectCompany(firstAcc.companies[0])
+      }
+    } else if (currentAccount && !currentCompany && currentAccount.companies && currentAccount.companies.length > 0) {
+      selectCompany(currentAccount.companies[0])
+    }
+  }, [currentAccount, currentCompany, accounts, selectAccount, selectCompany])
+
+  if (!currentAccount || !currentCompany) {
+    return (
+      <div className="container mx-auto p-6 max-w-4xl">
+        <Card className="shadow-lg border border-slate-200">
+          <CardHeader>
+            <CardTitle className="text-xl flex items-center gap-2">
+              <FileText className="w-5 h-5 text-sky-600" />
+              Commercial Invoices
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-muted-foreground text-sm">
+              Please select an account to view and manage commercial invoices.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              {accounts.map(acc => (
+                <Button
+                  key={acc.id}
+                  variant="outline"
+                  className="justify-start h-auto py-3 px-4 text-left border-slate-200 hover:border-sky-500 hover:bg-sky-50 transition"
+                  onClick={() => {
+                    selectAccount(acc)
+                    if (acc.companies && acc.companies.length > 0) {
+                      selectCompany(acc.companies[0])
+                    }
+                  }}
+                >
+                  <div>
+                    <div className="font-semibold text-slate-800">{acc.name}</div>
+                    <div className="text-xs text-muted-foreground">{acc.companies?.length || 0} sub-entities</div>
+                  </div>
+                </Button>
+              ))}
+            </div>
+            <div className="pt-4 border-t flex justify-between">
+              <Button variant="ghost" onClick={() => setView('ledger')}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Ledgers
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const companyInvoices = invoices.filter(inv => inv.companyId === currentCompany.id)
 

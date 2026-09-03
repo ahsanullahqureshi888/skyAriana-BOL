@@ -4,6 +4,7 @@ import * as localStorage from "@/lib/services/local-storage-service"
 import * as fs from "fs"
 import * as path from "path"
 import { tryPythonBackend } from "@/lib/services/python-backend-proxy"
+import { readJsonFile } from "@/lib/services/blob-db"
 
 // Helper function to extract numeric suffix from a BOL number string
 function extractBolNumberSuffix(bolNum: any): number {
@@ -26,12 +27,27 @@ async function computeNextBOLNumber(): Promise<string> {
   try {
     const localBols = await localStorage.getAllLocalBOLs()
     for (const bol of localBols) {
-      const numStr = bol.bol_number || bol.id || ""
+      const numStr = bol.bol_number || bol.billOfLadingNumber || bol.id || ""
       const parsed = extractBolNumberSuffix(numStr)
       if (parsed > maxNum) maxNum = parsed
     }
   } catch (e) {
     console.error("[v0] Error reading local BOLs for sequence:", e)
+  }
+
+  // 1b. Check snapshot documents
+  try {
+    const snapPath = path.join(process.cwd(), ".local-full-snapshot.json")
+    const snapshot = await readJsonFile<any>(snapPath, {})
+    if (snapshot && Array.isArray(snapshot.documents)) {
+      for (const bol of snapshot.documents) {
+        const numStr = bol.bol_number || bol.billOfLadingNumber || bol.id || ""
+        const parsed = extractBolNumberSuffix(numStr)
+        if (parsed > maxNum) maxNum = parsed
+      }
+    }
+  } catch (e) {
+    console.error("[v0] Error reading snapshot for sequence:", e)
   }
 
   // 2. Check Supabase database
@@ -119,6 +135,7 @@ export async function GET(request: Request) {
     let allBols = Array.from(mergedByNumber.values()).filter((bol) => {
       const s = (bol.shipper_name || "").trim().toLowerCase()
       const hasShipper = s !== "" && s !== "no shipper" && s !== "no-shipper" && s !== "none"
+      const hasBol = Boolean(bol.bol_number && String(bol.bol_number).trim().length > 3)
       const q = (bol.number_of_packages || "").trim().toLowerCase()
       const hasPkg = q !== "" && q !== "0" && q !== "0-ctns" && q !== "0 ctns"
       const nw = (bol.net_weight || "").trim()
@@ -126,8 +143,9 @@ export async function GET(request: Request) {
       const val = (bol.goods_value || "").trim()
       const cName = (bol.consignee_name || "").trim().toLowerCase()
       const hasConsignee = cName !== "" && cName !== "no consignee"
-      const hasDesc = (bol.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 5
-      return hasShipper || hasPkg || nw !== "" || gw !== "" || val !== "" || (hasConsignee && hasDesc)
+      const hasDesc = (bol.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 3
+      const hasDriver = Boolean((bol.driver_name || "").trim() || (bol.driver_rent || "").trim() || (bol.truck_number || "").trim())
+      return hasShipper || hasBol || hasPkg || nw !== "" || gw !== "" || val !== "" || hasConsignee || hasDesc || hasDriver
     }).sort((a, b) => {
       const dateA = new Date(a.created_at || a.updated_at || a.issue_date || 0).getTime()
       const dateB = new Date(b.created_at || b.updated_at || b.issue_date || 0).getTime()

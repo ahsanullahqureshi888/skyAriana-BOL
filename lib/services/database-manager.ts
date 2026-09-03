@@ -30,12 +30,12 @@ export interface DatabaseHealthReport {
 
 const DATABASE_FILES = [
   { name: "Bills of Lading", file: ".local-bols.json" },
-  { name: "Invoices", file: ".local-invoices.json" },
-  { name: "Accounts & Ledgers", file: ".local-accounts.json" },
-  { name: "Companies", file: ".local-companies.json" },
-  { name: "Documents Archive", file: ".local-documents.json" },
+  { name: "Primary Account Ledgers", file: ".local-account-ledgers.json" },
+  { name: "BOL-Linked Ledgers", file: ".local-bol-account-ledgers.json" },
+  { name: "Full Master Snapshot", file: ".local-full-snapshot.json" },
+  { name: "Commercial Invoices", file: ".local-invoices.json" },
+  { name: "Registered Accounts", file: ".local-accounts.json" },
   { name: "Sync & Transfer Codes", file: ".local-sync-codes.json" },
-  { name: "Global Settings", file: ".local-settings.json" },
 ]
 
 /**

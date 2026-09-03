@@ -1,23 +1,20 @@
 import { NextResponse } from "next/server"
-import fs from "fs"
 import path from "path"
+import { readJsonFile, writeJsonFile } from "@/lib/services/blob-db"
 
 const DOCS_FILE = path.join(process.cwd(), ".local-cmr-documents.json")
 
-function getDocuments(): any[] {
+async function getDocuments(): Promise<any[]> {
   try {
-    if (fs.existsSync(DOCS_FILE)) {
-      const data = fs.readFileSync(DOCS_FILE, "utf-8")
-      const parsed = JSON.parse(data)
-      if (Array.isArray(parsed)) return parsed
-    }
+    const parsed = await readJsonFile<any[]>(DOCS_FILE, [])
+    if (Array.isArray(parsed)) return parsed
   } catch (e) {}
   return []
 }
 
-function saveDocuments(docs: any[]) {
+async function saveDocuments(docs: any[]): Promise<void> {
   try {
-    fs.writeFileSync(DOCS_FILE, JSON.stringify(docs, null, 2), "utf-8")
+    await writeJsonFile(DOCS_FILE, docs)
   } catch (e) {}
 }
 
@@ -26,7 +23,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const list = getDocuments()
+  const list = await getDocuments()
   const found = list.find((d: any) => d.id === id || d.cmr_number === id)
 
   if (!found) {
@@ -40,7 +37,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  let list = getDocuments()
+  let list = await getDocuments()
   const initialLen = list.length
   list = list.filter((d: any) => d.id !== id && d.cmr_number !== id)
 
@@ -48,6 +45,6 @@ export async function DELETE(
     return NextResponse.json({ error: "Document not found" }, { status: 404 })
   }
 
-  saveDocuments(list)
+  await saveDocuments(list)
   return NextResponse.json({ status: "deleted", id })
 }

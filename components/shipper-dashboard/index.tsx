@@ -299,8 +299,9 @@ export function ShipperDashboardView() {
     const toastId = toast.loading(`Preparing verified PDF for ${bol.bol_number || "Consignment"}...`)
     setIsDownloadingPdf(true)
     try {
+      const fileName = buildBolSmartFileName(bol, bol.bol_number || "BOL", ".pdf")
       const blob = await generateBOLPDFBlob(bol)
-      savePDFToDevice(blob, buildBolSmartFileName(bol))
+      await savePDFToDevice(blob, fileName)
       toast.success(`Downloaded official ${bol.bol_number} PDF!`, { id: toastId })
     } catch (err) {
       toast.error("Could not generate PDF. Please try again.", { id: toastId })

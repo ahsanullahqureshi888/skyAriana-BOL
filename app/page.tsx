@@ -232,20 +232,30 @@ function MainContent() {
               const body = await res.json()
               const data = body.data || body
               if (Array.isArray(data.documents) && data.documents.length > 0) {
-                // If local storage has fewer documents or needs refresh, merge seamlessly
+                // If local storage has documents, merge preserving newest records and never dropping newly created BOLs
                 const mergedMap = new Map<string, any>()
-                for (const d of data.documents) {
-                  const k = d.bol_number || d.id
-                  if (k) mergedMap.set(k, d)
+                const addOrMerge = (d: any) => {
+                  const k = (d.bol_number || d.id || "").trim()
+                  if (!k) return
+                  const existing = mergedMap.get(k)
+                  if (!existing) {
+                    mergedMap.set(k, d)
+                  } else {
+                    const timeExisting = new Date(existing.updated_at || existing.created_at || existing.issue_date || 0).getTime()
+                    const timeNew = new Date(d.updated_at || d.created_at || d.issue_date || 0).getTime()
+                    if (timeNew >= timeExisting) {
+                      mergedMap.set(k, { ...existing, ...d })
+                    }
+                  }
                 }
-                for (const d of [...docs1, ...docs2]) {
-                  const k = d.bol_number || d.id
-                  if (k && !mergedMap.has(k)) mergedMap.set(k, d)
-                }
+
+                for (const d of data.documents) addOrMerge(d)
+                for (const d of [...docs1, ...docs2]) addOrMerge(d)
 
                 const allMerged = Array.from(mergedMap.values()).filter((d: any) => {
                   const s = (d.shipper_name || "").trim().toLowerCase()
                   const hasShipper = s !== "" && s !== "no shipper" && s !== "no-shipper" && s !== "none"
+                  const hasBol = Boolean(d.bol_number && String(d.bol_number).trim().length > 3)
                   const q = (d.number_of_packages || "").trim().toLowerCase()
                   const hasPkg = q !== "" && q !== "0" && q !== "0-ctns" && q !== "0 ctns"
                   const nw = (d.net_weight || "").trim()
@@ -253,8 +263,9 @@ function MainContent() {
                   const val = (d.goods_value || "").trim()
                   const cName = (d.consignee_name || "").trim().toLowerCase()
                   const hasConsignee = cName !== "" && cName !== "no consignee"
-                  const hasDesc = (d.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 5
-                  return hasShipper || hasPkg || nw !== "" || gw !== "" || val !== "" || (hasConsignee && hasDesc)
+                  const hasDesc = (d.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 3
+                  const hasDriver = Boolean((d.driver_name || "").trim() || (d.driver_rent || "").trim() || (d.truck_number || "").trim())
+                  return hasShipper || hasBol || hasPkg || nw !== "" || gw !== "" || val !== "" || hasConsignee || hasDesc || hasDriver
                 })
                 const jsonStr = JSON.stringify(allMerged)
                 window.localStorage.setItem("sky-bol-browser-documents", jsonStr)
@@ -401,7 +412,7 @@ function MainContent() {
 
 
       {/* Global Floating Quick Actions Speed Dial */}
-      {!isFullBleedView && (
+      {!isFullBleedView && view !== 'bol' && (
         <QuickActionsWidget
           onOpenCommandPalette={() => {
             window.dispatchEvent(new CustomEvent('skybol:open-command-palette'))

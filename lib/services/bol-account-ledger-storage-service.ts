@@ -1,6 +1,6 @@
-﻿import path from "path"
+import path from "path"
 import { readJsonFile, writeJsonFile } from "./blob-db"
-import { mergeLedgerRows } from "./account-ledger-storage-service"
+import { mergeLedgerRows, isCleanCompanyName } from "./account-ledger-storage-service"
 
 export type BolAccountLedgerDatabase = {
   customCompanies: string[]
@@ -70,9 +70,19 @@ export async function saveBolAccountLedgerDatabase(data: Partial<BolAccountLedge
     })
   }
 
+  const rawCompanies = Array.isArray(data.customCompanies) ? data.customCompanies : existing.customCompanies
+  const cleanCompanies = Array.from(new Set(rawCompanies.filter(isCleanCompanyName)))
+
+  const cleanMergedRecords: Record<string, any[]> = {}
+  for (const [k, rows] of Object.entries(mergedRecords)) {
+    if (Array.isArray(rows) && rows.length > 0) {
+      cleanMergedRecords[k] = rows
+    }
+  }
+
   const next: BolAccountLedgerDatabase = {
-    customCompanies: Array.isArray(data.customCompanies) ? data.customCompanies : existing.customCompanies,
-    ledgerRecords: mergedRecords,
+    customCompanies: cleanCompanies,
+    ledgerRecords: cleanMergedRecords,
     deletedLedgerEntries: mergedDeleted,
     updated_at: new Date().toISOString(),
   }

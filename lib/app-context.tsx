@@ -2,7 +2,7 @@
 
 import { Account, Company, LedgerEntry, Invoice, InvoiceItem, LedgerSettings, User, UserRole } from '@/lib/types'
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
-import { getFinancialsMap, saveFinancialsForEntry, smartMergeRow, smartMergeLedgerRecords } from '@/lib/services/ledger-sync-utils'
+import { getFinancialsMap, saveFinancialsForEntry, smartMergeRow, smartMergeLedgerRecords, isCleanCompanyName } from '@/lib/services/ledger-sync-utils'
 
 const DEFAULT_LEDGER_SETTINGS: LedgerSettings = {
   companyLogo: '/logo.png',
@@ -516,9 +516,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const raw1 = window.localStorage.getItem("skybol:saved-documents")
       const raw2 = window.localStorage.getItem("sky-bol-browser-documents")
+      const raw3 = window.localStorage.getItem("skybol:backup-documents")
       const docs1 = raw1 ? JSON.parse(raw1) : []
       const docs2 = raw2 ? JSON.parse(raw2) : []
-      localDocs = [...docs1, ...docs2]
+      const docs3 = raw3 ? JSON.parse(raw3) : []
+      localDocs = [...docs1, ...docs2, ...docs3]
     } catch (e) {}
 
     let localCustomCompanies: string[] = []
@@ -548,7 +550,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     const mergedDeletedEntries = Array.from(deletedMap.values())
 
-    const customCompanies = Array.from(new Set([...serverCustomCompanies, ...localCustomCompanies].filter(Boolean)))
+    const customCompanies = Array.from(new Set([...serverCustomCompanies, ...localCustomCompanies].filter(isCleanCompanyName)))
 
     const financialsMap = getFinancialsMap()
 
@@ -564,14 +566,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Smart merge so local browser records ALWAYS take precedence over static server defaults
     const storedLedgerRecords = smartMergeLedgerRecords(serverLedgerRecords, localLedgerRecords)
 
-    // Combine all documents by id or bol_number
+    // Combine all documents by id or bol_number with newest-first precedence
     const allDocsMap = new Map<string, any>()
-    for (const d of [...apiDocs, ...localDocs]) {
-      const key = d.id || d.bol_number
-      if (key && !allDocsMap.has(key)) {
+    const addDocToMap = (d: any) => {
+      const key = (d.bol_number || d.id || "").trim()
+      if (!key) return
+      const existing = allDocsMap.get(key)
+      if (!existing) {
         allDocsMap.set(key, d)
+      } else {
+        const timeExisting = new Date(existing.updated_at || existing.created_at || existing.issue_date || 0).getTime()
+        const timeNew = new Date(d.updated_at || d.created_at || d.issue_date || 0).getTime()
+        if (timeNew >= timeExisting) {
+          allDocsMap.set(key, { ...existing, ...d })
+        }
       }
     }
+
+    for (const d of apiDocs) addDocToMap(d)
+    for (const d of localDocs) addDocToMap(d)
     const allDocs = Array.from(allDocsMap.values())
 
     // Map canonical key -> { displayName, docs, rawKeys }
@@ -671,13 +684,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           (a) => getShipperCanonicalKey(a.name) === canonKey || getShipperCanonicalKey(a.id) === canonKey
         )
 
-        let runningBalance = 0
-        const ledgerEntries: LedgerEntry[] = []
+        const rawCandidates: Omit<LedgerEntry, 'sNo' | 'balance'>[] = []
         const seenBolNumbers = new Set<string>()
 
         // 1. Process BOL documents (excluding deleted)
         bolList.forEach((doc, idx) => {
-          const bolNo = (doc.bol_number || "").trim()
+          const bolNo = (doc.bol_number || doc.billOfLadingNumber || "").trim()
           const bolNoLower = bolNo.toLowerCase()
           const docId = (doc.id || "").trim().toLowerCase()
 
@@ -713,7 +725,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         (doc.id && r.id && r.id === doc.id)
           )
 
-          const parsedInvoice = parseInvoiceNo(doc.cargo_description, doc.bol_number)
+          const parsedInvoice = parseInvoiceNo(doc.cargo_description, doc.bol_number || doc.billOfLadingNumber)
 
           const fin = (bolNoLower && financialsMap[bolNoLower]) || (docId && financialsMap[docId]) || (existingRow?.id && financialsMap[existingRow.id.toLowerCase()])
 
@@ -739,25 +751,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
             creditVal = Number(existingRow.credit) || 0
           }
 
-          runningBalance += (debitVal - creditVal)
-
-          const driverFreightVal = fin?.driverFreight || doc.driver_rent || existingRow?.driverFreight || existingRow?.driverRent || ""
+          const driverFreightVal = fin?.driverFreight || doc.driver_rent || doc.driverFreight || existingRow?.driverFreight || existingRow?.driverRent || ""
           const surrenderedVal = fin?.surrenderedBL !== undefined ? fin.surrenderedBL : (existingRow?.surrenderedBL || false)
           const pdfVal = fin?.pdfPathname || existingRow?.pdfFile || existingRow?.pdfPathname || undefined
           const descVal = fin?.shipperDescription || fin?.description || existingRow?.shipperDescription || existingRow?.description || displayName
-          const containerVal = fin?.containerNo || doc.container_numbers || existingRow?.containerNo || "N/A"
-          const containerTypeVal = fin?.containerType || existingRow?.containerType || doc.container_type || ""
-          const containerDetailsVal = fin?.containerDetails || existingRow?.containerDetails || doc.container_details || ""
-          const consigneeVal = fin?.consignee || doc.consignee_name || existingRow?.consignee || "N/A"
-          const quantityVal = fin?.quantity || doc.number_of_packages || existingRow?.quantity || "N/A"
+          const containerVal = fin?.containerNo || doc.container_numbers || doc.containerNumbers || existingRow?.containerNo || "N/A"
+          const containerTypeVal = fin?.containerType || existingRow?.containerType || doc.container_type || doc.containerType || ""
+          const containerDetailsVal = fin?.containerDetails || existingRow?.containerDetails || doc.container_details || doc.containerDetails || ""
+          const consigneeVal = fin?.consignee || doc.consignee_name || doc.consigneeName || existingRow?.consignee || "N/A"
+          const quantityVal = fin?.quantity || doc.number_of_packages || doc.numberOfPackages || existingRow?.quantity || "N/A"
 
-          ledgerEntries.push({
+          rawCandidates.push({
             id: existingRow?.id || doc.id || `bol-${idx}`,
-            sNo: ledgerEntries.length + 1,
-            date: fin?.date || existingRow?.date || doc.issue_date || new Date().toISOString().split("T")[0],
+            date: fin?.date || existingRow?.date || doc.issue_date || doc.issueDate || new Date().toISOString().split("T")[0],
             shipperDescription: descVal,
             invoiceNo: fin?.invoiceNo || existingRow?.invoiceNo || parsedInvoice,
-            dateOfShip: existingRow?.shipDate || existingRow?.dateOfShip || doc.issue_date || "",
+            dateOfShip: existingRow?.shipDate || existingRow?.dateOfShip || doc.issue_date || doc.issueDate || "",
             barnamehNo: bolNo,
             driverFreight: driverFreightVal,
             billOfLanding: existingRow?.billOfLanding || "",
@@ -769,7 +778,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             quantity: quantityVal,
             debit: debitVal,
             credit: creditVal,
-            balance: runningBalance,
             pdfPathname: pdfVal,
           })
         })
@@ -818,8 +826,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             creditVal = Number(fin.credit)
           }
 
-          runningBalance += (debitVal - creditVal)
-
           const descVal = fin?.shipperDescription || fin?.description || row.shipperDescription || row.description || displayName
           const containerVal = fin?.containerNo || row.containerNo || ""
           const containerTypeVal = fin?.containerType || row.containerType || ""
@@ -827,9 +833,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const consigneeVal = fin?.consignee || row.consignee || ""
           const quantityVal = fin?.quantity || row.quantity || ""
 
-          ledgerEntries.push({
+          rawCandidates.push({
             id: row.id || crypto.randomUUID(),
-            sNo: ledgerEntries.length + 1,
             date: fin?.date || row.date || "",
             shipperDescription: descVal,
             invoiceNo: fin?.invoiceNo || row.invoiceNo || "",
@@ -845,9 +850,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
             quantity: quantityVal,
             debit: debitVal,
             credit: creditVal,
-            balance: runningBalance,
             pdfPathname: fin?.pdfPathname || row.pdfFile || row.pdfPathname || undefined,
           })
+        })
+
+        // 3. Mathematical & Chronological Invariance: Sort chronologically ascending before computing running balances
+        rawCandidates.sort((a, b) => (a.date || "0000-00-00").localeCompare(b.date || "0000-00-00"))
+
+        let runningBalance = 0
+        const ledgerEntries: LedgerEntry[] = rawCandidates.map((entry, idx) => {
+          runningBalance += (entry.debit - entry.credit)
+          return {
+            ...entry,
+            sNo: idx + 1,
+            balance: runningBalance,
+          }
         })
 
         const companyForShipper: Company = {

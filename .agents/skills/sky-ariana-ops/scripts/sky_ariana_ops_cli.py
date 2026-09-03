@@ -190,7 +190,8 @@ def cmd_sync_status(args: argparse.Namespace) -> int:
     accounts_count = 0
     if isinstance(ledgers, dict):
         accounts_count = len(ledgers.get("accounts", []))
-        for acc, rows in ledgers.get("ledgerRecords", {}).items():
+        entries_dict = ledgers.get("ledgerEntries") or ledgers.get("ledgerRecords", {})
+        for acc, rows in entries_dict.items():
             if isinstance(rows, list):
                 ledger_entries += len(rows)
 
@@ -206,7 +207,7 @@ def cmd_sync_status(args: argparse.Namespace) -> int:
         },
         "snapshot_info": {
             "exists": snapshot_path.exists(),
-            "snapshot_updated_at": snapshot.get("timestamp") or snapshot.get("updatedAt", "Unknown") if isinstance(snapshot, dict) else "N/A",
+            "snapshot_updated_at": (snapshot.get("updated_at") or snapshot.get("timestamp") or snapshot.get("updatedAt", "Unknown")) if isinstance(snapshot, dict) else "N/A",
             "snapshot_bols": len(snapshot.get("documents", [])) if isinstance(snapshot, dict) else 0,
             "snapshot_invoices": len(snapshot.get("invoices", [])) if isinstance(snapshot, dict) else 0
         },

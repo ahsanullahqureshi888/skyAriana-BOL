@@ -10,13 +10,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { A4Preview } from "./a4-preview"
 import PrintSafeBOL from "./print-safe-bol"
 import { BillOfLadingFormData, initialFormData, RouteStop, AFGHANISTAN_DOCUMENT_OPTIONS, DOCUMENT_CATEGORIES, AfghanistanDocumentDetail, type DocumentCategory, NOTE_THEMES, type NoteTheme } from "@/lib/types/bill-of-lading"
 import consigneeSeedData from "@/lib/data/consignees-from-pdf.json"
 import shipperSeedData from "@/lib/data/shippers-from-pdf.json"
 import notifyPartySeedData from "@/lib/data/notify-parties-from-pdf.json"
-import { Printer, Save, FileText, Eye, Plus, Loader2, Calendar, Truck, MapPin, Trash2, ArrowRight, Package, Edit3, ImageIcon, Upload, RotateCcw, ScrollText, Check, Download, Building2, Phone, Mail, Ship, Plane, Train, AlertCircle, User, Bell, Globe, Shield, Leaf, Heart, Scale, Bookmark, BookmarkPlus, X, IdCard, Car, Landmark, ShieldCheck, Receipt, List, ChevronDown, ChevronUp, Info, CheckCircle2, Circle, Sparkles, Copy, Box, ArrowLeftRight, Zap, Calculator, Sliders, SlidersHorizontal, Layers, Keyboard, Cloud, DownloadCloud, UploadCloud, RefreshCw, FileSpreadsheet, Coins, Hash } from "lucide-react"
+import { Printer, Save, FileText, Eye, Plus, Loader2, Calendar, Truck, MapPin, Trash2, ArrowRight, Package, Edit3, ImageIcon, Upload, RotateCcw, ScrollText, Check, Download, Building2, Phone, Mail, Ship, Plane, Train, AlertCircle, User, Bell, Globe, Shield, Leaf, Heart, Scale, Bookmark, BookmarkPlus, X, IdCard, Car, Landmark, ShieldCheck, Receipt, List, ChevronDown, ChevronUp, Info, CheckCircle2, Circle, Sparkles, Copy, Box, ArrowLeftRight, Zap, Calculator, Sliders, SlidersHorizontal, Layers, Keyboard, Cloud, DownloadCloud, UploadCloud, RefreshCw, FileSpreadsheet, Coins, Hash, MoreHorizontal, Palette, ZoomIn, ZoomOut, Maximize2 } from "lucide-react"
 import { formatPersianDate, getDualDates } from "@/lib/utils/persian-date"
 import {
   generateBOLPDFBlob,
@@ -390,13 +398,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [companyLicence, setCompanyLicence] = useState("2401-2198")
   const [bgImageUrl, setBgImageUrl] = useState<string>("/images/afghan_mountain_blueprint_bg.jpg")
   const [bgOpacity, setBgOpacity] = useState<number>(0.11)
+  const [previewScale, setPreviewScale] = useState<number>(0.68)
   const [isEditMode, setIsEditMode] = useState(false)
   const [editDocumentId, setEditDocumentId] = useState<string | null>(null)
   const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "idle">("idle")
   const [lastAutoSaveTime, setLastAutoSaveTime] = useState<string>("")
   const isInitialMount = useRef(true)
 
-  // Enterprise Multi-Tier Real-Time Auto-Saving Engine
+  // Enterprise Multi-Tier Real-Time Auto-Saving Engine (Debounced 800ms)
   useEffect(() => {
     if (typeof window === "undefined") return
     if (isInitialMount.current) {
@@ -416,34 +425,37 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           updated_at: new Date().toISOString(),
         }
 
-        // Tier 1: Active Draft Instant Sync
+        // Tier 1: Synchronous In-Memory & LocalStorage Active Draft Sync
         window.localStorage.setItem("skybol:active-form-draft", JSON.stringify(currentDocData))
+        window.localStorage.setItem(
+          "sky-bol-live-draft",
+          JSON.stringify({
+            formData: currentDocData,
+            bolNumber,
+            issueDate,
+            persianDate,
+            persianDateNumeric,
+            savedAt: currentDocData.updated_at,
+          })
+        )
 
-        // Tier 2: Update Saved Documents & Crash-Resistant Mirrors (Only if shipper or quantity is entered)
+        // Tier 2: Dedicated Server-Side Draft Backup (Crash-resistant, isolated from official BOLs)
         const isMeaningfulDraft =
           Boolean(formData.shipper_name?.trim() && formData.shipper_name.trim().toLowerCase() !== "no shipper") ||
           Boolean(formData.number_of_packages?.trim() && formData.number_of_packages.trim() !== "0") ||
           Boolean(formData.gross_weight?.trim()) ||
           Boolean(formData.net_weight?.trim()) ||
-          Boolean(formData.consignee_name?.trim() && formData.consignee_name.trim().toLowerCase() !== "no consignee")
+          Boolean(formData.consignee_name?.trim() && formData.consignee_name.trim().toLowerCase() !== "no consignee") ||
+          Boolean(formData.driver_name?.trim()) ||
+          Boolean(formData.driver_rent?.trim()) ||
+          Boolean(formData.truck_number?.trim()) ||
+          Boolean(formData.cargo_description?.trim() && formData.cargo_description.trim().length > 3)
 
         if (bolNumber && bolNumber.trim().length >= 2 && isMeaningfulDraft) {
-          const storedLocal = window.localStorage.getItem("sky-bol-browser-documents")
-          const currentList: any[] = storedLocal ? JSON.parse(storedLocal) : []
-          const updatedList = [
-            currentDocData,
-            ...currentList.filter((d: any) => (d.bol_number || d.id) !== (currentDocData.bol_number || currentDocData.id)),
-          ]
-          const jsonStr = JSON.stringify(updatedList)
-          window.localStorage.setItem("sky-bol-browser-documents", jsonStr)
-          window.localStorage.setItem("skybol:saved-documents", jsonStr)
-          window.localStorage.setItem("skybol:backup-documents", jsonStr)
-
-          // Background fire-and-forget sync to API
-          fetch("/api/bol/local-save", {
+          fetch("/api/draft?type=bol", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ document: currentDocData }),
+            body: JSON.stringify({ type: "bol", draft: currentDocData }),
           }).catch(() => {})
         }
 
@@ -484,11 +496,13 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         syncBolToAccountLedger(currentDocData)
 
         setAutoSaveStatus("saved")
-        setLastAutoSaveTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }))
+        const nowFormatted = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        setLastAutoSaveTime(nowFormatted)
+        setLastAutoSavedTime(nowFormatted)
       } catch (e) {
         setAutoSaveStatus("idle")
       }
-    }, 500)
+    }, 800)
 
     return () => clearTimeout(timer)
   }, [formData, bolNumber, issueDate, persianDate, persianDateNumeric])
@@ -533,16 +547,34 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     fitToPage: true,
   })
 
-  // Check for existing unsaved draft on initial load
+  // Check for existing unsaved draft on initial load (Browser + Server sync)
   useEffect(() => {
     try {
-      const rawDraft = window.localStorage.getItem("sky-bol-live-draft")
+      const rawDraft = window.localStorage.getItem("sky-bol-live-draft") || window.localStorage.getItem("skybol:active-form-draft")
       if (rawDraft) {
         const parsed = JSON.parse(rawDraft)
-        if (parsed?.formData?.bol_number && parsed.savedAt) {
+        const dData = parsed.formData || parsed
+        if (dData?.bol_number && (parsed.savedAt || dData.updated_at)) {
+          const timeStr = parsed.savedAt || dData.updated_at
           setHasRecoverableDraft(true)
-          setRecoverableDraftTime(new Date(parsed.savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+          setRecoverableDraftTime(new Date(timeStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
         }
+      } else {
+        // Fallback: Check dedicated server draft store
+        fetch("/api/draft?type=bol")
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.draft?.bol_number && data?.updated_at) {
+              setHasRecoverableDraft(true)
+              setRecoverableDraftTime(new Date(data.updated_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+              window.localStorage.setItem("sky-bol-live-draft", JSON.stringify({
+                formData: data.draft,
+                bolNumber: data.draft.bol_number,
+                savedAt: data.updated_at,
+              }))
+            }
+          })
+          .catch(() => {})
       }
     } catch (e) {
       console.error("Error reading draft:", e)
@@ -572,42 +604,17 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     }
   }, [])
 
-  // Continuous auto-save draft (debounced)
-  useEffect(() => {
-    if (!formData.bol_number && !formData.shipper_name) return
-    const timer = setTimeout(() => {
-      try {
-        const now = new Date()
-        window.localStorage.setItem(
-          "sky-bol-live-draft",
-          JSON.stringify({
-            formData,
-            bolNumber,
-            issueDate,
-            persianDate,
-            persianDateNumeric,
-            savedAt: now.toISOString(),
-          })
-        )
-        setLastAutoSavedTime(now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }))
-      } catch (e) {
-        console.error("Auto-save error:", e)
-      }
-    }, 1500)
-
-    return () => clearTimeout(timer)
-  }, [formData, bolNumber, issueDate, persianDate, persianDateNumeric])
-
   const handleRestoreDraft = () => {
     try {
-      const rawDraft = window.localStorage.getItem("sky-bol-live-draft")
+      const rawDraft = window.localStorage.getItem("sky-bol-live-draft") || window.localStorage.getItem("skybol:active-form-draft")
       if (rawDraft) {
         const parsed = JSON.parse(rawDraft)
-        if (parsed.formData) setFormData(parsed.formData)
-        if (parsed.bolNumber) setBolNumber(parsed.bolNumber)
-        if (parsed.issueDate) setIssueDate(parsed.issueDate)
-        if (parsed.persianDate) setPersianDate(parsed.persianDate)
-        if (parsed.persianDateNumeric) setPersianDateNumeric(parsed.persianDateNumeric)
+        const dData = parsed.formData || parsed
+        if (dData) setFormData(dData)
+        if (parsed.bolNumber || dData.bol_number) setBolNumber(parsed.bolNumber || dData.bol_number)
+        if (parsed.issueDate || dData.issue_date) setIssueDate(parsed.issueDate || dData.issue_date)
+        if (parsed.persianDate || dData.persian_date) setPersianDate(parsed.persianDate || dData.persian_date)
+        if (parsed.persianDateNumeric || dData.persian_date_numeric) setPersianDateNumeric(parsed.persianDateNumeric || dData.persian_date_numeric)
         setHasRecoverableDraft(false)
         toast.success("Draft Restored Successfully! 🚀", {
           description: `پیش‌نویس ذخیره‌شده با موفقیت بازیابی شد`,
@@ -620,7 +627,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
   const handleDiscardDraft = () => {
     window.localStorage.removeItem("sky-bol-live-draft")
+    window.localStorage.removeItem("skybol:active-form-draft")
+    fetch("/api/draft?type=bol", { method: "DELETE" }).catch(() => {})
     setHasRecoverableDraft(false)
+    toast.info("Unsaved draft discarded")
   }
 
   const handleExportFullBackup = () => {
@@ -3407,6 +3417,18 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         
         window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: updatedFormData }))
 
+        // Purge active draft cache on server and local storage to prevent false alerts
+        try {
+          window.localStorage.removeItem("sky-bol-live-draft")
+          window.localStorage.removeItem("skybol:active-form-draft")
+          fetch("/api/draft?type=bol", { method: "DELETE" }).catch(() => {})
+          setHasRecoverableDraft(false)
+          setAutoSaveStatus("saved")
+          const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+          setLastAutoSaveTime(nowStr)
+          setLastAutoSavedTime(nowStr)
+        } catch (_) {}
+
         onSave?.(updatedFormData)
         onRefreshDocuments?.()
         
@@ -3435,6 +3457,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   }
 
   const handleNewDocument = () => {
+    try {
+      window.localStorage.removeItem("sky-bol-live-draft")
+      window.localStorage.removeItem("skybol:active-form-draft")
+      fetch("/api/draft?type=bol", { method: "DELETE" }).catch(() => {})
+      setHasRecoverableDraft(false)
+    } catch (_) {}
     setIsEditMode(false)
     setEditDocumentId(null)
     setFormData(initialFormData)
@@ -3504,14 +3532,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           companyEmail,
           companyAddress,
           companyLicence,
-          onProgress: (progress, message) => {
+          onProgress: (progress: number, message: string) => {
             toast.loading(`${message} (${Math.round(progress)}%)`, {
               id: toastId,
               description: "Generating premium print-ready PDF",
             })
           },
         },
-        onFallback: (reason) => {
+        onFallback: (reason: string) => {
           toast.warning("Using compatibility PDF mode", {
             description: reason,
           })
@@ -3692,14 +3720,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           companyEmail,
           companyAddress,
           companyLicence,
-          onProgress: (progress, message) => {
+          onProgress: (progress: number, message: string) => {
             toast.loading(`${message} (${Math.round(progress)}%)`, {
               id: toastId,
               description: "Building sharp A4 export",
             })
           },
         },
-        onFallback: (reason) => {
+        onFallback: (reason: string) => {
           toast.warning("Using compatibility PDF mode", {
             description: reason,
           })
@@ -3831,262 +3859,242 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   return (
     <div className="min-h-screen bg-transparent print:min-h-0 print:bg-white print:overflow-visible">
       {/* Action Bar - Mobile & Desktop sticky beneath header */}
-      <div className="sticky top-[61px] z-30 border-b border-slate-200/80 bg-white/95 px-2.5 py-2 shadow-md shadow-blue-900/5 backdrop-blur-xl md:px-4 md:py-2.5 print:hidden">
-        <div className="max-w-[1780px] mx-auto flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div className="sticky top-[84px] md:top-[88px] z-30 border-b border-slate-200/80 bg-white/95 px-2.5 py-1.5 shadow-sm shadow-blue-900/5 backdrop-blur-xl md:px-4 md:py-1.5 print:hidden">
+        <div className="max-w-[1780px] mx-auto flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between">
           {/* Header Info */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 sm:gap-2.5 flex-wrap">
-              <div className="rounded-2xl border border-blue-200 bg-white/80 p-1.5 sm:p-2 shadow-sm">
-                <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-700 shrink-0" />
+          <div className="flex items-center justify-between gap-1.5 min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+              <div className="rounded-xl border border-blue-200 bg-white/80 p-1 sm:p-1.5 shadow-2xs">
+                <FileText className="h-3.5 w-3.5 text-blue-700 shrink-0" />
               </div>
-              <span className="font-bold text-slate-950 text-xs sm:text-sm md:text-base">Bill of Lading</span>
-              <div className="rounded-xl border border-blue-200 bg-blue-50/90 px-2 py-0.5 sm:px-2.5">
+              <span className="font-extrabold text-slate-950 text-xs sm:text-sm whitespace-nowrap">Bill of Lading</span>
+              <div className="rounded-lg border border-blue-200 bg-blue-50/90 px-2 py-0.5">
                 {isLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-700" />
+                  <Loader2 className="h-3 w-3 animate-spin text-blue-700" />
                 ) : (
-                  <span className="font-mono font-bold text-blue-700 text-xs md:text-sm">{bolNumber}</span>
+                  <span className="font-mono font-black text-blue-700 text-xs sm:text-xs tracking-tight">{bolNumber}</span>
                 )}
               </div>
-              <div className="flex items-center gap-1 text-[11px] sm:text-xs md:text-sm text-slate-600">
-                <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-500 shrink-0" />
+              <div className="flex items-center gap-1 text-[11px] text-slate-600 whitespace-nowrap">
+                <Calendar className="h-3 w-3 text-blue-500 shrink-0" />
                 <span>{issueDate}</span>
               </div>
               {persianDateNumeric && (
-                <div className="hidden sm:flex items-center gap-1 rounded-xl border border-white/50 bg-white/70 px-2 py-0.5 text-xs">
+                <div className="hidden sm:flex items-center gap-1 rounded-lg border border-slate-200/60 bg-white/70 px-1.5 py-0.5 text-[11px]">
                   <span className="text-slate-600 font-bold font-[vazirmatn]" dir="ltr" style={{ unicodeBidi: "isolate" }}>
                     {persianDateNumeric}
                   </span>
                 </div>
               )}
               {autoSaveStatus === "saving" ? (
-                <div className="flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50/90 px-2.5 py-0.5 text-xs text-amber-900 font-black shadow-2xs animate-pulse">
-                  <RefreshCw className="h-3 w-3 text-amber-600 animate-spin" />
-                  <span>Auto-saving...</span>
+                <div className="flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50/90 px-2 py-0.5 text-[10.5px] text-amber-900 font-bold shadow-2xs animate-pulse">
+                  <RefreshCw className="h-2.5 w-2.5 text-amber-600 animate-spin" />
+                  <span>Saving...</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50/90 px-2.5 py-0.5 text-xs text-emerald-800 font-bold shadow-2xs">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                  <span>Auto-Saved {lastAutoSaveTime || lastAutoSavedTime || "Live"}</span>
+                <div className="flex items-center gap-1.5 rounded-lg border border-emerald-200/80 bg-emerald-50/90 px-2 py-0.5 text-[10.5px] text-emerald-800 font-bold shadow-2xs">
+                  <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
+                  <span className="hidden sm:inline">Auto-Saved (Local & Server) {lastAutoSaveTime || lastAutoSavedTime || "Live"}</span>
+                  <span className="sm:hidden">Saved {lastAutoSaveTime || "Live"}</span>
                 </div>
               )}
             </div>
 
             {/* Mobile Primary Save Button */}
-            <div className="flex items-center gap-1 md:hidden">
+            <div className="flex items-center gap-1 md:hidden shrink-0">
               <Button 
                 size="sm" 
                 onClick={handleSave} 
                 disabled={isSaving}
-                className="h-8 rounded-xl bg-linear-to-r from-blue-600 to-cyan-500 px-3 text-xs font-bold text-white shadow-md shadow-blue-400/30 cursor-pointer"
+                className="h-7.5 rounded-lg bg-linear-to-r from-blue-600 to-cyan-500 px-2.5 text-xs font-bold text-white shadow-xs cursor-pointer"
               >
                 {isSaving ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                 ) : (
-                  <Save className="h-3.5 w-3.5 mr-1" />
+                  <Save className="h-3 w-3 mr-1" />
                 )}
                 {isEditMode ? "Update" : "Save"}
               </Button>
             </div>
           </div>
           
-          {/* Actions - Horizontal Scrollable Pill Strip on Mobile, Flex on Desktop */}
-          <div className="flex items-center gap-1.5 md:gap-2 overflow-x-auto pb-0.5 no-scrollbar scroll-smooth">
+          {/* Actions - Responsive high-density toolbar with zero clipping */}
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap justify-end shrink-0">
             <Button 
               variant="outline" 
               size="sm" 
               onClick={() => handleTabChange("saved-documents")}
-              className="h-8 rounded-2xl border-emerald-200 bg-emerald-50/80 px-2.5 text-xs font-bold text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 md:h-9 md:px-3 md:text-sm shadow-2xs shrink-0 cursor-pointer"
+              className="h-7.5 rounded-xl border-emerald-200 bg-emerald-50/80 px-2 sm:px-2.5 text-xs font-bold text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 shadow-2xs shrink-0 cursor-pointer"
+              title="Saved BOL Archive"
             >
-              <FileText className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 text-emerald-600" />
+              <FileText className="h-3.5 w-3.5 mr-1 text-emerald-600" />
               <span>Saved BOLs</span>
             </Button>
+
             <Button 
               variant="outline" 
               size="sm" 
               onClick={handleNewDocument}
-              className="h-8 rounded-2xl border-white/60 bg-white/80 px-2.5 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm shrink-0 cursor-pointer"
+              className="h-7.5 rounded-xl border-slate-200 bg-white/90 px-2 sm:px-2.5 text-xs font-bold text-slate-700 hover:border-blue-200 hover:bg-blue-50 shadow-2xs shrink-0 cursor-pointer"
               title="New Document (Ctrl + Shift + N)"
             >
-              <Plus className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1" />
+              <Plus className="h-3.5 w-3.5 mr-1 text-blue-600" />
               <span>New</span>
             </Button>
+
             <Button 
               variant="outline" 
               size="sm" 
               onClick={handleDirectPrint}
               disabled={isSaving}
-              className="h-8 rounded-2xl border-white/60 bg-white/80 px-2.5 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm disabled:opacity-50 shrink-0 cursor-pointer"
+              className="h-7.5 rounded-xl border-slate-200 bg-white/90 px-2 sm:px-2.5 text-xs font-bold text-blue-700 hover:border-blue-200 hover:bg-blue-50 disabled:opacity-50 shadow-2xs shrink-0 cursor-pointer"
               title="Instant Print (Ctrl + P)"
             >
-              <Printer className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1" />
+              <Printer className="h-3.5 w-3.5 mr-1" />
               <span>Print</span>
             </Button>
+
             <Button 
               size="sm" 
               onClick={handleSave} 
               disabled={isSaving}
-              className="hidden md:inline-flex h-8 rounded-2xl bg-linear-to-r from-blue-600 to-cyan-500 px-3 text-xs text-white shadow-lg shadow-blue-300/40 hover:shadow-blue-300/60 md:h-9 md:px-3 md:text-sm shrink-0 cursor-pointer"
+              className="h-7.5 rounded-xl bg-linear-to-r from-blue-600 to-cyan-500 px-3 text-xs font-black text-white shadow-md shadow-blue-400/25 hover:shadow-blue-400/40 shrink-0 cursor-pointer"
               title="Save Document (Ctrl + S)"
             >
               {isSaving ? (
-                <Loader2 className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
               ) : (
-                <Save className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1" />
+                <Save className="h-3.5 w-3.5 mr-1" />
               )}
-              {isEditMode ? "Update" : "Save"}
+              <span>{isEditMode ? "Update" : "Save"}</span>
             </Button>
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={handleDuplicateCurrent} 
-              disabled={isSaving}
-              className="h-8 rounded-2xl border-purple-200 bg-purple-50/75 px-2.5 text-xs text-purple-700 hover:border-purple-300 hover:bg-purple-100 md:h-9 md:px-3 md:text-sm font-bold shrink-0 cursor-pointer"
-              title="Clone current document into a new BOL draft (Ctrl + Shift + D)"
-            >
-              <Copy className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 text-purple-600" />
-              <span>Duplicate</span>
-            </Button>
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={() => setIsCloudSyncModalOpen(true)}
-              className="h-8 rounded-2xl border-slate-200 bg-white px-2.5 text-xs text-slate-700 hover:bg-slate-50 md:h-9 md:px-2.5 shrink-0 cursor-pointer"
-              title="Backup & Multi-Device Cloud Sync Hub"
-            >
-              <DownloadCloud className="h-3.5 md:h-4 w-3.5 md:w-4 text-slate-600 mr-1" />
-              <span>Backup</span>
-            </Button>
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              onClick={() => setIsShortcutsModalOpen(true)}
-              className="h-8 w-8 p-0 rounded-2xl border border-slate-200 text-slate-600 hover:bg-slate-100 md:h-9 md:w-9 shrink-0 cursor-pointer"
-              title="Keyboard Shortcuts (Ctrl + /)"
-            >
-              <Keyboard className="h-4 w-4" />
-            </Button>
+
             <Button 
               size="sm" 
               variant="outline" 
               onClick={handleDownloadPDF} 
               disabled={isSaving}
-              className="h-8 rounded-2xl border-white/60 bg-white/80 px-2.5 text-xs text-blue-700 hover:border-blue-200 hover:bg-blue-50 md:h-9 md:px-3 md:text-sm shrink-0 cursor-pointer"
-              title="Download PDF directly"
+              className="h-7.5 rounded-xl border-slate-200 bg-white/90 px-2 sm:px-2.5 text-xs font-bold text-blue-700 hover:border-blue-200 hover:bg-blue-50 shadow-2xs shrink-0 cursor-pointer"
+              title="Download 384 DPI PDF"
             >
               {isSaving ? (
-                <Loader2 className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
               ) : (
-                <Download className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 text-blue-700" />
+                <Download className="h-3.5 w-3.5 mr-1 text-blue-700" />
               )}
               <span>PDF</span>
             </Button>
+
             <Button 
               size="sm" 
               variant="outline" 
               onClick={() => setIsCloudSyncModalOpen(true)}
-              className="h-8 rounded-2xl border-blue-200 bg-blue-50/90 px-2.5 text-xs text-blue-800 hover:border-blue-300 hover:bg-blue-100 md:h-9 md:px-3 md:text-sm shrink-0 cursor-pointer font-bold shadow-2xs"
+              className="h-7.5 rounded-xl border-blue-200 bg-blue-50/90 px-2 sm:px-2.5 text-xs font-black text-blue-800 hover:border-blue-300 hover:bg-blue-100 shadow-2xs shrink-0 cursor-pointer"
               title="Cloud Sync: Upload/Download all BOLs across all devices"
             >
-              <Cloud className="h-3.5 md:h-4 w-3.5 md:w-4 mr-1 text-blue-600" />
+              <Cloud className="h-3.5 w-3.5 mr-1 text-blue-600" />
               <span>Cloud Sync</span>
             </Button>
+
+            {/* Quick Secondary Tools: Duplicate, Backup, Shortcuts */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="h-7.5 w-7.5 p-0 rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs shrink-0 cursor-pointer"
+                  title="More actions & tools"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 rounded-xl p-1.5 shadow-xl">
+                <DropdownMenuItem onClick={handleDuplicateCurrent} className="gap-2 text-xs font-bold cursor-pointer">
+                  <Copy className="h-3.5 w-3.5 text-purple-600" />
+                  <span>Duplicate BOL</span>
+                  <span className="ml-auto text-[10px] text-slate-400 font-mono">Ctrl+Shift+D</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsCloudSyncModalOpen(true)} className="gap-2 text-xs font-bold cursor-pointer">
+                  <DownloadCloud className="h-3.5 w-3.5 text-blue-600" />
+                  <span>Backup & Restore</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsShortcutsModalOpen(true)} className="gap-2 text-xs font-bold cursor-pointer">
+                  <Keyboard className="h-3.5 w-3.5 text-slate-600" />
+                  <span>Keyboard Shortcuts</span>
+                  <span className="ml-auto text-[10px] text-slate-400 font-mono">Ctrl+/</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
       {hasRecoverableDraft && (
-        <div className="bg-linear-to-r from-amber-500/10 via-amber-50/80 to-amber-500/10 border-b border-amber-300/60 px-4 py-2 text-xs text-amber-950 flex items-center justify-between gap-3 shadow-xs print:hidden backdrop-blur-md">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+        <div className="bg-linear-to-r from-amber-500/10 via-amber-50/80 to-amber-500/10 border-b border-amber-300/60 px-3 py-1 text-xs text-amber-950 flex items-center justify-between gap-2 shadow-2xs print:hidden backdrop-blur-md">
+          <div className="flex items-center gap-1.5 text-[11.5px]">
+            <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
             <span>
-              <strong>Unsaved Draft Detected</strong> ({recoverableDraftTime}) — Would you like to restore your previously edited Bill of Lading?
+              <strong>Unsaved Draft Detected</strong> ({recoverableDraftTime}) — Restore previously edited Bill of Lading?
             </span>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button size="sm" onClick={handleRestoreDraft} className="h-7 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs cursor-pointer">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button size="sm" onClick={handleRestoreDraft} className="h-6 px-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shadow-2xs cursor-pointer">
               ⚡ Restore Draft
             </Button>
-            <Button size="sm" variant="ghost" onClick={handleDiscardDraft} className="h-7 px-2 text-xs text-slate-500 hover:text-slate-800">
+            <Button size="sm" variant="ghost" onClick={handleDiscardDraft} className="h-6 px-2 text-[11px] text-slate-500 hover:text-slate-800">
               ✕ Discard
             </Button>
           </div>
         </div>
       )}
 
-      <div className="w-full max-w-[1780px] mx-auto px-2 sm:px-4 lg:px-6 py-4 md:py-5 print:max-w-none print:p-0 print:m-0">
+      <div className="w-full max-w-[1780px] mx-auto px-2 sm:px-4 lg:px-6 py-1.5 md:py-2 print:max-w-none print:p-0 print:m-0">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="print:hidden w-full">
-          <TabsList className="mb-4 grid w-full grid-cols-5 rounded-[22px] border border-white/70 bg-white/65 p-1 shadow-lg shadow-blue-200/40 backdrop-blur-2xl h-11 sm:h-12">
-            <TabsTrigger value="form" className="gap-1 rounded-[16px] text-[11px] sm:text-xs md:text-sm font-bold flex-1 justify-center px-1">
-              <FileText className="h-3.5 md:h-4 w-3.5 md:w-4 shrink-0" />
+          <TabsList className="mb-2 grid w-full grid-cols-5 rounded-xl border border-white/80 bg-white/70 p-0.5 shadow-sm shadow-blue-200/20 backdrop-blur-xl h-8.5 sm:h-9">
+            <TabsTrigger value="form" className="gap-1 rounded-lg text-[11px] sm:text-xs font-bold flex-1 justify-center px-1 py-1">
+              <FileText className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">Edit Form</span>
               <span className="sm:hidden">Form</span>
             </TabsTrigger>
-            <TabsTrigger value="preview" className="gap-1 rounded-[16px] text-[11px] sm:text-xs md:text-sm font-bold flex-1 justify-center px-1">
-              <Eye className="h-3.5 md:h-4 w-3.5 md:w-4 shrink-0" />
+            <TabsTrigger value="preview" className="gap-1 rounded-lg text-[11px] sm:text-xs font-bold flex-1 justify-center px-1 py-1">
+              <Eye className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">A4 Preview</span>
               <span className="sm:hidden">Preview</span>
             </TabsTrigger>
-            <TabsTrigger value="saved-documents" className="gap-1 rounded-[16px] text-[11px] sm:text-xs md:text-sm font-bold flex-1 justify-center px-1">
-              <Layers className="h-3.5 md:h-4 w-3.5 md:w-4 shrink-0" />
+            <TabsTrigger value="saved-documents" className="gap-1 rounded-lg text-[11px] sm:text-xs font-bold flex-1 justify-center px-1 py-1">
+              <Layers className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">Saved BOLs</span>
               <span className="sm:hidden">Saved</span>
             </TabsTrigger>
-            <TabsTrigger value="account" className="gap-1 rounded-[16px] text-[11px] sm:text-xs md:text-sm font-bold flex-1 justify-center px-1">
-              <Landmark className="h-3.5 md:h-4 w-3.5 md:w-4 shrink-0" />
+            <TabsTrigger value="account" className="gap-1 rounded-lg text-[11px] sm:text-xs font-bold flex-1 justify-center px-1 py-1">
+              <Landmark className="h-3.5 w-3.5 shrink-0" />
               <span className="hidden sm:inline">Account</span>
               <span className="sm:hidden">Ledger</span>
             </TabsTrigger>
-            <TabsTrigger value="pdf-settings" className="gap-1 rounded-[16px] text-[11px] sm:text-xs md:text-sm font-black flex-1 justify-center px-1">
-              <Sliders className="h-3.5 md:h-4 w-3.5 md:w-4 shrink-0 text-blue-600" />
+            <TabsTrigger value="pdf-settings" className="gap-1 rounded-lg text-[11px] sm:text-xs font-black flex-1 justify-center px-1 py-1">
+              <Sliders className="h-3.5 w-3.5 shrink-0 text-blue-600" />
               <span className="hidden sm:inline">BOL Settings</span>
               <span className="sm:hidden">Settings</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="form" className="edit-form-panel space-y-4">
+          <TabsContent value="form" className="edit-form-panel space-y-2.5">
             {/* Top Smart Quick-Actions & Navigation Ribbon */}
-            <div className="sticky top-2 z-30 rounded-2xl border border-white/90 bg-white/95 p-3 shadow-lg shadow-blue-500/10 backdrop-blur-2xl transition-all space-y-2.5">
-              {/* Row 1: Smart Utility Buttons + Quick Actions */}
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  {autoSaveStatus === "saving" && (
-                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-amber-50 text-amber-950 border border-amber-300 text-[11px] font-black shadow-2xs animate-pulse">
-                      <RefreshCw className="h-3.5 w-3.5 text-amber-600 animate-spin" />
-                      <span>Auto-Saving changes...</span>
-                    </span>
-                  )}
-                  {autoSaveStatus === "saved" && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleSave()
-                        toast.success("Document & Ledger manually synced to all storage layers!")
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 text-[11px] font-black shadow-2xs cursor-pointer transition-all active:scale-95"
-                      title="All changes auto-saved. Click to force instant save to all layers."
-                    >
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                      <span>Auto-Saved {lastAutoSaveTime} (Device & Storage)</span>
-                    </button>
-                  )}
-                  {autoSaveStatus === "idle" && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-50 text-slate-700 border border-slate-200 text-[11px] font-black">
-                      <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
-                      <span>Auto-Save Active</span>
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
+            <div className="sticky top-[124px] md:top-[128px] z-20 rounded-xl border border-white/90 bg-white/95 px-2.5 py-1.5 shadow-sm shadow-blue-500/10 backdrop-blur-xl transition-all space-y-1.5">
+              {/* Row 1: Smart Utility Buttons + Inline Cargo Presets */}
+              <div className="flex items-center justify-between gap-2">
+                {/* Utilities */}
+                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                   <Button
                     type="button"
                     size="sm"
                     onClick={handleAutoCalculateWeights}
-                    className="h-8.5 rounded-xl bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-xs shadow-md shadow-blue-500/20 cursor-pointer active:scale-95 transition-all"
-                    title="Auto-calculate Net Weight, Gross Weight & USD Goods Value based on package counts & rates"
+                    className="h-7 rounded-lg bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold text-[11px] shadow-xs cursor-pointer active:scale-95 transition-all px-2 sm:px-2.5"
+                    title="Auto-calculate Net Weight, Gross Weight & USD Goods Value"
                   >
-                    <Calculator className="h-3.5 w-3.5 mr-1" />
-                    <span>Auto-Calculate Weights</span>
+                    <Calculator className="h-3 w-3 mr-1" />
+                    <span>Auto-Calculate</span>
                   </Button>
 
                   <Button
@@ -4094,11 +4102,11 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     variant="outline"
                     size="sm"
                     onClick={handleSwapShipperConsignee}
-                    className="h-8.5 rounded-xl border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-blue-900 font-extrabold text-xs shadow-2xs cursor-pointer active:scale-95 transition-all"
-                    title="Swap Shipper and Consignee details with 1 click"
+                    className="h-7 rounded-lg border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-blue-900 font-extrabold text-[11px] shadow-2xs cursor-pointer active:scale-95 transition-all px-2 sm:px-2.5"
+                    title="Swap Shipper and Consignee details"
                   >
-                    <ArrowLeftRight className="h-3.5 w-3.5 mr-1 text-blue-700" />
-                    <span>Swap Shipper ⇄ Consignee</span>
+                    <ArrowLeftRight className="h-3 w-3 mr-1 text-blue-700" />
+                    <span>Swap ⇄</span>
                   </Button>
 
                   <Button
@@ -4106,11 +4114,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     variant="outline"
                     size="sm"
                     onClick={handleCopyShipperToNotify}
-                    className="h-8.5 rounded-xl border-amber-200 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-extrabold text-xs shadow-2xs cursor-pointer active:scale-95 transition-all"
+                    className="h-7 rounded-lg border-amber-200 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-extrabold text-[11px] shadow-2xs cursor-pointer active:scale-95 transition-all px-2 sm:px-2.5"
                     title="Copy Shipper details to Notify Party"
                   >
-                    <Copy className="h-3.5 w-3.5 mr-1 text-amber-700" />
-                    <span>Shipper ➔ Notify</span>
+                    <Copy className="h-3 w-3 mr-1 text-amber-700" />
+                    <span className="hidden sm:inline">Shipper ➔ Notify</span>
+                    <span className="sm:hidden">Ship➔Notif</span>
                   </Button>
 
                   <Button
@@ -4118,29 +4127,43 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     variant="outline"
                     size="sm"
                     onClick={handleCopyConsigneeToNotify}
-                    className="h-8.5 rounded-xl border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-900 font-extrabold text-xs shadow-2xs cursor-pointer active:scale-95 transition-all"
+                    className="h-7 rounded-lg border-emerald-200 bg-emerald-50/80 hover:bg-emerald-100 text-emerald-900 font-extrabold text-[11px] shadow-2xs cursor-pointer active:scale-95 transition-all px-2 sm:px-2.5"
                     title="Copy Consignee details to Notify Party"
                   >
-                    <Copy className="h-3.5 w-3.5 mr-1 text-emerald-700" />
-                    <span>Consignee ➔ Notify</span>
+                    <Copy className="h-3 w-3 mr-1 text-emerald-700" />
+                    <span className="hidden sm:inline">Consignee ➔ Notify</span>
+                    <span className="sm:hidden">Cons➔Notif</span>
                   </Button>
                 </div>
 
-                {/* Status Indicator / Quick count */}
-                <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100/80 border border-slate-200/60 text-[11px] font-bold text-slate-600">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>B/L Editor Ready</span>
+                {/* Inline Cargo Presets Strip */}
+                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth min-w-0 pl-1">
+                  <span className="text-[10.5px] font-black text-slate-500 flex items-center gap-1 shrink-0">
+                    <Sparkles className="h-3 w-3 text-amber-500" />
+                    <span className="hidden xl:inline">Presets:</span>
+                  </span>
+                  {CARGO_PRESETS.map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => handleApplyCargoPreset(preset)}
+                      className="rounded-lg border border-purple-200/80 bg-purple-50/70 hover:bg-purple-100 text-purple-900 px-2 py-0.5 text-[10.5px] font-bold whitespace-nowrap transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
+                      title={`Fill cargo specification with ${preset.name}`}
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               {/* Row 2: Section Jump Navigation Strip */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar scroll-smooth">
-                <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-400 mr-1 shrink-0 flex items-center gap-1">
-                  <Layers className="h-3 w-3 text-blue-500" />
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth border-t border-slate-100 pt-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-0.5 shrink-0 flex items-center gap-0.5">
+                  <Layers className="h-2.5 w-2.5 text-blue-500" />
                   Jump:
                 </span>
                 {[
-                  { id: "section-doc", label: "01 Doc & Truck", icon: Calendar },
+                  { id: "section-doc", label: "01 Doc", icon: Calendar },
                   { id: "section-shipper", label: "02 Shipper", icon: User },
                   { id: "section-consignee", label: "03 Consignee", icon: User },
                   { id: "section-notify", label: "04 Notify", icon: Bell },
@@ -4160,57 +4183,38 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         const el = document.getElementById(sec.id)
                         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" })
                       }}
-                      className="flex items-center gap-1 rounded-xl border border-slate-200/80 bg-slate-50/90 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-900 px-2.5 py-1 text-[11px] font-extrabold text-slate-700 whitespace-nowrap transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95"
+                      className="flex items-center gap-1 rounded-lg border border-slate-200/70 bg-slate-50/80 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-900 px-2 py-0.5 text-[10.5px] font-bold text-slate-700 whitespace-nowrap transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95"
                     >
-                      <IconComponent className="h-3 w-3 text-blue-600 shrink-0" />
+                      <IconComponent className="h-2.5 w-2.5 text-blue-600 shrink-0" />
                       <span>{sec.label}</span>
                     </button>
                   )
                 })}
-              </div>
-
-              {/* Row 3: Cargo Presets Bar */}
-              <div className="flex items-center gap-1.5 overflow-x-auto border-t border-slate-100 pt-2 no-scrollbar scroll-smooth">
-                <span className="text-[11px] font-black text-slate-700 flex items-center gap-1 shrink-0">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                  <span>Cargo Presets:</span>
-                </span>
-                {CARGO_PRESETS.map((preset) => (
-                  <button
-                    key={preset.name}
-                    type="button"
-                    onClick={() => handleApplyCargoPreset(preset)}
-                    className="rounded-xl border border-purple-200/80 bg-purple-50/70 hover:bg-purple-100 text-purple-900 px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer shadow-2xs active:scale-95 shrink-0"
-                    title={`Fill cargo specification with ${preset.name}`}
-                  >
-                    {preset.name}
-                  </button>
-                ))}
               </div>
             </div>
 
             {/* 01 Document Information Card */}
             <Card id="section-doc" className="relative bg-white/80 backdrop-blur-2xl rounded-[32px] border border-white/90 shadow-[0_20px_50px_-15px_rgba(30,58,138,0.12)] overflow-hidden transition-all">
               {/* Top Accent Strip */}
-              <div className="h-1.5 w-full bg-linear-to-r from-blue-600 via-indigo-600 to-cyan-500" />
+              <div className="h-1 w-full bg-linear-to-r from-blue-600 via-indigo-600 to-cyan-500" />
               
-              <CardHeader className="pb-4 pt-5 px-5 sm:px-7 border-b border-slate-100/80 bg-linear-to-r from-blue-50/80 via-indigo-50/40 to-white/70">
-                <CardTitle className="text-base flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center justify-center w-7 h-7 rounded-xl bg-linear-to-br from-blue-600 to-indigo-700 text-white text-xs font-black shadow-md shadow-blue-500/20">
+              <CardHeader className="py-2 px-3 sm:py-2.5 sm:px-4 border-b border-slate-100/80 bg-linear-to-r from-blue-50/80 via-indigo-50/40 to-white/70">
+                <CardTitle className="text-sm flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-linear-to-br from-blue-600 to-indigo-700 text-white text-[11px] font-black shadow-2xs">
                       01
                     </span>
-                    <div className="p-2.5 rounded-2xl bg-linear-to-br from-blue-500/10 to-indigo-500/15 text-blue-700 border border-blue-200/70 shadow-2xs">
-                      <Calendar className="h-5 w-5" />
+                    <div className="p-1.5 rounded-xl bg-linear-to-br from-blue-500/10 to-indigo-500/15 text-blue-700 border border-blue-200/70 shadow-2xs">
+                      <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-black text-slate-950 text-base sm:text-lg tracking-tight select-none">Document Information</span>
-                        <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-black text-slate-950 text-xs sm:text-sm tracking-tight select-none">Document Information</span>
+                        <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
                           BOL Header
                         </span>
                       </div>
-                      <span className="text-xs text-slate-500 font-medium block">
+                      <span className="text-[10.5px] sm:text-[11px] text-slate-500 font-medium block">
                         BOL Reference, Serial & Issue Dates • <span className="font-[vazirmatn] text-blue-700">شماره و تاریخ‌های بارنامه</span>
                       </span>
                     </div>
@@ -4221,7 +4225,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     <button
                       type="button"
                       onClick={handleSetToday}
-                      className="inline-flex items-center gap-1 h-7 px-2.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-xs font-bold transition shadow-2xs cursor-pointer"
+                      className="inline-flex items-center gap-1 h-6.5 px-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 text-[11px] font-bold transition shadow-2xs cursor-pointer"
                       title="Set issue date to today / تنظیم به تاریخ امروز"
                     >
                       <Zap className="h-3 w-3 text-amber-500" />
@@ -4231,29 +4235,29 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     <button
                       type="button"
                       onClick={handleIncrementBolNumber}
-                      className="inline-flex items-center gap-1 h-7 px-2.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs font-bold transition shadow-2xs cursor-pointer"
+                      className="inline-flex items-center gap-1 h-6.5 px-2 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-[11px] font-bold transition shadow-2xs cursor-pointer"
                       title="Generate next BOL sequence number / ایجاد شماره بارنامه بعدی"
                     >
                       <Plus className="h-3 w-3 text-indigo-600" />
                       <span>Next BOL #</span>
                     </button>
 
-                    <span className="hidden sm:inline-flex text-xs font-extrabold text-blue-900 font-[vazirmatn] bg-white/90 px-3 py-1 rounded-full border border-blue-200 shadow-2xs">
+                    <span className="hidden sm:inline-flex text-[11px] font-extrabold text-blue-900 font-[vazirmatn] bg-white/90 px-2.5 py-0.5 rounded-full border border-blue-200 shadow-2xs">
                       اطلاعات سند و تاریخ‌ها
                     </span>
                   </div>
                 </CardTitle>
               </CardHeader>
 
-              <CardContent className="space-y-6 p-5 sm:p-7">
+              <CardContent className="space-y-3 p-3 sm:p-4">
                 {/* 3-Column Grid for BOL Number & Issue Dates */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-3.5">
                   {/* 1. BOL Number */}
-                  <div className="p-4 rounded-2xl bg-linear-to-br from-blue-50/80 via-white to-blue-50/30 border border-blue-200/80 shadow-sm flex flex-col justify-between">
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-linear-to-br from-blue-50/80 via-white to-blue-50/30 border border-blue-200/80 shadow-2xs flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                          <span className="p-1 rounded-md bg-blue-600 text-white">
+                          <span className="p-0.5 rounded-md bg-blue-600 text-white">
                             <Hash className="w-3 h-3" />
                           </span>
                           <span>BOL Number</span>
@@ -4269,7 +4273,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                             onKeyDown={(e) => {
                               if (e.key === "Enter") setIsEditingBolNumber(false)
                             }}
-                            className="font-mono font-black text-sm text-slate-950 bg-white border-blue-300 shadow-inner rounded-xl h-11 focus:ring-2 focus:ring-blue-500/20 uppercase"
+                            className="font-mono font-black text-xs sm:text-sm text-slate-950 bg-white border-blue-300 shadow-inner rounded-xl h-8.5 sm:h-9 focus:ring-2 focus:ring-blue-500/20 uppercase"
                             placeholder="BOL-2026-NSA501"
                             autoFocus
                           />
@@ -4277,7 +4281,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                             variant="default"
                             size="sm"
                             onClick={() => setIsEditingBolNumber(false)}
-                            className="rounded-xl h-11 px-3.5 font-bold text-xs bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-500/20 shrink-0 cursor-pointer"
+                            className="rounded-xl h-8.5 sm:h-9 px-3 font-bold text-xs bg-blue-600 text-white hover:bg-blue-500 shadow-sm shadow-blue-500/20 shrink-0 cursor-pointer"
                           >
                             <Check className="h-3.5 w-3.5 mr-1" />
                             Done
@@ -4285,33 +4289,33 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5 mt-1">
-                          <div className="flex-1 px-3.5 py-2 bg-white rounded-xl font-mono font-black text-sm text-blue-900 border border-blue-200 shadow-xs flex items-center justify-between overflow-hidden">
-                            <span className="truncate tracking-wide">{isLoading ? <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> : bolNumber || "BOL-000"}</span>
-                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100 uppercase">Live</span>
+                          <div className="flex-1 px-2.5 py-1 sm:py-1.5 bg-white rounded-xl font-mono font-black text-xs sm:text-sm text-blue-900 border border-blue-200 shadow-2xs flex items-center justify-between overflow-hidden">
+                            <span className="truncate tracking-wide">{isLoading ? <Loader2 className="h-3 w-3 animate-spin text-blue-600" /> : bolNumber || "BOL-000"}</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100 uppercase">Live</span>
                           </div>
                           <Button
                             variant="outline"
                             size="icon"
                             onClick={() => setIsEditingBolNumber(true)}
-                            className="h-10 w-10 rounded-xl bg-white hover:bg-blue-50 border-blue-200 text-blue-700 shadow-2xs shrink-0 cursor-pointer"
+                            className="h-8 w-8 sm:h-8.5 sm:w-8.5 rounded-xl bg-white hover:bg-blue-50 border-blue-200 text-blue-700 shadow-2xs shrink-0 cursor-pointer"
                             title="Edit BOL Number manually"
                           >
-                            <Edit3 className="h-4 w-4" />
+                            <Edit3 className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             variant="outline"
                             size="icon"
                             onClick={handleCopyBolNumber}
-                            className="h-10 w-10 rounded-xl bg-white hover:bg-blue-50 border-blue-200 text-slate-700 shadow-2xs shrink-0 cursor-pointer"
+                            className="h-8 w-8 sm:h-8.5 sm:w-8.5 rounded-xl bg-white hover:bg-blue-50 border-blue-200 text-slate-700 shadow-2xs shrink-0 cursor-pointer"
                             title="Copy BOL Number to clipboard"
                           >
-                            <Copy className="h-4 w-4" />
+                            <Copy className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       )}
                     </div>
                     
-                    <div className="mt-2.5 pt-2 border-t border-blue-100 flex items-center justify-between text-[11px] text-slate-500">
+                    <div className="mt-2 pt-1.5 border-t border-blue-100 flex items-center justify-between text-[10.5px] text-slate-500">
                       <span>Unique Document ID</span>
                       <button
                         type="button"
@@ -4324,11 +4328,11 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   </div>
 
                   {/* 2. Issue Date (Gregorian) */}
-                  <div className="p-4 rounded-2xl bg-linear-to-br from-indigo-50/80 via-white to-indigo-50/30 border border-indigo-200/80 shadow-sm flex flex-col justify-between">
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-linear-to-br from-indigo-50/80 via-white to-indigo-50/30 border border-indigo-200/80 shadow-2xs flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                          <span className="p-1 rounded-md bg-indigo-600 text-white">
+                          <span className="p-0.5 rounded-md bg-indigo-600 text-white">
                             <Calendar className="w-3 h-3" />
                           </span>
                           <span>Issue Date (Gregorian)</span>
@@ -4337,19 +4341,19 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       </div>
 
                       <div className="relative flex items-center mt-1">
-                        <div className="absolute left-3 text-indigo-600 pointer-events-none">
-                          <Calendar className="w-4 h-4" />
+                        <div className="absolute left-2.5 text-indigo-600 pointer-events-none">
+                          <Calendar className="w-3.5 h-3.5" />
                         </div>
                         <Input
                           type="date"
                           value={issueDate}
                           onChange={(e) => handleDateChange(e.target.value)}
-                          className="pl-9 font-mono font-black text-sm text-slate-950 bg-white border-indigo-200 shadow-xs rounded-xl h-11 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                          className="pl-8 font-mono font-black text-xs sm:text-sm text-slate-950 bg-white border-indigo-200 shadow-2xs rounded-xl h-8.5 sm:h-9 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
                         />
                       </div>
                     </div>
 
-                    <div className="mt-2.5 pt-2 border-t border-indigo-100 flex items-center justify-between text-[11px]">
+                    <div className="mt-2 pt-1.5 border-t border-indigo-100 flex items-center justify-between text-[10.5px]">
                       <span className="text-slate-500 truncate">
                         {issueDate ? new Date(issueDate).toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" }) : "Select date"}
                       </span>
@@ -4374,11 +4378,11 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   </div>
 
                   {/* 3. Issue Date (Persian Solar) */}
-                  <div className="p-4 rounded-2xl bg-linear-to-br from-emerald-50/80 via-white to-emerald-50/30 border border-emerald-200/80 shadow-sm flex flex-col justify-between">
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-linear-to-br from-emerald-50/80 via-white to-emerald-50/30 border border-emerald-200/80 shadow-2xs flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                          <span className="p-1 rounded-md bg-emerald-600 text-white">
+                          <span className="p-0.5 rounded-md bg-emerald-600 text-white">
                             <Globe className="w-3 h-3" />
                           </span>
                           <span>Issue Date (Persian)</span>
@@ -4386,22 +4390,22 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         <span className="font-[vazirmatn] text-emerald-800 font-bold text-[11px]">تاریخ هجری شمسی</span>
                       </div>
 
-                      <div className="px-3.5 py-2 bg-white rounded-xl border border-emerald-200/90 shadow-xs flex flex-col items-start justify-center h-11">
-                        <p className="font-[vazirmatn] text-xs font-black text-slate-900 leading-tight truncate w-full" dir="ltr" style={{ unicodeBidi: "isolate" }}>
+                      <div className="px-2.5 py-1 bg-white rounded-xl border border-emerald-200/90 shadow-2xs flex flex-col items-start justify-center h-8.5 sm:h-9">
+                        <p className="font-[vazirmatn] text-[11px] font-black text-slate-900 leading-tight truncate w-full" dir="ltr" style={{ unicodeBidi: "isolate" }}>
                           {persianDate || "محاسبه خودکار..."}
                         </p>
-                        <p className="font-[vazirmatn] text-[11px] font-extrabold text-emerald-700 leading-tight font-mono" dir="ltr" style={{ unicodeBidi: "isolate" }}>
+                        <p className="font-[vazirmatn] text-[10px] font-extrabold text-emerald-700 leading-tight font-mono" dir="ltr" style={{ unicodeBidi: "isolate" }}>
                           {persianDateNumeric || "--/--/----"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="mt-2.5 pt-2 border-t border-emerald-100 flex items-center justify-between text-[11px]">
+                    <div className="mt-2 pt-1.5 border-t border-emerald-100 flex items-center justify-between text-[10.5px]">
                       <span className="text-emerald-700 font-bold flex items-center gap-1 font-[vazirmatn]">
                         <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         محاسبه خودکار خورشیدی
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">Solar Hijri</span>
+                      <span className="text-[9.5px] text-slate-400 font-mono">Solar Hijri</span>
                     </div>
                   </div>
                 </div>
@@ -4443,69 +4447,69 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3">
                     {/* 1. Truck No */}
                     <div>
-                      <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
+                      <label className="mb-1 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
                         <span className="flex items-center gap-1">
                           <Truck className="w-3.5 h-3.5 text-blue-600" />
                           <span>Truck No.</span>
                         </span>
-                        <span className="font-[vazirmatn] text-[11px] font-bold text-blue-800">شماره موتر/کامیون</span>
+                        <span className="font-[vazirmatn] text-[10.5px] font-bold text-blue-800">شماره موتر/کامیون</span>
                       </label>
                       <Input
                         name="truck_number"
                         value={formData.truck_number}
                         onChange={handleInputChange}
                         placeholder="e.g. AF-1234-KBL"
-                        className="rounded-xl h-10 font-mono text-xs sm:text-sm font-black uppercase text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="rounded-xl h-8.5 sm:h-9 font-mono text-xs sm:text-sm font-black uppercase text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       />
                     </div>
 
                     {/* 2. Driver Name */}
                     <div>
-                      <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
+                      <label className="mb-1 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
                         <span className="flex items-center gap-1">
                           <User className="w-3.5 h-3.5 text-blue-600" />
                           <span>Driver Name</span>
                         </span>
-                        <span className="font-[vazirmatn] text-[11px] font-bold text-blue-800">نام راننده</span>
+                        <span className="font-[vazirmatn] text-[10.5px] font-bold text-blue-800">نام راننده</span>
                       </label>
                       <Input
                         name="driver_name"
                         value={formData.driver_name}
                         onChange={handleInputChange}
                         placeholder="Enter driver name..."
-                        className="rounded-xl h-10 text-xs sm:text-sm font-extrabold text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="rounded-xl h-8.5 sm:h-9 text-xs sm:text-sm font-extrabold text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       />
                     </div>
 
                     {/* 3. Father Name */}
                     <div>
-                      <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
+                      <label className="mb-1 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
                         <span className="flex items-center gap-1">
                           <User className="w-3.5 h-3.5 text-slate-400" />
                           <span>Father Name</span>
                         </span>
-                        <span className="font-[vazirmatn] text-[11px] font-bold text-blue-800">نام پدر</span>
+                        <span className="font-[vazirmatn] text-[10.5px] font-bold text-blue-800">نام پدر</span>
                       </label>
                       <Input
                         name="driver_father_name"
                         value={formData.driver_father_name}
                         onChange={handleInputChange}
                         placeholder="Father's name..."
-                        className="rounded-xl h-10 text-xs sm:text-sm font-extrabold text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="rounded-xl h-8.5 sm:h-9 text-xs sm:text-sm font-extrabold text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       />
                     </div>
 
                     {/* 4. Driver Contact */}
                     <div>
-                      <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
+                      <label className="mb-1 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
                         <span className="flex items-center gap-1">
                           <Phone className="w-3.5 h-3.5 text-blue-600" />
                           <span>Driver Contact</span>
                         </span>
-                        <span className="font-[vazirmatn] text-[11px] font-bold text-blue-800">شماره تماس راننده</span>
+                        <span className="font-[vazirmatn] text-[10.5px] font-bold text-blue-800">شماره تماس راننده</span>
                       </label>
                       <Input
                         name="driver_contact"
@@ -4513,25 +4517,25 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         onChange={handleInputChange}
                         placeholder="+93 700 123 456"
                         type="tel"
-                        className="rounded-xl h-10 font-mono text-xs sm:text-sm font-extrabold text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="rounded-xl h-8.5 sm:h-9 font-mono text-xs sm:text-sm font-extrabold text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       />
                     </div>
 
                     {/* 5. Driver Rent */}
                     <div>
-                      <label className="mb-1.5 text-xs font-black text-red-700 flex items-center justify-between gap-1">
+                      <label className="mb-1 text-xs font-black text-red-700 flex items-center justify-between gap-1">
                         <span className="flex items-center gap-1">
                           <Receipt className="w-3.5 h-3.5 text-red-600" />
                           <span>Driver Rent</span>
                         </span>
-                        <span className="font-[vazirmatn] text-[11px] font-extrabold text-red-700">کرایه راننده</span>
+                        <span className="font-[vazirmatn] text-[10.5px] font-extrabold text-red-700">کرایه راننده</span>
                       </label>
                       <Input
                         name="driver_rent"
                         value={formData.driver_rent}
                         onChange={handleInputChange}
                         placeholder="e.g., $500"
-                        className="rounded-xl h-10 text-xs sm:text-sm font-black text-red-700 bg-red-50/80 border-red-200 focus:bg-white focus:border-red-500 focus:ring-2 focus:ring-red-500/20 shadow-2xs transition-all"
+                        className="rounded-xl h-8.5 sm:h-9 text-xs sm:text-sm font-black text-red-700 bg-red-50/80 border-red-200 focus:bg-white focus:border-red-500 focus:ring-2 focus:ring-red-500/20 shadow-2xs transition-all"
                       />
                     </div>
                   </div>
@@ -4553,11 +4557,11 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                     {/* Note 1 */}
-                    <div className={`p-4 sm:p-5 rounded-2xl backdrop-blur-xl border shadow-sm transition-all ${getNoteThemeStyles(formData.notes_1_theme).container}`}>
+                    <div className={`p-3 sm:p-3.5 rounded-xl backdrop-blur-xl border shadow-2xs transition-all ${getNoteThemeStyles(formData.notes_1_theme).container}`}>
                       {/* Note 1 Header */}
-                      <div className="flex items-center justify-between mb-3 gap-2">
+                      <div className="flex items-center justify-between mb-2 gap-2">
                         <div className="flex items-center gap-1.5 flex-1 min-w-0">
                           <BookmarkPlus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                           <Input
@@ -4565,18 +4569,18 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                             value={formData.notes_1_label || ""}
                             onChange={(e) => setFormData({ ...formData, notes_1_label: e.target.value })}
                             placeholder="Note 1 Title..."
-                            className={`h-8 px-2.5 text-xs font-black backdrop-blur-sm rounded-xl transition ${getNoteThemeStyles(formData.notes_1_theme).input}`}
+                            className={`h-7.5 px-2 text-xs font-black backdrop-blur-sm rounded-lg transition ${getNoteThemeStyles(formData.notes_1_theme).input}`}
                           />
                         </div>
 
                         {/* Theme Color Dots */}
-                        <div className="flex items-center gap-1.5 shrink-0 bg-white/80 p-1 rounded-xl border border-slate-200/60 shadow-2xs">
+                        <div className="flex items-center gap-1 shrink-0 bg-white/80 p-0.5 rounded-lg border border-slate-200/60 shadow-2xs">
                           {NOTE_THEMES.map((theme) => (
                             <button
                               key={theme.value}
                               type="button"
                               onClick={() => setFormData({ ...formData, notes_1_theme: theme.value })}
-                              className={`w-5 h-5 rounded-full border-2 transition-all hover:scale-115 cursor-pointer ${
+                              className={`w-4 h-4 rounded-full border transition-all hover:scale-115 cursor-pointer ${
                                 NOTE_THEME_BUTTON_CLASSES[theme.value] ?? ''
                               } ${
                                 formData.notes_1_theme === theme.value 
@@ -4590,7 +4594,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       </div>
 
                       {/* Saved Options Selector for Note 1 */}
-                      <div className="flex items-center gap-1.5 mb-2.5">
+                      <div className="flex items-center gap-1.5 mb-2">
                         <div className="flex-1 min-w-0">
                           <Select
                             value={selectedNote1Id || "none"}
@@ -4602,7 +4606,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                               applySavedNote1(value)
                             }}
                           >
-                            <SelectTrigger className="h-8 text-xs border-slate-200/80 bg-white/90 backdrop-blur-sm rounded-xl font-medium">
+                            <SelectTrigger className="h-7.5 text-xs border-slate-200/80 bg-white/90 backdrop-blur-sm rounded-lg font-medium">
                               <SelectValue placeholder="Saved options / گزینه‌های ذخیره شده" />
                             </SelectTrigger>
                             <SelectContent className="max-h-64">
@@ -4627,10 +4631,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           variant="outline"
                           size="sm"
                           onClick={saveCurrentNote1}
-                          className="h-8 px-2.5 text-xs font-bold border-blue-200 bg-white/90 hover:bg-blue-50 text-blue-700 rounded-xl shrink-0 shadow-2xs cursor-pointer"
+                          className="h-7.5 px-2 text-xs font-bold border-blue-200 bg-white/90 hover:bg-blue-50 text-blue-700 rounded-lg shrink-0 shadow-2xs cursor-pointer"
                           title="Save current note text as reusable preset"
                         >
-                          <Save className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                          <Save className="h-3 w-3 mr-1 text-blue-600" />
                           Save
                         </Button>
                         {selectedNote1Id && (
@@ -4639,10 +4643,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                             variant="outline"
                             size="sm"
                             onClick={deleteSavedNote1}
-                            className="h-8 px-2 text-xs border-red-200 bg-white/90 hover:bg-red-50 text-red-600 rounded-xl shrink-0 cursor-pointer"
+                            className="h-7.5 px-1.5 text-xs border-red-200 bg-white/90 hover:bg-red-50 text-red-600 rounded-lg shrink-0 cursor-pointer"
                             title="Delete this saved preset"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         )}
                         {formData.notes_1 && (
@@ -4651,10 +4655,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                             variant="ghost"
                             size="sm"
                             onClick={handleClearNote1}
-                            className="h-8 px-2 text-xs text-slate-500 hover:text-slate-700 rounded-xl shrink-0 cursor-pointer"
+                            className="h-7.5 px-1.5 text-xs text-slate-500 hover:text-slate-700 rounded-lg shrink-0 cursor-pointer"
                             title="Clear Note 1 content"
                           >
-                            <X className="h-3.5 w-3.5" />
+                            <X className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
@@ -4665,8 +4669,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           value={formData.notes_1 || ""}
                           onChange={(e) => setFormData({ ...formData, notes_1: e.target.value })}
                           placeholder="Add custom contact / loading notes here (e.g. (+93) 0 700 203 307)..."
-                          className={`backdrop-blur-sm rounded-xl text-xs sm:text-sm font-medium leading-relaxed resize-y ${getNoteThemeStyles(formData.notes_1_theme).textarea}`}
-                          rows={4}
+                          className={`backdrop-blur-sm rounded-lg text-xs sm:text-sm font-medium leading-relaxed resize-y ${getNoteThemeStyles(formData.notes_1_theme).textarea}`}
+                          rows={3}
                         />
                         <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400 px-1">
                           <span className="font-[vazirmatn]">یادداشت شماره یک بارنامه</span>
@@ -4676,9 +4680,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     </div>
 
                     {/* Note 2 */}
-                    <div className={`p-4 sm:p-5 rounded-2xl backdrop-blur-xl border shadow-sm transition-all ${getNoteThemeStyles(formData.notes_2_theme).container}`}>
+                    <div className={`p-3 sm:p-3.5 rounded-xl backdrop-blur-xl border shadow-2xs transition-all ${getNoteThemeStyles(formData.notes_2_theme).container}`}>
                       {/* Note 2 Header */}
-                      <div className="flex items-center justify-between mb-3 gap-2">
+                      <div className="flex items-center justify-between mb-2 gap-2">
                         <div className="flex items-center gap-1.5 flex-1 min-w-0">
                           <BookmarkPlus className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                           <Input
@@ -4686,18 +4690,18 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                             value={formData.notes_2_label || ""}
                             onChange={(e) => setFormData({ ...formData, notes_2_label: e.target.value })}
                             placeholder="Note 2 Title..."
-                            className={`h-8 px-2.5 text-xs font-black backdrop-blur-sm rounded-xl transition ${getNoteThemeStyles(formData.notes_2_theme).input}`}
+                            className={`h-7.5 px-2 text-xs font-black backdrop-blur-sm rounded-lg transition ${getNoteThemeStyles(formData.notes_2_theme).input}`}
                           />
                         </div>
 
                         {/* Theme Color Dots */}
-                        <div className="flex items-center gap-1.5 shrink-0 bg-white/80 p-1 rounded-xl border border-slate-200/60 shadow-2xs">
+                        <div className="flex items-center gap-1 shrink-0 bg-white/80 p-0.5 rounded-lg border border-slate-200/60 shadow-2xs">
                           {NOTE_THEMES.map((theme) => (
                             <button
                               key={theme.value}
                               type="button"
                               onClick={() => setFormData({ ...formData, notes_2_theme: theme.value })}
-                              className={`w-5 h-5 rounded-full border-2 transition-all hover:scale-115 cursor-pointer ${
+                              className={`w-4 h-4 rounded-full border transition-all hover:scale-115 cursor-pointer ${
                                 NOTE_THEME_BUTTON_CLASSES[theme.value] ?? ''
                               } ${
                                 formData.notes_2_theme === theme.value 
@@ -4711,7 +4715,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       </div>
 
                       {/* Saved Options Selector for Note 2 */}
-                      <div className="flex items-center gap-1.5 mb-2.5">
+                      <div className="flex items-center gap-1.5 mb-2">
                         <div className="flex-1 min-w-0">
                           <Select
                             value={selectedNote2Id || "none"}
@@ -4723,7 +4727,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                               applySavedNote2(value)
                             }}
                           >
-                            <SelectTrigger className="h-8 text-xs border-slate-200/80 bg-white/90 backdrop-blur-sm rounded-xl font-medium">
+                            <SelectTrigger className="h-7.5 text-xs border-slate-200/80 bg-white/90 backdrop-blur-sm rounded-lg font-medium">
                               <SelectValue placeholder="Saved options / گزینه‌های ذخیره شده" />
                             </SelectTrigger>
                             <SelectContent className="max-h-64">
@@ -4748,10 +4752,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           variant="outline"
                           size="sm"
                           onClick={saveCurrentNote2}
-                          className="h-8 px-2.5 text-xs font-bold border-blue-200 bg-white/90 hover:bg-blue-50 text-blue-700 rounded-xl shrink-0 shadow-2xs cursor-pointer"
+                          className="h-7.5 px-2 text-xs font-bold border-blue-200 bg-white/90 hover:bg-blue-50 text-blue-700 rounded-lg shrink-0 shadow-2xs cursor-pointer"
                           title="Save current note text as reusable preset"
                         >
-                          <Save className="h-3.5 w-3.5 mr-1 text-blue-600" />
+                          <Save className="h-3 w-3 mr-1 text-blue-600" />
                           Save
                         </Button>
                         {selectedNote2Id && (
@@ -4760,10 +4764,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                             variant="outline"
                             size="sm"
                             onClick={deleteSavedNote2}
-                            className="h-8 px-2 text-xs border-red-200 bg-white/90 hover:bg-red-50 text-red-600 rounded-xl shrink-0 cursor-pointer"
+                            className="h-7.5 px-1.5 text-xs border-red-200 bg-white/90 hover:bg-red-50 text-red-600 rounded-lg shrink-0 cursor-pointer"
                             title="Delete this saved preset"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         )}
                         {formData.notes_2 && (
@@ -4772,10 +4776,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                             variant="ghost"
                             size="sm"
                             onClick={handleClearNote2}
-                            className="h-8 px-2 text-xs text-slate-500 hover:text-slate-700 rounded-xl shrink-0 cursor-pointer"
+                            className="h-7.5 px-1.5 text-xs text-slate-500 hover:text-slate-700 rounded-lg shrink-0 cursor-pointer"
                             title="Clear Note 2 content"
                           >
-                            <X className="h-3.5 w-3.5" />
+                            <X className="h-3 w-3" />
                           </Button>
                         )}
                       </div>
@@ -4786,8 +4790,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           value={formData.notes_2 || ""}
                           onChange={(e) => setFormData({ ...formData, notes_2: e.target.value })}
                           placeholder="Add border representative contact info, customs notes, etc..."
-                          className={`backdrop-blur-sm rounded-xl text-xs sm:text-sm font-medium leading-relaxed resize-y ${getNoteThemeStyles(formData.notes_2_theme).textarea}`}
-                          rows={4}
+                          className={`backdrop-blur-sm rounded-lg text-xs sm:text-sm font-medium leading-relaxed resize-y ${getNoteThemeStyles(formData.notes_2_theme).textarea}`}
+                          rows={3}
                         />
                         <div className="mt-1 flex items-center justify-between text-[10px] text-slate-400 px-1">
                           <span className="font-[vazirmatn]">یادداشت شماره دو بارنامه</span>
@@ -8239,98 +8243,195 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             </Card>
           </TabsContent>
 
-          <TabsContent value="preview" className="space-y-4">
-            {/* Quick Watermark Floating Control Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl border border-blue-200/80 bg-white/95 shadow-xl shadow-blue-500/5 backdrop-blur-xl print:hidden">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-black text-slate-800 flex items-center gap-1.5 mr-1">
-                  <span className="p-1 rounded-md bg-blue-600 text-white text-[10px]">🎨</span>
-                  <span>PDF Background:</span>
-                </span>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {[
-                    { label: "📄 Clean White", url: "", opacity: 0 },
-                    { label: "🏔️ Mountain Watermark", url: "/images/afghan_mountain_blueprint_bg.jpg", opacity: 0.08 },
-                    { label: "📐 Truck Blueprint", url: "/images/overland_transit_blueprint.svg", opacity: 0.08 },
-                    { label: "🌊 Ship Blueprint", url: "/images/maritime_shipping_blueprint.svg", opacity: 0.08 },
-                    { label: "✈️ Air Cargo", url: "/images/sky_freight_cargo_plane.jpg", opacity: 0.08 },
-                    { label: "🚚 Fleet Pass", url: "/images/afghan_cargo_fleet_pass.jpg", opacity: 0.08 },
-                    { label: "🚢 Port Vessel", url: "/images/maritime_port_cargo_ship.jpg", opacity: 0.08 },
-                  ].map((preset) => (
-                    <button
-                      key={preset.label}
-                      type="button"
-                      onClick={() => {
-                        setBgImageUrl(preset.url)
-                        setBgOpacity(preset.opacity)
-                      }}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                        bgImageUrl === preset.url
-                          ? "bg-blue-600 text-white shadow-sm ring-2 ring-blue-400/40"
-                          : "bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-900 border border-slate-200/80"
-                      }`}
+          <TabsContent value="preview" className="space-y-2.5">
+            {/* Ultra-Sleek Executive Watermark & Document Studio Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 rounded-xl border border-slate-200/90 bg-white/95 shadow-sm backdrop-blur-xl print:hidden">
+              {/* Left: Background Watermark Preset & Intensity & Stamp */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {/* Background Preset Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-2.5 rounded-lg text-xs font-bold border-slate-200 bg-white hover:bg-slate-50 text-slate-800 gap-1.5 shadow-2xs cursor-pointer"
                     >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                      <Palette className="h-3.5 w-3.5 text-blue-600" />
+                      <span>
+                        {bgImageUrl === ""
+                          ? "📄 Clean White"
+                          : bgImageUrl === "/images/afghan_mountain_blueprint_bg.jpg"
+                          ? "🏔️ Mountain Watermark"
+                          : bgImageUrl === "/images/overland_transit_blueprint.svg"
+                          ? "📐 Truck Blueprint"
+                          : bgImageUrl === "/images/maritime_shipping_blueprint.svg"
+                          ? "🌊 Ship Blueprint"
+                          : bgImageUrl === "/images/sky_freight_cargo_plane.jpg"
+                          ? "✈️ Air Cargo"
+                          : bgImageUrl === "/images/afghan_cargo_fleet_pass.jpg"
+                          ? "🚚 Fleet Pass"
+                          : bgImageUrl === "/images/maritime_port_cargo_ship.jpg"
+                          ? "🚢 Port Vessel"
+                          : "🎨 Watermark"}
+                      </span>
+                      <ChevronDown className="h-3 w-3 opacity-60" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56 p-1.5 bg-white rounded-xl shadow-xl border-slate-200">
+                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 px-2 py-1">
+                      PDF Background & Watermark
+                    </DropdownMenuLabel>
+                    {[
+                      { label: "📄 Clean White", url: "", opacity: 0 },
+                      { label: "🏔️ Mountain Watermark", url: "/images/afghan_mountain_blueprint_bg.jpg", opacity: 0.08 },
+                      { label: "📐 Truck Blueprint", url: "/images/overland_transit_blueprint.svg", opacity: 0.08 },
+                      { label: "🌊 Ship Blueprint", url: "/images/maritime_shipping_blueprint.svg", opacity: 0.08 },
+                      { label: "✈️ Air Cargo", url: "/images/sky_freight_cargo_plane.jpg", opacity: 0.08 },
+                      { label: "🚚 Fleet Pass", url: "/images/afghan_cargo_fleet_pass.jpg", opacity: 0.08 },
+                      { label: "🚢 Port Vessel", url: "/images/maritime_port_cargo_ship.jpg", opacity: 0.08 },
+                    ].map((preset) => (
+                      <DropdownMenuItem
+                        key={preset.label}
+                        onClick={() => {
+                          setBgImageUrl(preset.url)
+                          setBgOpacity(preset.opacity)
+                        }}
+                        className={`gap-2 text-xs font-bold cursor-pointer rounded-lg px-2 py-1.5 ${
+                          bgImageUrl === preset.url ? "bg-blue-50 text-blue-700 font-black" : "text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span>{preset.label}</span>
+                        {bgImageUrl === preset.url && <Check className="h-3.5 w-3.5 ml-auto text-blue-600" />}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-              {/* Quick Opacity & Download Actions */}
-              <div className="flex flex-wrap items-center gap-2.5 ml-auto">
+                {/* Intensity pill if watermark is active */}
                 {bgImageUrl && (
-                  <div className="flex items-center gap-2 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200">
-                    <span className="text-[11px] font-bold text-slate-600">Intensity:</span>
-                    <div className="flex items-center gap-1">
-                      {[
-                        { label: "0%", val: 0 },
-                        { label: "5%", val: 0.05 },
-                        { label: "8%", val: 0.08 },
-                        { label: "12%", val: 0.12 },
-                        { label: "18%", val: 0.18 },
-                      ].map((lvl) => (
-                        <button
-                          key={lvl.label}
-                          type="button"
-                          onClick={() => setBgOpacity(lvl.val)}
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-black transition-all ${
-                            Math.round(bgOpacity * 100) === Math.round(lvl.val * 100)
-                              ? "bg-blue-600 text-white"
-                              : "bg-white text-slate-600 hover:bg-slate-200"
-                          }`}
-                        >
-                          {lvl.label}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="flex items-center gap-0.5 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80">
+                    <span className="text-[10px] font-bold text-slate-500 px-1.5">Opacity:</span>
+                    {[
+                      { label: "5%", val: 0.05 },
+                      { label: "8%", val: 0.08 },
+                      { label: "12%", val: 0.12 },
+                      { label: "18%", val: 0.18 },
+                    ].map((lvl) => (
+                      <button
+                        key={lvl.label}
+                        type="button"
+                        onClick={() => setBgOpacity(lvl.val)}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                          Math.round(bgOpacity * 100) === Math.round(lvl.val * 100)
+                            ? "bg-blue-600 text-white shadow-2xs"
+                            : "text-slate-600 hover:bg-white hover:text-slate-900"
+                        }`}
+                      >
+                        {lvl.label}
+                      </button>
+                    ))}
                   </div>
                 )}
-                
+
+                {/* Stamp & Signature Toggle */}
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
                   onClick={() => setShowStampSignature(!showStampSignature)}
-                  className={`h-8.5 rounded-xl font-black text-xs shadow-xs cursor-pointer transition-all ${
+                  className={`h-8 px-2.5 rounded-lg font-bold text-xs shadow-2xs cursor-pointer transition-all ${
                     showStampSignature
-                      ? "border-blue-500 bg-blue-50 text-blue-900 hover:bg-blue-100 ring-2 ring-blue-500/20"
-                      : "border-slate-300 bg-white hover:bg-slate-50 text-slate-700"
+                      ? "border-blue-400 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                      : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
                   }`}
                   title="Toggle Official Stamp & Signature Overlay"
                 >
-                  <span className="mr-1.5">{showStampSignature ? "🖋️" : "⚪"}</span>
-                  {showStampSignature ? "Stamp & Sign: ON" : "Stamp & Sign: OFF"}
+                  <span className="mr-1">{showStampSignature ? "🖋️" : "⚪"}</span>
+                  <span>{showStampSignature ? "Stamp: ON" : "Stamp: OFF"}</span>
+                </Button>
+              </div>
+
+              {/* Center: A4 Preview Zoom Stepper & Presets */}
+              <div className="flex items-center gap-1 bg-slate-100/90 p-0.5 rounded-lg border border-slate-200/80 shadow-2xs">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (previewScale > 0.45) setPreviewScale(prev => Math.max(0.45, +(prev - 0.1).toFixed(2)))
+                  }}
+                  className="h-7 w-7 p-0 text-slate-600 hover:bg-white rounded-md cursor-pointer"
+                  title="Zoom Out Preview"
+                >
+                  <ZoomOut className="h-3.5 w-3.5" />
                 </Button>
 
+                <button
+                  type="button"
+                  onClick={() => setPreviewScale(0.68)}
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                    Math.abs(previewScale - 0.68) < 0.02
+                      ? "bg-blue-600 text-white shadow-2xs"
+                      : "text-slate-700 hover:bg-white"
+                  }`}
+                  title="Fit whole single-page A4 document on screen without scrolling"
+                >
+                  Fit Page
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPreviewScale(0.85)}
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                    Math.abs(previewScale - 0.85) < 0.02
+                      ? "bg-blue-600 text-white shadow-2xs"
+                      : "text-slate-700 hover:bg-white"
+                  }`}
+                  title="85% Overview Scale"
+                >
+                  85%
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPreviewScale(1.0)}
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                    Math.abs(previewScale - 1.0) < 0.02
+                      ? "bg-blue-600 text-white shadow-2xs"
+                      : "text-slate-700 hover:bg-white"
+                  }`}
+                  title="100% 1:1 Actual Print Size"
+                >
+                  100%
+                </button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (previewScale < 1.3) setPreviewScale(prev => Math.min(1.3, +(prev + 0.1).toFixed(2)))
+                  }}
+                  className="h-7 w-7 p-0 text-slate-600 hover:bg-white rounded-md cursor-pointer"
+                  title="Zoom In Preview"
+                >
+                  <ZoomIn className="h-3.5 w-3.5" />
+                </Button>
+
+                <span className="font-mono text-[10px] font-bold text-slate-500 px-1 border-l border-slate-200">
+                  {Math.round(previewScale * 100)}%
+                </span>
+              </div>
+
+              {/* Right: Primary Print & PDF Download Buttons */}
+              <div className="flex items-center gap-1.5 ml-auto">
                 <Button
                   type="button"
                   size="sm"
                   onClick={handleDownloadPDF}
                   disabled={isSaving}
-                  className="h-8.5 rounded-xl bg-linear-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-black text-xs shadow-md shadow-blue-900/20 cursor-pointer"
+                  className="h-8 px-3 rounded-lg bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-extrabold text-xs shadow-sm shadow-blue-900/20 cursor-pointer gap-1.5"
                 >
-                  <Download className="h-3.5 w-3.5 mr-1" />
-                  Download PDF
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download PDF</span>
                 </Button>
 
                 <Button
@@ -8338,17 +8439,32 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   size="sm"
                   variant="outline"
                   onClick={handleDirectPrint}
-                  className="h-8.5 rounded-xl border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-black text-xs shadow-xs cursor-pointer"
+                  className="h-8 px-2.5 rounded-lg border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs shadow-2xs cursor-pointer gap-1.5"
                   title="Instant Print (Ctrl + P)"
                 >
-                  <Printer className="h-3.5 w-3.5 mr-1 text-slate-600" />
-                  Print
+                  <Printer className="h-3.5 w-3.5 text-slate-600" />
+                  <span>Print</span>
                 </Button>
               </div>
             </div>
 
-            <div className="overflow-x-auto max-w-full flex justify-center rounded-2xl sm:rounded-[30px] border border-white/80 bg-linear-to-br from-white/70 via-blue-50/45 to-cyan-50/30 p-1 sm:p-6 shadow-2xl shadow-blue-200/45 backdrop-blur-2xl ring-1 ring-blue-100/60 print:hidden scrollbar-none">
-              <div className="w-full max-w-[210mm] min-w-[210mm] transform-gpu transition-all origin-top scale-[0.50] xs:scale-[0.62] sm:scale-[0.85] md:scale-100 mb-[-120mm] xs:mb-[-90mm] sm:mb-[-25mm] md:mb-0">
+            {/* Document Studio Canvas with Realistic Paper Elevation & Fit Scale */}
+            <div className="overflow-x-auto max-w-full flex flex-col items-center rounded-2xl border border-slate-200/80 bg-slate-200/60 p-2 sm:p-4 shadow-inner print:hidden scrollbar-thin">
+              <div className="flex items-center justify-between w-full max-w-[210mm] text-[11px] font-bold text-slate-500 mb-2 px-1">
+                <span className="flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-blue-600" />
+                  <span>Single-Page Official A4 Bill of Lading</span>
+                </span>
+                <span className="font-mono text-[10.5px]">210 × 297 mm • 384 DPI Print Ready</span>
+              </div>
+
+              <div 
+                className="w-[210mm] min-w-[210mm] transform-gpu transition-all duration-150 origin-top bg-white shadow-[0_20px_50px_rgba(0,0,0,0.18),0_0_1px_1px_rgba(0,0,0,0.08)] rounded-[2px]"
+                style={{
+                  transform: `scale(${previewScale})`,
+                  marginBottom: previewScale < 1 ? `calc(297mm * (${previewScale} - 1))` : '0px'
+                }}
+              >
                 <A4Preview
                   bolNumber={bolNumber}
                   issueDate={issueDate}
@@ -9039,9 +9155,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
         {/* Dedicated PDF export source. Keep it rendered, but outside the viewport. */}
         <div
-          data-pdf-export="true"
+          data-pdf-export-container="true"
           aria-hidden="true"
-          className="fixed top-0 left-0 w-[210mm] min-h-[297mm] opacity-0 pointer-events-none z-[-9999] overflow-hidden print:hidden"
+          className="fixed top-0 left-[-9999px] w-[210mm] h-[297mm] max-h-[297mm] overflow-hidden opacity-100 pointer-events-none z-[-9999] print:hidden bg-white"
+          style={{ width: "210mm", height: "297mm", maxHeight: "297mm" }}
         >
           <A4Preview
             bolNumber={bolNumber}

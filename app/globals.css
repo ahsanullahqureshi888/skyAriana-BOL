@@ -7,7 +7,7 @@
   --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-/* Full Viewport Configuration without distortion */
+/* Full Viewport & Ergonomic Display Zoom Configuration */
 @media screen {
   html, body {
     min-height: 100vh;
@@ -15,6 +15,20 @@
     height: 100%;
     margin: 0;
     padding: 0;
+  }
+
+  /* Default high-density executive scale for desktop displays */
+  @media (min-width: 1024px) {
+    :root {
+      zoom: 0.90;
+    }
+  }
+}
+
+/* Ensure printing and PDF export are strictly 1.0 zoom (A4 standard) */
+@media print {
+  :root, html, body {
+    zoom: 1 !important;
   }
 }
 
@@ -2989,12 +3003,16 @@
 
 /* Exact A4 source used by Download/Print PDF. */
 [data-pdf-export="true"] {
+  zoom: 1 !important;
+  transform: none !important;
   width: 210mm !important;
   height: 297mm !important;
   min-height: 297mm !important;
   max-height: 297mm !important;
   overflow: hidden !important;
   box-shadow: none !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
 }
 
 [data-pdf-export="true"] img {
