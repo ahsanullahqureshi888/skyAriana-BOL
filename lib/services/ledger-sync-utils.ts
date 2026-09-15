@@ -222,8 +222,31 @@ export interface LedgerAuditResult {
   }>
 }
 
+interface AuditableLedgerEntry {
+  date?: unknown
+  debit?: unknown
+  credit?: unknown
+  balance?: unknown
+}
+
+function auditAmount(value: unknown): number {
+  if (value === undefined || value === null || value === "") return 0
+  if (typeof value !== "string" && typeof value !== "number") return NaN
+  return Number(value)
+}
+
+function ledgerDateKey(value: unknown): string {
+  const date = String(value || "").replace(/[\u200e\u200f]/g, "")
+    .replace(/[۰-۹]/g, digit => String(digit.charCodeAt(0) - 0x06f0))
+    .replace(/[٠-٩]/g, digit => String(digit.charCodeAt(0) - 0x0660))
+  const yearFirst = date.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:T.*)?$/)
+  const dayFirst = date.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
+  const parts = yearFirst ? yearFirst.slice(1) : dayFirst ? [dayFirst[3], dayFirst[2], dayFirst[1]] : null
+  return parts ? parts.map(part => part.padStart(2, "0")).join("-") : date
+}
+
 export function validateLedgerInvariance(
-  ledgerRecords: Record<string, any[]> = {}
+  ledgerRecords: Record<string, AuditableLedgerEntry[]> = {}
 ): LedgerAuditResult {
   let totalAccounts = 0
   let totalEntries = 0
@@ -241,34 +264,43 @@ export function validateLedgerInvariance(
     let accDebit = 0
     let accCredit = 0
 
-    for (const entry of entries) {
-      const d = Number(entry.debit) || 0
-      const c = Number(entry.credit) || 0
+    // Sort a copy so importing or auditing does not mutate the caller's records.
+    // Accept ISO and legacy day-first dates; keep same-day row order stable.
+    const chronological = entries.map((entry, index) => ({ entry, index })).sort((a, b) =>
+      ledgerDateKey(a.entry?.date).localeCompare(ledgerDateKey(b.entry?.date))
+    )
+    for (const { entry, index } of chronological) {
+      const d = auditAmount(entry?.debit)
+      const c = auditAmount(entry?.credit)
+      if (!entry || !Number.isFinite(d) || !Number.isFinite(c)) {
+        discrepancies.push({
+          account,
+          totalDebit: accDebit,
+          totalCredit: accCredit,
+          expectedBalance: accDebit - accCredit,
+          message: `Account "${account}" row ${index + 1} contains an invalid debit or credit.`,
+        })
+        continue
+      }
       accDebit += d
       accCredit += c
-    }
-
-    totalDebit += accDebit
-    totalCredit += accCredit
-
-    // Check last row reported balance if present
-    if (entries.length > 0) {
-      const lastEntry = entries[entries.length - 1]
-      if (lastEntry.balance !== undefined && lastEntry.balance !== null && lastEntry.balance !== "") {
-        const reported = Number(lastEntry.balance)
+      if (entry.balance !== undefined && entry.balance !== null && entry.balance !== "") {
+        const reported = auditAmount(entry.balance)
         const expected = accDebit - accCredit
-        if (!isNaN(reported) && Math.abs(reported - expected) > 0.05) {
+        if (!Number.isFinite(reported) || Math.abs(reported - expected) > 0.01) {
           discrepancies.push({
             account,
             totalDebit: accDebit,
             totalCredit: accCredit,
             expectedBalance: expected,
-            reportedBalance: reported,
-            message: `Account "${account}" balance mismatch: reported ${reported}, expected ${expected} (Debit ${accDebit} - Credit ${accCredit})`,
+            reportedBalance: Number.isFinite(reported) ? reported : undefined,
+            message: `Account "${account}" row ${index + 1} balance mismatch: reported ${String(entry.balance)}, expected ${expected} (Debit ${accDebit} - Credit ${accCredit})`,
           })
         }
       }
     }
+    totalDebit += accDebit
+    totalCredit += accCredit
   }
 
   const netBalance = totalDebit - totalCredit

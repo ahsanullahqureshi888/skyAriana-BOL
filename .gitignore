@@ -12,6 +12,9 @@ __v0_jsx-dev-runtime.ts
 # Common ignores
 node_modules
 .next/
+.next-production/
+.next-candidate/
+.build-temp/
 .DS_Store
 .vercel
 .env*
@@ -30,8 +33,22 @@ audit_*.json
 validation_report.json
 backend/data/*.db-shm
 backend/data/*.db-wal
-SKY-ARIANA-DOC/tmp/
 awesome-claude-code-subagents/
 *.exe
 *.dll
 *.so
+.pnpm-store/
+.next-review/
+.next-footer-dev/
+release/
+release-desktop/
+.desktop-package/
+dist-electron/
+scratch/
+*.bak
+public/uploads/bol-pdfs/
+app/uploads/
+_backend_offline/
+
+.vercel
+.env*

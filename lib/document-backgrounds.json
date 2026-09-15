@@ -1,0 +1,242 @@
+[
+  {
+    "label": "Alpine Dawn",
+    "category": "Mountains",
+    "url": "/images/document-backgrounds/alpine-dawn.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Glacier Valley",
+    "category": "Mountains",
+    "url": "/images/document-backgrounds/glacier-valley.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Snow Ridge",
+    "category": "Mountains",
+    "url": "/images/document-backgrounds/snow-ridge.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Highland Lake",
+    "category": "Mountains",
+    "url": "/images/document-backgrounds/highland-lake.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Golden Summit",
+    "category": "Mountains",
+    "url": "/images/document-backgrounds/golden-summit.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Silent Peaks",
+    "category": "Mountains",
+    "url": "/images/document-backgrounds/silent-peaks.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Mountain Mist",
+    "category": "Mountains",
+    "url": "/images/document-backgrounds/mountain-mist.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Twilight Range",
+    "category": "Mountains",
+    "url": "/images/document-backgrounds/twilight-range.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Silk Road",
+    "category": "Overland",
+    "url": "/images/document-backgrounds/silk-road.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Desert Highway",
+    "category": "Overland",
+    "url": "/images/document-backgrounds/desert-highway.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Border Crossing",
+    "category": "Overland",
+    "url": "/images/document-backgrounds/border-crossing.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Valley Transit",
+    "category": "Overland",
+    "url": "/images/document-backgrounds/valley-transit.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Cargo Convoy",
+    "category": "Overland",
+    "url": "/images/document-backgrounds/cargo-convoy.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Rail Corridor",
+    "category": "Overland",
+    "url": "/images/document-backgrounds/rail-corridor.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Winding Pass",
+    "category": "Overland",
+    "url": "/images/document-backgrounds/winding-pass.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Horizon Route",
+    "category": "Overland",
+    "url": "/images/document-backgrounds/horizon-route.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Ocean Passage",
+    "category": "Maritime",
+    "url": "/images/document-backgrounds/ocean-passage.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Harbor Morning",
+    "category": "Maritime",
+    "url": "/images/document-backgrounds/harbor-morning.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Coastal Freight",
+    "category": "Maritime",
+    "url": "/images/document-backgrounds/coastal-freight.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Container Port",
+    "category": "Maritime",
+    "url": "/images/document-backgrounds/container-port.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Lighthouse Bay",
+    "category": "Maritime",
+    "url": "/images/document-backgrounds/lighthouse-bay.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Island Channel",
+    "category": "Maritime",
+    "url": "/images/document-backgrounds/island-channel.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Deep Blue",
+    "category": "Maritime",
+    "url": "/images/document-backgrounds/deep-blue.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Sunset Anchorage",
+    "category": "Maritime",
+    "url": "/images/document-backgrounds/sunset-anchorage.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Cloud Atlas",
+    "category": "Aviation",
+    "url": "/images/document-backgrounds/cloud-atlas.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Flight Corridor",
+    "category": "Aviation",
+    "url": "/images/document-backgrounds/flight-corridor.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Sky Express",
+    "category": "Aviation",
+    "url": "/images/document-backgrounds/sky-express.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Dawn Departure",
+    "category": "Aviation",
+    "url": "/images/document-backgrounds/dawn-departure.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Air Bridge",
+    "category": "Aviation",
+    "url": "/images/document-backgrounds/air-bridge.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Above the Clouds",
+    "category": "Aviation",
+    "url": "/images/document-backgrounds/above-the-clouds.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Global Flight",
+    "category": "Aviation",
+    "url": "/images/document-backgrounds/global-flight-premium.png",
+    "opacity": 0.22
+  },
+  {
+    "label": "Evening Arrival",
+    "category": "Aviation",
+    "url": "/images/document-backgrounds/evening-arrival.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Compass Lines",
+    "category": "Geometric",
+    "url": "/images/document-backgrounds/compass-lines.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Contour Map",
+    "category": "Geometric",
+    "url": "/images/document-backgrounds/contour-map.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Trade Network",
+    "category": "Geometric",
+    "url": "/images/document-backgrounds/trade-network.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Meridian Grid",
+    "category": "Geometric",
+    "url": "/images/document-backgrounds/meridian-grid.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Soft Arches",
+    "category": "Geometric",
+    "url": "/images/document-backgrounds/soft-arches.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Route Geometry",
+    "category": "Geometric",
+    "url": "/images/document-backgrounds/route-geometry.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Pearl Waves",
+    "category": "Geometric",
+    "url": "/images/document-backgrounds/pearl-waves.svg",
+    "opacity": 0.18
+  },
+  {
+    "label": "Northern Star",
+    "category": "Geometric",
+    "url": "/images/document-backgrounds/northern-star.svg",
+    "opacity": 0.18
+  }
+]

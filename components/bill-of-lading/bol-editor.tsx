@@ -1,7 +1,9 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback, memo, startTransition, type ReactNode } from "react"
+import { useState, useEffect, useEffectEvent, useRef, useCallback, memo, useMemo, useDeferredValue, startTransition, type ReactNode } from "react"
 import { createPortal } from "react-dom"
+import dynamic from "next/dynamic"
+import { DraftSaveQueue } from "@/lib/services/draft-save-queue"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,8 +20,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import { BackgroundGallery } from "./background-gallery"
+import { DOCUMENT_BACKGROUNDS } from "@/lib/document-backgrounds"
 import { A4Preview } from "./a4-preview"
 import PrintSafeBOL from "./print-safe-bol"
+import { ShippingDocumentCenter } from "./shipping-document-center"
 import { BillOfLadingFormData, initialFormData, RouteStop, AFGHANISTAN_DOCUMENT_OPTIONS, DOCUMENT_CATEGORIES, AfghanistanDocumentDetail, type DocumentCategory, NOTE_THEMES, type NoteTheme } from "@/lib/types/bill-of-lading"
 import consigneeSeedData from "@/lib/data/consignees-from-pdf.json"
 import shipperSeedData from "@/lib/data/shippers-from-pdf.json"
@@ -33,9 +38,17 @@ import {
   openPDFPrintWindow,
   printPDFBlobInWindow,
   buildBolSmartFileName,
+  preloadBOLPDFGeneration,
 } from "@/lib/utils/pdf-upload"
-import { SavedDocuments } from "./saved-documents"
-import { LedgerView } from "@/components/ledger-view"
+import {
+  buildShippingDocumentFileName,
+  deriveShippingDocumentData,
+  generateShippingDocumentsPDF,
+  type ShippingDocumentKind,
+  type StickerLayout,
+} from "@/lib/utils/shipping-documents"
+const SavedDocuments = dynamic(() => import("./saved-documents").then(m => m.SavedDocuments), { loading: () => <p role="status" className="p-6 text-sm text-slate-600">Loading saved BOLs…</p> })
+const LedgerView = dynamic(() => import("@/components/ledger-view").then(m => m.LedgerView), { loading: () => <p role="status" className="p-6 text-sm text-slate-600">Loading account ledger…</p> })
 import { getFinancialsMap, saveFinancialsForEntry } from "@/lib/services/ledger-sync-utils"
 import { PrintOptionsDialog, type PrintOptions } from "@/components/print-options-dialog"
 import { CloudSyncModal } from "./cloud-sync-modal"
@@ -169,20 +182,9 @@ const NOTE_2_SEED_LIST: SavedNoteOption[] = [
 
 function mergeSavedNoteOptions(seedOptions: SavedNoteOption[], storedOptions: SavedNoteOption[]) {
   const byId = new Map<string, SavedNoteOption>()
+  seedOptions.forEach((seed) => byId.set(seed.id, seed))
+  // Stored copies must win so edits to the built-in presets survive a reload.
   storedOptions.forEach((item) => byId.set(item.id, item))
-  seedOptions.forEach((seed) => {
-    const existing = byId.get(seed.id)
-    if (!existing) {
-      byId.set(seed.id, seed)
-    } else {
-      byId.set(seed.id, {
-        ...existing,
-        label: seed.label,
-        content: seed.content,
-        theme: seed.theme || existing.theme,
-      })
-    }
-  })
   return Array.from(byId.values())
 }
 
@@ -373,6 +375,7 @@ function syncBolToAccountLedger(data: BillOfLadingFormData & { bol_number?: stri
 
 export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocumentLoaded, savedDocumentsPanel, accountLedgerPanel }: BOLEditorProps) {
   const [formData, setFormData] = useState<BillOfLadingFormData>(initialFormData)
+  const deferredFormData = useDeferredValue(formData)
   const [bolNumber, setBolNumber] = useState<string>("BOL-2026-NSA470")
   const [isEditingBolNumber, setIsEditingBolNumber] = useState(false)
   const [issueDate, setIssueDate] = useState<string>("")
@@ -380,7 +383,23 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [persianDateNumeric, setPersianDateNumeric] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const editorRootRef = useRef<HTMLDivElement>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const toolbar = toolbarRef.current
+    if (!toolbar) return
+    const updateHeight = () => editorRootRef.current?.style.setProperty('--bol-toolbar-height', toolbar.offsetHeight + 'px')
+    updateHeight()
+    const observer = new ResizeObserver(updateHeight)
+    observer.observe(toolbar)
+    return () => observer.disconnect()
+  }, [])
   const [activeTab, setActiveTab] = useState<string>("form")
+  useEffect(() => {
+    if (activeTab === "preview" || activeTab === "pdf-settings") {
+      void preloadBOLPDFGeneration()
+    }
+  }, [activeTab])
   const handleTabChange = useCallback((newTab: string) => {
     startTransition(() => {
       setActiveTab(newTab)
@@ -396,26 +415,50 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [companyEmail, setCompanyEmail] = useState("info@skyariana.com, transport@skyariana.com")
   const [companyAddress, setCompanyAddress] = useState("2nd Floor, 16 No. Office, Shahidano, Chowk, Etimad Rahmi Market, Kandahar, Afghanistan")
   const [companyLicence, setCompanyLicence] = useState("2401-2198")
-  const [bgImageUrl, setBgImageUrl] = useState<string>("/images/afghan_mountain_blueprint_bg.jpg")
-  const [bgOpacity, setBgOpacity] = useState<number>(0.11)
+  const [bgImageUrl, setBgImageUrl] = useState<string>("/images/mountain-watermark-premium.png")
+  const [bgOpacity, setBgOpacity] = useState<number>(0.22)
   const [previewScale, setPreviewScale] = useState<number>(0.68)
   const [isEditMode, setIsEditMode] = useState(false)
   const [editDocumentId, setEditDocumentId] = useState<string | null>(null)
-  const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "idle">("idle")
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "idle" | "local" | "error">("idle")
   const [lastAutoSaveTime, setLastAutoSaveTime] = useState<string>("")
-  const isInitialMount = useRef(true)
+  const [hasRecoverableDraft, setHasRecoverableDraft] = useState(false)
+  const [checkingDraft, setCheckingDraft] = useState(true)
+  const draftQueue = useRef<DraftSaveQueue<string> | null>(null)
+  const draftRevision = useRef(0)
+  const queuedRevision = useRef(0)
+  useEffect(() => {
+    const queue = new DraftSaveQueue<string>(async (body) => {
+      const response = await fetch("/api/draft?type=bol", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      })
+      if (!response.ok) throw new Error("Draft backup failed")
+      const result: { success?: boolean } = await response.json()
+      if (result.success !== true) throw new Error("Draft backup was not confirmed")
+    }, (status) => {
+      if (queuedRevision.current === draftRevision.current) setAutoSaveStatus(status)
+    })
+    draftQueue.current = queue
+    const retry = () => queue.retry()
+    window.addEventListener("online", retry)
+    return () => {
+      queue.dispose()
+      window.removeEventListener("online", retry)
+      draftQueue.current = null
+    }
+  }, [])
 
   // Enterprise Multi-Tier Real-Time Auto-Saving Engine (Debounced 800ms)
   useEffect(() => {
     if (typeof window === "undefined") return
-    if (isInitialMount.current) {
-      isInitialMount.current = false
-      return
-    }
+    if (checkingDraft || hasRecoverableDraft) return
 
+    draftRevision.current += 1
     setAutoSaveStatus("saving")
-    const timer = setTimeout(async () => {
-      try {
+    let pendingLocalSave = true
+    const persistLocalDraft = () => {
         const currentDocData = {
           ...formData,
           bol_number: bolNumber,
@@ -438,6 +481,22 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             savedAt: currentDocData.updated_at,
           })
         )
+        pendingLocalSave = false
+        return currentDocData
+    }
+    const flushLocalDraft = () => {
+      if (!pendingLocalSave) return
+      try { persistLocalDraft(); setAutoSaveStatus("local") }
+      catch { setAutoSaveStatus("error") }
+    }
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") flushLocalDraft()
+    }
+    window.addEventListener("pagehide", flushLocalDraft)
+    document.addEventListener("visibilitychange", handleVisibility)
+    const timer = setTimeout(() => {
+      try {
+        const currentDocData = persistLocalDraft()
 
         // Tier 2: Dedicated Server-Side Draft Backup (Crash-resistant, isolated from official BOLs)
         const isMeaningfulDraft =
@@ -452,11 +511,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           Boolean(formData.cargo_description?.trim() && formData.cargo_description.trim().length > 3)
 
         if (bolNumber && bolNumber.trim().length >= 2 && isMeaningfulDraft) {
-          fetch("/api/draft?type=bol", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ type: "bol", draft: currentDocData }),
-          }).catch(() => {})
+          queuedRevision.current = draftRevision.current
+          draftQueue.current?.enqueue(JSON.stringify({ type: "bol", draft: currentDocData }))
+        } else {
+          setAutoSaveStatus("local")
         }
 
         // Tier 3: Auto-save Shipper, Consignee & Notify Parties into Autocomplete Databases
@@ -495,17 +553,20 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         // Tier 4: Background Ledger Live Update
         syncBolToAccountLedger(currentDocData)
 
-        setAutoSaveStatus("saved")
         const nowFormatted = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
         setLastAutoSaveTime(nowFormatted)
         setLastAutoSavedTime(nowFormatted)
       } catch (e) {
-        setAutoSaveStatus("idle")
+        setAutoSaveStatus("error")
       }
     }, 800)
 
-    return () => clearTimeout(timer)
-  }, [formData, bolNumber, issueDate, persianDate, persianDateNumeric])
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener("pagehide", flushLocalDraft)
+      document.removeEventListener("visibilitychange", handleVisibility)
+    }
+  }, [formData, bolNumber, issueDate, persianDate, persianDateNumeric, checkingDraft, hasRecoverableDraft])
   const [activeRouteIndex, setActiveRouteIndex] = useState<number | null>(null)
   const [showLocationDropdown, setShowLocationDropdown] = useState<number | null>(null)
   const [selectedCountryFilter, setSelectedCountryFilter] = useState("ALL")
@@ -530,12 +591,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [savedNotes2, setSavedNotes2] = useState<SavedNoteOption[]>([])
   const [selectedNote2Id, setSelectedNote2Id] = useState<string>("")
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
+  const [isDocumentCenterOpen, setIsDocumentCenterOpen] = useState(false)
   const [savedRoutePresets, setSavedRoutePresets] = useState<SavedRoutePreset[]>([])
   const [isSaveRouteModalOpen, setIsSaveRouteModalOpen] = useState(false)
   const [newPresetTitle, setNewPresetTitle] = useState("")
   const [newPresetIcon, setNewPresetIcon] = useState("🚛")
   const [lastAutoSavedTime, setLastAutoSavedTime] = useState<string | null>(null)
-  const [hasRecoverableDraft, setHasRecoverableDraft] = useState(false)
   const [recoverableDraftTime, setRecoverableDraftTime] = useState<string | null>(null)
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false)
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false)
@@ -559,9 +620,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           setHasRecoverableDraft(true)
           setRecoverableDraftTime(new Date(timeStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
         }
+        setCheckingDraft(false)
       } else {
         // Fallback: Check dedicated server draft store
-        fetch("/api/draft?type=bol")
+        fetch("/api/draft?type=bol", { signal: AbortSignal.timeout(10000) })
           .then((res) => res.json())
           .then((data) => {
             if (data?.draft?.bol_number && data?.updated_at) {
@@ -575,9 +637,11 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             }
           })
           .catch(() => {})
+          .finally(() => setCheckingDraft(false))
       }
     } catch (e) {
       console.error("Error reading draft:", e)
+      setCheckingDraft(false)
     }
 
     // Check for active export corridor transfer from Logistics Calculator
@@ -726,8 +790,18 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         if (parsed.companyAddress) setCompanyAddress(parsed.companyAddress)
         if (parsed.companyLicence) setCompanyLicence(parsed.companyLicence)
         if (parsed.logoUrl) setLogoUrl(parsed.logoUrl)
-        if (parsed.bgImageUrl) setBgImageUrl(parsed.bgImageUrl)
-        if (typeof parsed.bgOpacity === "number") setBgOpacity(parsed.bgOpacity)
+        if (typeof parsed.bgImageUrl === "string") {
+          const isLegacyGlobalFlight = parsed.bgImageUrl === "/images/document-backgrounds/global-flight.svg"
+          setBgImageUrl(
+            isLegacyGlobalFlight
+              ? "/images/document-backgrounds/global-flight-premium.png"
+              : parsed.bgImageUrl,
+          )
+          if (typeof parsed.bgOpacity === "number" && Number.isFinite(parsed.bgOpacity)) {
+            const minimumOpacity = isLegacyGlobalFlight ? 0.22 : 0
+            setBgOpacity(Math.max(minimumOpacity, Math.min(0.35, parsed.bgOpacity)))
+          }
+        }
         if (parsed.iranOffice) {
           setFormData((prev) => ({
             ...prev,
@@ -1215,7 +1289,25 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     toast.success("Applied saved option to Note 1")
   }
 
-  const saveCurrentNote1 = () => {
+  const persistSavedNotes = (
+    storageKey: string,
+    notes: SavedNoteOption[],
+    setNotes: React.Dispatch<React.SetStateAction<SavedNoteOption[]>>,
+  ) => {
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(notes))
+      setNotes(notes)
+      return true
+    } catch (error) {
+      console.error("Failed to save note presets:", error)
+      toast.error("Could not save the note preset", {
+        description: "Browser storage is unavailable or full.",
+      })
+      return false
+    }
+  }
+
+  const saveCurrentNote1 = (saveAsNew = false) => {
     const label = (formData.notes_1_label || "").trim() || "Note 1"
     const content = (formData.notes_1 || "").trim()
     if (!content) {
@@ -1223,7 +1315,11 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       return
     }
 
-    const existingMatch = savedNotes1.find((n) => n.id === selectedNote1Id || (n.label === label && n.content === content))
+    const normalizedLabel = label.toLocaleLowerCase()
+    const existingMatch = saveAsNew
+      ? undefined
+      : savedNotes1.find((n) => n.id === selectedNote1Id)
+        || savedNotes1.find((n) => n.label.trim().toLocaleLowerCase() === normalizedLabel)
     const currentNote: SavedNoteOption = {
       id: existingMatch ? existingMatch.id : `n1-${Date.now()}`,
       label,
@@ -1232,18 +1328,20 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       savedAt: new Date().toISOString(),
     }
     const nextList = [currentNote, ...savedNotes1.filter((n) => n.id !== currentNote.id)]
-    setSavedNotes1(nextList)
+    if (!persistSavedNotes(SAVED_NOTES_1_STORAGE_KEY, nextList, setSavedNotes1)) return
     setSelectedNote1Id(currentNote.id)
-    window.localStorage.setItem(SAVED_NOTES_1_STORAGE_KEY, JSON.stringify(nextList))
-    toast.success("Saved Note 1 option", { description: `"${label}" added to options` })
+    toast.success(existingMatch ? "Note 1 preset updated" : "Note 1 preset saved", {
+      description: `“${label}” is ready to reuse`,
+    })
   }
+
+  const saveCurrentNote1AsNew = () => saveCurrentNote1(true)
 
   const deleteSavedNote1 = () => {
     if (!selectedNote1Id) return
     const nextList = savedNotes1.filter((n) => n.id !== selectedNote1Id)
-    setSavedNotes1(nextList)
+    if (!persistSavedNotes(SAVED_NOTES_1_STORAGE_KEY, nextList, setSavedNotes1)) return
     setSelectedNote1Id("")
-    window.localStorage.setItem(SAVED_NOTES_1_STORAGE_KEY, JSON.stringify(nextList))
     toast.success("Saved Note 1 option deleted")
   }
 
@@ -1260,7 +1358,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     toast.success("Applied saved option to Note 2")
   }
 
-  const saveCurrentNote2 = () => {
+  const saveCurrentNote2 = (saveAsNew = false) => {
     const label = (formData.notes_2_label || "").trim() || "Note 2"
     const content = (formData.notes_2 || "").trim()
     if (!content) {
@@ -1268,7 +1366,11 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       return
     }
 
-    const existingMatch = savedNotes2.find((n) => n.id === selectedNote2Id || (n.label === label && n.content === content))
+    const normalizedLabel = label.toLocaleLowerCase()
+    const existingMatch = saveAsNew
+      ? undefined
+      : savedNotes2.find((n) => n.id === selectedNote2Id)
+        || savedNotes2.find((n) => n.label.trim().toLocaleLowerCase() === normalizedLabel)
     const currentNote: SavedNoteOption = {
       id: existingMatch ? existingMatch.id : `n2-${Date.now()}`,
       label,
@@ -1277,20 +1379,35 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       savedAt: new Date().toISOString(),
     }
     const nextList = [currentNote, ...savedNotes2.filter((n) => n.id !== currentNote.id)]
-    setSavedNotes2(nextList)
+    if (!persistSavedNotes(SAVED_NOTES_2_STORAGE_KEY, nextList, setSavedNotes2)) return
     setSelectedNote2Id(currentNote.id)
-    window.localStorage.setItem(SAVED_NOTES_2_STORAGE_KEY, JSON.stringify(nextList))
-    toast.success("Saved Note 2 option", { description: `"${label}" added to options` })
+    toast.success(existingMatch ? "Note 2 preset updated" : "Note 2 preset saved", {
+      description: `“${label}” is ready to reuse`,
+    })
   }
+
+  const saveCurrentNote2AsNew = () => saveCurrentNote2(true)
 
   const deleteSavedNote2 = () => {
     if (!selectedNote2Id) return
     const nextList = savedNotes2.filter((n) => n.id !== selectedNote2Id)
-    setSavedNotes2(nextList)
+    if (!persistSavedNotes(SAVED_NOTES_2_STORAGE_KEY, nextList, setSavedNotes2)) return
     setSelectedNote2Id("")
-    window.localStorage.setItem(SAVED_NOTES_2_STORAGE_KEY, JSON.stringify(nextList))
     toast.success("Saved Note 2 option deleted")
   }
+
+  const selectedSavedNote1 = savedNotes1.find((note) => note.id === selectedNote1Id)
+  const selectedSavedNote2 = savedNotes2.find((note) => note.id === selectedNote2Id)
+  const isNote1PresetDirty = Boolean(selectedSavedNote1 && (
+    selectedSavedNote1.label !== (formData.notes_1_label || "").trim()
+    || selectedSavedNote1.content !== (formData.notes_1 || "").trim()
+    || (selectedSavedNote1.theme || "red") !== (formData.notes_1_theme || "red")
+  ))
+  const isNote2PresetDirty = Boolean(selectedSavedNote2 && (
+    selectedSavedNote2.label !== (formData.notes_2_label || "").trim()
+    || selectedSavedNote2.content !== (formData.notes_2 || "").trim()
+    || (selectedSavedNote2.theme || "green") !== (formData.notes_2_theme || "green")
+  ))
 
   const isShipperExisting = Boolean(
     savedShippers.find(
@@ -1721,6 +1838,21 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       formData.gross_weight_per_carton || "",
       formData.rate_per_kgs || ""
     )
+
+    if (calc.totalPackages <= 0) {
+      toast.error("Enter the number of packages first", {
+        description: "Add one or more carton/package quantities before calculating totals.",
+      })
+      return
+    }
+
+    const hasCartonWeight = calc.items.some((item) => item.netPerCarton > 0 || item.grossPerCarton > 0)
+    if (!hasCartonWeight) {
+      toast.error("Enter a carton weight first", {
+        description: "Add net or gross weight per carton to calculate shipment totals.",
+      })
+      return
+    }
 
     setFormData((prev) => ({
       ...prev,
@@ -2369,14 +2501,18 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   }
 
   const removeRouteStop = (index: number) => {
-    if (formData.routes.length <= 2) return // Minimum 2 stops (origin and destination)
+    if (!formData.routes[index]) return
+    const remainingStops = formData.routes.length - 1
     setFormData((prev) => ({
       ...prev,
       routes: prev.routes
         .filter((_, i) => i !== index)
         .map((route, routeIndex) => ({ ...route, stopOrder: routeIndex + 1 })),
     }))
-    if (activeRouteIndex === index) {
+    if (remainingStops === 0) {
+      setActiveRouteIndex(null)
+      setShowLocationDropdown(null)
+    } else if (activeRouteIndex === index) {
       setActiveRouteIndex(Math.max(0, index - 1))
     }
   }
@@ -3466,6 +3602,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     setIsEditMode(false)
     setEditDocumentId(null)
     setFormData(initialFormData)
+    setActiveRouteIndex(null)
+    setShowLocationDropdown(null)
     setBolNumber("BOL-2026-NSA470")
     fetchNextBolNumber()
     const today = new Date().toISOString().split("T")[0]
@@ -3696,68 +3834,118 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   }
 
   const handleDownloadPDF = async () => {
+    await handleShippingDocumentsDownload("all")
+  }
+
+  const shippingDocumentData = useMemo(
+    () =>
+      deriveShippingDocumentData(
+        {
+          ...formData,
+          bol_number: bolNumber,
+          issue_date: issueDate,
+          company_name: companyName,
+          company_subtitle: companySubtitle,
+          company_phone: companyPhone,
+          company_email: companyEmail,
+          company_address: companyAddress,
+          company_licence: companyLicence,
+        } as any,
+        bolNumber,
+        issueDate,
+      ),
+    [
+      formData,
+      bolNumber,
+      issueDate,
+      companyName,
+      companySubtitle,
+      companyPhone,
+      companyEmail,
+      companyAddress,
+      companyLicence,
+    ],
+  )
+
+  const createShippingDocuments = async (
+    kind: ShippingDocumentKind = "all",
+    stickerQuantity = shippingDocumentData.packageCount,
+    stickerLayout: StickerLayout = "single",
+  ) => {
+    const bolElement =
+      (document.querySelector('[data-bol-a4="true"]') as HTMLElement | null) ||
+      (document.querySelector('[data-pdf-export="true"]') as HTMLElement | null)
+    return generateShippingDocumentsPDF({
+      kind,
+      data: shippingDocumentData,
+      bolElement,
+      logoUrl,
+      companyName,
+      companySubtitle,
+      companyPhone,
+      companyEmail,
+      companyAddress,
+      companyLicence,
+      stickerQuantity,
+      stickerLayout,
+    })
+  }
+
+  const handleShippingDocumentsDownload = async (
+    kind: ShippingDocumentKind,
+    stickerQuantity = shippingDocumentData.packageCount,
+    stickerLayout: StickerLayout = "sheet",
+  ) => {
+    setIsSaving(true)
+    const fileName = buildShippingDocumentFileName(kind, shippingDocumentData)
+    const toastId = toast.loading("Building shipping documents...", {
+      description: kind === "all" ? "Combining BOL, packing list and sticker labels" : `Preparing ${fileName}`,
+    })
     try {
-      setIsSaving(true)
-      const toastId = toast.loading("Generating PDF...", {
-        description: "Please wait, this may take a moment...",
-      })
-
-      const fileName = buildBolSmartFileName({ ...formData, bol_number: bolNumber }, bolNumber, ".pdf")
-      const previewElement = document.querySelector('[data-pdf-export="true"]') as HTMLElement | null
-      const pdfBlob = await generateBOLPDFBlob({
-        fileName,
-        previewElement,
-        modern: {
-          bolNumber: bolNumber || "BOL",
-          issueDate,
-          persianDateNumeric,
-          formData: { ...formData, bol_number: bolNumber },
-          logoUrl,
-          companyName,
-          companyNamePersian,
-          companySubtitle,
-          companyPhone,
-          companyEmail,
-          companyAddress,
-          companyLicence,
-          onProgress: (progress: number, message: string) => {
-            toast.loading(`${message} (${Math.round(progress)}%)`, {
-              id: toastId,
-              description: "Building sharp A4 export",
-            })
-          },
-        },
-        onFallback: (reason: string) => {
-          toast.warning("Using compatibility PDF mode", {
-            description: reason,
-          })
-        },
-      })
-
+      const pdfBlob = await createShippingDocuments(kind, stickerQuantity, stickerLayout)
       const saved = await savePDFToDevice(pdfBlob, fileName)
-      if (saved.success) {
-        toast.success("PDF saved locally", {
-          id: toastId,
-          description: saved.path || `${fileName} has been saved to your device`,
-        })
-      } else {
-        toast.error("Failed to save PDF locally", {
-          id: toastId,
-          description: saved.error,
-        })
-      }
+      if (!saved.success) throw new Error(saved.error || "The PDF could not be saved to this device.")
+      toast.success("Shipping PDF saved", {
+        id: toastId,
+        description: saved.path || fileName,
+      })
     } catch (error) {
-      console.error("Error downloading PDF:", error)
-      toast.error("Error generating PDF", {
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
+      console.error("Shipping document generation failed:", error)
+      toast.error("Could not generate shipping documents", {
+        id: toastId,
+        description: error instanceof Error ? error.message : "An unexpected PDF error occurred.",
       })
     } finally {
       setIsSaving(false)
     }
   }
 
-  useEffect(() => {
-    const handleShellAction = (event: Event) => {
+  const handleShippingDocumentsPrint = async (
+    kind: ShippingDocumentKind,
+    stickerQuantity = shippingDocumentData.packageCount,
+    stickerLayout: StickerLayout = "sheet",
+  ) => {
+    const fileName = buildShippingDocumentFileName(kind, shippingDocumentData)
+    const printWindow = openPDFPrintWindow(fileName)
+    setIsSaving(true)
+    const toastId = toast.loading("Preparing print-ready PDF...", { description: fileName })
+    try {
+      const pdfBlob = await createShippingDocuments(kind, stickerQuantity, stickerLayout)
+      const opened = await printPDFBlobInWindow(pdfBlob, fileName, printWindow)
+      if (!opened) throw new Error("The print preview window could not be opened.")
+      toast.success("Print preview ready", { id: toastId, description: fileName })
+    } catch (error) {
+      printWindow?.close()
+      toast.error("Could not prepare print preview", {
+        id: toastId,
+        description: error instanceof Error ? error.message : "An unexpected PDF error occurred.",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleShellAction = useEffectEvent((event: Event) => {
       const detail = (event as CustomEvent<{ action?: string; tab?: string }>).detail
 
       startTransition(() => {
@@ -3796,14 +3984,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             break
         }
       })
-    }
-
+  })
+  useEffect(() => {
     window.addEventListener("skybol:editor-action", handleShellAction)
 
     return () => {
       window.removeEventListener("skybol:editor-action", handleShellAction)
     }
-  }, [handleNewDocument, handleDownloadPDF, handleExportPDF])
+  }, [])
 
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -3814,21 +4002,20 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     }
   }, [formData, bolNumber])
 
-  useEffect(() => {
-    const handleBeforePrint = () => {
+  const handleBeforePrint = useEffectEvent(() => {
       if (typeof document !== "undefined") {
         const smartTitle = buildBolSmartFileName(formData, bolNumber, "")
         if (smartTitle) {
           document.title = smartTitle
         }
       }
-    }
+  })
+  useEffect(() => {
     window.addEventListener("beforeprint", handleBeforePrint)
     return () => window.removeEventListener("beforeprint", handleBeforePrint)
-  }, [formData, bolNumber])
+  }, [])
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+  const handleKeyDown = useEffectEvent((e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s" && !e.shiftKey) {
         e.preventDefault()
         if (bolNumber && !isSaving) {
@@ -3851,15 +4038,16 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         e.preventDefault()
         setIsShortcutsModalOpen(true)
       }
-    }
+  })
+  useEffect(() => {
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [bolNumber, handleSave, isSaving, handleNewDocument, handleDuplicateCurrent])
+  }, [])
 
   return (
-    <div className="min-h-screen bg-transparent print:min-h-0 print:bg-white print:overflow-visible">
+    <div ref={editorRootRef} className="bol-workspace min-h-screen bg-transparent print:min-h-0 print:bg-white print:overflow-visible">
       {/* Action Bar - Mobile & Desktop sticky beneath header */}
-      <div className="sticky top-[84px] md:top-[88px] z-30 border-b border-slate-200/80 bg-white/95 px-2.5 py-1.5 shadow-sm shadow-blue-900/5 backdrop-blur-xl md:px-4 md:py-1.5 print:hidden">
+      <div ref={toolbarRef} className="bol-action-bar sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 px-2.5 py-1.5 shadow-sm shadow-blue-900/5 backdrop-blur-xl md:px-4 md:py-1.5 print:hidden">
         <div className="max-w-[1780px] mx-auto flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between">
           {/* Header Info */}
           <div className="flex items-center justify-between gap-1.5 min-w-0">
@@ -3886,18 +4074,20 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   </span>
                 </div>
               )}
+              <div role="status" aria-live="polite" aria-atomic="true">
               {autoSaveStatus === "saving" ? (
                 <div className="flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50/90 px-2 py-0.5 text-[10.5px] text-amber-900 font-bold shadow-2xs animate-pulse">
                   <RefreshCw className="h-2.5 w-2.5 text-amber-600 animate-spin" />
                   <span>Saving...</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 rounded-lg border border-emerald-200/80 bg-emerald-50/90 px-2 py-0.5 text-[10.5px] text-emerald-800 font-bold shadow-2xs">
-                  <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
-                  <span className="hidden sm:inline">Auto-Saved (Local & Server) {lastAutoSaveTime || lastAutoSavedTime || "Live"}</span>
-                  <span className="sm:hidden">Saved {lastAutoSaveTime || "Live"}</span>
+                <div className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[10.5px] font-bold shadow-2xs ${autoSaveStatus === "saved" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+                  {autoSaveStatus === "saved" ? <CheckCircle2 className="h-2.5 w-2.5 shrink-0" /> : <AlertCircle className="h-2.5 w-2.5 shrink-0" />}
+                  <span>{hasRecoverableDraft ? "Restore or discard the previous draft" : checkingDraft ? "Checking draft…" : autoSaveStatus === "saved" ? `Draft backed up · ${lastAutoSaveTime || lastAutoSavedTime || ""}` : autoSaveStatus === "local" ? "Draft saved on this device" : autoSaveStatus === "error" ? "Autosave failed — use Save or download a backup" : "Autosave ready"}</span>
+                  {autoSaveStatus === "local" && <button type="button" className="underline underline-offset-2" onClick={() => draftQueue.current?.retry()}>Retry backup</button>}
                 </div>
               )}
+              </div>
             </div>
 
             {/* Mobile Primary Save Button */}
@@ -3969,21 +4159,54 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               <span>{isEditMode ? "Update" : "Save"}</span>
             </Button>
 
-            <Button 
-              size="sm" 
-              variant="outline" 
-              onClick={handleDownloadPDF} 
-              disabled={isSaving}
-              className="h-7.5 rounded-xl border-slate-200 bg-white/90 px-2 sm:px-2.5 text-xs font-bold text-blue-700 hover:border-blue-200 hover:bg-blue-50 shadow-2xs shrink-0 cursor-pointer"
-              title="Download 384 DPI PDF"
-            >
-              {isSaving ? (
-                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-              ) : (
-                <Download className="h-3.5 w-3.5 mr-1 text-blue-700" />
-              )}
-              <span>PDF</span>
-            </Button>
+            <div className="inline-flex items-center rounded-xl shadow-2xs">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void handleShippingDocumentsDownload("all")}
+                onMouseEnter={() => void preloadBOLPDFGeneration()}
+                onFocus={() => void preloadBOLPDFGeneration()}
+                disabled={isSaving}
+                className="h-7.5 rounded-r-none border-slate-200 bg-white/90 px-2 sm:px-2.5 text-xs font-bold text-blue-700 hover:border-blue-200 hover:bg-blue-50 shrink-0 cursor-pointer gap-1"
+                title="Download Complete PDF (BOL + Packing List + Sticker)"
+              >
+                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-blue-700" />}
+                <span>Complete PDF</span>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isSaving}
+                    className="h-7.5 w-6 p-0 rounded-l-none border-l-0 border-slate-200 bg-white/90 text-blue-700 hover:bg-blue-50 cursor-pointer shrink-0"
+                    title="More PDF options"
+                  >
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 rounded-xl p-1.5 shadow-xl">
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-slate-500">Download PDF</DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => void handleShippingDocumentsDownload("all")} className="gap-2 text-xs font-black text-[#583184] cursor-pointer">
+                    <Package className="h-3.5 w-3.5" />Download Complete PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => void handleShippingDocumentsDownload("bol")} className="gap-2 text-xs font-bold cursor-pointer">
+                    <FileText className="h-3.5 w-3.5" />BOL Only (Page 1)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void handleShippingDocumentsDownload("packing-list")} className="gap-2 text-xs font-bold cursor-pointer">
+                    <FileSpreadsheet className="h-3.5 w-3.5" />Packing List Only (Page 2)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void handleShippingDocumentsDownload("stickers")} className="gap-2 text-xs font-bold cursor-pointer">
+                    <Layers className="h-3.5 w-3.5" />Sticker Label Only (Page 3)
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setIsDocumentCenterOpen(true)} className="gap-2 text-xs font-bold cursor-pointer">
+                    <Eye className="h-3.5 w-3.5 text-[#583184]" />Preview Documents (3-in-1)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
             <Button 
               size="sm" 
@@ -4009,6 +4232,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52 rounded-xl p-1.5 shadow-xl">
+                <DropdownMenuItem onClick={() => handleTabChange("preview")} className="gap-2 text-xs font-bold cursor-pointer">
+                  <Eye className="h-3.5 w-3.5" />A4 Preview
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleTabChange("pdf-settings")} className="gap-2 text-xs font-bold cursor-pointer">
+                  <Sliders className="h-3.5 w-3.5" />BOL Print Settings
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleDuplicateCurrent} className="gap-2 text-xs font-bold cursor-pointer">
                   <Copy className="h-3.5 w-3.5 text-purple-600" />
                   <span>Duplicate BOL</span>
@@ -4031,49 +4260,73 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       </div>
 
       {hasRecoverableDraft && (
-        <div className="bg-linear-to-r from-amber-500/10 via-amber-50/80 to-amber-500/10 border-b border-amber-300/60 px-3 py-1 text-xs text-amber-950 flex items-center justify-between gap-2 shadow-2xs print:hidden backdrop-blur-md">
-          <div className="flex items-center gap-1.5 text-[11.5px]">
-            <AlertCircle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-            <span>
-              <strong>Unsaved Draft Detected</strong> ({recoverableDraftTime}) — Restore previously edited Bill of Lading?
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <Button size="sm" onClick={handleRestoreDraft} className="h-6 px-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] shadow-2xs cursor-pointer">
-              ⚡ Restore Draft
-            </Button>
-            <Button size="sm" variant="ghost" onClick={handleDiscardDraft} className="h-6 px-2 text-[11px] text-slate-500 hover:text-slate-800">
-              ✕ Discard
-            </Button>
+        <div className="w-full max-w-[1780px] mx-auto px-2 sm:px-4 lg:px-6 pt-2 print:hidden">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-amber-300/90 bg-gradient-to-r from-amber-500/15 via-amber-50/90 to-amber-500/10 px-4 py-2 text-xs text-amber-950 shadow-md shadow-amber-500/10 backdrop-blur-xl">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs">
+                <AlertCircle className="h-4 w-4" />
+              </div>
+              <div className="truncate">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-slate-900 text-xs sm:text-sm">Unsaved Draft Detected</span>
+                  <span className="text-[11px] font-[vazirmatn] font-extrabold text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded-full border border-amber-200/60 hidden sm:inline-block">
+                    پیش‌نویس ذخیره نشده
+                  </span>
+                  <span className="text-[11px] font-mono text-amber-900 font-bold">({recoverableDraftTime})</span>
+                </div>
+                <p className="text-[11px] text-slate-600 hidden md:block">
+                  Restore previously typed Bill of Lading data, cargo details and consignee information?
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                onClick={handleRestoreDraft}
+                className="h-7.5 px-3 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-extrabold text-xs shadow-xs cursor-pointer active:scale-95 transition-all"
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                <span>Restore Draft</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleDiscardDraft}
+                className="h-7.5 px-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100/60 cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1 text-slate-400" />
+                <span>Discard</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}
 
       <div className="w-full max-w-[1780px] mx-auto px-2 sm:px-4 lg:px-6 py-1.5 md:py-2 print:max-w-none print:p-0 print:m-0">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="print:hidden w-full">
-          <TabsList className="mb-2 grid w-full grid-cols-5 rounded-xl border border-white/80 bg-white/70 p-0.5 shadow-sm shadow-blue-200/20 backdrop-blur-xl h-8.5 sm:h-9">
-            <TabsTrigger value="form" className="gap-1 rounded-lg text-[11px] sm:text-xs font-bold flex-1 justify-center px-1 py-1">
-              <FileText className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Edit Form</span>
+          <TabsList className="bol-navigation mb-2.5 grid w-full grid-cols-5 rounded-2xl border border-slate-200/90 bg-slate-100/85 p-1 shadow-sm shadow-blue-500/5 backdrop-blur-xl h-9 sm:h-10">
+            <TabsTrigger value="form" className="gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 data-[state=active]:shadow-sm transition-all">
+              <FileText className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+              <span className="hidden sm:inline">BOL Editor</span>
               <span className="sm:hidden">Form</span>
             </TabsTrigger>
-            <TabsTrigger value="preview" className="gap-1 rounded-lg text-[11px] sm:text-xs font-bold flex-1 justify-center px-1 py-1">
-              <Eye className="h-3.5 w-3.5 shrink-0" />
+            <TabsTrigger value="preview" className="gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 data-[state=active]:shadow-sm transition-all">
+              <Eye className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
               <span className="hidden sm:inline">A4 Preview</span>
               <span className="sm:hidden">Preview</span>
             </TabsTrigger>
-            <TabsTrigger value="saved-documents" className="gap-1 rounded-lg text-[11px] sm:text-xs font-bold flex-1 justify-center px-1 py-1">
-              <Layers className="h-3.5 w-3.5 shrink-0" />
+            <TabsTrigger value="saved-documents" onPointerEnter={() => { void import("./saved-documents").catch(() => {}) }} onFocus={() => { void import("./saved-documents").catch(() => {}) }} className="gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 data-[state=active]:shadow-sm transition-all">
+              <Layers className="h-3.5 w-3.5 shrink-0 text-amber-600" />
               <span className="hidden sm:inline">Saved BOLs</span>
               <span className="sm:hidden">Saved</span>
             </TabsTrigger>
-            <TabsTrigger value="account" className="gap-1 rounded-lg text-[11px] sm:text-xs font-bold flex-1 justify-center px-1 py-1">
-              <Landmark className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Account</span>
+            <TabsTrigger value="account" className="gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 data-[state=active]:shadow-sm transition-all">
+              <Landmark className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+              <span className="hidden sm:inline">Account Ledger</span>
               <span className="sm:hidden">Ledger</span>
             </TabsTrigger>
-            <TabsTrigger value="pdf-settings" className="gap-1 rounded-lg text-[11px] sm:text-xs font-black flex-1 justify-center px-1 py-1">
-              <Sliders className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+            <TabsTrigger value="pdf-settings" className="gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 data-[state=active]:shadow-sm transition-all">
+              <Sliders className="h-3.5 w-3.5 shrink-0 text-slate-600" />
               <span className="hidden sm:inline">BOL Settings</span>
               <span className="sm:hidden">Settings</span>
             </TabsTrigger>
@@ -4081,11 +4334,11 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
           <TabsContent value="form" className="edit-form-panel space-y-2.5">
             {/* Top Smart Quick-Actions & Navigation Ribbon */}
-            <div className="sticky top-[124px] md:top-[128px] z-20 rounded-xl border border-white/90 bg-white/95 px-2.5 py-1.5 shadow-sm shadow-blue-500/10 backdrop-blur-xl transition-all space-y-1.5">
+            <div className="bol-utility-bar relative z-10 rounded-xl border border-white/90 bg-white/95 px-2.5 py-1.5 shadow-sm shadow-blue-500/10 backdrop-blur-xl transition-all space-y-1.5">
               {/* Row 1: Smart Utility Buttons + Inline Cargo Presets */}
               <div className="flex items-center justify-between gap-2">
                 {/* Utilities */}
-                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                <div className="flex min-w-0 flex-wrap items-center gap-1 sm:gap-1.5 sm:flex-nowrap sm:shrink-0">
                   <Button
                     type="button"
                     size="sm"
@@ -4181,7 +4434,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       type="button"
                       onClick={() => {
                         const el = document.getElementById(sec.id)
-                        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" })
+                        if (el) el.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "start" })
                       }}
                       className="flex items-center gap-1 rounded-lg border border-slate-200/70 bg-slate-50/80 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-900 px-2 py-0.5 text-[10.5px] font-bold text-slate-700 whitespace-nowrap transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95"
                     >
@@ -4355,7 +4608,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
                     <div className="mt-2 pt-1.5 border-t border-indigo-100 flex items-center justify-between text-[10.5px]">
                       <span className="text-slate-500 truncate">
-                        {issueDate ? new Date(issueDate).toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" }) : "Select date"}
+                        {issueDate ? new Date(issueDate).toLocaleDateString("en-US", { timeZone: "UTC", weekday: "short", year: "numeric", month: "short", day: "numeric" }) : "Select date"}
                       </span>
                       <div className="flex items-center gap-1">
                         <button
@@ -4568,6 +4821,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                             type="text"
                             value={formData.notes_1_label || ""}
                             onChange={(e) => setFormData({ ...formData, notes_1_label: e.target.value })}
+                            dir="auto"
                             placeholder="Note 1 Title..."
                             className={`h-7.5 px-2 text-xs font-black backdrop-blur-sm rounded-lg transition ${getNoteThemeStyles(formData.notes_1_theme).input}`}
                           />
@@ -4594,7 +4848,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       </div>
 
                       {/* Saved Options Selector for Note 1 */}
-                      <div className="flex items-center gap-1.5 mb-2">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                         <div className="flex-1 min-w-0">
                           <Select
                             value={selectedNote1Id || "none"}
@@ -4630,24 +4884,40 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={saveCurrentNote1}
-                          className="h-7.5 px-2 text-xs font-bold border-blue-200 bg-white/90 hover:bg-blue-50 text-blue-700 rounded-lg shrink-0 shadow-2xs cursor-pointer"
-                          title="Save current note text as reusable preset"
+                          onClick={() => saveCurrentNote1()}
+                          disabled={!formData.notes_1?.trim() || Boolean(selectedSavedNote1 && !isNote1PresetDirty)}
+                          className="h-7.5 px-2.5 text-xs font-bold border-blue-200 bg-white/90 hover:bg-blue-50 text-blue-700 rounded-lg shrink-0 shadow-2xs cursor-pointer disabled:cursor-not-allowed"
+                          title={selectedSavedNote1 ? "Update the selected preset with these changes" : "Save current Note 1 as a reusable preset"}
                         >
                           <Save className="h-3 w-3 mr-1 text-blue-600" />
-                          Save
+                          {selectedSavedNote1 ? "Update" : "Save preset"}
                         </Button>
                         {selectedNote1Id && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={deleteSavedNote1}
-                            className="h-7.5 px-1.5 text-xs border-red-200 bg-white/90 hover:bg-red-50 text-red-600 rounded-lg shrink-0 cursor-pointer"
-                            title="Delete this saved preset"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          <>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={saveCurrentNote1AsNew}
+                              disabled={!formData.notes_1?.trim()}
+                              className="h-7.5 px-2 text-xs border-emerald-200 bg-white/90 hover:bg-emerald-50 text-emerald-700 rounded-lg shrink-0 cursor-pointer"
+                              title="Keep the selected preset and save a new copy"
+                            >
+                              <Copy className="h-3 w-3 mr-1" />
+                              Save as new
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={deleteSavedNote1}
+                              className="h-7.5 px-1.5 text-xs border-red-200 bg-white/90 hover:bg-red-50 text-red-600 rounded-lg shrink-0 cursor-pointer"
+                              title="Delete the selected Note 1 preset"
+                              aria-label="Delete selected Note 1 preset"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </>
                         )}
                         {formData.notes_1 && (
                           <Button
@@ -4663,11 +4933,22 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         )}
                       </div>
 
+                      <div className="mb-2 min-h-4 px-1 text-[10px] font-semibold">
+                        {selectedSavedNote1 ? (
+                          <span className={isNote1PresetDirty ? "text-amber-700" : "text-emerald-700"}>
+                            {isNote1PresetDirty ? "Unsaved preset changes" : `Saved preset: ${selectedSavedNote1.label}`}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">Title, note text, and color are saved together.</span>
+                        )}
+                      </div>
+
                       {/* Note 1 Textarea */}
                       <div className="relative">
                         <Textarea
                           value={formData.notes_1 || ""}
                           onChange={(e) => setFormData({ ...formData, notes_1: e.target.value })}
+                          dir="auto"
                           placeholder="Add custom contact / loading notes here (e.g. (+93) 0 700 203 307)..."
                           className={`backdrop-blur-sm rounded-lg text-xs sm:text-sm font-medium leading-relaxed resize-y ${getNoteThemeStyles(formData.notes_1_theme).textarea}`}
                           rows={3}
@@ -4689,6 +4970,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                             type="text"
                             value={formData.notes_2_label || ""}
                             onChange={(e) => setFormData({ ...formData, notes_2_label: e.target.value })}
+                            dir="auto"
                             placeholder="Note 2 Title..."
                             className={`h-7.5 px-2 text-xs font-black backdrop-blur-sm rounded-lg transition ${getNoteThemeStyles(formData.notes_2_theme).input}`}
                           />
@@ -4715,7 +4997,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       </div>
 
                       {/* Saved Options Selector for Note 2 */}
-                      <div className="flex items-center gap-1.5 mb-2">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
                         <div className="flex-1 min-w-0">
                           <Select
                             value={selectedNote2Id || "none"}
@@ -4751,24 +5033,40 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={saveCurrentNote2}
-                          className="h-7.5 px-2 text-xs font-bold border-blue-200 bg-white/90 hover:bg-blue-50 text-blue-700 rounded-lg shrink-0 shadow-2xs cursor-pointer"
-                          title="Save current note text as reusable preset"
+                          onClick={() => saveCurrentNote2()}
+                          disabled={!formData.notes_2?.trim() || Boolean(selectedSavedNote2 && !isNote2PresetDirty)}
+                          className="h-7.5 px-2.5 text-xs font-bold border-blue-200 bg-white/90 hover:bg-blue-50 text-blue-700 rounded-lg shrink-0 shadow-2xs cursor-pointer disabled:cursor-not-allowed"
+                          title={selectedSavedNote2 ? "Update the selected preset with these changes" : "Save current Note 2 as a reusable preset"}
                         >
                           <Save className="h-3 w-3 mr-1 text-blue-600" />
-                          Save
+                          {selectedSavedNote2 ? "Update" : "Save preset"}
                         </Button>
                         {selectedNote2Id && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={deleteSavedNote2}
-                            className="h-7.5 px-1.5 text-xs border-red-200 bg-white/90 hover:bg-red-50 text-red-600 rounded-lg shrink-0 cursor-pointer"
-                            title="Delete this saved preset"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
+                          <>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={saveCurrentNote2AsNew}
+                              disabled={!formData.notes_2?.trim()}
+                              className="h-7.5 px-2 text-xs border-emerald-200 bg-white/90 hover:bg-emerald-50 text-emerald-700 rounded-lg shrink-0 cursor-pointer"
+                              title="Keep the selected preset and save a new copy"
+                            >
+                              <Copy className="h-3 w-3 mr-1" />
+                              Save as new
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={deleteSavedNote2}
+                              className="h-7.5 px-1.5 text-xs border-red-200 bg-white/90 hover:bg-red-50 text-red-600 rounded-lg shrink-0 cursor-pointer"
+                              title="Delete the selected Note 2 preset"
+                              aria-label="Delete selected Note 2 preset"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </>
                         )}
                         {formData.notes_2 && (
                           <Button
@@ -4784,11 +5082,22 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         )}
                       </div>
 
+                      <div className="mb-2 min-h-4 px-1 text-[10px] font-semibold">
+                        {selectedSavedNote2 ? (
+                          <span className={isNote2PresetDirty ? "text-amber-700" : "text-emerald-700"}>
+                            {isNote2PresetDirty ? "Unsaved preset changes" : `Saved preset: ${selectedSavedNote2.label}`}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">Title, note text, and color are saved together.</span>
+                        )}
+                      </div>
+
                       {/* Note 2 Textarea */}
                       <div className="relative">
                         <Textarea
                           value={formData.notes_2 || ""}
                           onChange={(e) => setFormData({ ...formData, notes_2: e.target.value })}
+                          dir="auto"
                           placeholder="Add border representative contact info, customs notes, etc..."
                           className={`backdrop-blur-sm rounded-lg text-xs sm:text-sm font-medium leading-relaxed resize-y ${getNoteThemeStyles(formData.notes_2_theme).textarea}`}
                           rows={3}
@@ -5721,9 +6030,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             </div>
 
             {/* 05 Cargo Details Card */}
-            <Card id="section-cargo" className="bg-white/80 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden">
-              <CardHeader className="pb-4 border-b border-slate-100 bg-linear-to-r from-purple-50/60 via-indigo-50/30 to-white">
-                <CardTitle className="text-base flex flex-wrap items-center justify-between gap-2">
+            <Card id="section-cargo" className="overflow-hidden rounded-[28px] border border-purple-100 bg-white/90 shadow-[0_20px_55px_-24px_rgba(88,28,135,0.28)] backdrop-blur-2xl">
+              <CardHeader className="border-b border-purple-100 bg-linear-to-r from-purple-50/90 via-white to-indigo-50/60 px-4 py-4 sm:px-5">
+                <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-base">
                   <div className="flex items-center gap-2.5">
                     <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-purple-600 text-white text-[11px] font-black shadow-xs">
                       05
@@ -5731,9 +6040,9 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     <div className="p-2 rounded-xl bg-purple-100 text-purple-700 border border-purple-200 shadow-2xs">
                       <Package className="h-4.5 w-4.5" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <span className="font-extrabold text-slate-950 text-base tracking-tight select-none">Cargo Details & Specifications</span>
-                      <span className="text-[11px] text-purple-700 font-medium block">Packages, Weights, Rates & Cargo Description</span>
+                      <span className="mt-0.5 block text-[11px] font-semibold text-purple-700">Packages, weights, rates and printable cargo description</span>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -5741,29 +6050,29 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       type="button"
                       size="sm"
                       onClick={handleAutoCalculateWeights}
-                      className="h-8 px-3 rounded-xl bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-black shadow-md shadow-purple-500/20 cursor-pointer active:scale-95 transition-all"
+                      className="h-9 rounded-xl bg-linear-to-r from-purple-600 to-indigo-600 px-3.5 text-xs font-black text-white shadow-md shadow-purple-500/20 transition-all hover:from-purple-700 hover:to-indigo-700 active:scale-95 cursor-pointer"
                       title="Calculate Net Weight, Gross Weight and Goods Value"
                     >
                       <Calculator className="h-3.5 w-3.5 mr-1" />
-                      ⚡ Recalculate Totals
+                      Calculate totals
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={clearAllCargoFields}
-                      className="h-8 px-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-[10.5px] font-bold shadow-2xs"
+                      className="h-9 rounded-xl border border-slate-200 bg-white px-3 text-[10.5px] font-bold text-slate-600 shadow-2xs hover:border-red-200 hover:bg-red-50 hover:text-red-700"
                       title="Clear all Cargo fields"
                     >
                       ✕ Clear All
                     </Button>
-                    <span className="text-xs font-extrabold text-purple-900 font-[vazirmatn] bg-purple-50 px-3 py-1 rounded-full border border-purple-200">
+                    <span className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-extrabold text-purple-900 font-[vazirmatn]" dir="rtl">
                       مشخصات کالا و محموله
                     </span>
                   </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-5 pt-5 pb-6">
+              <CardContent className="space-y-4 px-4 pb-5 pt-4 sm:px-5">
                 {/* Live Weights & Calculation Metrics KPI Cards */}
                 {(() => {
                   const liveCargoCalc = calculateMultiCargo(
@@ -5773,12 +6082,29 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     formData.rate_per_kgs || ""
                   )
                   const isMulti = liveCargoCalc.isMultiItem && liveCargoCalc.items.length > 1
+                  const hasPackageInput = liveCargoCalc.totalPackages > 0
+                  const hasWeightInput = liveCargoCalc.items.some((item) => item.netPerCarton > 0 || item.grossPerCarton > 0)
+                  const calculationReady = hasPackageInput && hasWeightInput
 
                   return (
                     <div className="space-y-3">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Live shipment totals</p>
+                          <p className="text-[10px] font-medium text-slate-500">Updates automatically while you enter package and rate details.</p>
+                        </div>
+                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold ${
+                          calculationReady
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : "border-amber-200 bg-amber-50 text-amber-700"
+                        }`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${calculationReady ? "bg-emerald-500" : "bg-amber-500"}`} />
+                          {calculationReady ? "Auto calculation active" : "Enter packages + carton weight"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4" aria-live="polite">
                         {/* Total Packages */}
-                        <div className="rounded-2xl border border-purple-200/80 bg-linear-to-br from-purple-50/90 to-purple-100/40 p-3.5 shadow-2xs transition-all hover:shadow-md">
+                        <div className="relative overflow-hidden rounded-2xl border border-purple-200/80 bg-linear-to-br from-purple-50/90 to-white p-3.5 shadow-2xs transition-all hover:-translate-y-0.5 hover:shadow-md">
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[10px] font-black uppercase tracking-wider text-purple-800 flex items-center gap-1">
                               <Package className="h-3.5 w-3.5 text-purple-600" />
@@ -5801,7 +6127,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         </div>
 
                         {/* Total Net Weight */}
-                        <div className="rounded-2xl border border-blue-200/80 bg-linear-to-br from-blue-50/90 to-blue-100/40 p-3.5 shadow-2xs transition-all hover:shadow-md">
+                        <div className="relative overflow-hidden rounded-2xl border border-blue-200/80 bg-linear-to-br from-blue-50/90 to-white p-3.5 shadow-2xs transition-all hover:-translate-y-0.5 hover:shadow-md">
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[10px] font-black uppercase tracking-wider text-blue-800 flex items-center gap-1">
                               <Scale className="h-3.5 w-3.5 text-blue-600" />
@@ -5824,7 +6150,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         </div>
 
                         {/* Total Gross Weight */}
-                        <div className="rounded-2xl border border-indigo-200/80 bg-linear-to-br from-indigo-50/90 to-indigo-100/40 p-3.5 shadow-2xs transition-all hover:shadow-md">
+                        <div className="relative overflow-hidden rounded-2xl border border-indigo-200/80 bg-linear-to-br from-indigo-50/90 to-white p-3.5 shadow-2xs transition-all hover:-translate-y-0.5 hover:shadow-md">
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[10px] font-black uppercase tracking-wider text-indigo-800 flex items-center gap-1">
                               <Scale className="h-3.5 w-3.5 text-indigo-600" />
@@ -5847,7 +6173,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         </div>
 
                         {/* Estimated Goods Value */}
-                        <div className="rounded-2xl border border-emerald-200/80 bg-linear-to-br from-emerald-50/90 to-emerald-100/40 p-3.5 shadow-2xs transition-all hover:shadow-md">
+                        <div className="relative overflow-hidden rounded-2xl border border-emerald-200/80 bg-linear-to-br from-emerald-50/90 to-white p-3.5 shadow-2xs transition-all hover:-translate-y-0.5 hover:shadow-md">
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1">
                               <Receipt className="h-3.5 w-3.5 text-emerald-600" />
@@ -5926,15 +6252,15 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 })()}
 
                 {/* Field Grid - Row 1: Container, Seal & Package Quantities */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-1">
-                    <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                      <Box className="h-3.5 w-3.5 text-purple-600" />
-                      1. Container & Packaging Specifications
+                <div className="space-y-3 rounded-2xl border border-purple-100 bg-purple-50/35 p-3.5 sm:p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-purple-100 pb-2.5">
+                    <span className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-purple-950">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-100 text-purple-700">1</span>
+                      Shipment & packaging inputs
                     </span>
-                    <span className="font-[vazirmatn] text-xs font-bold text-slate-600">مشخصات کانتینر و بسته‌بندی</span>
+                    <span className="font-[vazirmatn] text-xs font-bold text-purple-800" dir="rtl">مشخصات کانتینر و بسته‌بندی</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
                     {/* Container No */}
                     <div>
                       <label className="mb-1.5 text-xs font-black text-slate-800 flex items-center justify-between gap-1">
@@ -6038,15 +6364,18 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 </div>
 
                 {/* Field Grid - Row 2: Rates, Weights & Valuation */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-1">
-                    <span className="text-xs font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                      <Receipt className="h-3.5 w-3.5 text-emerald-600" />
-                      2. Valuation, Rates & Total Weights
-                    </span>
-                    <span className="font-[vazirmatn] text-xs font-bold text-slate-600">ارزش‌گذاری، نرخ و اوزان کل</span>
+                <div className="space-y-3 rounded-2xl border border-emerald-100 bg-emerald-50/30 p-3.5 sm:p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-100 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-xs font-black text-emerald-700">2</span>
+                      <div>
+                        <span className="block text-xs font-black uppercase tracking-wider text-emerald-950">Rates & calculated totals</span>
+                        <span className="block text-[10px] font-medium text-emerald-700">Calculated values remain editable for document overrides.</span>
+                      </div>
+                    </div>
+                    <span className="font-[vazirmatn] text-xs font-bold text-emerald-800" dir="rtl">ارزش‌گذاری، نرخ و اوزان کل</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
                     {/* Rate per KGS */}
                     <div>
                       <label className="mb-1.5 text-xs font-black text-emerald-900 flex items-center justify-between gap-1">
@@ -6150,12 +6479,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 </div>
 
                 {/* Cargo Description Field & Quick Insertion Bar */}
-                <div className="space-y-2.5 pt-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <label className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                      <FileText className="h-4 w-4 text-purple-600" />
-                      <span>Cargo Description / Full Specifications</span>
-                    </label>
+                <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 sm:p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-200 text-xs font-black text-slate-700">3</span>
+                      <label className="text-xs font-black text-slate-900">
+                        Cargo description & document details
+                      </label>
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-[10.5px] font-bold text-slate-400">
                         {formData.cargo_description ? `${formData.cargo_description.length} chars` : "Empty"}
@@ -6175,12 +6506,13 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   </div>
 
                   {/* Quick Tag Snippets Bar */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 shrink-0 flex items-center gap-1">
                       <Sparkles className="h-3 w-3 text-amber-500" />
                       Quick Tags:
                     </span>
                     {[
+                      { label: "+ Lot No", text: "Lot No: " },
                       { label: "+ HS Code", text: "HS CODE: " },
                       { label: "+ Transit Date", text: `Transit Date: ${new Date().toLocaleDateString("en-CA")}` },
                       { label: "+ Afghan TC No", text: "Afghan TC No: " },
@@ -6208,15 +6540,38 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     name="cargo_description"
                     value={formData.cargo_description}
                     onChange={(e) => handleCargoFieldChange("cargo_description", e.target.value)}
+                    dir="auto"
                     placeholder="Enter detailed cargo description, HS codes, packaging marks, and shipment instructions..."
                     rows={4}
-                    className="rounded-2xl p-4 text-sm font-semibold leading-relaxed text-slate-950 bg-white border border-slate-200 shadow-inner focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-all min-h-32 font-mono"
+                    className="min-h-32 rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold leading-relaxed text-slate-950 shadow-inner transition-all focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
                   />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Routes - Multiple Stops */}
+            {/* Routes are optional and remain collapsed until the user adds one. */}
+            {formData.routes.length === 0 ? (
+              <button
+                id="section-routes"
+                type="button"
+                onClick={addRouteStop}
+                className="group flex w-full items-center justify-between gap-4 rounded-2xl border border-dashed border-blue-200 bg-white/55 px-5 py-3 text-left shadow-sm transition hover:border-blue-400 hover:bg-blue-50/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              >
+                <span className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
+                    <MapPin className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-extrabold text-blue-950">Add transit route (optional)</span>
+                    <span className="block text-xs font-semibold text-slate-500 font-[vazirmatn]" dir="rtl">افزودن مسیر ترانزیت در صورت نیاز</span>
+                  </span>
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3 py-2 text-xs font-black text-white shadow-sm transition group-hover:bg-blue-700">
+                  <Plus className="h-4 w-4" />
+                  Add Route
+                </span>
+              </button>
+            ) : (
             <Card id="section-routes" className="bg-white/80 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.06)] overflow-hidden">
               <CardHeader className="pb-4 border-b border-slate-100/80 bg-linear-to-r from-blue-50/50 via-indigo-50/30 to-slate-50/50">
                 <div className="flex flex-col gap-3">
@@ -6619,7 +6974,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                           </div>
 
                           {/* Action Toolbar on Card */}
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                             {/* Move Up */}
                             <Button
                               type="button"
@@ -6668,7 +7023,6 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                               size="sm"
                               className="h-8 rounded-lg border border-red-200 bg-red-50/50 px-2.5 text-xs font-bold text-red-600 hover:bg-red-100 hover:text-red-700 disabled:opacity-30"
                               onClick={() => removeRouteStop(index)}
-                              disabled={formData.routes.length <= 2}
                               title="Remove this route stop"
                             >
                               <Trash2 className="h-3.5 w-3.5 mr-1" />
@@ -7444,6 +7798,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 </div>
               </CardContent>
             </Card>
+            )}
 
             {/* Container Details */}
             <Card id="section-container" className="bg-white/70 backdrop-blur-2xl rounded-[32px] border border-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] overflow-hidden">
@@ -8258,38 +8613,16 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     >
                       <Palette className="h-3.5 w-3.5 text-blue-600" />
                       <span>
-                        {bgImageUrl === ""
-                          ? "📄 Clean White"
-                          : bgImageUrl === "/images/afghan_mountain_blueprint_bg.jpg"
-                          ? "🏔️ Mountain Watermark"
-                          : bgImageUrl === "/images/overland_transit_blueprint.svg"
-                          ? "📐 Truck Blueprint"
-                          : bgImageUrl === "/images/maritime_shipping_blueprint.svg"
-                          ? "🌊 Ship Blueprint"
-                          : bgImageUrl === "/images/sky_freight_cargo_plane.jpg"
-                          ? "✈️ Air Cargo"
-                          : bgImageUrl === "/images/afghan_cargo_fleet_pass.jpg"
-                          ? "🚚 Fleet Pass"
-                          : bgImageUrl === "/images/maritime_port_cargo_ship.jpg"
-                          ? "🚢 Port Vessel"
-                          : "🎨 Watermark"}
+                        {DOCUMENT_BACKGROUNDS.find(preset => preset.url === bgImageUrl)?.label ?? "Custom Watermark"}
                       </span>
                       <ChevronDown className="h-3 w-3 opacity-60" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56 p-1.5 bg-white rounded-xl shadow-xl border-slate-200">
+                  <DropdownMenuContent align="start" className="w-64 max-h-80 overflow-y-auto p-1.5 bg-white rounded-xl shadow-xl border-slate-200">
                     <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 px-2 py-1">
                       PDF Background & Watermark
                     </DropdownMenuLabel>
-                    {[
-                      { label: "📄 Clean White", url: "", opacity: 0 },
-                      { label: "🏔️ Mountain Watermark", url: "/images/afghan_mountain_blueprint_bg.jpg", opacity: 0.08 },
-                      { label: "📐 Truck Blueprint", url: "/images/overland_transit_blueprint.svg", opacity: 0.08 },
-                      { label: "🌊 Ship Blueprint", url: "/images/maritime_shipping_blueprint.svg", opacity: 0.08 },
-                      { label: "✈️ Air Cargo", url: "/images/sky_freight_cargo_plane.jpg", opacity: 0.08 },
-                      { label: "🚚 Fleet Pass", url: "/images/afghan_cargo_fleet_pass.jpg", opacity: 0.08 },
-                      { label: "🚢 Port Vessel", url: "/images/maritime_port_cargo_ship.jpg", opacity: 0.08 },
-                    ].map((preset) => (
+                    {DOCUMENT_BACKGROUNDS.map((preset) => (
                       <DropdownMenuItem
                         key={preset.label}
                         onClick={() => {
@@ -8312,10 +8645,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   <div className="flex items-center gap-0.5 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80">
                     <span className="text-[10px] font-bold text-slate-500 px-1.5">Opacity:</span>
                     {[
-                      { label: "5%", val: 0.05 },
                       { label: "8%", val: 0.08 },
                       { label: "12%", val: 0.12 },
                       { label: "18%", val: 0.18 },
+                      { label: "24%", val: 0.24 },
                     ].map((lvl) => (
                       <button
                         key={lvl.label}
@@ -8426,13 +8759,60 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 <Button
                   type="button"
                   size="sm"
-                  onClick={handleDownloadPDF}
+                  variant="outline"
+                  onClick={() => setIsDocumentCenterOpen(true)}
                   disabled={isSaving}
-                  className="h-8 px-3 rounded-lg bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white font-extrabold text-xs shadow-sm shadow-blue-900/20 cursor-pointer gap-1.5"
+                  className="h-8 px-2.5 rounded-lg border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs shadow-2xs cursor-pointer gap-1.5"
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  <span>Download PDF</span>
+                  <Eye className="h-3.5 w-3.5 text-[#583184]" />
+                  <span className="hidden sm:inline">Preview Documents</span>
+                  <span className="sm:hidden">Preview</span>
                 </Button>
+
+                <div className="inline-flex items-center rounded-lg shadow-sm shadow-purple-950/20">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void handleShippingDocumentsDownload("all")}
+                    onMouseEnter={() => void preloadBOLPDFGeneration()}
+                    onFocus={() => void preloadBOLPDFGeneration()}
+                    disabled={isSaving}
+                    className="h-8 px-3 rounded-r-none bg-gradient-to-r from-[#583184] to-[#432366] hover:from-[#4a2673] hover:to-[#351b52] text-white font-extrabold text-xs cursor-pointer gap-1.5"
+                    title="Download Complete PDF (Page 1: BOL, Page 2: Packing List, Page 3: Sticker Label)"
+                  >
+                    {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    <span>Download Complete PDF</span>
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={isSaving}
+                        className="h-8 px-1.5 rounded-l-none border-l border-white/20 bg-[#432366] hover:bg-[#351b52] text-white cursor-pointer"
+                        title="Download options"
+                      >
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-64 rounded-xl p-1.5 shadow-xl">
+                      <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-slate-500">Shipping documents</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => void handleShippingDocumentsDownload("all")} className="gap-2 text-xs font-black text-[#583184] cursor-pointer">
+                        <Package className="h-3.5 w-3.5" />Download Complete PDF (All 3 Documents)
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => void handleShippingDocumentsDownload("bol")} className="gap-2 text-xs font-bold cursor-pointer">
+                        <FileText className="h-3.5 w-3.5" />Download BOL Only (Page 1)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => void handleShippingDocumentsDownload("packing-list")} className="gap-2 text-xs font-bold cursor-pointer">
+                        <FileSpreadsheet className="h-3.5 w-3.5" />Download Packing List Only (Page 2)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => void handleShippingDocumentsDownload("stickers")} className="gap-2 text-xs font-bold cursor-pointer">
+                        <Layers className="h-3.5 w-3.5" />Download Sticker Label Only (Page 3)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
 
                 <Button
                   type="button"
@@ -8450,47 +8830,58 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
             {/* Document Studio Canvas with Realistic Paper Elevation & Fit Scale */}
             <div className="overflow-x-auto max-w-full flex flex-col items-center rounded-2xl border border-slate-200/80 bg-slate-200/60 p-2 sm:p-4 shadow-inner print:hidden scrollbar-thin">
-              <div className="flex items-center justify-between w-full max-w-[210mm] text-[11px] font-bold text-slate-500 mb-2 px-1">
-                <span className="flex items-center gap-1.5">
-                  <FileText className="h-3.5 w-3.5 text-blue-600" />
-                  <span>Single-Page Official A4 Bill of Lading</span>
+              <div
+                className="flex items-center justify-between w-full text-[11px] font-bold text-slate-500 mb-2 px-1 transition-all"
+                style={{ maxWidth: `${Math.max(794 * previewScale, 340)}px` }}
+              >
+                <span className="flex items-center gap-1.5 truncate">
+                  <FileText className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                  <span className="truncate">Single-Page Official A4 Bill of Lading</span>
                 </span>
-                <span className="font-mono text-[10.5px]">210 × 297 mm • 384 DPI Print Ready</span>
+                <span className="font-mono text-[10.5px] shrink-0">210 × 297 mm • 384 DPI</span>
               </div>
 
-              <div 
-                className="w-[210mm] min-w-[210mm] transform-gpu transition-all duration-150 origin-top bg-white shadow-[0_20px_50px_rgba(0,0,0,0.18),0_0_1px_1px_rgba(0,0,0,0.08)] rounded-[2px]"
+              <div
+                className="flex items-center justify-center transition-all duration-150 my-auto"
                 style={{
-                  transform: `scale(${previewScale})`,
-                  marginBottom: previewScale < 1 ? `calc(297mm * (${previewScale} - 1))` : '0px'
+                  width: `${794 * previewScale}px`,
+                  minHeight: `${1123 * previewScale}px`,
                 }}
               >
-                <A4Preview
-                  bolNumber={bolNumber}
-                  issueDate={issueDate}
-                  persianDate={persianDate}
-                  persianDateNumeric={persianDateNumeric}
-                  formData={formData}
-                  logoUrl={logoUrl}
-                  companyName={companyName}
-                  companyNamePersian={companyNamePersian}
-                  companySubtitle={companySubtitle}
-                  companyPhone={companyPhone}
-                  companyEmail={companyEmail}
-                  companyAddress={companyAddress}
-                  companyLicence={companyLicence}
-                  backgroundImageUrl={bgImageUrl}
-                  backgroundOpacity={bgOpacity}
-                  showStampSignature={showStampSignature}
-                  onToggleStampSignature={setShowStampSignature}
-                />
+                <div 
+                  className="w-[794px] min-w-[794px] min-h-[1123px] transform-gpu transition-all duration-150 bg-white shadow-[0_20px_50px_rgba(0,0,0,0.18),0_0_1px_1px_rgba(0,0,0,0.08)] rounded-[2px]"
+                  style={{
+                    transform: `scale(${previewScale})`,
+                    transformOrigin: "top left",
+                  }}
+                >
+                  <A4Preview
+                    bolNumber={bolNumber}
+                    issueDate={issueDate}
+                    persianDate={persianDate}
+                    persianDateNumeric={persianDateNumeric}
+                    formData={deferredFormData}
+                    logoUrl={logoUrl}
+                    companyName={companyName}
+                    companyNamePersian={companyNamePersian}
+                    companySubtitle={companySubtitle}
+                    companyPhone={companyPhone}
+                    companyEmail={companyEmail}
+                    companyAddress={companyAddress}
+                    companyLicence={companyLicence}
+                    backgroundImageUrl={bgImageUrl}
+                    backgroundOpacity={bgOpacity}
+                    showStampSignature={showStampSignature}
+                    onToggleStampSignature={setShowStampSignature}
+                  />
+                </div>
               </div>
             </div>
           </TabsContent>
 
           <TabsContent value="saved-documents" className="focus-visible:outline-none">
             {activeTab === "saved-documents" && (
-              <section className="min-h-0 rounded-[30px] border border-white/70 bg-white/45 p-3 shadow-2xl shadow-blue-200/40 backdrop-blur-2xl print:hidden [content-visibility:auto]">
+              <section className="min-h-0 w-full print:hidden [content-visibility:auto]">
                 {savedDocumentsPanel || (
                   <SavedDocuments
                     onLoadDocument={(id, targetTab) => {
@@ -8542,9 +8933,11 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       <Download className="h-4 w-4 text-blue-600" />
                       Download PDF
                     </h3>
-                    <p className="text-sm text-gray-600 mb-4">Download the current Bill of Lading as a PDF file directly to your device.</p>
+                    <p className="text-sm text-gray-600 mb-4">Preview and download the BOL, packing list, sticker labels, or one combined shipping PDF.</p>
                     <Button 
-                      onClick={handleDownloadPDF} 
+                      onClick={() => setIsDocumentCenterOpen(true)} 
+                      onMouseEnter={() => void preloadBOLPDFGeneration()}
+                      onFocus={() => void preloadBOLPDFGeneration()}
                       disabled={isSaving}
                       className="w-full bg-blue-600 hover:bg-blue-700"
                     >
@@ -8553,7 +8946,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       ) : (
                         <Download className="h-4 w-4 mr-2" />
                       )}
-                      Download PDF
+                      Open Document Center
                     </Button>
                   </div>
                   <div className="p-4 rounded-xl bg-linear-to-br from-green-50/80 to-white/60 border border-green-200/50">
@@ -8583,185 +8976,21 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
                 {/* Document Mountain Scenery & Watermark Background Controls */}
                 <div className="p-4 rounded-2xl bg-linear-to-br from-amber-50/90 via-sky-50/50 to-white border border-amber-200 shadow-sm">
-                  <h3 className="font-extrabold text-slate-900 mb-2 flex items-center justify-between">
+                  <h3 className="font-extrabold text-slate-900 mb-2 flex flex-wrap items-center justify-between gap-2">
                     <span className="flex items-center gap-2">
                       <Sparkles className="h-4.5 w-4.5 text-amber-600" />
-                      Document Mountain Background & Scenery Watermark
+                      Document Background Library
                     </span>
-                    <span className="text-xs font-bold text-amber-800 font-[vazirmatn]">پس‌زمینه کوهستانی و واترمارک</span>
+                    <span dir="rtl" className="text-xs font-bold text-amber-800 font-[vazirmatn]">پس‌زمینه کوهستانی و واترمارک</span>
                   </h3>
                   <p className="text-xs text-slate-600 mb-4">
-                    Select a high-resolution mountain scenery image to apply as an elegant, subtle watermark background across your Bill of Lading document.
+                    Explore 40 new backgrounds plus your classic collection. Select a thumbnail to update your BOL watermark.
                   </p>
 
-                  {/* Preset Background Options */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBgImageUrl("")
-                        setBgOpacity(0)
-                      }}
-                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        !bgImageUrl
-                          ? "border-blue-600 bg-blue-50/80 shadow-md ring-2 ring-blue-400/40"
-                          : "border-slate-200 bg-white hover:border-blue-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">📄 Clean White (Pure Paper)</span>
-                        {!bgImageUrl && <span className="w-2 h-2 rounded-full bg-blue-600" />}
-                      </div>
-                      <span className="text-[10px] text-slate-500">Pure White Background, Maximum Text Contrast & Print Clarity</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBgImageUrl("/images/afghan_mountain_blueprint_bg.jpg")
-                        setBgOpacity(0.08)
-                      }}
-                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        bgImageUrl === "/images/afghan_mountain_blueprint_bg.jpg"
-                          ? "border-amber-500 bg-amber-50/80 shadow-md ring-2 ring-amber-400/40"
-                          : "border-slate-200 bg-white hover:border-amber-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">🏔️ Mountain Watermark</span>
-                        {bgImageUrl === "/images/afghan_mountain_blueprint_bg.jpg" && (
-                          <span className="w-2 h-2 rounded-full bg-amber-500" />
-                        )}
-                      </div>
-                      <span className="text-[10px] text-slate-500">Subtle Snow Peaks & Technical Blueprint Silhouette</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBgImageUrl("/images/overland_transit_blueprint.svg")
-                        setBgOpacity(0.08)
-                      }}
-                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        bgImageUrl === "/images/overland_transit_blueprint.svg"
-                          ? "border-indigo-500 bg-indigo-50/80 shadow-md ring-2 ring-indigo-400/40"
-                          : "border-slate-200 bg-white hover:border-indigo-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">📐 Truck Vector Blueprint</span>
-                        {bgImageUrl === "/images/overland_transit_blueprint.svg" && (
-                          <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                        )}
-                      </div>
-                      <span className="text-[10px] text-slate-500">Heavy Transit Semi-Trailer Technical Drawing</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBgImageUrl("/images/maritime_shipping_blueprint.svg")
-                        setBgOpacity(0.08)
-                      }}
-                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        bgImageUrl === "/images/maritime_shipping_blueprint.svg"
-                          ? "border-teal-500 bg-teal-50/80 shadow-md ring-2 ring-teal-400/40"
-                          : "border-slate-200 bg-white hover:border-teal-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">🌊 Ship Vector Blueprint</span>
-                        {bgImageUrl === "/images/maritime_shipping_blueprint.svg" && (
-                          <span className="w-2 h-2 rounded-full bg-teal-500" />
-                        )}
-                      </div>
-                      <span className="text-[10px] text-slate-500">Ocean Container Cargo Vessel Grid Schematic</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBgImageUrl("/images/air_cargo_blueprint.svg")
-                        setBgOpacity(0.08)
-                      }}
-                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        bgImageUrl === "/images/air_cargo_blueprint.svg"
-                          ? "border-blue-500 bg-blue-50/80 shadow-md ring-2 ring-blue-400/40"
-                          : "border-slate-200 bg-white hover:border-blue-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">🛩️ Flight Route Blueprint</span>
-                        {bgImageUrl === "/images/air_cargo_blueprint.svg" && (
-                          <span className="w-2 h-2 rounded-full bg-blue-500" />
-                        )}
-                      </div>
-                      <span className="text-[10px] text-slate-500">International Aviation Flight Path Grid</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBgImageUrl("/images/afghan_cargo_fleet_pass.jpg")
-                        setBgOpacity(0.08)
-                      }}
-                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        bgImageUrl === "/images/afghan_cargo_fleet_pass.jpg"
-                          ? "border-orange-500 bg-orange-50/80 shadow-md ring-2 ring-orange-400/40"
-                          : "border-slate-200 bg-white hover:border-orange-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">🚚 Truck Fleet Pass</span>
-                        {bgImageUrl === "/images/afghan_cargo_fleet_pass.jpg" && (
-                          <span className="w-2 h-2 rounded-full bg-orange-500" />
-                        )}
-                      </div>
-                      <span className="text-[10px] text-slate-500">Afghan Cargo Truck Fleet in Mountain Pass</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBgImageUrl("/images/maritime_port_cargo_ship.jpg")
-                        setBgOpacity(0.08)
-                      }}
-                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        bgImageUrl === "/images/maritime_port_cargo_ship.jpg"
-                          ? "border-cyan-500 bg-cyan-50/80 shadow-md ring-2 ring-cyan-400/40"
-                          : "border-slate-200 bg-white hover:border-cyan-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">🚢 Ocean Cargo Vessel</span>
-                        {bgImageUrl === "/images/maritime_port_cargo_ship.jpg" && (
-                          <span className="w-2 h-2 rounded-full bg-cyan-500" />
-                        )}
-                      </div>
-                      <span className="text-[10px] text-slate-500">Container Cargo Ship & Sea Port Terminal</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setBgImageUrl("/images/sky_freight_cargo_plane.jpg")
-                        setBgOpacity(0.08)
-                      }}
-                      className={`p-3 rounded-xl border-2 text-left transition-all cursor-pointer flex flex-col justify-between ${
-                        bgImageUrl === "/images/sky_freight_cargo_plane.jpg"
-                          ? "border-sky-500 bg-sky-50/80 shadow-md ring-2 ring-sky-400/40"
-                          : "border-slate-200 bg-white hover:border-sky-300"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-black text-slate-900">✈️ Air Freight Aircraft</span>
-                        {bgImageUrl === "/images/sky_freight_cargo_plane.jpg" && (
-                          <span className="w-2 h-2 rounded-full bg-sky-500" />
-                        )}
-                      </div>
-                      <span className="text-[10px] text-slate-500">Commercial Cargo Plane Above Sunset Clouds</span>
-                    </button>
-                  </div>
+                  <BackgroundGallery value={bgImageUrl} onSelect={(preset) => {
+                    setBgImageUrl(preset.url)
+                    setBgOpacity(preset.opacity)
+                  }} />
 
                   {/* Opacity Slider */}
                   {bgImageUrl && (
@@ -8770,9 +8999,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       <input
                         type="range"
                         min="0.01"
-                        max="0.60"
+                        max="0.35"
                         step="0.01"
-                        value={bgOpacity}
+                        aria-label="Watermark opacity"
+                        value={Math.min(bgOpacity, 0.35)}
                         onChange={(e) => setBgOpacity(parseFloat(e.target.value))}
                         className="flex-1 accent-amber-600 cursor-pointer"
                       />
@@ -9182,6 +9412,38 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           />
         </div>
       </div>
+
+      <ShippingDocumentCenter
+        open={isDocumentCenterOpen}
+        onOpenChange={setIsDocumentCenterOpen}
+        data={shippingDocumentData}
+        logoUrl={logoUrl}
+        companyName={companyName}
+        companySubtitle={companySubtitle}
+        onDownload={handleShippingDocumentsDownload}
+        onPrint={handleShippingDocumentsPrint}
+        bolPreview={(
+          <A4Preview
+            bolNumber={bolNumber}
+            issueDate={issueDate}
+            persianDate={persianDate}
+            persianDateNumeric={persianDateNumeric}
+            formData={formData}
+            logoUrl={logoUrl}
+            companyName={companyName}
+            companyNamePersian={companyNamePersian}
+            companySubtitle={companySubtitle}
+            companyPhone={companyPhone}
+            companyEmail={companyEmail}
+            companyAddress={companyAddress}
+            companyLicence={companyLicence}
+            backgroundImageUrl={bgImageUrl}
+            backgroundOpacity={bgOpacity}
+            showStampSignature={showStampSignature}
+            onToggleStampSignature={setShowStampSignature}
+          />
+        )}
+      />
 
       {/* Print Options Dialog */}
       <PrintOptionsDialog

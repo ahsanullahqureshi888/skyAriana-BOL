@@ -33,15 +33,13 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    ".next-production/types/**/*.ts",
+    ".next-production/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "bol-ledger",
-    "SKY-ARIANA-DOC",
-    "SKY-CMR-BORDER",
-    "SKY-ARIANA-BANK",
     "awesome-claude-code-subagents"
   ]
 }
-

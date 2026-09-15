@@ -1,8 +1,9 @@
 import path from "path"
-import { readJsonFile, writeJsonFile } from "./blob-db"
+import { mutateJsonFile, readJsonFile, writeJsonFile } from "./blob-db"
+import { getDataPath } from "@/lib/server-paths"
 
-const localBolsFile = path.join(process.cwd(), ".local-bols.json")
-const fullSnapshotFile = path.join(process.cwd(), ".local-full-snapshot.json")
+const localBolsFile = getDataPath(".local-bols.json")
+const fullSnapshotFile = getDataPath(".local-full-snapshot.json")
 
 let memoryCacheBols: any[] | null = null
 let lastCacheTime = 0
@@ -20,19 +21,35 @@ async function readAllBols(): Promise<any[]> {
 }
 
 async function writeAllBols(bols: any[]): Promise<void> {
+  await writeJsonFile<any[]>(localBolsFile, bols)
   memoryCacheBols = bols
   lastCacheTime = Date.now()
-  await writeJsonFile<any[]>(localBolsFile, bols)
 
+  await updateFullSnapshot(bols)
+}
+
+async function mutateAllBols(updater: (bols: any[]) => any[] | Promise<any[]>): Promise<any[]> {
+  const next = await mutateJsonFile<any[]>(localBolsFile, [], async (current) => {
+    const safeCurrent = Array.isArray(current) ? current : []
+    return updater(safeCurrent)
+  })
+  memoryCacheBols = next
+  lastCacheTime = Date.now()
+  await updateFullSnapshot(next)
+  return next
+}
+
+async function updateFullSnapshot(bols: any[]): Promise<void> {
   // Also update full snapshot so sync endpoints stay 100% consistent
   try {
-    const snapshot = await readJsonFile<any>(fullSnapshotFile, {})
-    if (snapshot) {
-      snapshot.documents = bols
-      snapshot.updated_at = new Date().toISOString()
-      await writeJsonFile(fullSnapshotFile, snapshot)
-    }
-  } catch (_) {}
+    await mutateJsonFile<Record<string, any>>(fullSnapshotFile, {}, (snapshot) => ({
+      ...(snapshot && typeof snapshot === "object" ? snapshot : {}),
+      documents: bols,
+      updated_at: new Date().toISOString(),
+    }))
+  } catch (error) {
+    console.error("[local-storage] BOL saved but full snapshot update failed:", error)
+  }
 }
 
 /**
@@ -96,30 +113,24 @@ function harmonizeBolRecord(data: any, bolNumber?: string): any {
  */
 export async function storeLocalBOLsBatch(items: any[]): Promise<number> {
   if (!Array.isArray(items) || items.length === 0) return 0
-  const bols = await readAllBols()
-  const bolMap = new Map<string, any>()
-
-  for (const b of bols) {
-    const k = (b.bol_number || b.billOfLadingNumber || b.bolNo || b.id || "").trim().toLowerCase()
-    if (k) bolMap.set(k, b)
-  }
-
   let mergedCount = 0
-  for (const item of items) {
-    const harmonized = harmonizeBolRecord(item)
-    const k = (harmonized.bol_number || "").trim().toLowerCase()
-    if (k) {
-      const existing = bolMap.get(k)
-      bolMap.set(k, {
-        ...(existing || {}),
-        ...harmonized,
-        created_at: existing?.created_at || harmonized.created_at,
-      })
-      mergedCount++
+  await mutateAllBols((bols) => {
+    const bolMap = new Map<string, any>()
+    for (const b of bols) {
+      const k = (b.bol_number || b.billOfLadingNumber || b.bolNo || b.id || "").trim().toLowerCase()
+      if (k) bolMap.set(k, b)
     }
-  }
-
-  await writeAllBols(Array.from(bolMap.values()))
+    for (const item of items) {
+      const harmonized = harmonizeBolRecord(item)
+      const k = (harmonized.bol_number || "").trim().toLowerCase()
+      if (k) {
+        const existing = bolMap.get(k)
+        bolMap.set(k, { ...(existing || {}), ...harmonized, created_at: existing?.created_at || harmonized.created_at })
+        mergedCount++
+      }
+    }
+    return Array.from(bolMap.values())
+  })
   console.log(`[v0] Stored batch of ${mergedCount} BOLs locally`)
   return mergedCount
 }
@@ -128,32 +139,19 @@ export async function storeLocalBOLsBatch(items: any[]): Promise<number> {
  * Store BOL locally with robust identifier matching
  */
 export async function storeLocalBOL(bolNumber: string, data: any): Promise<void> {
-  const bols = await readAllBols()
   const target = (bolNumber || data?.bol_number || data?.billOfLadingNumber || data?.bolNo || data?.id || "").trim().toLowerCase()
-  
-  const existingIndex = bols.findIndex(b => {
-    const bId = (b.id ? String(b.id) : "").trim().toLowerCase()
-    const bNum = (b.bol_number ? String(b.bol_number) : "").trim().toLowerCase()
-    const bNum2 = (b.billOfLadingNumber ? String(b.billOfLadingNumber) : "").trim().toLowerCase()
-    const bNum3 = (b.bolNo ? String(b.bolNo) : "").trim().toLowerCase()
-    return target && (bId === target || bNum === target || bNum2 === target || bNum3 === target)
+  if (!target) throw new Error("A BOL number is required")
+  await mutateAllBols((bols) => {
+    const existingIndex = bols.findIndex((b) => [b.id, b.bol_number, b.billOfLadingNumber, b.bolNo]
+      .some((value) => String(value || "").trim().toLowerCase() === target))
+    const newBol = harmonizeBolRecord({
+      ...data,
+      created_at: data.created_at || (existingIndex >= 0 ? bols[existingIndex].created_at : new Date().toISOString()),
+    }, bolNumber)
+    if (existingIndex >= 0) bols[existingIndex] = { ...bols[existingIndex], ...newBol }
+    else bols.unshift(newBol)
+    return bols
   })
-
-  const newBol = harmonizeBolRecord({
-    ...data,
-    created_at: data.created_at || (existingIndex >= 0 ? bols[existingIndex].created_at : new Date().toISOString()),
-  }, bolNumber)
-
-  if (existingIndex >= 0) {
-    bols[existingIndex] = {
-      ...bols[existingIndex],
-      ...newBol,
-    }
-  } else {
-    bols.unshift(newBol)
-  }
-
-  await writeAllBols(bols)
   console.log(`[v0] Stored BOL locally: ${bolNumber}`)
 }
 
@@ -189,45 +187,29 @@ export async function getAllLocalBOLs(): Promise<any[]> {
  * Update locally stored BOL
  */
 export async function updateLocalBOL(bolNumber: string, data: any): Promise<void> {
-  const bols = await readAllBols()
   const target = (bolNumber || data?.bol_number || data?.billOfLadingNumber || data?.bolNo || data?.id || "").trim().toLowerCase()
-  const existingIndex = bols.findIndex(b => {
-    const bId = (b.id ? String(b.id) : "").trim().toLowerCase()
-    const bNum = (b.bol_number ? String(b.bol_number) : "").trim().toLowerCase()
-    const bNum2 = (b.billOfLadingNumber ? String(b.billOfLadingNumber) : "").trim().toLowerCase()
-    const bNum3 = (b.bolNo ? String(b.bolNo) : "").trim().toLowerCase()
-    return target && (bId === target || bNum === target || bNum2 === target || bNum3 === target)
+  if (!target) throw new Error("A BOL number is required")
+  await mutateAllBols((bols) => {
+    const existingIndex = bols.findIndex((b) => [b.id, b.bol_number, b.billOfLadingNumber, b.bolNo]
+      .some((value) => String(value || "").trim().toLowerCase() === target))
+    if (existingIndex >= 0) {
+      bols[existingIndex] = harmonizeBolRecord({ ...bols[existingIndex], ...data, created_at: bols[existingIndex].created_at }, bolNumber)
+    } else {
+      bols.unshift(harmonizeBolRecord(data, bolNumber))
+    }
+    return bols
   })
-  
-  if (existingIndex >= 0) {
-    const harmonized = harmonizeBolRecord({
-      ...bols[existingIndex],
-      ...data,
-      created_at: bols[existingIndex].created_at,
-    }, bolNumber)
-
-    bols[existingIndex] = harmonized
-    await writeAllBols(bols)
-    console.log(`[v0] Updated local BOL: ${bolNumber}`)
-  } else {
-    // If not found, insert it
-    await storeLocalBOL(bolNumber, data)
-  }
+  console.log(`[v0] Updated local BOL: ${bolNumber}`)
 }
 
 /**
  * Delete locally stored BOL
  */
 export async function deleteLocalBOL(bolNumber: string): Promise<void> {
-  const bols = await readAllBols()
   const target = (bolNumber || "").trim().toLowerCase()
-  const nextBols = bols.filter(b => {
-    const bId = (b.id ? String(b.id) : "").trim().toLowerCase()
-    const bNum = (b.bol_number ? String(b.bol_number) : "").trim().toLowerCase()
-    const bNum2 = (b.bolNumber ? String(b.bolNumber) : "").trim().toLowerCase()
-    return !(target && (bId === target || bNum === target || bNum2 === target))
-  })
-  await writeAllBols(nextBols)
+  if (!target) throw new Error("A BOL number is required")
+  await mutateAllBols((bols) => bols.filter((b) => ![b.id, b.bol_number, b.billOfLadingNumber, b.bolNo]
+    .some((value) => String(value || "").trim().toLowerCase() === target)))
   console.log(`[v0] Deleted local BOL: ${bolNumber}`)
 }
 

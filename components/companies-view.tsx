@@ -107,7 +107,7 @@ export function CompaniesView() {
   }
 
   const totalEntries = currentAccount.companies.reduce((sum, c) => sum + c.ledgerEntries.length, 0)
-  
+
   const grandTotalDebit = currentAccount.companies.reduce((sum, c) => 
     sum + c.ledgerEntries.reduce((s, e) => s + (Number(e.debit) || 0), 0), 0
   )
@@ -118,7 +118,7 @@ export function CompaniesView() {
 
   return (
     <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
-      
+
       {/* Back Navigation Bar */}
       <div className="mb-6">
         <Button
@@ -348,7 +348,7 @@ export function CompaniesView() {
                       </Button>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/90 px-2.5 py-1 text-xs font-black text-blue-950">
@@ -356,7 +356,7 @@ export function CompaniesView() {
                         <span>{company.ledgerEntries.length} {company.ledgerEntries.length === 1 ? 'Ledger Entry' : 'Ledger Entries'}</span>
                       </span>
                     </div>
-                    
+
                     {company.ledgerEntries.length > 0 && (
                       <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 shadow-2xs">
                         <div className="flex justify-between items-center text-xs font-black">
@@ -383,19 +383,7 @@ export function CompaniesView() {
                       <span>View Ledger</span>
                       <ChevronRight className="h-4 w-4 ml-auto" />
                     </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 border-slate-300 text-slate-800 hover:bg-slate-100 text-xs font-black rounded-xl h-10 cursor-pointer"
-                      onClick={() => {
-                        selectCompany(company)
-                        setView('invoice')
-                      }}
-                    >
-                      <Receipt className="h-4 w-4 text-blue-700" />
-                      <span>Invoice</span>
-                    </Button>
+
                   </div>
                 </div>
               </Card>

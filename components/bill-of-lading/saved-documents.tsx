@@ -44,6 +44,7 @@ import {
   Coins,
 } from "lucide-react"
 import { generateBOLPDFBlob, savePDFToDevice, buildBolSmartFileName } from "@/lib/utils/pdf-upload"
+import { generateShippingDocumentsPDF, deriveShippingDocumentData, buildShippingDocumentFileName } from "@/lib/utils/shipping-documents"
 import { CloudSyncModal } from "./cloud-sync-modal"
 import { useApp } from "@/lib/app-context"
 
@@ -275,7 +276,7 @@ const DocumentGridCard = memo(function DocumentGridCard({
         <div className="flex items-center justify-between text-[10.5px] font-bold text-slate-700 pt-0.5 border-t border-blue-100/60">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3 text-slate-600 shrink-0" />
-            <span>{doc.issue_date ? new Date(doc.issue_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "No date"}</span>
+            <span>{doc.issue_date ? new Date(doc.issue_date).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }) : "No date"}</span>
           </span>
           <span className="flex items-center gap-1 text-slate-800 font-extrabold">
             <Truck className="h-3 w-3 text-slate-600 shrink-0" />
@@ -464,8 +465,35 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   const { currentUser } = useApp()
   const isShipper = currentUser?.role === "shipper"
 
-  const [documents, setDocuments] = useState<SavedDocument[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [documents, setDocuments] = useState<SavedDocument[]>(() => {
+    if (typeof window === "undefined") return []
+    try {
+      const storedLocal1 = window.localStorage.getItem("sky-bol-browser-documents")
+      const storedLocal2 = window.localStorage.getItem("skybol:saved-documents")
+      const storedLocal3 = window.localStorage.getItem("skybol:backup-documents")
+      const list1: SavedDocument[] = storedLocal1 ? JSON.parse(storedLocal1) : []
+      const list2: SavedDocument[] = storedLocal2 ? JSON.parse(storedLocal2) : []
+      const list3: SavedDocument[] = storedLocal3 ? JSON.parse(storedLocal3) : []
+      const mergedMap = new Map<string, SavedDocument>()
+      for (const d of [...list1, ...list2, ...list3]) {
+        const key = (d.bol_number || d.id || "").trim()
+        if (key && !mergedMap.has(key)) mergedMap.set(key, d)
+      }
+      return Array.from(mergedMap.values()).filter(isMeaningfulBOL)
+    } catch {
+      return []
+    }
+  })
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window === "undefined") return true
+    try {
+      const s1 = window.localStorage.getItem("sky-bol-browser-documents")
+      const s2 = window.localStorage.getItem("skybol:saved-documents")
+      return !(s1 || s2)
+    } catch {
+      return false
+    }
+  })
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [openingPdfId, setOpeningPdfId] = useState<string | null>(null)
@@ -489,9 +517,33 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   const [docToDelete, setDocToDelete] = useState<SavedDocument | null>(null)
 
   const fetchDocuments = async () => {
-    setIsLoading(true)
+    // 1. Immediately read local storage with zero delay
     try {
-      const response = await fetch("/api/bol")
+      const storedLocal1 = window.localStorage.getItem("sky-bol-browser-documents")
+      const storedLocal2 = window.localStorage.getItem("skybol:saved-documents")
+      const storedLocal3 = window.localStorage.getItem("skybol:backup-documents")
+      const list1: SavedDocument[] = storedLocal1 ? JSON.parse(storedLocal1) : []
+      const list2: SavedDocument[] = storedLocal2 ? JSON.parse(storedLocal2) : []
+      const list3: SavedDocument[] = storedLocal3 ? JSON.parse(storedLocal3) : []
+      const localMap = new Map<string, SavedDocument>()
+      for (const d of [...list1, ...list2, ...list3]) {
+        const k = (d.bol_number || d.id || "").trim()
+        if (k && !localMap.has(k)) localMap.set(k, d)
+      }
+      const initialValid = Array.from(localMap.values()).filter(isMeaningfulBOL)
+      if (initialValid.length > 0) {
+        setDocuments(initialValid)
+        setIsLoading(false)
+      }
+    } catch (e) {}
+
+    // 2. Fetch server records in background with 5s timeout
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 5000)
+      const response = await fetch("/api/bol", { signal: controller.signal })
+      clearTimeout(timer)
+
       let serverDocs: SavedDocument[] = []
       if (response.ok) {
         const result = await response.json()
@@ -542,8 +594,8 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       // Strict filter: purge any placeholder / draft BOLs without shipper or quantity
       const validDocs = mergedList.filter(isMeaningfulBOL)
 
-      // If invalid empty BOLs exist in browser localStorage, clean them up immediately
-      if (validDocs.length < mergedList.length) {
+      // If valid BOLs exist, sync to browser localStorage
+      if (validDocs.length > 0) {
         try {
           const jsonStr = JSON.stringify(validDocs)
           window.localStorage.setItem("sky-bol-browser-documents", jsonStr)
@@ -554,7 +606,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
 
       setDocuments(validDocs)
     } catch (error) {
-      console.warn("Saved documents temporarily unavailable:", error)
+      console.warn("Saved documents background sync notice:", error)
     } finally {
       setIsLoading(false)
     }
@@ -1318,25 +1370,43 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     setTimeout(async () => {
       try {
         const previewElement = document.querySelector('[data-pdf-export="true"]') as HTMLElement | null
-        const fileName = buildBolSmartFileName(doc, doc.bol_number || doc.id, ".pdf")
-        const pdfBlob = await generateBOLPDFBlob({
-          fileName,
-          previewElement,
-          modern: {
-            bolNumber: doc.bol_number || doc.id,
-            issueDate: doc.issue_date || "",
-            persianDateNumeric: "",
-            formData: doc as unknown as import("@/lib/types/bill-of-lading").BillOfLadingFormData,
+        const shippingDocData = deriveShippingDocumentData(
+          doc as unknown as import("@/lib/types/bill-of-lading").BillOfLadingFormData,
+          doc.bol_number || doc.id,
+          doc.issue_date || "",
+        )
+        const fileName = buildShippingDocumentFileName("all", shippingDocData)
+        let pdfBlob: Blob
+        try {
+          pdfBlob = await generateShippingDocumentsPDF({
+            kind: "all",
+            data: shippingDocData,
+            bolElement: previewElement,
             logoUrl: "/images/logo.png",
             companyName: "SKY ARIANA LIMITED",
-            companyNamePersian: "شرکت حمل و نقل بین المللی سکای آریانا لمیتد",
             companySubtitle: "Import & Export - International Transportation",
-            companyPhone: "+93 700 939 365",
-            companyEmail: "info@skyariana.com",
-            companyAddress: "Kandahar, Afghanistan",
-            companyLicence: "2401-2198",
-          },
-        })
+          })
+        } catch (genErr) {
+          console.warn("Shipping document combined PDF fallback to BOL:", genErr)
+          pdfBlob = await generateBOLPDFBlob({
+            fileName,
+            previewElement,
+            modern: {
+              bolNumber: doc.bol_number || doc.id,
+              issueDate: doc.issue_date || "",
+              persianDateNumeric: "",
+              formData: doc as unknown as import("@/lib/types/bill-of-lading").BillOfLadingFormData,
+              logoUrl: "/images/logo.png",
+              companyName: "SKY ARIANA LIMITED",
+              companyNamePersian: "شرکت حمل و نقل بین المللی سکای آریانا لمیتد",
+              companySubtitle: "Import & Export - International Transportation",
+              companyPhone: "+93 700 939 365",
+              companyEmail: "info@skyariana.com",
+              companyAddress: "Kandahar, Afghanistan",
+              companyLicence: "2401-2198",
+            },
+          })
+        }
 
         await savePDFToDevice(pdfBlob, fileName)
         toast.success("PDF Downloaded successfully!", {
@@ -1574,7 +1644,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   }, [])
 
   return (
-    <Card className={`flex h-full flex-col overflow-hidden rounded-[32px] border border-white/80 bg-white/70 shadow-[0_20px_60px_-15px_rgba(37,99,235,0.1)] backdrop-blur-2xl text-slate-900 ${variant === "sidebar" ? "w-full" : "md:w-96"}`}>
+    <Card className={`flex h-full w-full flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white/85 shadow-xl shadow-blue-900/5 backdrop-blur-2xl text-slate-900 ${variant === "sidebar" ? "w-full" : "w-full"}`}>
       
       {/* Header Bar - Responsive Desktop, Tablet, Mobile */}
       <CardHeader className="border-b border-white/80 bg-linear-to-b from-white/90 via-white/75 to-white/60 p-4 sm:p-6 backdrop-blur-2xl">
@@ -1597,7 +1667,13 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 rounded-2xl bg-blue-50 px-3 py-1.5 text-xs font-extrabold text-blue-900 border border-blue-200">
+            {isLoading && (
+              <div className="flex items-center gap-1.5 rounded-full bg-blue-100/90 text-blue-700 px-3 py-1 text-xs font-black animate-pulse border border-blue-200">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+                <span>Syncing / همگام‌سازی...</span>
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 rounded-2xl bg-blue-50 px-3.5 py-1.5 text-xs font-black text-blue-950 border border-blue-200 shadow-2xs">
               <FileText className="h-4 w-4 text-blue-600" />
               <span>{documents.length} Total Saved</span>
             </div>
@@ -1605,22 +1681,51 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
         </div>
 
         {/* Live Summary Analytics Metrics Ribbon */}
-        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <div className="rounded-2xl bg-linear-to-br from-blue-500/10 to-indigo-500/5 border border-blue-200/80 p-2.5">
-            <p className="text-[10.5px] font-black uppercase text-blue-700">Total BOLs</p>
-            <p className="text-lg font-black text-slate-950 mt-0.5">{summaryStats.count}</p>
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div className="rounded-2xl bg-gradient-to-br from-blue-500/10 via-white to-blue-500/5 border border-blue-200/90 p-3 shadow-2xs hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-[10.5px] font-black uppercase tracking-wider text-blue-700 flex items-center gap-1">
+                <FileText className="h-3.5 w-3.5 text-blue-600" /> Total BOLs
+              </span>
+              <span className="text-[10px] font-bold text-blue-600/80 font-[vazirmatn]">مجموع بارنامه‌ها</span>
+            </div>
+            <p className="text-xl font-black text-slate-950 mt-1 font-mono">{summaryStats.count}</p>
           </div>
-          <div className="rounded-2xl bg-linear-to-br from-indigo-500/10 to-purple-500/5 border border-indigo-200/80 p-2.5">
-            <p className="text-[10.5px] font-black uppercase text-indigo-700">Total Packages</p>
-            <p className="text-lg font-black text-slate-950 mt-0.5">{summaryStats.totalPkgs ? `${summaryStats.totalPkgs.toLocaleString()} CTNS` : "—"}</p>
+
+          <div className="rounded-2xl bg-gradient-to-br from-indigo-500/10 via-white to-indigo-500/5 border border-indigo-200/90 p-3 shadow-2xs hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-[10.5px] font-black uppercase tracking-wider text-indigo-700 flex items-center gap-1">
+                <Boxes className="h-3.5 w-3.5 text-indigo-600" /> Packages
+              </span>
+              <span className="text-[10px] font-bold text-indigo-600/80 font-[vazirmatn]">مجموع کارتن‌ها</span>
+            </div>
+            <p className="text-xl font-black text-slate-950 mt-1 font-mono">
+              {summaryStats.totalPkgs ? `${summaryStats.totalPkgs.toLocaleString()} CTNS` : "0 CTNS"}
+            </p>
           </div>
-          <div className="rounded-2xl bg-linear-to-br from-amber-500/10 to-orange-500/5 border border-amber-200/80 p-2.5">
-            <p className="text-[10.5px] font-black uppercase text-amber-800">Total Weight</p>
-            <p className="text-lg font-black text-slate-950 mt-0.5">{summaryStats.totalWeightKg ? `${summaryStats.totalWeightKg.toLocaleString()} KG` : "—"}</p>
+
+          <div className="rounded-2xl bg-gradient-to-br from-amber-500/10 via-white to-orange-500/5 border border-amber-200/90 p-3 shadow-2xs hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-[10.5px] font-black uppercase tracking-wider text-amber-800 flex items-center gap-1">
+                <Scale className="h-3.5 w-3.5 text-amber-700" /> Total Weight
+              </span>
+              <span className="text-[10px] font-bold text-amber-700/80 font-[vazirmatn]">مجموع وزن</span>
+            </div>
+            <p className="text-xl font-black text-slate-950 mt-1 font-mono">
+              {summaryStats.totalWeightKg ? `${summaryStats.totalWeightKg.toLocaleString()} KG` : "0 KG"}
+            </p>
           </div>
-          <div className="rounded-2xl bg-linear-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-200/80 p-2.5">
-            <p className="text-[10.5px] font-black uppercase text-emerald-800">Total Goods Value</p>
-            <p className="text-lg font-black text-slate-950 mt-0.5">{summaryStats.totalValueUsd ? `$${summaryStats.totalValueUsd.toLocaleString()}` : "—"}</p>
+
+          <div className="rounded-2xl bg-gradient-to-br from-emerald-500/10 via-white to-teal-500/5 border border-emerald-200/90 p-3 shadow-2xs hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <span className="text-[10.5px] font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1">
+                <DollarSign className="h-3.5 w-3.5 text-emerald-700" /> Goods Value
+              </span>
+              <span className="text-[10px] font-bold text-emerald-700/80 font-[vazirmatn]">ارزش کالا</span>
+            </div>
+            <p className="text-xl font-black text-slate-950 mt-1 font-mono">
+              {summaryStats.totalValueUsd ? `$${summaryStats.totalValueUsd.toLocaleString()}` : "$0.00"}
+            </p>
           </div>
         </div>
 
@@ -1698,10 +1803,10 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
               variant="outline"
               onClick={handleDeleteEmptyBOLs}
               className="h-8.5 rounded-xl border-rose-300 bg-rose-50/90 px-2.5 text-xs font-black text-rose-800 hover:bg-rose-100 shadow-2xs cursor-pointer flex items-center gap-1"
-              title="Delete all empty/draft BOLs that have no shipper or quantity"
+              title="Clean empty draft BOLs / حذف بارنامه‌های خالی"
             >
               <Trash2 className="h-3.5 w-3.5 text-rose-600 shrink-0" />
-              <span>Clean Empty Drafts / حذف بارنامه‌های خالی</span>
+              <span>Clean Drafts</span>
             </Button>
             <Button
               type="button"
@@ -1927,11 +2032,49 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
           </div>
         )}
 
-        {isLoading ? (
-          <div className="flex min-h-80 items-center justify-center">
-            <div className="flex flex-col items-center gap-2 rounded-2xl bg-white p-6 shadow-sm">
-              <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
-              <p className="text-sm font-semibold text-slate-600">Loading saved documents...</p>
+        {(isLoading && documents.length === 0) ? (
+          <div className="py-8 space-y-6">
+            <div className="flex flex-col items-center justify-center text-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 shadow-sm animate-pulse">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-slate-900">Loading saved documents / در حال بارگذاری اسناد...</p>
+                <p className="text-xs text-slate-500 mt-0.5">Fetching latest records from local cache and cloud database</p>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRecoverAllBOLs}
+                  className="rounded-xl border-blue-200 bg-blue-50 text-blue-800 font-bold text-xs hover:bg-blue-100 cursor-pointer"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                  Load Saved Documents Now
+                </Button>
+              </div>
+            </div>
+
+            {/* Skeleton Shimmer Cards Grid */}
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div key={i} className="animate-pulse rounded-2xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div className="h-5 w-24 bg-slate-200 rounded-lg" />
+                    <div className="h-4 w-12 bg-slate-200 rounded-full" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="h-4 w-3/4 bg-slate-200 rounded" />
+                    <div className="h-3 w-1/2 bg-slate-200 rounded" />
+                  </div>
+                  <div className="h-14 bg-slate-200/80 rounded-xl" />
+                  <div className="flex gap-2 pt-1">
+                    <div className="h-7 flex-1 bg-slate-200 rounded-lg" />
+                    <div className="h-7 flex-1 bg-slate-200 rounded-lg" />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ) : (
@@ -2171,7 +2314,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                               </span>
                             )}
                             <span className="text-xs font-bold text-slate-500">
-                              • {doc.issue_date ? new Date(doc.issue_date).toLocaleDateString() : "No date"}
+                              • {doc.issue_date ? new Date(doc.issue_date).toLocaleDateString(undefined, { timeZone: "UTC" }) : "No date"}
                             </span>
                           </div>
                           <p className="text-xs font-semibold text-slate-700 truncate mt-0.5">
@@ -2280,7 +2423,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                             </div>
                           </td>
                           <td className="p-3.5">
-                            {doc.issue_date ? new Date(doc.issue_date).toLocaleDateString() : "N/A"}
+                            {doc.issue_date ? new Date(doc.issue_date).toLocaleDateString(undefined, { timeZone: "UTC" }) : "N/A"}
                           </td>
                           <td className="p-3.5 font-bold text-slate-900 max-w-[160px] truncate">
                             {doc.shipper_name || "N/A"}

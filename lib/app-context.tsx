@@ -1,6 +1,7 @@
 "use client"
 
 import { Account, Company, LedgerEntry, Invoice, InvoiceItem, LedgerSettings, User, UserRole } from '@/lib/types'
+import { authenticateLocalUser } from "@/lib/services/local-user-auth"
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
 import { getFinancialsMap, saveFinancialsForEntry, smartMergeRow, smartMergeLedgerRecords, isCleanCompanyName } from '@/lib/services/ledger-sync-utils'
 
@@ -164,7 +165,8 @@ const DEFAULT_USERS_LIST: User[] = [
     username: "admin",
     name: "System Administrator",
     role: "superadmin",
-    email: "admin@skybalam.com",
+    email: "admin@skyariana.com",
+    password: "admin",
     avatar: "/logo.png",
     createdAt: "2026-01-01",
     lastLogin: "2026-08-08",
@@ -174,7 +176,8 @@ const DEFAULT_USERS_LIST: User[] = [
     username: "manager",
     name: "Logistics Manager",
     role: "admin",
-    email: "manager@skybalam.com",
+    email: "manager@skyariana.com",
+    password: "admin",
     avatar: "/logo.png",
     createdAt: "2026-02-10",
     lastLogin: "2026-08-07",
@@ -184,7 +187,8 @@ const DEFAULT_USERS_LIST: User[] = [
     username: "accountant",
     name: "Head Accountant",
     role: "accountant",
-    email: "accounting@skybalam.com",
+    email: "accounting@skyariana.com",
+    password: "admin",
     avatar: "/logo.png",
     createdAt: "2026-03-15",
     lastLogin: "2026-08-05",
@@ -194,7 +198,8 @@ const DEFAULT_USERS_LIST: User[] = [
     username: "viewer",
     name: "Guest Auditor",
     role: "viewer",
-    email: "auditor@skybalam.com",
+    email: "auditor@skyariana.com",
+    password: "admin",
     avatar: "/logo.png",
     createdAt: "2026-04-20",
     lastLogin: "2026-07-28",
@@ -204,7 +209,8 @@ const DEFAULT_USERS_LIST: User[] = [
     username: "shipper",
     name: "Shipper Portal",
     role: "shipper",
-    email: "shipper@skybalam.com",
+    email: "shipper@skyariana.com",
+    password: "admin",
     avatar: "/logo.png",
     createdAt: "2026-05-01",
     lastLogin: "2026-08-28",
@@ -375,72 +381,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback((username: string, password: string, rememberMe: boolean = true) => {
-    const cleanUser = username.trim()
-    const cleanPass = password.trim()
+    const foundUser = authenticateLocalUser(state.users, username, password)
+    if (!foundUser) return false
 
-    if (!cleanUser || !cleanPass) return false
-
-    // Match existing user from state.users or default admin/shipper
-    const foundUser = state.users.find((u) => 
-      u.username.toLowerCase() === cleanUser.toLowerCase() || 
-      (u.email && u.email.toLowerCase() === cleanUser.toLowerCase())
-    )
-
-    // Check if account is disabled
-    if (foundUser && foundUser.status === 'disabled') {
-      return false
+    const { password: _password, ...profile } = foundUser
+    const userObj: User = {
+      ...profile,
+      avatar: foundUser.avatar || "/logo.png",
+      lastLogin: new Date().toISOString().split("T")[0],
     }
-
-    // Verify password: If user has a set password, verify it. Otherwise fallback to standard default or length >= 3
-    let passwordValid = false
-    if (foundUser?.password) {
-      passwordValid = cleanPass === foundUser.password || cleanPass === 'skybalam2026'
-    } else {
-      passwordValid = cleanPass === 'skybalam2026' || cleanPass.length >= 3
-    }
-
-    if (passwordValid && (foundUser || cleanUser.toLowerCase() === 'admin' || cleanUser.toLowerCase() === 'shipper')) {
-      let role: UserRole = 'admin'
-      if (foundUser?.role) {
-        role = foundUser.role
-      } else if (cleanUser.toLowerCase() === 'admin') {
-        role = 'superadmin'
-      } else if (cleanUser.toLowerCase() === 'shipper') {
-        role = 'shipper'
-      }
-
-      const clientName = foundUser?.clientName || (role === 'shipper' ? (foundUser?.name || cleanUser.toUpperCase()) : undefined)
-      const clientId = foundUser?.clientId
-
-      const userObj: User = {
-        id: foundUser?.id || `usr-${Date.now()}`,
-        username: foundUser?.username || cleanUser,
-        name: foundUser?.name || (role === 'shipper' ? (clientName || 'Shipper Portal') : cleanUser.toUpperCase()),
-        role: role,
-        email: foundUser?.email || `${cleanUser}@skybalam.com`,
-        clientId: clientId,
-        clientName: clientName,
-        status: foundUser?.status || 'active',
-        avatar: '/logo.png',
-        lastLogin: new Date().toISOString().split("T")[0],
-      }
-
-      if (rememberMe) {
-        localStorage.setItem("skybol:user", JSON.stringify(userObj))
-      } else {
-        sessionStorage.setItem("skybol:user", JSON.stringify(userObj))
-      }
-
-      setState((prev) => ({
-        ...prev,
-        isAuthenticated: true,
-        currentUser: userObj,
-        view: role === 'shipper' ? 'shipper-portal' : (prev.view === 'shipper-portal' ? 'accounts' : prev.view),
-      }))
-      return true
-    }
-
-    return false
+    // Remove a previous remembered identity when switching to a session-only login.
+    localStorage.removeItem("skybol:user")
+    sessionStorage.removeItem("skybol:user")
+    const storage = rememberMe ? localStorage : sessionStorage
+    storage.setItem("skybol:user", JSON.stringify(userObj))
+    setState((prev) => ({
+      ...prev,
+      isAuthenticated: true,
+      currentUser: userObj,
+      view: prev.view === "shipper-portal" ? "accounts" : prev.view,
+    }))
+    return true
   }, [state.users])
 
   const logout = useCallback(() => {

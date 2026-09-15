@@ -1,5 +1,6 @@
 import path from "path"
-import { readJsonFile, writeJsonFile } from "./blob-db"
+import { getDataPath } from "@/lib/server-paths"
+import { mutateJsonFile, readJsonFile, writeJsonFile } from "./blob-db"
 
 export type AccountLedgerDatabase = {
   accounts: any[]
@@ -10,7 +11,7 @@ export type AccountLedgerDatabase = {
   updated_at?: string
 }
 
-const ledgerDatabaseFile = path.join(process.cwd(), ".local-account-ledgers.json")
+const ledgerDatabaseFile = getDataPath(".local-account-ledgers.json")
 
 const emptyDatabase: AccountLedgerDatabase = {
   accounts: [],
@@ -84,10 +85,10 @@ export async function getAccountLedgerDatabase() {
   const now = Date.now()
   let database: AccountLedgerDatabase
   if (memoryCacheLedger && (now - lastLedgerCacheTime < LEDGER_TTL_MS)) {
-    database = memoryCacheLedger
+    database = structuredClone(memoryCacheLedger)
   } else {
     database = await readJsonFile<AccountLedgerDatabase>(ledgerDatabaseFile, emptyDatabase)
-    memoryCacheLedger = database
+    memoryCacheLedger = structuredClone(database)
     lastLedgerCacheTime = now
   }
 
@@ -112,7 +113,14 @@ export function isCleanCompanyName(name: string): boolean {
 }
 
 export async function saveAccountLedgerDatabase(data: Partial<AccountLedgerDatabase>) {
-  const existing = await getAccountLedgerDatabase()
+  const next = await mutateJsonFile<AccountLedgerDatabase>(ledgerDatabaseFile, emptyDatabase, (rawExisting) => {
+  const existing = {
+    accounts: Array.isArray(rawExisting.accounts) ? rawExisting.accounts : [],
+    ledgerEntries: rawExisting.ledgerEntries && typeof rawExisting.ledgerEntries === "object" ? rawExisting.ledgerEntries : {},
+    ledgerProfiles: rawExisting.ledgerProfiles && typeof rawExisting.ledgerProfiles === "object" ? rawExisting.ledgerProfiles : {},
+    receipts: rawExisting.receipts && typeof rawExisting.receipts === "object" ? rawExisting.receipts : {},
+    deletedLedgerEntries: Array.isArray(rawExisting.deletedLedgerEntries) ? rawExisting.deletedLedgerEntries : [],
+  }
 
   // Safely merge accounts and filter out non-company noise
   const mergedAccounts = Array.from(new Set([
@@ -169,7 +177,7 @@ export async function saveAccountLedgerDatabase(data: Partial<AccountLedgerDatab
     })
   }
 
-  const next: AccountLedgerDatabase = {
+  return {
     accounts: mergedAccounts,
     ledgerEntries: mergedLedgerEntries,
     ledgerProfiles: mergedProfiles,
@@ -177,16 +185,18 @@ export async function saveAccountLedgerDatabase(data: Partial<AccountLedgerDatab
     deletedLedgerEntries: mergedDeleted,
     updated_at: new Date().toISOString(),
   }
+  })
 
-  memoryCacheLedger = next
+  memoryCacheLedger = structuredClone(next)
   lastLedgerCacheTime = Date.now()
 
-  // Write primary and backup files atomically
-  await writeJsonFile(ledgerDatabaseFile, next)
-  const backupFile = path.join(process.cwd(), ".local-account-ledgers.backup.json")
+  // Keep a separately replaceable recovery copy after the primary transaction commits.
+  const backupFile = getDataPath(".local-account-ledgers.backup.json")
   try {
     await writeJsonFile(backupFile, next)
-  } catch (e) {}
+  } catch (error) {
+    console.error("[account-ledger] Primary save succeeded but backup failed:", error)
+  }
 
   return next
 }

@@ -1,5 +1,6 @@
 import path from "path"
-import { readJsonFile, writeJsonFile } from "./blob-db"
+import { getDataPath } from "@/lib/server-paths"
+import { mutateJsonFile, readJsonFile, writeJsonFile } from "./blob-db"
 import { mergeLedgerRows, isCleanCompanyName } from "./account-ledger-storage-service"
 
 export type BolAccountLedgerDatabase = {
@@ -9,7 +10,7 @@ export type BolAccountLedgerDatabase = {
   updated_at?: string
 }
 
-const bolAccountLedgerFile = path.join(process.cwd(), ".local-bol-account-ledgers.json")
+const bolAccountLedgerFile = getDataPath(".local-bol-account-ledgers.json")
 
 const emptyDatabase: BolAccountLedgerDatabase = {
   customCompanies: [],
@@ -29,7 +30,12 @@ export async function getBolAccountLedgerDatabase() {
 }
 
 export async function saveBolAccountLedgerDatabase(data: Partial<BolAccountLedgerDatabase>) {
-  const existing = await getBolAccountLedgerDatabase()
+  const next = await mutateJsonFile<BolAccountLedgerDatabase>(bolAccountLedgerFile, emptyDatabase, (rawExisting) => {
+  const existing = {
+    customCompanies: Array.isArray(rawExisting.customCompanies) ? rawExisting.customCompanies : [],
+    ledgerRecords: rawExisting.ledgerRecords && typeof rawExisting.ledgerRecords === "object" ? rawExisting.ledgerRecords : {},
+    deletedLedgerEntries: Array.isArray(rawExisting.deletedLedgerEntries) ? rawExisting.deletedLedgerEntries : [],
+  }
 
   const mergedDeleted = Array.from(new Set([
     ...(Array.isArray(existing.deletedLedgerEntries) ? existing.deletedLedgerEntries : []),
@@ -80,18 +86,20 @@ export async function saveBolAccountLedgerDatabase(data: Partial<BolAccountLedge
     }
   }
 
-  const next: BolAccountLedgerDatabase = {
+  return {
     customCompanies: cleanCompanies,
     ledgerRecords: cleanMergedRecords,
     deletedLedgerEntries: mergedDeleted,
     updated_at: new Date().toISOString(),
   }
+  })
 
-  await writeJsonFile(bolAccountLedgerFile, next)
-  const backupFile = path.join(process.cwd(), ".local-bol-account-ledgers.backup.json")
+  const backupFile = getDataPath(".local-bol-account-ledgers.backup.json")
   try {
     await writeJsonFile(backupFile, next)
-  } catch (e) {}
+  } catch (error) {
+    console.error("[bol-ledger] Primary save succeeded but backup failed:", error)
+  }
 
   return next
 }

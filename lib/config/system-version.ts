@@ -4,6 +4,9 @@ export interface SystemVersionInfo {
   releaseDate: string
   edition: string
   companyName: string
+  applicationName: string
+  developer: string
+  platform: string
   updateChannel: "stable" | "beta"
   changelog: {
     version: string
@@ -24,6 +27,9 @@ export const CURRENT_SYSTEM_VERSION: SystemVersionInfo = {
   releaseDate: "2026-08-08",
   edition: "SKY ARIANA LIMITED Enterprise Edition",
   companyName: "SKY ARIANA LIMITED",
+  applicationName: "Sky Ariana BOL",
+  developer: "AHSANULLAH QURESHI",
+  platform: "Windows Desktop / Electron",
   updateChannel: "stable",
   changelog: [
     {

@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { CheckCircle2, RefreshCw, AlertTriangle, ShieldCheck } from "lucide-react"
+import { RefreshCw, AlertTriangle, ShieldCheck } from "lucide-react"
 import { AutoSaveStatus } from "@/lib/services/auto-save-engine"
 
 interface AutoSaveBadgeProps {
@@ -29,7 +29,11 @@ export function AutoSaveBadge({
 
   return (
     <div
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold select-none transition-all duration-300 ${
+      data-autosave-status={status}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      className={`autosave-status inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold select-none ${
         status === "saving"
           ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
           : status === "error"
@@ -49,8 +53,8 @@ export function AutoSaveBadge({
         </>
       ) : (
         <>
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="autosave-status-dot relative flex h-2 w-2" aria-hidden="true">
+            <span className="autosave-status-ripple absolute inline-flex h-full w-full rounded-full bg-emerald-400"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
           </span>
           <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />

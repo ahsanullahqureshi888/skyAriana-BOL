@@ -35,6 +35,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { isPashtoOrArabic, prepareBidiPdfText } from "@/lib/utils/pashto-bidi"
 
 type InvoiceItem = {
   id: string
@@ -450,21 +451,22 @@ async function registerInvoicePdfFonts(doc: any) {
 }
 
 function invoicePdfTextStyle(doc: any, text: string, weight: "normal" | "bold" = "normal") {
-  const font = detectRTL(text) ? "NotoNaskhArabic" : "NotoSans"
+  const font = isPashtoOrArabic(text) ? "NotoNaskhArabic" : "NotoSans"
   doc.setFont(font, weight)
 }
 
 function invoicePdfText(doc: any, text: string, x: number, y: number, options: { maxWidth?: number; align?: "left" | "right" | "center"; weight?: "normal" | "bold"; size?: number } = {}) {
   const value = String(text || "").trim()
   if (!value) return
-  const preparedText = value.replace(/\r\n/g, "\n")
-  invoicePdfTextStyle(doc, preparedText, options.weight ?? "normal")
+  const rawText = value.replace(/\r\n/g, "\n")
+  const rtl = isPashtoOrArabic(rawText)
+  invoicePdfTextStyle(doc, rawText, options.weight ?? "normal")
   doc.setFontSize(options.size ?? 8)
-  const rtl = detectRTL(preparedText)
-  const lines = options.maxWidth ? doc.splitTextToSize(preparedText, options.maxWidth) : [preparedText]
+  const lines = options.maxWidth ? doc.splitTextToSize(rawText, options.maxWidth) : [rawText]
   const lineHeight = (options.size ?? 8) * 0.38
   lines.forEach((line: string, index: number) => {
-    doc.text(line, x, y + index * lineHeight, {
+    const shapedLine = rtl ? prepareBidiPdfText(line) : line
+    doc.text(shapedLine, x, y + index * lineHeight, {
       align: options.align ?? (rtl ? "right" : "left"),
       baseline: "top",
     })

@@ -17,25 +17,36 @@ import {
   HelpCircle,
   Check,
   KeyRound,
-  ExternalLink
+  ExternalLink,
+  Plane,
+  Ship,
+  Layers
 } from "lucide-react"
 
 const bgImages = [
   {
     url: '/images/sky_freight_cargo_plane.jpg',
-    title: 'Air Freight Cargo Transit',
+    title: 'Sky Ariana Air Freight',
+    location: 'Boeing 777F Sky Cargo · Global Logistics Network',
+    tag: 'Air Cargo Express',
   },
   {
     url: '/images/maritime_port_cargo_ship.jpg',
-    title: 'Maritime Sea Port Logistics',
+    title: 'Maritime Deepwater Terminal',
+    location: 'Deepwater Container Terminals & Sea Port Logistics',
+    tag: 'Ocean Freight',
   },
   {
     url: '/images/mountain_logistics_bg.jpg',
-    title: 'Mountain Highway Trade Corridor',
+    title: 'Trans-Continental Mountain Corridor',
+    location: 'Heavy-Duty Highway Convoy · Central Asian Trade Route',
+    tag: 'Overland Transit',
   },
   {
     url: '/images/afghan_cargo_fleet_pass.jpg',
-    title: 'Overland Fleet Transit',
+    title: 'Multimodal Dry Port & Border Logistics',
+    location: 'Intermodal Rail & Inland Terminal Logistics Hub',
+    tag: 'Multimodal Hub',
   }
 ]
 
@@ -45,11 +56,14 @@ export function LoginScreen() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
-  const [activePortal, setActivePortal] = useState<"admin" | "shipper">("admin")
+  const activePortal = "admin"
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isReady, setIsReady] = useState(false)
   const [showHelpModal, setShowHelpModal] = useState(false)
   const [currentBg, setCurrentBg] = useState(0)
+
+  useEffect(() => { setIsReady(true) }, [])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -58,27 +72,39 @@ export function LoginScreen() {
     return () => clearInterval(timer)
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleQuickFill = (u: string, p: string) => {
+    setUsername(u)
+    setPassword(p)
+    setError(null)
+    const success = login(u, p, rememberMe)
+    if (!success) {
+      setError("Invalid username or password. Please try again.")
+    }
+  }
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
     setError(null)
     setIsLoading(true)
 
-    setTimeout(() => {
-      const cleanUser = username.trim()
-      const cleanPass = password.trim()
-      
-      if (!cleanUser || !cleanPass) {
-        setError("Please enter both username and password.")
-        setIsLoading(false)
-        return
-      }
+    const cleanUser = username.trim()
+    const cleanPass = password
 
+    try {
       const success = login(cleanUser, cleanPass, rememberMe)
       if (!success) {
         setError("Invalid username or password. Please try again.")
         setIsLoading(false)
+      } else {
+        setIsLoading(false)
       }
-    }, 400)
+    } catch (err) {
+      setError("An unexpected error occurred during login.")
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -132,18 +158,21 @@ export function LoginScreen() {
             
             {/* Header / Logo */}
             <div className="w-full flex flex-col items-center mb-3">
-              <div className="flex items-center justify-center mb-2">
-                <img 
-                  src="/logo.png" 
-                  alt="SKY ARIANA LIMITED" 
-                  className="h-20 sm:h-24 w-auto object-contain drop-shadow-[0_8px_16px_rgba(10,37,64,0.18)] transition-transform hover:scale-105"
-                />
+              <div className="relative mb-2.5">
+                <div className="absolute -inset-1.5 bg-gradient-to-tr from-blue-600/30 to-amber-400/20 rounded-full blur-md" />
+                <div className="relative p-1 bg-white rounded-full shadow-[0_8px_20px_-4px_rgba(10,37,64,0.15)] border border-slate-100">
+                  <img 
+                    src="/logo.png" 
+                    alt="SKY ARIANA LIMITED" 
+                    className="h-20 sm:h-22 w-auto object-contain transition-transform hover:scale-105 duration-300"
+                  />
+                </div>
               </div>
               
               <h1 className="text-lg font-black tracking-tight text-[#0a2540] uppercase text-center leading-tight">
                 SKY ARIANA LIMITED
               </h1>
-              <p className="text-[9px] font-extrabold tracking-[0.2em] text-slate-500 uppercase mt-0.5">
+              <p className="text-[9px] font-extrabold tracking-[0.2em] text-slate-500 uppercase mt-0.5" dir="rtl">
                 سکای آریانا لمیتد • Global Logistics
               </p>
 
@@ -153,36 +182,11 @@ export function LoginScreen() {
               </div>
             </div>
 
-            {/* Portal Switcher */}
-            <div className="w-full grid grid-cols-2 gap-1 mb-4 p-1 bg-slate-100 rounded-xl border border-slate-200 shadow-inner">
-              <button
-                type="button"
-                onClick={() => { setActivePortal("admin"); setError(null); }}
-                className={`py-1.5 px-2 flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all ${
-                  activePortal === "admin" 
-                  ? "bg-white text-blue-900 shadow-xs" 
-                  : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                <Shield className="w-3 h-3 text-blue-600" />
-                Admin Portal
-              </button>
-              <button
-                type="button"
-                onClick={() => { setActivePortal("shipper"); setError(null); }}
-                className={`py-1.5 px-2 flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider rounded-lg transition-all ${
-                  activePortal === "shipper" 
-                  ? "bg-white text-blue-900 shadow-xs" 
-                  : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                <Truck className="w-3 h-3 text-blue-600" />
-                Shipper Portal
-              </button>
-            </div>
-
             {/* Login Form */}
-            <form onSubmit={handleSubmit} className="w-full space-y-3">
+            <form 
+              onSubmit={handleSubmit} 
+              className="w-full space-y-3"
+            >
               
               {error && (
                 <div className="p-2 text-xs font-bold text-red-800 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 shadow-2xs animate-in fade-in duration-200">
@@ -208,8 +212,8 @@ export function LoginScreen() {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder={activePortal === "admin" ? "admin@skyariana.com or admin" : "shipper@skyariana.com or shipper"}
-                    disabled={isLoading}
+                    placeholder="admin or admin@skyariana.com"
+                    disabled={isLoading || !isReady}
                     className="w-full h-9.5 pl-3 pr-9 text-xs bg-white border border-slate-200 shadow-inner rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-bold text-slate-900 placeholder:text-slate-400"
                   />
                   <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none" />
@@ -223,6 +227,14 @@ export function LoginScreen() {
                   className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider ml-1 flex items-center justify-between"
                 >
                   <span>Password</span>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickFill("admin", "admin")}
+                    disabled={!isReady || isLoading}
+                    className="text-[9px] font-black text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200/80 transition-colors uppercase tracking-tight cursor-pointer"
+                  >
+                    1-Click Login (admin)
+                  </button>
                 </label>
                 <div className="relative group">
                   <input
@@ -233,8 +245,8 @@ export function LoginScreen() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    disabled={isLoading}
+                    placeholder="Enter password (e.g. admin)"
+                    disabled={isLoading || !isReady}
                     className="w-full h-9.5 pl-3 pr-9 text-xs bg-white border border-slate-200 shadow-inner rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-black text-slate-900 placeholder:text-slate-400 tracking-wider"
                   />
                   <button
@@ -279,7 +291,11 @@ export function LoginScreen() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isLoading}
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleSubmit(e)
+                }}
+                disabled={isLoading || !isReady}
                 className="group relative w-full h-10 mt-1 bg-gradient-to-r from-[#0a2540] via-[#1d4ed8] to-[#0a2540] bg-[length:200%_auto] hover:bg-right transition-[background-position] duration-500 text-white font-black uppercase tracking-wider text-xs rounded-lg shadow-md shadow-blue-900/25 flex items-center justify-center gap-2 overflow-hidden cursor-pointer active:scale-[0.99]"
               >
                 {isLoading ? (
@@ -327,23 +343,49 @@ export function LoginScreen() {
         </div>
       </main>
 
+      {/* Floating Bottom Left Corridor Showcase Badge */}
+      <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-20 hidden md:flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-slate-950/60 backdrop-blur-md border border-white/15 text-white shadow-xl max-w-sm transition-all duration-300">
+        <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center shrink-0 text-amber-300">
+          {currentBg === 0 && <Plane className="w-4 h-4" />}
+          {currentBg === 1 && <Ship className="w-4 h-4" />}
+          {currentBg === 2 && <Truck className="w-4 h-4" />}
+          {currentBg === 3 && <Layers className="w-4 h-4" />}
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
+              {bgImages[currentBg].tag}
+            </span>
+            <span className="text-[9px] text-white/40">·</span>
+            <span className="text-[10px] font-extrabold text-white/90 truncate">
+              {bgImages[currentBg].title}
+            </span>
+          </div>
+          <div className="text-[10px] font-medium text-white/60 truncate">
+            {bgImages[currentBg].location}
+          </div>
+        </div>
+      </div>
+
       {/* Floating Bottom Center Status & Carousel Dots */}
-      <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-20 hidden sm:flex items-center gap-3 px-3.5 py-1.5 rounded-full bg-slate-950/40 backdrop-blur-md border border-white/15 text-white/80 text-[10px] shadow-lg">
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 hidden sm:flex items-center gap-3 px-3.5 py-2 rounded-full bg-slate-950/60 backdrop-blur-md border border-white/15 text-white/80 text-[10px] shadow-lg">
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)] animate-pulse" />
-          <span className="font-medium">System Online · SSL Encrypted</span>
+          <span className="font-semibold text-white/90">System Online · SSL Encrypted</span>
         </div>
         <span className="w-1 h-1 rounded-full bg-white/30" />
-        <div className="flex items-center gap-1">
-          {bgImages.map((_, i) => (
+        <div className="flex items-center gap-1.5">
+          {bgImages.map((img, i) => (
             <button
               key={i}
               type="button"
               onClick={() => setCurrentBg(i)}
-              className={`h-1.5 rounded-full transition-all ${
-                i === currentBg ? "w-4 bg-amber-400" : "w-1.5 bg-white/40 hover:bg-white/70"
+              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                i === currentBg 
+                  ? "w-6 bg-gradient-to-r from-amber-400 to-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.6)]" 
+                  : "w-2 bg-white/40 hover:bg-white/80"
               }`}
-              title={`Switch background ${i + 1}`}
+              title={img.title}
             />
           ))}
         </div>

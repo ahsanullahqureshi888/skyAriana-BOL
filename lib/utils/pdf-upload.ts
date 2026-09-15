@@ -1,6 +1,7 @@
 "use client"
 import type { BillOfLadingFormData } from "@/lib/types/bill-of-lading"
 import { COMPANY_STAMP_SIGNATURE_DATA_URL } from "@/lib/company-stamp-data"
+import { isPashtoOrArabic, prepareBidiPdfText } from "@/lib/utils/pashto-bidi"
 
 // Dynamically import PDF libraries only in browser environment
 let html2canvasLib: any = null
@@ -31,6 +32,17 @@ async function loadPDFLibraries() {
     return { html2canvas: html2canvasLib, jsPDF: jsPDFConstructor }
   } catch (error) {
     throw new Error(`Failed to load PDF libraries: ${error}`)
+  }
+}
+
+/**
+ * Preload PDF generation libraries in background for faster subsequent PDF generation
+ */
+export async function preloadBOLPDFGeneration(): Promise<void> {
+  try {
+    await loadPDFLibraries()
+  } catch {
+    // Non-critical background prefetch
   }
 }
 
@@ -114,7 +126,7 @@ function hasPDFValue(value?: string | null) {
 }
 
 function containsArabic(value: string) {
-  return /[\u0600-\u06FF]/.test(value)
+  return isPashtoOrArabic(value)
 }
 
 function truncateText(value: string, maxLength: number) {
@@ -199,8 +211,8 @@ function setPDFTextStyle(doc: any, text: string, size: number, weight: "normal" 
 }
 
 function preparePDFText(doc: any, text: string) {
-  if (containsArabic(text) && typeof doc.processArabic === "function") {
-    return doc.processArabic(text)
+  if (isPashtoOrArabic(text)) {
+    return prepareBidiPdfText(text)
   }
   return text
 }
@@ -1572,7 +1584,7 @@ export async function downloadPDFFromServer(
 
 /**
  * Automatically builds a rich document and file name from the BOL data following the user's specification:
- * [Consignee Name]-[Quantity]-[Inv No]-[Shipper Name] (e.g. VEER ENTERPRISES-1350-CTNS-INV-033-NAJIB AHMAD LTD.pdf)
+ * [Invoice No]-[Consignee Name]-[Quantity]-[Product Name]-[Shipper Name] (e.g. INV-033-VEER ENTERPRISES-1350-CTNS-BLACK RAISINS-NAJIB AHMAD LTD.pdf)
  */
 export function buildBolSmartFileName(
   docOrFormData: any,
@@ -1584,23 +1596,7 @@ export function buildBolSmartFileName(
     return extension ? (cleanFallback.endsWith(extension) ? cleanFallback : `${cleanFallback}${extension}`) : cleanFallback
   }
 
-  // 1. Extract Consignee Name (Take first line if multiline address)
-  const rawConsignee = (docOrFormData.consignee_name || docOrFormData.consignee || docOrFormData.consigneeName || "").trim()
-  let consignee = rawConsignee.split(/[\r\n]+/)[0].trim()
-  consignee = consignee.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, " ").trim()
-
-  // 2. Extract Quantity (e.g. 1350 CTNS or 1407 CNTS)
-  let rawQty = (docOrFormData.number_of_packages || docOrFormData.numberOfPackages || docOrFormData.quantity || docOrFormData.packages || "").trim()
-  if (!rawQty) {
-    const cargo = (docOrFormData.cargo_description || "").trim()
-    const qtyMatch = cargo.match(/(\d+[\s\-]*(?:CTNS|CNTS|BAGS|PACKAGES|BOXES|PCS|KGS|MT|CARTONS|DRUMS))/i)
-    if (qtyMatch) {
-      rawQty = qtyMatch[1].trim()
-    }
-  }
-  let quantity = rawQty.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, "-").trim()
-
-  // 3. Extract Invoice Number
+  // 1. Extract Invoice Number
   let invNo = (docOrFormData.invoiceNo || docOrFormData.invoice_number || docOrFormData.invoice_no || docOrFormData.invoiceNumber || "").trim()
   if (!invNo) {
     const combinedNotes = `${docOrFormData.cargo_description || ""} ${docOrFormData.notes_1 || ""} ${docOrFormData.notes_2 || ""} ${docOrFormData.notes_3 || ""}`
@@ -1613,21 +1609,65 @@ export function buildBolSmartFileName(
     }
   } else if (!/^INV|^IN/i.test(invNo)) {
     invNo = `INV-${invNo.toUpperCase()}`
+  } else {
+    invNo = invNo.toUpperCase()
   }
+  invNo = invNo.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^[-.,\s]+|[-.,\s]+$/g, "")
 
-  // 4. Extract Shipper Name (Take first line if multiline)
+  // 2. Extract Consignee Name (Take first line if multiline address)
+  const rawConsignee = (docOrFormData.consignee_name || docOrFormData.consignee || docOrFormData.consigneeName || "").trim()
+  let consignee = rawConsignee.split(/[\r\n]+/)[0].trim()
+  consignee = consignee.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, " ").replace(/^[-.,\s]+|[-.,\s]+$/g, "").trim().toUpperCase()
+
+  // 3. Extract Quantity (e.g. 1350-CTNS or 1407-CNTS)
+  let rawQty = (docOrFormData.number_of_packages || docOrFormData.numberOfPackages || docOrFormData.quantity || docOrFormData.packages || "").trim()
+  if (!rawQty) {
+    const cargo = (docOrFormData.cargo_description || "").trim()
+    const qtyMatch = cargo.match(/(\d+[\s\-]*(?:CTNS|CNTS|BAGS|PACKAGES|BOXES|PCS|KGS|MT|CARTONS|DRUMS))/i)
+    if (qtyMatch) {
+      rawQty = qtyMatch[1].trim()
+    }
+  }
+  let quantity = ""
+  if (rawQty) {
+    if (/^\d+$/.test(rawQty.replace(/\s+/g, ""))) {
+      const rawType = (docOrFormData.package_type || docOrFormData.packageType || "Cartons").trim().toUpperCase()
+      const typeAbbr = /^CARTONS?|^CTNS?/i.test(rawType) ? "CTNS" : /^BAGS?/i.test(rawType) ? "BAGS" : /^BOXES?|^BOX/i.test(rawType) ? "BOXES" : "CTNS"
+      quantity = `${rawQty.replace(/\s+/g, "")}-${typeAbbr}`
+    } else {
+      quantity = rawQty.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, "-").toUpperCase()
+    }
+  }
+  quantity = quantity.replace(/[/\\:*?"<>|]/g, "").replace(/-+/g, "-").replace(/^[-.,\s]+|[-.,\s]+$/g, "")
+
+  // 4. Extract Product Name
+  let rawProduct = (docOrFormData.commodity || "").trim()
+  if (!rawProduct) {
+    const rawCargo = (docOrFormData.cargo_description || "").trim()
+    const cleaned = rawCargo
+      .replace(/^\d[\d,.\s-]*(?:ctns?|cartons?|bags?|packages?|units?)\s*[-:]?\s*/i, "")
+      .split(/[\r\n│|]/)[0]
+      .trim()
+    if (cleaned && !/^(?:CONTAINER|NET|GROSS|TOTAL|INVOICE|DATE)/i.test(cleaned)) {
+      rawProduct = cleaned
+    }
+  }
+  let product = rawProduct.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, " ").replace(/^[-.,\s]+|[-.,\s]+$/g, "").trim().toUpperCase()
+
+  // 5. Extract Shipper Name (Take first line if multiline)
   const rawShipper = (docOrFormData.shipper_name || docOrFormData.shipperDescription || docOrFormData.shipper || docOrFormData.shipperName || "").trim()
   let shipper = rawShipper.split(/[\r\n]+/)[0].trim()
-  shipper = shipper.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, " ").trim()
+  shipper = shipper.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, " ").replace(/^[-.,\s]+|[-.,\s]+$/g, "").trim().toUpperCase()
 
-  // 5. BOL Number fallback
+  // 6. BOL Number fallback
   const bolNumber = (docOrFormData.bol_number || docOrFormData.barnamehNo || docOrFormData.bolNo || fallbackBolNumber || "").trim()
 
-  // Construct components in exact order: Consignee -> Quantity -> Inv No -> Shipper
+  // Construct components in exact order: Invoice -> Consignee -> Quantity -> Product -> Shipper
   const parts: string[] = []
+  if (invNo) parts.push(invNo)
   if (consignee) parts.push(consignee)
   if (quantity) parts.push(quantity)
-  if (invNo) parts.push(invNo)
+  if (product) parts.push(product)
   if (shipper) parts.push(shipper)
 
   if (parts.length === 0) {

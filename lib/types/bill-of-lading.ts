@@ -127,10 +127,12 @@ export interface BillOfLadingFormData {
   shipper_address: string
   shipper_contact?: string
   shipper_email?: string
+  shipper_licence?: string
   consignee_name: string
   consignee_address: string
   consignee_contact?: string
   consignee_email?: string
+  consignee_fssai?: string
   notify_party: string
   notify_party_address: string
   vessel_name: string
@@ -139,6 +141,22 @@ export interface BillOfLadingFormData {
   port_of_discharge: string
   place_of_delivery: string
   cargo_description: string
+  booking_number?: string
+  invoice_number?: string
+  invoice_date?: string
+  hs_code?: string
+  package_type?: string
+  marks_and_numbers?: string
+  packing_date?: string
+  expiry_date?: string
+  lot_no?: string
+  lot_number?: string
+  company_name?: string
+  company_subtitle?: string
+  company_phone?: string
+  company_email?: string
+  company_address?: string
+  company_licence?: string
   net_weight: string
   gross_weight: string
   measurement: string

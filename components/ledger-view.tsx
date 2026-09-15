@@ -205,7 +205,7 @@ export const LedgerView = memo(function LedgerView() {
     if (!currentAccount || !currentCompany) return
     const debitNum = !newEntry.debit || (newEntry.debit as any) === '' ? 0 : Number(newEntry.debit) || 0
     const creditNum = !newEntry.credit || (newEntry.credit as any) === '' ? 0 : Number(newEntry.credit) || 0
-    
+
     setAutoSaveStatus('saving')
     saveFinancialsForEntry(newEntry.barnamehNo, undefined, {
       ...newEntry,
@@ -482,6 +482,10 @@ export const LedgerView = memo(function LedgerView() {
 
     setIsExportingPDF(true)
     try {
+      if (typeof document !== 'undefined' && document.fonts) {
+        await document.fonts.ready
+      }
+
       const printContainer = document.querySelector('#sky-ledger-print-root') || document.querySelector('.ledger-print-root')
       if (!printContainer) throw new Error('Print container not found')
 
@@ -490,12 +494,22 @@ export const LedgerView = memo(function LedgerView() {
       const { jsPDF } = await import('jspdf/dist/jspdf.es.min.js')
 
       const canvas = await html2canvas(printContainer as HTMLElement, {
-        scale: 2,
+        scale: 2.8,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
         windowWidth: 1400,
+        onclone: (clonedDoc: any) => {
+          // Ensure all Pashto text in cloned tree retains crisp font families
+          try {
+            const clonedRoot = clonedDoc.querySelector('#sky-ledger-print-root') || clonedDoc.querySelector('.ledger-print-root')
+            if (clonedRoot && clonedRoot.style) {
+              clonedRoot.style.fontFamily = "'NotoNaskhArabic', 'Vazirmatn', Tahoma, Arial, sans-serif"
+              clonedRoot.style.letterSpacing = "normal"
+            }
+          } catch {}
+        },
       })
 
       const imgData = canvas.toDataURL('image/jpeg', 0.98)
@@ -560,7 +574,7 @@ export const LedgerView = memo(function LedgerView() {
 
     headers.forEach((header, index) => {
       const headerLower = String(header).trim()
-      
+
       for (const [field, patterns] of Object.entries(COLUMN_PATTERNS)) {
         if (mapping[field as keyof ColumnMapping] === null) {
           for (const pattern of patterns) {
@@ -586,27 +600,27 @@ export const LedgerView = memo(function LedgerView() {
     if (typeof value === 'string') {
       // Try various date formats
       const dateStr = value.trim()
-      
+
       // DD/MM/YYYY or DD-MM-YYYY
       const dmyMatch = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
       if (dmyMatch) {
         const [, day, month, year] = dmyMatch
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
       }
-      
+
       // YYYY/MM/DD or YYYY-MM-DD
       const ymdMatch = dateStr.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/)
       if (ymdMatch) {
         const [, year, month, day] = ymdMatch
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
       }
-      
+
       // Try native Date parsing
       const date = new Date(dateStr)
       if (!isNaN(date.getTime())) {
         return date.toISOString().split('T')[0]
       }
-      
+
       return dateStr
     }
     return ''
@@ -614,7 +628,7 @@ export const LedgerView = memo(function LedgerView() {
 
   const parseNumber = (value: unknown): number => {
     if (value === null || value === undefined || value === '') return 0
-    
+
     if (typeof value === 'number') {
       return Number.isFinite(value) ? value : 0
     }
@@ -644,7 +658,7 @@ export const LedgerView = memo(function LedgerView() {
   const parseExcelFile = async (file: File) => {
     try {
       const data = await file.arrayBuffer()
-      
+
       // Validate file is not empty
       if (data.byteLength === 0) {
         setImportError('The file is empty. Please select a valid Excel file.')
@@ -668,7 +682,7 @@ export const LedgerView = memo(function LedgerView() {
 
       const sheetName = workbook.SheetNames[0]
       const worksheet = workbook.Sheets[sheetName]
-      
+
       if (!worksheet) {
         setImportError('Could not read the first sheet in the Excel file.')
         return
@@ -697,7 +711,7 @@ export const LedgerView = memo(function LedgerView() {
         const headerText = String(h || '').trim()
         return headerText || `Column ${idx + 1}`
       })
-      
+
       // Get data rows, filtering out completely blank rows
       const rows = nonEmptyRows.slice(1) as (string | number | undefined)[][]
 
@@ -733,14 +747,14 @@ export const LedgerView = memo(function LedgerView() {
 
     for (const row of excelData) {
       if (!row || row.length === 0) continue
-      
+
       // Skip if all mapped cells are empty or undefined
       const hasData = Object.entries(columnMapping).some(([, colIndex]) => {
         if (colIndex === null) return false
         const cellValue = row[colIndex]
         return cellValue !== undefined && cellValue !== null && String(cellValue).trim() !== ''
       })
-      
+
       if (!hasData) continue
 
       try {
@@ -770,7 +784,7 @@ export const LedgerView = memo(function LedgerView() {
           debit: columnMapping.debit !== null ? parseNumber(row[columnMapping.debit]) : 0,
           credit: columnMapping.credit !== null ? parseNumber(row[columnMapping.credit]) : 0,
         }
-        
+
         // Ensure debit and credit are non-negative
         if (entry.debit < 0) entry.debit = Math.abs(entry.debit)
         if (entry.credit < 0) entry.credit = Math.abs(entry.credit)
@@ -807,7 +821,7 @@ export const LedgerView = memo(function LedgerView() {
       // Creating New Entry via unified modal
       const debitNum = !updatedData.debit || (updatedData.debit as any) === '' ? 0 : Number(updatedData.debit) || 0
       const creditNum = !updatedData.credit || (updatedData.credit as any) === '' ? 0 : Number(updatedData.credit) || 0
-      
+
       saveFinancialsForEntry(updatedData.barnamehNo, undefined, {
         ...updatedData,
         debit: debitNum,
@@ -977,7 +991,7 @@ export const LedgerView = memo(function LedgerView() {
     if (!file) return
 
     const extension = file.name.split('.').pop()?.toLowerCase()
-    
+
     if (extension === 'xlsx' || extension === 'xls' || extension === 'csv') {
       parseExcelFile(file)
     } else if (extension === 'pdf') {
@@ -1199,6 +1213,12 @@ export const LedgerView = memo(function LedgerView() {
         className="hidden"
       />
 
+      <div className="mb-3 no-print">
+        <Button variant="outline" size="sm" onClick={() => setView('companies')}>
+          Back to companies
+        </Button>
+      </div>
+
       {/* Top Banner Header */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 sm:gap-6 mb-4 sm:mb-8 bg-white/80 backdrop-blur-xl border border-amber-200/60 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl shadow-amber-900/5 relative overflow-hidden no-print">
         {/* Subtle Background Glow */}
@@ -1277,7 +1297,7 @@ export const LedgerView = memo(function LedgerView() {
                 )}
               </div>
             </div>
-            
+
             <div className="px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-2.5 sm:gap-3 min-w-0 sm:min-w-[140px]">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-700 font-black text-[9px] sm:text-[10px] shrink-0">
                 REC
@@ -1313,7 +1333,7 @@ export const LedgerView = memo(function LedgerView() {
                 )}
               </div>
             </div>
-            
+
             <div className="px-3 py-2.5 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl bg-white/90 border border-slate-200 shadow-sm flex items-center gap-2.5 sm:gap-3 min-w-0 sm:min-w-[140px]">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-black text-[9px] sm:text-[10px] shrink-0">
                 AFN
@@ -1387,15 +1407,7 @@ export const LedgerView = memo(function LedgerView() {
             <span>Add Entry</span>
           </Button>
 
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1 sm:flex-initial gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl h-10 sm:h-12 px-3 sm:px-4 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all text-xs sm:text-sm"
-            onClick={() => setView('invoice')}
-          >
-            <Receipt className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span>Invoice</span>
-          </Button>
+
 
           {/* Dedicated Auto-Save / Save Ledger Button */}
           <Button
@@ -1412,7 +1424,7 @@ export const LedgerView = memo(function LedgerView() {
             )}
             <span>Save Ledger</span>
           </Button>
-          
+
           {/* Export Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1512,7 +1524,7 @@ export const LedgerView = memo(function LedgerView() {
       <div className="mb-4 sm:mb-6 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-white/80 border border-slate-200/80 shadow-lg shadow-slate-200/50 backdrop-blur-xl flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4 no-print relative overflow-hidden group hover:border-amber-400/60 transition-all">
         {/* Accent Top Border */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-900/10 via-indigo-800/10 to-amber-500/10 group-hover:from-blue-900 group-hover:via-indigo-800 group-hover:to-amber-500 transition-all duration-300" />
-        
+
         <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
           <div className="relative flex-1">
             <Input
@@ -1738,7 +1750,7 @@ export const LedgerView = memo(function LedgerView() {
             <p className="text-sm text-muted-foreground mb-4">
               Match your Excel columns to the ledger fields. The system has auto-detected some mappings based on headers.
             </p>
-            
+
             {/* Sample data preview */}
             <div className="mb-6 p-4 bg-muted/30 rounded-lg">
               <h4 className="text-sm font-medium mb-2">Detected Headers:</h4>
@@ -1904,10 +1916,10 @@ export const LedgerView = memo(function LedgerView() {
             }}
           />
         )}
-        
+
         {/* Glass overlay gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 via-white/20 to-blue-100/30 pointer-events-none no-print" style={{ zIndex: 1 }} />
-        
+
         {/* Ledger Header with Logo and Info - Screen Version */}
         <div className="relative z-10 no-print border-b border-blue-200/50 bg-gradient-to-r from-blue-50/60 via-white/40 to-blue-50/60 backdrop-blur-sm">
           <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col md:flex-row items-center md:items-start justify-between text-center md:text-left gap-3 md:gap-4">
@@ -1920,7 +1932,7 @@ export const LedgerView = memo(function LedgerView() {
                 {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
               </p>
             </div>
-            
+
             {/* Center - Logo and Company Name */}
             <div className="flex-1 flex flex-col items-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1932,7 +1944,7 @@ export const LedgerView = memo(function LedgerView() {
               <p className="text-base sm:text-lg font-bold text-blue-800">SKY ARIANA</p>
               <p className="text-[9px] sm:text-[10px] text-blue-600 tracking-[0.15em] uppercase">Transport & Logistics</p>
             </div>
-            
+
             {/* Right - Company Address */}
             <div className="flex-1 w-full md:w-auto text-center md:text-right hidden sm:block">
               <p className="text-[10px] sm:text-[11px] font-semibold text-blue-700 mb-0.5">AFGHANISTAN OFFICE</p>
@@ -1947,7 +1959,7 @@ export const LedgerView = memo(function LedgerView() {
             </div>
           </div>
         </div>
-        
+
         {/* Screen Table (hidden during print) */}
         <CardContent className="p-0 no-print relative z-10">
           {/* Mobile View Switcher (Cards vs Table) */}
@@ -2585,7 +2597,7 @@ export const LedgerView = memo(function LedgerView() {
                     {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                   </p>
                 </div>
-                
+
                 {/* Center - Logo and Company Name */}
                 <div style={{ flex: '1', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2604,7 +2616,7 @@ export const LedgerView = memo(function LedgerView() {
                   <p style={{ fontSize: '13pt', fontWeight: '800', color: '#1e40af', marginBottom: '0px', lineHeight: '1.1' }}>SKY ARIANA</p>
                   <p style={{ fontSize: '7.2pt', color: '#2563eb', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: '700' }}>Transport & Logistics</p>
                 </div>
-                
+
                 {/* Right Side - Company Address */}
                 <div style={{ flex: '1', textAlign: 'right' }}>
                   <p style={{ fontSize: '7.8pt', fontWeight: '700', color: '#1d4ed8', marginBottom: '2px' }}>AFGHANISTAN OFFICE</p>
@@ -2620,7 +2632,7 @@ export const LedgerView = memo(function LedgerView() {
                   <p style={{ fontSize: '6pt', color: '#60a5fa', marginTop: '2px' }}>Licence: 2401-2198</p>
                 </div>
               </div>
-              
+
               {/* Table - Exact 14 Columns and Titles matching Screen UI */}
               <table className="ledger-print-table" style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', margin: '0' }}>
                 <thead>
@@ -2861,7 +2873,7 @@ export const LedgerView = memo(function LedgerView() {
                   {formatAFN(totalDriverRentAFN)}
                 </span>
               </div>
-              
+
               {/* Official Signature & Stamp Section */}
               <div className="print-signatures" style={{ 
                 marginTop: '6px', 

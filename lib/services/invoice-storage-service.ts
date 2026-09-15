@@ -1,5 +1,6 @@
 import fs from "fs"
 import path from "path"
+import { getDataPath } from "@/lib/server-paths"
 
 export interface CurrencyExchange {
   enabled: boolean
@@ -105,21 +106,18 @@ export interface AccountRecord {
   created_at: string
 }
 
-const invoicesFile = path.join(process.cwd(), ".local-invoices.json")
-const accountsFile = path.join(process.cwd(), ".local-accounts.json")
-const invoiceCounterFile = path.join(process.cwd(), ".invoice-counter")
+const invoicesFile = getDataPath(".local-invoices.json")
+const accountsFile = getDataPath(".local-accounts.json")
+const invoiceCounterFile = getDataPath(".invoice-counter")
 
-import { readJsonFile, writeJsonFile } from "./blob-db"
+import { mutateJsonFile, readJsonFile } from "./blob-db"
 
 export async function nextInvoiceNumber() {
   let counter = 1
-  try {
-    counter = await readJsonFile<number>(invoiceCounterFile, 1)
-  } catch {
-    counter = 1
-  }
-
-  await writeJsonFile<number>(invoiceCounterFile, counter + 1)
+  await mutateJsonFile<number>(invoiceCounterFile, 1, (current) => {
+    counter = Number.isSafeInteger(current) && current > 0 ? current : 1
+    return counter + 1
+  })
   return `INV-${new Date().getFullYear()}-${String(counter).padStart(4, "0")}`
 }
 
@@ -134,7 +132,6 @@ export async function getInvoice(id: string) {
 }
 
 export async function saveInvoice(data: Partial<InvoiceRecord>) {
-  const invoices = await readJsonFile<InvoiceRecord[]>(invoicesFile, [])
   const now = new Date().toISOString()
   const invoiceNumber = data.invoice_number || (await nextInvoiceNumber())
   const invoice: InvoiceRecord = {
@@ -230,16 +227,16 @@ export async function saveInvoice(data: Partial<InvoiceRecord>) {
     updated_at: now,
   }
 
-  const next = [invoice, ...invoices.filter((item) => item.id !== invoice.id && item.invoice_number !== invoice.invoice_number)]
-  await writeJsonFile(invoicesFile, next)
+  await mutateJsonFile<InvoiceRecord[]>(invoicesFile, [], (current) => {
+    const invoices = Array.isArray(current) ? current : []
+    return [invoice, ...invoices.filter((item) => item.id !== invoice.id && item.invoice_number !== invoice.invoice_number)]
+  })
   return invoice
 }
 
 export async function deleteInvoice(id: string) {
-  const invoices = await readJsonFile<InvoiceRecord[]>(invoicesFile, [])
-  await writeJsonFile(
-    invoicesFile,
-    invoices.filter((invoice) => invoice.id !== id && invoice.invoice_number !== id)
+  await mutateJsonFile<InvoiceRecord[]>(invoicesFile, [], (current) =>
+    (Array.isArray(current) ? current : []).filter((invoice) => invoice.id !== id && invoice.invoice_number !== id)
   )
 }
 
@@ -248,19 +245,18 @@ export async function getAllAccounts() {
 }
 
 export async function saveAccounts(accounts: Omit<AccountRecord, "id" | "created_at">[]) {
-  const existing = await getAllAccounts()
-  const byName = new Map(existing.map((account) => [account.name.trim().toLowerCase(), account]))
-
-  for (const account of accounts) {
-    if (!account.name.trim()) continue
-    byName.set(account.name.trim().toLowerCase(), {
-      id: byName.get(account.name.trim().toLowerCase())?.id || crypto.randomUUID(),
-      created_at: byName.get(account.name.trim().toLowerCase())?.created_at || new Date().toISOString(),
-      ...account,
-    })
-  }
-
-  const next = Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name))
-  await writeJsonFile(accountsFile, next)
-  return next
+  return mutateJsonFile<AccountRecord[]>(accountsFile, [], (current) => {
+    const existing = Array.isArray(current) ? current : []
+    const byName = new Map(existing.map((account) => [account.name.trim().toLowerCase(), account]))
+    for (const account of accounts) {
+      const key = account.name.trim().toLowerCase()
+      if (!key) continue
+      byName.set(key, {
+        id: byName.get(key)?.id || crypto.randomUUID(),
+        created_at: byName.get(key)?.created_at || new Date().toISOString(),
+        ...account,
+      })
+    }
+    return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name))
+  })
 }

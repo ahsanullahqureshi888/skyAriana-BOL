@@ -2071,7 +2071,7 @@ export function SettingsView() {
                 <Smartphone className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">App Installation & System Diagnostics</h3>
+                <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">Application Information & System Diagnostics</h3>
                 <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
                   نصب برنامه روی گوشی و کامپیوتر، اطلاعات نسخه و سلامت سیستم
                 </p>
@@ -2089,6 +2089,10 @@ export function SettingsView() {
                 Software Version & Engine
               </span>
               <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between gap-4 py-1 border-b border-blue-200/60 font-bold">
+                  <span className="text-slate-600">Application:</span>
+                  <span className="text-right text-blue-950 font-black">{CURRENT_SYSTEM_VERSION.applicationName}</span>
+                </div>
                 <div className="flex justify-between py-1 border-b border-blue-200/60 font-bold">
                   <span className="text-slate-600">Release Version:</span>
                   <span className="text-blue-950 font-black">{CURRENT_SYSTEM_VERSION.version}</span>
@@ -2098,8 +2102,12 @@ export function SettingsView() {
                   <span className="text-blue-950 font-mono">{CURRENT_SYSTEM_VERSION.buildNumber}</span>
                 </div>
                 <div className="flex justify-between py-1 font-bold">
-                  <span className="text-slate-600">Renderer:</span>
-                  <span className="text-emerald-700 font-black">Next.js Turbopack 16.2.6</span>
+                  <span className="text-slate-600">Developer:</span>
+                  <span className="text-right text-blue-950 font-black">{CURRENT_SYSTEM_VERSION.developer}</span>
+                </div>
+                <div className="flex justify-between gap-4 py-1 border-t border-blue-200/60 font-bold">
+                  <span className="text-slate-600">Platform:</span>
+                  <span className="text-right text-emerald-700 font-black">{CURRENT_SYSTEM_VERSION.platform}</span>
                 </div>
               </div>
             </div>

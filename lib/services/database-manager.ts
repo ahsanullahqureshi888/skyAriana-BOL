@@ -7,6 +7,7 @@ import fs from "fs"
 import path from "path"
 import os from "os"
 import { readJsonFile, writeJsonFile } from "./blob-db"
+import { getDataPath } from "@/lib/server-paths"
 
 export interface DatabaseTableStats {
   tableName: string
@@ -47,7 +48,7 @@ export async function getDatabaseHealth(): Promise<DatabaseHealthReport> {
   let totalStorageBytes = 0
 
   for (const item of DATABASE_FILES) {
-    const filePath = path.join(process.cwd(), item.file)
+    const filePath = getDataPath(item.file)
     const tmpPath = path.join(os.tmpdir(), item.file)
 
     let activePath = fs.existsSync(filePath) ? filePath : (fs.existsSync(tmpPath) ? tmpPath : "")
@@ -105,7 +106,7 @@ export async function vacuumDatabase(): Promise<{ compactedTables: number; bytes
   let reclaimed = 0
 
   for (const item of DATABASE_FILES) {
-    const filePath = path.join(process.cwd(), item.file)
+    const filePath = getDataPath(item.file)
     if (fs.existsSync(filePath)) {
       try {
         const statBefore = (await fs.promises.stat(filePath)).size
@@ -153,7 +154,7 @@ export async function exportFullDatabasePackage(): Promise<Record<string, any>> 
   }
 
   for (const item of DATABASE_FILES) {
-    const filePath = path.join(process.cwd(), item.file)
+    const filePath = getDataPath(item.file)
     masterDump.tables[item.file] = await readJsonFile<any>(filePath, [])
   }
 
@@ -171,7 +172,7 @@ export async function restoreFullDatabasePackage(payload: Record<string, any>): 
   let count = 0
   for (const item of DATABASE_FILES) {
     if (payload.tables[item.file]) {
-      const filePath = path.join(process.cwd(), item.file)
+      const filePath = getDataPath(item.file)
       await writeJsonFile(filePath, payload.tables[item.file])
       count++
     }
