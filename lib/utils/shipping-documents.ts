@@ -840,6 +840,23 @@ function renderUnicodeTextToCanvas(
   }
 }
 
+function splitTextSafely(text: string, maxCharsPerLine: number = 30): string[] {
+  if (!text) return []
+  const words = text.trim().split(/\s+/)
+  const lines: string[] = []
+  let cur = ""
+  for (const w of words) {
+    if (!cur) cur = w
+    else if ((cur + " " + w).length <= maxCharsPerLine) cur += " " + w
+    else {
+      lines.push(cur)
+      cur = w
+    }
+  }
+  if (cur) lines.push(cur)
+  return lines.slice(0, 4)
+}
+
 function drawInfoBox(
   pdf: jsPDF,
   x: number,
@@ -849,7 +866,11 @@ function drawInfoBox(
   value: string,
   minHeight = 16,
 ): number {
-  const lines = valueLines(pdf, value || "", width - 6).slice(0, 4)
+  const hasRtl = isPashtoOrArabic(value || "")
+  const lines = hasRtl
+    ? splitTextSafely(value || "", Math.max(14, Math.floor((width - 6) / 2.2)))
+    : valueLines(pdf, value || "", width - 6).slice(0, 4)
+
   const height = Math.max(minHeight, 8 + Math.max(1, lines.length) * 3.8)
 
   pdf.setFillColor(...BG_LIGHT)
@@ -865,7 +886,7 @@ function drawInfoBox(
   if (lines.length > 0) {
     lines.forEach((line, lineIdx) => {
       const lineY = y + 9 + lineIdx * 3.8
-      if (isPashtoOrArabic(line)) {
+      if (hasRtl || isPashtoOrArabic(line)) {
         const rendered = renderUnicodeTextToCanvas(line, 7.5, false, TEXT_BLACK, width - 6)
         if (rendered) {
           pdf.addImage(rendered.dataUrl, "PNG", x + 3, lineY - rendered.heightMm * 0.7, rendered.widthMm, rendered.heightMm, undefined, "FAST")
@@ -1023,23 +1044,21 @@ export function drawPackingList(
     ].filter(Boolean).join(" • ")
 
     if (isPashtoOrArabic(descText)) {
-      const rendered = renderUnicodeTextToCanvas(descText, 7, false, TEXT_BLACK, 38)
-      if (rendered) {
-        pdf.addImage(rendered.dataUrl, "PNG", 114, rowY + 4.5 - rendered.heightMm * 0.7, rendered.widthMm, rendered.heightMm, undefined, "FAST")
-      } else {
-        pdf.setFont("helvetica", "normal")
-        pdf.setTextColor(...TEXT_BLACK)
-        pdf.setFontSize(7)
-        pdf.text(valueLines(pdf, descText, 38).slice(0, 2), 114, rowY + 4.5)
-      }
+      const commLines = splitTextSafely(descText, 24).slice(0, 2)
+      commLines.forEach((cLine, cIdx) => {
+        const rendered = renderUnicodeTextToCanvas(cLine, 7, false, TEXT_BLACK, 38)
+        if (rendered) {
+          pdf.addImage(rendered.dataUrl, "PNG", 114, rowY + 4.5 + cIdx * 3.6 - rendered.heightMm * 0.7, rendered.widthMm, rendered.heightMm, undefined, "FAST")
+        }
+      })
     } else {
       pdf.setFont("helvetica", "normal")
       pdf.setTextColor(...TEXT_BLACK)
       pdf.setFontSize(7)
-      pdf.text(valueLines(pdf, descText, 38).slice(0, 2), 114, rowY + 4.5)
+      pdf.text(valueLines(pdf, descText, 38).slice(0, 2), 114, rowY + 4.5, { maxWidth: 38 })
     }
 
-    // Weights - safely constrained to max 20mm width so columns never overlap
+    // Weights - strictly constrained to 19mm max width so columns never overlap
     pdf.setFont("helvetica", "bold")
     pdf.setTextColor(...TEXT_BLACK)
     pdf.setFontSize(7)
@@ -1049,11 +1068,11 @@ export function drawPackingList(
       const parts = grossDisplay.split(" - ")
       grossDisplay = clean(parts[0])
     }
-    const grossLines = valueLines(pdf, grossDisplay, 20).slice(0, 2)
-    pdf.text(grossLines, 156, rowY + 4.5)
+    const grossLines = valueLines(pdf, grossDisplay, 19).slice(0, 2)
+    pdf.text(grossLines, 156, rowY + 4.5, { maxWidth: 19 })
 
-    const netLines = valueLines(pdf, clean(item.netWeight), 20).slice(0, 2)
-    pdf.text(netLines, 178, rowY + 4.5)
+    const netLines = valueLines(pdf, clean(item.netWeight), 19).slice(0, 2)
+    pdf.text(netLines, 178, rowY + 4.5, { maxWidth: 19 })
   })
 
   y += Math.max(totalTableHeight, items.length * rowHeight) + 3
@@ -1225,26 +1244,47 @@ export function drawStickerPage(
   pdf.text(activeCommodity ? activeCommodity.toUpperCase() : "BLACK RAISINS", textX + 29, cursorY)
   cursorY += 3.7
 
-  // Net Wt
+  // Net Wt & Gross Wt
   pdf.setFont("helvetica", "normal")
   pdf.text("Net Wt: ", textX, cursorY)
   pdf.setFont("helvetica", "bold")
   pdf.text(activeNetWeight || "10 Kg", textX + 11, cursorY)
+
+  const activeGrossWeight = commodityItem?.grossWeight || data.grossWeight
+  if (activeGrossWeight) {
+    pdf.setFont("helvetica", "normal")
+    pdf.text("Gross Wt: ", textX + 48, cursorY)
+    pdf.setFont("helvetica", "bold")
+    pdf.text(activeGrossWeight, textX + 63, cursorY)
+  }
   cursorY += 3.7
 
-  // Date of Packing
+  // Date of Packing & Expiry
   pdf.setFont("helvetica", "normal")
   pdf.text("Date of Packing: ", textX, cursorY)
   pdf.setFont("helvetica", "bold")
   pdf.text(activePackingDate || "JUL / 2026", textX + 22, cursorY)
   cursorY += 3.7
 
-  // Date of Expiry
   pdf.setFont("helvetica", "normal")
   pdf.text("Date of Expiry: ", textX, cursorY)
   pdf.setFont("helvetica", "bold")
   pdf.text(activeExpiryDate || "JUL / 2028", textX + 21, cursorY)
-  cursorY += 4.5
+  cursorY += 3.7
+
+  // B/L & Invoice tracking reference
+  if (data.bolNumber || data.invoiceNumber) {
+    pdf.setFont("helvetica", "normal")
+    pdf.setTextColor(100, 116, 139)
+    pdf.setFontSize(6.8)
+    const refLine = [
+      data.bolNumber ? `B/L: ${data.bolNumber}` : "",
+      data.invoiceNumber ? `INV: ${data.invoiceNumber}` : "",
+      data.finalDestination ? `DEST: ${data.finalDestination}` : "",
+    ].filter(Boolean).join("  •  ")
+    pdf.text(refLine, textX, cursorY)
+    cursorY += 4.2
+  }
 
   // Lot No in Bold Deep Green (#007a3d) - only if provided in BOL
   if (lotNo) {

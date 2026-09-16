@@ -47,6 +47,7 @@ import {
   type ShippingDocumentKind,
   type StickerLayout,
 } from "@/lib/utils/shipping-documents"
+import { PackingListPdfPage, StickerPdfPage } from "./shipping-documents"
 const SavedDocuments = dynamic(() => import("./saved-documents").then(m => m.SavedDocuments), { loading: () => <p role="status" className="p-6 text-sm text-slate-600">Loading saved BOLs…</p> })
 const LedgerView = dynamic(() => import("@/components/ledger-view").then(m => m.LedgerView), { loading: () => <p role="status" className="p-6 text-sm text-slate-600">Loading account ledger…</p> })
 import { getFinancialsMap, saveFinancialsForEntry } from "@/lib/services/ledger-sync-utils"
@@ -9410,6 +9411,30 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             onToggleStampSignature={setShowStampSignature}
             pdfExport
           />
+        </div>
+
+        {/* Dedicated Shipping Documents export source (Packing List & Stickers) */}
+        <div
+          data-shipping-export-container="true"
+          aria-hidden="true"
+          className="fixed top-0 left-[-9999px] overflow-hidden opacity-100 pointer-events-none z-[-9999] print:hidden bg-white"
+          style={{ width: "210mm" }}
+        >
+          <div data-shipping-preview="packing-list">
+            <PackingListPdfPage
+              data={shippingDocumentData}
+              logoUrl={logoUrl}
+              companyName={companyName}
+              companySubtitle={companySubtitle}
+            />
+          </div>
+          <div data-shipping-preview="stickers">
+            <StickerPdfPage
+              data={shippingDocumentData}
+              logoUrl={logoUrl}
+              companyName={companyName}
+            />
+          </div>
         </div>
       </div>
 
