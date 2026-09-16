@@ -7,6 +7,11 @@ import {
   STICKER_AFGHANISTAN_LOGO_DATA_URL,
 } from "@/lib/sticker-badges-data"
 import { isPashtoOrArabic, prepareBidiPdfText } from "@/lib/utils/pashto-bidi"
+import {
+  registerPDFFonts,
+  hasRegisteredPDFFonts,
+  setSmartPDFFont,
+} from "@/lib/utils/pdf-fonts"
 
 export type ShippingDocumentKind = "bol" | "packing-list" | "stickers" | "bol-packing" | "all"
 export type StickerLayout = "single" | "sheet"
@@ -764,22 +769,24 @@ function drawDocumentHeader(
     }
   }
 
+  const fontStatus = hasRegisteredPDFFonts(pdf)
   const textLeft = logoDataUrl ? 38 : 12
   pdf.setTextColor(...TEXT_BLACK)
-  pdf.setFont("helvetica", "bold")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.setFontSize(16)
   pdf.text(companyName || "SKY ARIANA LTD", textLeft, 18)
 
-  pdf.setFont("helvetica", "normal")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
   pdf.setTextColor(...TEXT_MUTED)
   pdf.setFontSize(8)
   pdf.text(companySubtitle || "International Transportation • Transit • Forwarding", textLeft, 24)
 
-  pdf.setFont("helvetica", "bold")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.setTextColor(...BRAND_PURPLE)
   pdf.setFontSize(18)
   pdf.text(title, 198, 18, { align: "right" })
 
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.setFontSize(8)
   pdf.setTextColor(...TEXT_MUTED)
   const metaLine = [
@@ -867,6 +874,8 @@ function drawInfoBox(
   minHeight = 16,
 ): number {
   const hasRtl = isPashtoOrArabic(value || "")
+  const fontStatus = hasRegisteredPDFFonts(pdf)
+
   const lines = hasRtl
     ? splitTextSafely(value || "", Math.max(14, Math.floor((width - 6) / 2.2)))
     : valueLines(pdf, value || "", width - 6).slice(0, 4)
@@ -878,25 +887,36 @@ function drawInfoBox(
   pdf.setLineWidth(0.3)
   pdf.roundedRect(x, y, width, height, 1.2, 1.2, "FD")
 
-  pdf.setFont("helvetica", "bold")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.setTextColor(...BRAND_PURPLE)
   pdf.setFontSize(6.5)
   pdf.text(label.toUpperCase(), x + 3, y + 4.5)
 
   if (lines.length > 0) {
+    pdf.setTextColor(...TEXT_BLACK)
+    pdf.setFontSize(7.5)
     lines.forEach((line, lineIdx) => {
       const lineY = y + 9 + lineIdx * 3.8
-      if (hasRtl || isPashtoOrArabic(line)) {
+      const isLineRtl = isPashtoOrArabic(line)
+
+      if (isLineRtl && fontStatus.hasArabic) {
+        // High-precision TrueType vector text
+        pdf.setFont("NotoNaskhArabic", "normal")
+        const prepared = prepareBidiPdfText(line)
+        pdf.text(prepared, x + 3, lineY)
+      } else if (isLineRtl) {
+        // High-DPI canvas fallback if TrueType not registered yet
         const rendered = renderUnicodeTextToCanvas(line, 7.5, false, TEXT_BLACK, width - 6)
         if (rendered) {
           pdf.addImage(rendered.dataUrl, "PNG", x + 3, lineY - rendered.heightMm * 0.7, rendered.widthMm, rendered.heightMm, undefined, "FAST")
           return
         }
+        pdf.setFont("helvetica", "normal")
+        pdf.text(line, x + 3, lineY)
+      } else {
+        pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
+        pdf.text(line, x + 3, lineY)
       }
-      pdf.setFont("helvetica", "normal")
-      pdf.setTextColor(...TEXT_BLACK)
-      pdf.setFontSize(7.5)
-      pdf.text(line, x + 3, lineY)
     })
   }
 
@@ -969,12 +989,13 @@ export function drawPackingList(
   y += Math.ceil(details.length / gridCols) * (boxH + 2) + 2
 
   // 4. Cargo / Packages Table (Supports Multi-Commodity Rows!)
+  const fontStatus = hasRegisteredPDFFonts(pdf)
   const tableTop = y
   const columns = [12, 48, 74, 112, 154, 176, 198]
   pdf.setFillColor(...BRAND_PURPLE)
   pdf.rect(12, tableTop, 186, 7.5, "F")
   pdf.setTextColor(255, 255, 255)
-  pdf.setFont("helvetica", "bold")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.setFontSize(6.5)
 
   const headings = [
@@ -1023,17 +1044,29 @@ export function drawPackingList(
     columns.slice(1, -1).forEach((x) => pdf.line(x, rowY, x, rowY + rowHeight))
 
     pdf.setTextColor(...TEXT_BLACK)
-    pdf.setFont("helvetica", "normal")
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
     pdf.setFontSize(7)
 
     // First row shows container/seal & marks
     if (idx === 0) {
       pdf.text(valueLines(pdf, cntrSealLines, 34).slice(0, 3), 14, rowY + 4.5)
-      pdf.text(valueLines(pdf, data.marksAndNumbers, 24).slice(0, 3), 50, rowY + 4.5)
+      const markLines = isPashtoOrArabic(data.marksAndNumbers)
+        ? splitTextSafely(data.marksAndNumbers, 20).slice(0, 3)
+        : valueLines(pdf, data.marksAndNumbers, 24).slice(0, 3)
+      markLines.forEach((mLine, mIdx) => {
+        const mLineY = rowY + 4.5 + mIdx * 3.5
+        if (isPashtoOrArabic(mLine) && fontStatus.hasArabic) {
+          pdf.setFont("NotoNaskhArabic", "normal")
+          pdf.text(prepareBidiPdfText(mLine), 50, mLineY)
+        } else {
+          pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
+          pdf.text(mLine, 50, mLineY)
+        }
+      })
     }
 
     // Packages & Kind
-    pdf.setFont("helvetica", "bold")
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
     const packText = [item.packageCountText, item.packageType].filter(Boolean).join(" ")
     pdf.text(valueLines(pdf, packText, 36).slice(0, 2), 76, rowY + 4.5)
 
@@ -1046,20 +1079,27 @@ export function drawPackingList(
     if (isPashtoOrArabic(descText)) {
       const commLines = splitTextSafely(descText, 24).slice(0, 2)
       commLines.forEach((cLine, cIdx) => {
-        const rendered = renderUnicodeTextToCanvas(cLine, 7, false, TEXT_BLACK, 38)
-        if (rendered) {
-          pdf.addImage(rendered.dataUrl, "PNG", 114, rowY + 4.5 + cIdx * 3.6 - rendered.heightMm * 0.7, rendered.widthMm, rendered.heightMm, undefined, "FAST")
+        const cLineY = rowY + 4.5 + cIdx * 3.6
+        if (fontStatus.hasArabic) {
+          pdf.setFont("NotoNaskhArabic", "normal")
+          pdf.setFontSize(7)
+          pdf.text(prepareBidiPdfText(cLine), 114, cLineY)
+        } else {
+          const rendered = renderUnicodeTextToCanvas(cLine, 7, false, TEXT_BLACK, 38)
+          if (rendered) {
+            pdf.addImage(rendered.dataUrl, "PNG", 114, cLineY - rendered.heightMm * 0.7, rendered.widthMm, rendered.heightMm, undefined, "FAST")
+          }
         }
       })
     } else {
-      pdf.setFont("helvetica", "normal")
+      pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
       pdf.setTextColor(...TEXT_BLACK)
       pdf.setFontSize(7)
       pdf.text(valueLines(pdf, descText, 38).slice(0, 2), 114, rowY + 4.5, { maxWidth: 38 })
     }
 
     // Weights - strictly constrained to 19mm max width so columns never overlap
-    pdf.setFont("helvetica", "bold")
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
     pdf.setTextColor(...TEXT_BLACK)
     pdf.setFontSize(7)
 
@@ -1091,7 +1131,7 @@ export function drawPackingList(
   y += 18
 
   // 6. Sign-off & Certification Footer
-  pdf.setFont("helvetica", "italic")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "italic")
   pdf.setFontSize(7)
   pdf.setTextColor(...TEXT_MUTED)
   pdf.text("We certify that this packing list is true and correct and covers the full consignment detailed above.", 12, y + 6)
@@ -1099,7 +1139,7 @@ export function drawPackingList(
   pdf.setDrawColor(...TEXT_BLACK)
   pdf.setLineWidth(0.4)
   pdf.line(138, y + 5, 198, y + 5)
-  pdf.setFont("helvetica", "bold")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.setFontSize(7)
   pdf.setTextColor(...TEXT_BLACK)
   pdf.text("AUTHORIZED SIGNATURE / STAMP", 168, y + 10, { align: "center" })
@@ -1110,7 +1150,7 @@ export function drawPackingList(
   pdf.line(12, 285, 198, 285)
 
   pdf.setTextColor(...TEXT_MUTED)
-  pdf.setFont("helvetica", "normal")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
   pdf.setFontSize(7.5)
   pdf.text(`${companyName || "SKY ARIANA LTD"} • International Transportation • Transit • Forwarding`, 105, 290, { align: "center" })
 }
@@ -1126,89 +1166,161 @@ export function drawStickerPage(
   cartonNumber?: number,
   totalCartons?: number,
 ): void {
-  // Exact authentic export carton sticker matching user sample (media_1789052707677.pdf)
-  // Centered A4 single card with solid black border
-  const cardW = 128
-  const cardH = 120
-  const cardX = (PAGE_WIDTH - cardW) / 2 // Centered at 41 mm
-  const cardY = 32 // 32 mm from top
+  const fontStatus = hasRegisteredPDFFonts(pdf)
+  // Centered A4 single card: 136mm x 126mm with ample print margins
+  const cardW = 136
+  const cardH = 126
+  const cardX = (PAGE_WIDTH - cardW) / 2 // Centered at 37 mm
+  const cardY = 28 // 28 mm from top
 
   const activeCommodity = commodityItem?.commodity || data.commodity || "BLACK RAISINS"
   const activeNetWeight = commodityItem?.netWeight || data.netWeight || "10 Kg"
   const activePackingDate = commodityItem?.packingDateMonthYear || data.packingDateMonthYear || "JUL / 2026"
   const activeExpiryDate = commodityItem?.expiryDateMonthYear || data.expiryDateMonthYear || "JUL / 2028"
   const lotNo = data.lotNo?.trim() || ""
+  const displayTotalCartons = totalCartons || data.packageCount || 1
+  const displayCartonNum = cartonNumber || 1
 
-  // 1. Solid black border & pure white background
+  // 1. Precision Corner Crop Marks for Warehouse Cutting
+  const cropLen = 5
+  const cropOff = 2.5
+  pdf.setDrawColor(148, 163, 184)
+  pdf.setLineWidth(0.3)
+  // Top-left
+  pdf.line(cardX - cropOff - cropLen, cardY, cardX - cropOff, cardY)
+  pdf.line(cardX, cardY - cropOff - cropLen, cardX, cardY - cropOff)
+  // Top-right
+  pdf.line(cardX + cardW + cropOff, cardY, cardX + cardW + cropOff + cropLen, cardY)
+  pdf.line(cardX + cardW, cardY - cropOff - cropLen, cardX + cardW, cardY - cropOff)
+  // Bottom-left
+  pdf.line(cardX - cropOff - cropLen, cardY + cardH, cardX - cropOff, cardY + cardH)
+  pdf.line(cardX, cardY + cardH + cropOff, cardX, cardY + cardH + cropOff + cropLen)
+  // Bottom-right
+  pdf.line(cardX + cardW + cropOff, cardY + cardH, cardX + cardW + cropOff + cropLen, cardY + cardH)
+  pdf.line(cardX + cardW, cardY + cardH + cropOff, cardX + cardW, cardY + cardH + cropOff + cropLen)
+
+  // 2. Solid black card border & pure white background
   pdf.setFillColor(255, 255, 255)
-  pdf.setDrawColor(0, 0, 0)
-  pdf.setLineWidth(0.35)
+  pdf.setDrawColor(15, 23, 42)
+  pdf.setLineWidth(0.4)
   pdf.rect(cardX, cardY, cardW, cardH, "FD")
+
+  // 3. Top Header Bar: PRODUCE OF AFGHANISTAN + Pashto Title + Carton Badge
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
+  pdf.setFontSize(10.5)
+  pdf.setTextColor(15, 23, 42)
+  pdf.text("PRODUCE OF AFGHANISTAN", cardX + 4.5, cardY + 5.5)
+
+  if (fontStatus.hasArabic) {
+    pdf.setFont("NotoNaskhArabic", "bold")
+    pdf.setFontSize(8.5)
+    pdf.setTextColor(71, 85, 105)
+    pdf.text(prepareBidiPdfText("د افغانستان صادراتي محصولات"), cardX + 68, cardY + 5.5)
+  }
+
+  // Carton No Badge (top right inside card)
+  pdf.setFillColor(241, 245, 249)
+  pdf.setDrawColor(15, 23, 42)
+  pdf.setLineWidth(0.25)
+  pdf.roundedRect(cardX + cardW - 32, cardY + 2, 28, 8, 1, 1, "FD")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
+  pdf.setFontSize(5.2)
+  pdf.setTextColor(100, 116, 139)
+  pdf.text("CARTON NO", cardX + cardW - 18, cardY + 4.8, { align: "center" })
+  pdf.setFontSize(7.5)
+  pdf.setTextColor(15, 23, 42)
+  pdf.text(`${displayCartonNum} OF ${displayTotalCartons}`, cardX + cardW - 18, cardY + 8.5, { align: "center" })
+
+  // Subtitle
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
+  pdf.setFontSize(5.2)
+  pdf.setTextColor(88, 49, 132) // Brand purple
+  pdf.text("OFFICIAL EXPORT CARGO IDENTIFICATION STICKER", cardX + 4.5, cardY + 9.5)
+
+  // Divider line under header
+  pdf.setDrawColor(15, 23, 42)
+  pdf.setLineWidth(0.35)
+  pdf.line(cardX, cardY + 11.5, cardX + cardW, cardY + 11.5)
 
   const textX = cardX + 4.5
   const contentWidth = cardW - 32 // Leave space for right badges
-  let cursorY = cardY + 6.5
+  let cursorY = cardY + 15.5
 
-  // 2. EXPORTER SECTION
-  pdf.setFont("helvetica", "bold")
-  pdf.setFontSize(8.5)
+  // 4. Tracking Reference Line
+  const refParts = [
+    data.bolNumber ? `B/L: ${data.bolNumber}` : "",
+    data.invoiceNumber ? `INV: ${data.invoiceNumber}` : "",
+    data.containerNumber ? `CNTR: ${data.containerNumber}` : "",
+    data.finalDestination ? `DEST: ${data.finalDestination}` : "",
+  ].filter(Boolean).join("   •   ")
+  if (refParts) {
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
+    pdf.setFontSize(6.2)
+    pdf.setTextColor(71, 85, 105)
+    pdf.text(refParts, textX, cursorY)
+    cursorY += 4
+  }
+
+  // 5. EXPORTER SECTION
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
+  pdf.setFontSize(8)
   pdf.setTextColor(0, 0, 0)
   pdf.text("Name and Complete Address of Exporter", textX, cursorY)
-  cursorY += 4.5
+  cursorY += 4
 
   // Exporter Company Name in Bold Navy Blue (#1e40af)
-  pdf.setFont("helvetica", "bold")
-  pdf.setFontSize(11.5)
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
+  pdf.setFontSize(11)
   pdf.setTextColor(30, 64, 175)
   const displayShipper = data.shipper || companyName || data.companyName || "NASIB OBID AKBARI LTD"
   pdf.text(displayShipper, textX, cursorY)
-  cursorY += 4.2
+  cursorY += 4
 
   // Exporter Address
-  pdf.setFont("helvetica", "normal")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
   pdf.setFontSize(7.5)
   pdf.setTextColor(0, 0, 0)
   const expAddr = data.shipperAddress || ""
   const expLines = valueLines(pdf, expAddr, contentWidth)
   if (expLines.length > 0) {
     pdf.text(expLines, textX, cursorY)
-    cursorY += expLines.length * 3.3
+    cursorY += expLines.length * 3.2
   }
 
   // Licence No
   if (data.shipperLicence) {
-    pdf.setFont("helvetica", "normal")
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
     pdf.text("Licence No: ", textX, cursorY)
-    pdf.setFont("helvetica", "bold")
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
     pdf.text(data.shipperLicence, textX + 16, cursorY)
-    cursorY += 3.8
+    cursorY += 3.6
   }
 
-  cursorY += 1.8
+  cursorY += 1.5
 
-  // 3. IMPORTER SECTION
-  pdf.setFont("helvetica", "bold")
-  pdf.setFontSize(8.5)
+  // 6. IMPORTER SECTION
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
+  pdf.setFontSize(8)
   pdf.setTextColor(0, 0, 0)
   pdf.text("Name and Complete Address of Importer", textX, cursorY)
-  cursorY += 4.5
+  cursorY += 4
 
   // Importer Company Name in Bold Navy Blue (#1e40af)
-  pdf.setFont("helvetica", "bold")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.setFontSize(10.5)
   pdf.setTextColor(30, 64, 175)
   pdf.text(data.consignee || "JDM ENTERPRISES", textX, cursorY)
-  cursorY += 4.2
+  cursorY += 4
 
   // Importer Address
-  pdf.setFont("helvetica", "normal")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
   pdf.setFontSize(7.5)
   pdf.setTextColor(0, 0, 0)
   const impAddr = data.consigneeAddress || ""
   const impLines = valueLines(pdf, impAddr, contentWidth)
   if (impLines.length > 0) {
     pdf.text(impLines, textX, cursorY)
-    cursorY += impLines.length * 3.3
+    cursorY += impLines.length * 3.2
   }
 
   // Identifiers: GST, FSSAI, Phone, Email, PAN
@@ -1222,80 +1334,66 @@ export function drawStickerPage(
 
   for (const [label, val] of idRows) {
     if (val) {
-      pdf.setFont("helvetica", "normal")
+      pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
       pdf.text(`${label}: `, textX, cursorY)
       const labelW = pdf.getTextWidth(`${label}: `)
-      pdf.setFont("helvetica", "normal")
+      pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
       pdf.text(val, textX + labelW, cursorY)
-      cursorY += 3.5
+      cursorY += 3.4
     }
   }
 
-  cursorY += 1.8
+  cursorY += 1.5
 
-  // 4. COMMODITY & EXPORT SPECIFICATIONS
-  pdf.setFont("helvetica", "normal")
+  // 7. COMMODITY & EXPORT SPECIFICATIONS
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
   pdf.setFontSize(7.5)
   pdf.setTextColor(0, 0, 0)
 
   // Name of Commodity
   pdf.text("Name of Commodity: ", textX, cursorY)
-  pdf.setFont("helvetica", "bold")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.text(activeCommodity ? activeCommodity.toUpperCase() : "BLACK RAISINS", textX + 29, cursorY)
-  cursorY += 3.7
+  cursorY += 3.6
 
   // Net Wt & Gross Wt
-  pdf.setFont("helvetica", "normal")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
   pdf.text("Net Wt: ", textX, cursorY)
-  pdf.setFont("helvetica", "bold")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.text(activeNetWeight || "10 Kg", textX + 11, cursorY)
 
   const activeGrossWeight = commodityItem?.grossWeight || data.grossWeight
   if (activeGrossWeight) {
-    pdf.setFont("helvetica", "normal")
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
     pdf.text("Gross Wt: ", textX + 48, cursorY)
-    pdf.setFont("helvetica", "bold")
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
     pdf.text(activeGrossWeight, textX + 63, cursorY)
   }
-  cursorY += 3.7
+  cursorY += 3.6
 
   // Date of Packing & Expiry
-  pdf.setFont("helvetica", "normal")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
   pdf.text("Date of Packing: ", textX, cursorY)
-  pdf.setFont("helvetica", "bold")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.text(activePackingDate || "JUL / 2026", textX + 22, cursorY)
-  cursorY += 3.7
+  cursorY += 3.6
 
-  pdf.setFont("helvetica", "normal")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
   pdf.text("Date of Expiry: ", textX, cursorY)
-  pdf.setFont("helvetica", "bold")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.text(activeExpiryDate || "JUL / 2028", textX + 21, cursorY)
-  cursorY += 3.7
+  cursorY += 3.6
 
-  // B/L & Invoice tracking reference
-  if (data.bolNumber || data.invoiceNumber) {
-    pdf.setFont("helvetica", "normal")
-    pdf.setTextColor(100, 116, 139)
-    pdf.setFontSize(6.8)
-    const refLine = [
-      data.bolNumber ? `B/L: ${data.bolNumber}` : "",
-      data.invoiceNumber ? `INV: ${data.invoiceNumber}` : "",
-      data.finalDestination ? `DEST: ${data.finalDestination}` : "",
-    ].filter(Boolean).join("  •  ")
-    pdf.text(refLine, textX, cursorY)
-    cursorY += 4.2
-  }
-
-  // Lot No in Bold Deep Green (#007a3d) - only if provided in BOL
+  // Lot No in Bold Deep Green (#007a3d)
   if (lotNo) {
-    pdf.setFont("helvetica", "bold")
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
     pdf.setFontSize(10.5)
     pdf.setTextColor(0, 122, 61)
     pdf.text("Lot No: ", textX, cursorY)
     pdf.text(lotNo, textX + 14, cursorY)
   }
 
-  // 5. BOTTOM-RIGHT AUTHENTIC BADGES (Veg+FSSAI combo & Afghanistan Logo)
+  // 8. BOTTOM-RIGHT AUTHENTIC BADGES (Veg+FSSAI combo & Afghanistan Logo)
   const badgeX = cardX + cardW - 25
   const badgeY1 = cardY + cardH - 33
   try {
@@ -1361,13 +1459,14 @@ function drawCompactSticker(
     }
   }
 
+  const fontStatus = hasRegisteredPDFFonts(pdf)
   pdf.setTextColor(255, 255, 255)
-  pdf.setFont("helvetica", "bold")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.setFontSize(8.5)
   pdf.text(companyName || "SKY ARIANA LTD", x + (logoDataUrl ? 14 : padding), y + 5.3)
   pdf.setFontSize(5.2)
   pdf.text(`CARTON ${cartonNumber} OF ${totalCartons}`, x + width - padding, y + 5.3, { align: "right" })
-  pdf.setFont("helvetica", "normal")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
   pdf.setFontSize(4.5)
   pdf.text("EXPORT CARTON STICKER • PRODUCE OF AFGHANISTAN", x + (logoDataUrl ? 14 : padding), y + 9)
 
@@ -1387,21 +1486,28 @@ function drawCompactSticker(
 
   for (const [label, rawValue] of rows) {
     const value = clean(rawValue) || "—"
-    pdf.setFont("helvetica", "bold")
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
     pdf.setFontSize(4.8)
     pdf.setTextColor(...TEXT_MUTED)
     pdf.text(`${label}:`, x + padding, cursorY)
     pdf.setFontSize(6.2)
     pdf.setTextColor(...TEXT_BLACK)
-    const clipped = valueLines(pdf, value, width - (valueX - x) - padding)[0] || "—"
-    pdf.text(clipped, valueX, cursorY)
+    const isValRtl = isPashtoOrArabic(value)
+    if (isValRtl && fontStatus.hasArabic) {
+      pdf.setFont("NotoNaskhArabic", "bold")
+      pdf.text(prepareBidiPdfText(value), valueX, cursorY)
+    } else {
+      pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
+      const clipped = valueLines(pdf, value, width - (valueX - x) - padding)[0] || "—"
+      pdf.text(clipped, valueX, cursorY)
+    }
     cursorY += 5.7
   }
 
   pdf.setFillColor(...BRAND_PURPLE)
   pdf.rect(x + 0.6, y + height - footerHeight, width - 1.2, footerHeight - 0.6, "F")
   pdf.setTextColor(255, 255, 255)
-  pdf.setFont("helvetica", "bold")
+  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
   pdf.setFontSize(6.7)
   pdf.text("EXPORT STANDARD PACKAGING", x + width / 2, y + height - 4.2, { align: "center" })
 }
@@ -1481,6 +1587,8 @@ export async function generateShippingDocumentsPDF(options: GenerateShippingDocu
     compress: true,
     precision: 16,
   })
+
+  await registerPDFFonts(pdf)
 
   const companyName = clean(options.companyName || options.data.companyName) || "SKY ARIANA LTD"
   const companySubtitle = clean(options.companySubtitle || options.data.companySubtitle) || "International Transportation • Transit • Forwarding"

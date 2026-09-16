@@ -241,9 +241,12 @@ export function prepareBidiPdfText(input: string): string {
     return token.text
   })
 
-  // In RTL context, reverse the order of tokens on the line
-  const hasRtl = tokens.some((t) => t.type === "rtl")
-  if (hasRtl) {
+  // In RTL base direction (first strong directional token is RTL), reverse the tokens on the line.
+  // In LTR base direction (starts with English/digits, e.g. "32319 کابل"), preserve token sequence.
+  const firstStrong = tokens.find((t) => t.text.trim().length > 0)
+  const isBaseRtl = firstStrong ? firstStrong.type === "rtl" : tokens.some((t) => t.type === "rtl")
+
+  if (isBaseRtl) {
     return processedTokens.reverse().join("")
   }
 
