@@ -990,7 +990,7 @@ export function drawPackingList(
   pdf.rect(12, tableTop, 186, 7.5, "F")
   pdf.setTextColor(255, 255, 255)
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(6.5)
+  pdf.setFontSize(7.5)
 
   const headings = [
     "CONTAINER / SEAL",
@@ -1001,7 +1001,7 @@ export function drawPackingList(
     "NET WT.",
   ]
   headings.forEach((heading, idx) => {
-    pdf.text(heading, columns[idx] + 2, tableTop + 5)
+    pdf.text(heading, columns[idx] + 2, tableTop + 5.2)
   })
   y += 7.5
 
@@ -1020,10 +1020,14 @@ export function drawPackingList(
         },
       ]
 
-  const cntrSealLines = data.containers
-    .map((c) => `${c.containerNumber}${c.sealNumber ? ` / ${c.sealNumber}` : ""}`)
-    .filter(Boolean)
-    .join("\n") || data.containerNumber
+  const cntrSealLines =
+    data.containers
+      .map((c) => `${c.containerNumber}${c.sealNumber ? ` / ${c.sealNumber}` : ""}`)
+      .filter(Boolean)
+      .join("\n") ||
+    data.containerNumber ||
+    (data.truckNumber ? `TRUCK: ${data.truckNumber}` : "") ||
+    "—"
 
   const totalTableHeight = 44
   const rowHeight = Math.max(11, totalTableHeight / Math.max(1, items.length))
@@ -1039,16 +1043,16 @@ export function drawPackingList(
 
     pdf.setTextColor(...TEXT_BLACK)
     pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
-    pdf.setFontSize(7)
+    pdf.setFontSize(8)
 
     // First row shows container/seal & marks
     if (idx === 0) {
-      pdf.text(valueLines(pdf, cntrSealLines, 34).slice(0, 3), 14, rowY + 4.5)
+      pdf.text(valueLines(pdf, cntrSealLines, 34).slice(0, 3), 14, rowY + 5)
       const markLines = isPashtoOrArabic(data.marksAndNumbers)
         ? splitTextSafely(data.marksAndNumbers, 20).slice(0, 3)
         : valueLines(pdf, data.marksAndNumbers, 24).slice(0, 3)
       markLines.forEach((mLine, mIdx) => {
-        const mLineY = rowY + 4.5 + mIdx * 3.5
+        const mLineY = rowY + 5 + mIdx * 3.8
         if (isPashtoOrArabic(mLine)) {
           pdf.setFont("NotoNaskhArabic", "normal")
           pdf.text(prepareBidiPdfText(mLine), 50, mLineY)
@@ -1061,8 +1065,11 @@ export function drawPackingList(
 
     // Packages & Kind
     pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-    const packText = [item.packageCountText, item.packageType].filter(Boolean).join(" ")
-    pdf.text(valueLines(pdf, packText, 36).slice(0, 2), 76, rowY + 4.5)
+    const packText = [
+      item.packageCountText || (item.packageCount ? String(item.packageCount) : ""),
+      item.packageType,
+    ].filter(Boolean).join(" ") || data.packageCountText || item.packageType || "—"
+    pdf.text(valueLines(pdf, packText, 36).slice(0, 2), 76, rowY + 5)
 
     // Commodity & HS Code
     const descText = [
@@ -1073,22 +1080,22 @@ export function drawPackingList(
     if (isPashtoOrArabic(descText)) {
       const commLines = splitTextSafely(descText, 24).slice(0, 2)
       commLines.forEach((cLine, cIdx) => {
-        const cLineY = rowY + 4.5 + cIdx * 3.6
+        const cLineY = rowY + 5 + cIdx * 3.8
         pdf.setFont("NotoNaskhArabic", "normal")
-        pdf.setFontSize(7)
+        pdf.setFontSize(8)
         pdf.text(prepareBidiPdfText(cLine), 114, cLineY)
       })
     } else {
       pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
       pdf.setTextColor(...TEXT_BLACK)
-      pdf.setFontSize(7)
-      pdf.text(valueLines(pdf, descText, 38).slice(0, 2), 114, rowY + 4.5, { maxWidth: 38 })
+      pdf.setFontSize(8)
+      pdf.text(valueLines(pdf, descText, 38).slice(0, 2), 114, rowY + 5, { maxWidth: 38 })
     }
 
     // Weights - strictly constrained to 19mm max width so columns never overlap
     pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
     pdf.setTextColor(...TEXT_BLACK)
-    pdf.setFontSize(7)
+    pdf.setFontSize(8)
 
     let grossDisplay = clean(item.grossWeight)
     if (grossDisplay.includes(" - ")) {
@@ -1096,10 +1103,10 @@ export function drawPackingList(
       grossDisplay = clean(parts[0])
     }
     const grossLines = valueLines(pdf, grossDisplay, 19).slice(0, 2)
-    pdf.text(grossLines, 156, rowY + 4.5, { maxWidth: 19 })
+    pdf.text(grossLines, 156, rowY + 5, { maxWidth: 19 })
 
     const netLines = valueLines(pdf, clean(item.netWeight), 19).slice(0, 2)
-    pdf.text(netLines, 178, rowY + 4.5, { maxWidth: 19 })
+    pdf.text(netLines, 178, rowY + 5, { maxWidth: 19 })
   })
 
   y += Math.max(totalTableHeight, items.length * rowHeight) + 3
