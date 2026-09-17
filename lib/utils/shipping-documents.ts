@@ -1681,11 +1681,11 @@ export async function generateShippingDocumentsPDF(options: GenerateShippingDocu
   // CARGO STICKERS: preserve the master preview for one label, and paginate batches.
   // ----------------------------------------------------
   if (includesStickers) {
-    const quantity = options.stickerQuantity ?? 1
+    const quantity = isComplete ? 1 : (options.stickerQuantity ?? 1)
     if (!Number.isSafeInteger(quantity) || quantity < 1) {
       throw new Error("Sticker quantity must be a positive whole number.")
     }
-    const layout = options.stickerLayout ?? "single"
+    const layout = isComplete ? "single" : (options.stickerLayout ?? "single")
     const perPage = layout === "sheet" ? 6 : 1
     const stickerElement =
       quantity === 1 && layout === "single" && typeof document !== "undefined"

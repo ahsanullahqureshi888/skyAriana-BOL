@@ -78,6 +78,8 @@ async function run() {
   assert.strictEqual(stickerStr.includes("NotoNaskhArabic"), true, "Sticker has NotoNaskhArabic embedded")
   const stickerHasMojibake = stickerStr.includes("þ•") || stickerStr.includes("þ•þ•") || stickerStr.includes("þ®þë")
   assert.strictEqual(stickerHasMojibake, false, "Sticker PDF must NOT contain mojibake (þ•)")
+  const stickerPages = (stickerStr.match(/\/Type\s*\/Page\b/g) || []).length
+  assert.strictEqual(stickerPages, 1, "Sticker PDF must produce exactly ONE page")
 
   console.log("ALL TESTS PASSED! Packing List and Stickers generate authentic vector text without mojibake.")
   console.log(`Packing List size: ${buf.length} bytes`)

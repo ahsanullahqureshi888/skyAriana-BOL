@@ -3870,7 +3870,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
   const createShippingDocuments = async (
     kind: ShippingDocumentKind = "all",
-    stickerQuantity = shippingDocumentData.packageCount,
+    stickerQuantity = 1,
     stickerLayout: StickerLayout = "single",
   ) => {
     const bolElement =
@@ -3894,8 +3894,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
   const handleShippingDocumentsDownload = async (
     kind: ShippingDocumentKind,
-    stickerQuantity = shippingDocumentData.packageCount,
-    stickerLayout: StickerLayout = "sheet",
+    stickerQuantity = 1,
+    stickerLayout: StickerLayout = "single",
   ) => {
     setIsSaving(true)
     const fileName = buildShippingDocumentFileName(kind, shippingDocumentData)
@@ -3923,8 +3923,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
   const handleShippingDocumentsPrint = async (
     kind: ShippingDocumentKind,
-    stickerQuantity = shippingDocumentData.packageCount,
-    stickerLayout: StickerLayout = "sheet",
+    stickerQuantity = 1,
+    stickerLayout: StickerLayout = "single",
   ) => {
     const fileName = buildShippingDocumentFileName(kind, shippingDocumentData)
     const printWindow = openPDFPrintWindow(fileName)
