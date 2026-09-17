@@ -128,6 +128,7 @@ export function CombinedShippingPdf({
         data={data}
         logoUrl={logoUrl}
         companyName={companyName}
+        companySubtitle={companySubtitle}
       />
     )
   }, [currentPage, bolPreview, data, logoUrl, companyName, companySubtitle])
@@ -602,6 +603,7 @@ export function CombinedShippingPdf({
                     data={data}
                     logoUrl={logoUrl}
                     companyName={companyName}
+                    companySubtitle={companySubtitle}
                   />
                 </div>
               )}

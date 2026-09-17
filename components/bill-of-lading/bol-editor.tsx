@@ -9433,6 +9433,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               data={shippingDocumentData}
               logoUrl={logoUrl}
               companyName={companyName}
+              companySubtitle={companySubtitle}
             />
           </div>
         </div>
