@@ -418,7 +418,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   const [companyLicence, setCompanyLicence] = useState("2401-2198")
   const [bgImageUrl, setBgImageUrl] = useState<string>("/images/mountain-watermark-premium.png")
   const [bgOpacity, setBgOpacity] = useState<number>(0.22)
-  const [previewScale, setPreviewScale] = useState<number>(0.68)
+  const [previewScale, setPreviewScale] = useState<number>(1.0)
   const [isEditMode, setIsEditMode] = useState(false)
   const [editDocumentId, setEditDocumentId] = useState<string | null>(null)
   const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "idle" | "local" | "error">("idle")
