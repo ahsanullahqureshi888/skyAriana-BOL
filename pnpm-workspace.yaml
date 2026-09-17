@@ -11,3 +11,16 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
   - better-sqlite3
+allowedDeprecatedVersions:
+  '@esbuild-kit/core-utils': '*'
+  '@esbuild-kit/esm-loader': '*'
+  '@humanwhocodes/config-array': '*'
+  '@humanwhocodes/object-schema': '*'
+  boolean: '*'
+  glob: '*'
+  inflight: '*'
+  rimraf: '*'
+  '@types/uuid': '*'
+  recharts: '*'
+  eslint: '*'
+
