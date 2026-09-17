@@ -2,8 +2,10 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const load=require('./load-typescript.cjs');
 const pashtoBidi = load('lib/utils/pashto-bidi.ts');
+const pdfArabicFont = load('lib/utils/pdf-arabic-font.ts');
 const pdfFonts = load('lib/utils/pdf-fonts.ts', {
   './pashto-bidi': pashtoBidi,
+  './pdf-arabic-font': pdfArabicFont,
 });
 const {generateShippingDocumentsPDF}=load('lib/utils/shipping-documents.ts',{
   '@/lib/sticker-badges-data':load('lib/sticker-badges-data.ts'),

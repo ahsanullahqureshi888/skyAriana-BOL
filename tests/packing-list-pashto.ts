@@ -75,6 +75,9 @@ async function run() {
   const stickerStr = Buffer.from(await stickerBlob.arrayBuffer()).toString("latin1")
   assert.strictEqual(stickerStr.slice(0, 5), "%PDF-", "Sticker document is a valid PDF")
   assert.strictEqual(stickerStr.includes("NotoSans"), true, "Sticker has NotoSans embedded")
+  assert.strictEqual(stickerStr.includes("NotoNaskhArabic"), true, "Sticker has NotoNaskhArabic embedded")
+  const stickerHasMojibake = stickerStr.includes("þ•") || stickerStr.includes("þ•þ•") || stickerStr.includes("þ®þë")
+  assert.strictEqual(stickerHasMojibake, false, "Sticker PDF must NOT contain mojibake (þ•)")
 
   console.log("ALL TESTS PASSED! Packing List and Stickers generate authentic vector text without mojibake.")
   console.log(`Packing List size: ${buf.length} bytes`)

@@ -9,6 +9,7 @@ import {
 import { isPashtoOrArabic, prepareBidiPdfText } from "@/lib/utils/pashto-bidi"
 import {
   registerPDFFonts,
+  registerPDFFontsSync,
   hasRegisteredPDFFonts,
   setSmartPDFFont,
 } from "@/lib/utils/pdf-fonts"
@@ -874,6 +875,7 @@ function drawInfoBox(
   minHeight = 16,
 ): number {
   const hasRtl = isPashtoOrArabic(value || "")
+  registerPDFFontsSync(pdf)
   const fontStatus = hasRegisteredPDFFonts(pdf)
 
   const lines = hasRtl
@@ -899,20 +901,11 @@ function drawInfoBox(
       const lineY = y + 9 + lineIdx * 3.8
       const isLineRtl = isPashtoOrArabic(line)
 
-      if (isLineRtl && fontStatus.hasArabic) {
-        // High-precision TrueType vector text
+      if (isLineRtl) {
+        // High-precision TrueType vector text for all Arabic and Pashto text
         pdf.setFont("NotoNaskhArabic", "normal")
         const prepared = prepareBidiPdfText(line)
         pdf.text(prepared, x + 3, lineY)
-      } else if (isLineRtl) {
-        // High-DPI canvas fallback if TrueType not registered yet
-        const rendered = renderUnicodeTextToCanvas(line, 7.5, false, TEXT_BLACK, width - 6)
-        if (rendered) {
-          pdf.addImage(rendered.dataUrl, "PNG", x + 3, lineY - rendered.heightMm * 0.7, rendered.widthMm, rendered.heightMm, undefined, "FAST")
-          return
-        }
-        pdf.setFont("helvetica", "normal")
-        pdf.text(line, x + 3, lineY)
       } else {
         pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
         pdf.text(line, x + 3, lineY)
@@ -930,6 +923,7 @@ export function drawPackingList(
   companyName: string,
   companySubtitle: string,
 ): void {
+  registerPDFFontsSync(pdf)
   let y = drawDocumentHeader(pdf, "PACKING LIST", data, logoDataUrl, companyName, companySubtitle)
   const gap = 3
   const colW = 91
@@ -1055,7 +1049,7 @@ export function drawPackingList(
         : valueLines(pdf, data.marksAndNumbers, 24).slice(0, 3)
       markLines.forEach((mLine, mIdx) => {
         const mLineY = rowY + 4.5 + mIdx * 3.5
-        if (isPashtoOrArabic(mLine) && fontStatus.hasArabic) {
+        if (isPashtoOrArabic(mLine)) {
           pdf.setFont("NotoNaskhArabic", "normal")
           pdf.text(prepareBidiPdfText(mLine), 50, mLineY)
         } else {
@@ -1080,16 +1074,9 @@ export function drawPackingList(
       const commLines = splitTextSafely(descText, 24).slice(0, 2)
       commLines.forEach((cLine, cIdx) => {
         const cLineY = rowY + 4.5 + cIdx * 3.6
-        if (fontStatus.hasArabic) {
-          pdf.setFont("NotoNaskhArabic", "normal")
-          pdf.setFontSize(7)
-          pdf.text(prepareBidiPdfText(cLine), 114, cLineY)
-        } else {
-          const rendered = renderUnicodeTextToCanvas(cLine, 7, false, TEXT_BLACK, 38)
-          if (rendered) {
-            pdf.addImage(rendered.dataUrl, "PNG", 114, cLineY - rendered.heightMm * 0.7, rendered.widthMm, rendered.heightMm, undefined, "FAST")
-          }
-        }
+        pdf.setFont("NotoNaskhArabic", "normal")
+        pdf.setFontSize(7)
+        pdf.text(prepareBidiPdfText(cLine), 114, cLineY)
       })
     } else {
       pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
@@ -1166,6 +1153,7 @@ export function drawStickerPage(
   cartonNumber?: number,
   totalCartons?: number,
 ): void {
+  registerPDFFontsSync(pdf)
   const fontStatus = hasRegisteredPDFFonts(pdf)
   // Centered A4 single card: 136mm x 126mm with ample print margins
   const cardW = 136
@@ -1269,22 +1257,40 @@ export function drawStickerPage(
   cursorY += 4
 
   // Exporter Company Name in Bold Navy Blue (#1e40af)
-  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(11)
-  pdf.setTextColor(30, 64, 175)
   const displayShipper = data.shipper || companyName || data.companyName || "NASIB OBID AKBARI LTD"
-  pdf.text(displayShipper, textX, cursorY)
+  if (isPashtoOrArabic(displayShipper)) {
+    pdf.setFont("NotoNaskhArabic", "bold")
+    pdf.setFontSize(10)
+    pdf.setTextColor(30, 64, 175)
+    pdf.text(prepareBidiPdfText(displayShipper), textX, cursorY)
+  } else {
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
+    pdf.setFontSize(11)
+    pdf.setTextColor(30, 64, 175)
+    pdf.text(displayShipper, textX, cursorY)
+  }
   cursorY += 4
 
   // Exporter Address
-  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
-  pdf.setFontSize(7.5)
-  pdf.setTextColor(0, 0, 0)
   const expAddr = data.shipperAddress || ""
-  const expLines = valueLines(pdf, expAddr, contentWidth)
-  if (expLines.length > 0) {
-    pdf.text(expLines, textX, cursorY)
-    cursorY += expLines.length * 3.2
+  if (isPashtoOrArabic(expAddr)) {
+    pdf.setFont("NotoNaskhArabic", "normal")
+    pdf.setFontSize(7.5)
+    pdf.setTextColor(0, 0, 0)
+    const expLines = splitTextSafely(expAddr, Math.max(14, Math.floor(contentWidth / 2.2)))
+    expLines.forEach((line) => {
+      pdf.text(prepareBidiPdfText(line), textX, cursorY)
+      cursorY += 3.2
+    })
+  } else {
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
+    pdf.setFontSize(7.5)
+    pdf.setTextColor(0, 0, 0)
+    const expLines = valueLines(pdf, expAddr, contentWidth)
+    if (expLines.length > 0) {
+      pdf.text(expLines, textX, cursorY)
+      cursorY += expLines.length * 3.2
+    }
   }
 
   // Licence No
@@ -1306,21 +1312,40 @@ export function drawStickerPage(
   cursorY += 4
 
   // Importer Company Name in Bold Navy Blue (#1e40af)
-  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(10.5)
-  pdf.setTextColor(30, 64, 175)
-  pdf.text(data.consignee || "JDM ENTERPRISES", textX, cursorY)
+  const displayConsignee = data.consignee || "JDM ENTERPRISES"
+  if (isPashtoOrArabic(displayConsignee)) {
+    pdf.setFont("NotoNaskhArabic", "bold")
+    pdf.setFontSize(9.5)
+    pdf.setTextColor(30, 64, 175)
+    pdf.text(prepareBidiPdfText(displayConsignee), textX, cursorY)
+  } else {
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
+    pdf.setFontSize(10.5)
+    pdf.setTextColor(30, 64, 175)
+    pdf.text(displayConsignee, textX, cursorY)
+  }
   cursorY += 4
 
   // Importer Address
-  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
-  pdf.setFontSize(7.5)
-  pdf.setTextColor(0, 0, 0)
   const impAddr = data.consigneeAddress || ""
-  const impLines = valueLines(pdf, impAddr, contentWidth)
-  if (impLines.length > 0) {
-    pdf.text(impLines, textX, cursorY)
-    cursorY += impLines.length * 3.2
+  if (isPashtoOrArabic(impAddr)) {
+    pdf.setFont("NotoNaskhArabic", "normal")
+    pdf.setFontSize(7.5)
+    pdf.setTextColor(0, 0, 0)
+    const impLines = splitTextSafely(impAddr, Math.max(14, Math.floor(contentWidth / 2.2)))
+    impLines.forEach((line) => {
+      pdf.text(prepareBidiPdfText(line), textX, cursorY)
+      cursorY += 3.2
+    })
+  } else {
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
+    pdf.setFontSize(7.5)
+    pdf.setTextColor(0, 0, 0)
+    const impLines = valueLines(pdf, impAddr, contentWidth)
+    if (impLines.length > 0) {
+      pdf.text(impLines, textX, cursorY)
+      cursorY += impLines.length * 3.2
+    }
   }
 
   // Identifiers: GST, FSSAI, Phone, Email, PAN
@@ -1352,8 +1377,13 @@ export function drawStickerPage(
 
   // Name of Commodity
   pdf.text("Name of Commodity: ", textX, cursorY)
-  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.text(activeCommodity ? activeCommodity.toUpperCase() : "BLACK RAISINS", textX + 29, cursorY)
+  if (isPashtoOrArabic(activeCommodity)) {
+    pdf.setFont("NotoNaskhArabic", "bold")
+    pdf.text(prepareBidiPdfText(activeCommodity), textX + 29, cursorY)
+  } else {
+    pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
+    pdf.text(activeCommodity ? activeCommodity.toUpperCase() : "BLACK RAISINS", textX + 29, cursorY)
+  }
   cursorY += 3.6
 
   // Net Wt & Gross Wt
