@@ -159,9 +159,79 @@ export function cleanCommodity(value: string): string {
     .replace(/^[\s:|-]+|[\s:|-]+$/g, "")
 }
 
+export function parseListSegments(str: string): string[] {
+  if (!str) return []
+  const cleaned = str.trim()
+  if (cleaned.includes("\n")) {
+    return cleaned.split(/\r?\n/).map((s) => clean(s)).filter(Boolean)
+  }
+  if (cleaned.includes("|")) {
+    return cleaned.split(/[|│]+/).map((s) => clean(s)).filter(Boolean)
+  }
+  if (/\s+[-–—]\s+/.test(cleaned)) {
+    return cleaned.split(/\s+[-–—]\s+/).map((s) => clean(s)).filter(Boolean)
+  }
+  if (/\s*[/;+]\s*/.test(cleaned) && !/^\d{4}\/\d{2}/.test(cleaned)) {
+    return cleaned.split(/\s*[/;+]\s*/).map((s) => clean(s)).filter(Boolean)
+  }
+  return [cleaned]
+}
+
+export function parsePackagesNumbers(str: string): number[] {
+  if (!str) return []
+  const cleaned = str.replace(/(\d),(\d)/g, "$1$2")
+  const segments = cleaned.split(/\s*[\+;/]\s*|\s+[-–—]\s+|\s*,\s*|\r?\n/)
+  const numbers: number[] = []
+  for (const seg of segments) {
+    const nonKgMatches = seg.match(/\b(\d+(?:\.\d+)?)\s*(?!kg|kgs|kilo|ton|cbm)\b/gi)
+    if (nonKgMatches && nonKgMatches.length > 0) {
+      for (const m of nonKgMatches) {
+        const num = parseFloat(m.replace(/[^\d.]/g, ""))
+        if (!isNaN(num) && num > 0) numbers.push(Math.round(num))
+      }
+    } else {
+      const match = seg.match(/\b\d+\b/)
+      if (match) {
+        const num = parseInt(match[0], 10)
+        if (!isNaN(num) && num > 0) numbers.push(num)
+      }
+    }
+  }
+  return numbers
+}
+
 function positiveInteger(value: string): number {
+  if (!value) return 1
+  const numbers = parsePackagesNumbers(String(value))
+  if (numbers.length > 1) {
+    return numbers.reduce((sum, n) => sum + n, 0)
+  }
+  if (numbers.length === 1 && numbers[0] > 0) {
+    return numbers[0]
+  }
   const parsed = Number.parseInt(String(value).replace(/[^0-9]/g, ""), 10)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+}
+
+export function sumWeightStrings(weightStr?: string, fallbackUnit = "KG"): string {
+  if (!weightStr) return ""
+  const segments = parseListSegments(weightStr)
+  if (segments.length <= 1) {
+    return clean(weightStr)
+  }
+  let total = 0
+  let unit = fallbackUnit
+  for (const seg of segments) {
+    const num = parseFloat(seg.replace(/,/g, "").replace(/[^\d.]/g, ""))
+    if (!isNaN(num) && num > 0) {
+      total += num
+    }
+    const unitMatch = seg.match(/\b(KG|KGS|MT|TONS?|LBS?)\b/i)
+    if (unitMatch) {
+      unit = unitMatch[1].toUpperCase()
+    }
+  }
+  return total > 0 ? `${total.toLocaleString("en-US")} ${unit}` : clean(weightStr)
 }
 
 export function extractLicenceNo(address: string, fallback?: string): string {
@@ -449,15 +519,74 @@ export function parseCommodityItems(
     return detectedItems
   }
 
-  // Fallback: Check if number_of_packages has multi-item syntax like "630 CTNS + 300 CTNS" or "630, 300"
-  const pkgNums = (totalPackagesStr || "").match(/\b\d+\b/g)
-  const netNums = (netWeightStr || "").split(/[-–—/+,]+/).map((s) => clean(s)).filter(Boolean)
-  const grossNums = (grossWeightStr || "").split(/[-–—/+,]+/).map((s) => clean(s)).filter(Boolean)
+  // Multi-item fallback: Detect multiple items separated by " - ", "/", "+", or newlines in packages, weights, or cargo
+  const pkgNumbers = parsePackagesNumbers(totalPackagesStr)
+  const netSegments = parseListSegments(netWeightStr)
+  const grossSegments = parseListSegments(grossWeightStr)
+  const cargoSegments = parseListSegments(cargoText)
+  const hsSegments = parseListSegments(hsCodeStr)
+  const netPerCtSegments = parseListSegments(kgsPerCartonStr)
+  const grossPerCtSegments = parseListSegments(grossPerCartonStr)
 
-  if (pkgNums && pkgNums.length > 1 && detectedItems.length === 1) {
-    // Single commodity detected from description, but multiple package counts
-    // Keep the detected item
-    return detectedItems
+  const multiCount = Math.max(
+    pkgNumbers.length,
+    netSegments.length,
+    grossSegments.length,
+    cargoSegments.length > 1 ? cargoSegments.length : 0,
+    netPerCtSegments.length > 1 ? netPerCtSegments.length : 0,
+    grossPerCtSegments.length > 1 ? grossPerCtSegments.length : 0
+  )
+
+  if (multiCount > 1) {
+    const multiItems: CommodityItem[] = []
+    const basePkgType = clean(packageTypeStr) || (/bags?/i.test(totalPackagesStr) ? "Bags" : "Cartons")
+    const masterCommodity = cleanCommodity(taggedValue(cargoText, ["Commodity", "Cargo", "Description of Goods"])) || cleanCommodity(cargoText) || "CONSOLIDATED CARGO"
+
+    for (let i = 0; i < multiCount; i++) {
+      const countNum = pkgNumbers[i] !== undefined ? pkgNumbers[i] : (pkgNumbers[0] || 0)
+      const countText = countNum > 0 ? String(countNum) : ""
+
+      let netVal = netSegments[i] || ""
+      if (!netVal && countNum > 0 && netPerCtSegments[i]) {
+        const perCt = parseFloat(netPerCtSegments[i].replace(/[^\d.]/g, ""))
+        if (!isNaN(perCt) && perCt > 0) {
+          netVal = `${Math.round(countNum * perCt).toLocaleString("en-US")} KG`
+        }
+      }
+      if (netVal && !/\b(?:KG|KGS|MT|TONS?|LBS?)\b/i.test(netVal) && /^\d[\d,\s.]*$/.test(netVal)) {
+        netVal = `${netVal.trim()} KG`
+      }
+
+      let grossVal = grossSegments[i] || ""
+      if (!grossVal && countNum > 0 && grossPerCtSegments[i]) {
+        const perCt = parseFloat(grossPerCtSegments[i].replace(/[^\d.]/g, ""))
+        if (!isNaN(perCt) && perCt > 0) {
+          grossVal = `${Math.round(countNum * perCt).toLocaleString("en-US")} KG`
+        }
+      }
+      if (grossVal && !/\b(?:KG|KGS|MT|TONS?|LBS?)\b/i.test(grossVal) && /^\d[\d,\s.]*$/.test(grossVal)) {
+        grossVal = `${grossVal.trim()} KG`
+      }
+
+      const itemCommodity = cargoSegments.length > 1 ? (cargoSegments[i] || cargoSegments[0]) : masterCommodity
+      const itemHs = hsSegments[i] || hsSegments[0] || clean(hsCodeStr) || ""
+
+      multiItems.push({
+        itemNo: i + 1,
+        commodity: cleanCommodity(itemCommodity) || masterCommodity,
+        packageCount: countNum || 1,
+        packageCountText: countText || "1",
+        packageType: basePkgType,
+        netWeight: netVal || netWeightStr || "—",
+        grossWeight: grossVal || grossWeightStr || "—",
+        measurement: measurementStr,
+        hsCode: itemHs,
+        packingDateMonthYear: packingDateMY,
+        expiryDateMonthYear: expiryDateMY,
+      })
+    }
+
+    return multiItems
   }
 
   // Default single master commodity item
@@ -560,8 +689,12 @@ export function deriveShippingDocumentData(
   )
 
   const masterCommodity = commodities.length > 1
-    ? commodities.map((c) => c.commodity).join(" & ")
+    ? Array.from(new Set(commodities.map((c) => c.commodity))).join(" & ")
     : (commodities[0]?.commodity || cleanCommodity(taggedValue(cargo, ["Commodity", "Cargo", "Description of Goods"])) || cleanCommodity(packages) || clean(cargo))
+
+  const totalPkgCount = commodities.length > 1
+    ? commodities.reduce((sum, it) => sum + (it.packageCount || 0), 0)
+    : positiveInteger(packages)
 
   return {
     bolNumber: clean(bolNumber || formData.bol_number),
@@ -615,8 +748,8 @@ export function deriveShippingDocumentData(
     // Cargo & Packaging
     commodity: masterCommodity,
     hsCode: masterHsCode,
-    packageCount: positiveInteger(packages),
-    packageCountText: packages ? String(positiveInteger(packages)) : "",
+    packageCount: totalPkgCount,
+    packageCountText: packages ? String(totalPkgCount) : "",
     packageType: masterPkgType,
     grossWeight: clean(formData.gross_weight),
     netWeight: clean(formData.net_weight),
@@ -1005,20 +1138,38 @@ export function drawPackingList(
   })
   y += 7.5
 
-  const items = data.commodities && data.commodities.length > 0
+  const items = data.commodities && data.commodities.length > 1
     ? data.commodities
-    : [
-        {
-          itemNo: 1,
-          commodity: data.commodity,
-          packageCount: data.packageCount,
-          packageCountText: data.packageCountText,
-          packageType: data.packageType,
-          netWeight: data.netWeight,
-          grossWeight: data.grossWeight,
-          hsCode: data.hsCode,
-        },
-      ]
+    : (() => {
+        const parsed = parseCommodityItems(
+          data.commodity,
+          data.packageCountText || (data.packageCount ? String(data.packageCount) : ""),
+          data.netWeight,
+          data.grossWeight,
+          "",
+          "",
+          data.packageType,
+          data.hsCode,
+          data.measurement,
+          data.packingDateMonthYear,
+          data.expiryDateMonthYear,
+        )
+        if (parsed.length > 1) return parsed
+        return data.commodities && data.commodities.length > 0
+          ? data.commodities
+          : [
+              {
+                itemNo: 1,
+                commodity: data.commodity,
+                packageCount: data.packageCount,
+                packageCountText: data.packageCountText,
+                packageType: data.packageType,
+                netWeight: data.netWeight,
+                grossWeight: data.grossWeight,
+                hsCode: data.hsCode,
+              },
+            ]
+      })()
 
   const cntrSealLines =
     data.containers
@@ -1112,11 +1263,16 @@ export function drawPackingList(
   y += Math.max(totalTableHeight, items.length * rowHeight) + 3
 
   // 5. Totals & Measurement Summary
+  const grandGross = sumWeightStrings(data.grossWeight)
+  const grandNet = sumWeightStrings(data.netWeight)
+  const grandPkg = items.length > 1
+    ? `${items.reduce((sum, it) => sum + (it.packageCount || 0), 0)} ${items[0]?.packageType || data.packageType || "Bags"}`
+    : [data.packageCountText || (data.packageCount ? String(data.packageCount) : ""), data.packageType].filter(Boolean).join(" ")
   const summaryBoxes = [
-    ["TOTAL PACKAGES", [data.packageCountText, data.packageType].filter(Boolean).join(" ")],
-    ["TOTAL GROSS WEIGHT", data.grossWeight],
-    ["TOTAL NET WEIGHT", data.netWeight],
-    ["MEASUREMENT / CBM", data.measurement],
+    ["TOTAL PACKAGES", grandPkg || "—"],
+    ["TOTAL GROSS WEIGHT", grandGross || data.grossWeight || "—"],
+    ["TOTAL NET WEIGHT", grandNet || data.netWeight || "—"],
+    ["MEASUREMENT / CBM", data.measurement || "—"],
   ]
   const sumW = 44
   summaryBoxes.forEach(([lbl, val], idx) => {
@@ -1213,42 +1369,29 @@ export function drawStickerPage(
   }
 
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(10)
+  pdf.setFontSize(11)
   pdf.setTextColor(15, 23, 42)
   pdf.text("PRODUCE OF AFGHANISTAN", headerTextX, cardY + 5.5)
 
   if (fontStatus.hasArabic) {
     pdf.setFont("NotoNaskhArabic", "bold")
-    pdf.setFontSize(8)
+    pdf.setFontSize(9)
     pdf.setTextColor(71, 85, 105)
-    pdf.text(prepareBidiPdfText("د افغانستان صادراتي محصولات"), headerTextX + 53, cardY + 5.5)
+    pdf.text(prepareBidiPdfText("د افغانستان صادراتي محصولات"), headerTextX + 60, cardY + 5.5)
   }
 
   // Carrier / Company Info
   const displayComp = (companyName || data.companyName || "SKY ARIANA LIMITED").toUpperCase()
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(5.5)
+  pdf.setFontSize(6.2)
   pdf.setTextColor(100, 116, 139)
   pdf.text(`${displayComp} • INTERNATIONAL TRANSPORTATION`, headerTextX, cardY + 8.5)
 
   // Subtitle
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(5)
+  pdf.setFontSize(5.8)
   pdf.setTextColor(...BRAND_PURPLE)
   pdf.text("OFFICIAL EXPORT CARGO IDENTIFICATION STICKER", headerTextX, cardY + 11.2)
-
-  // Carton No Badge (top right inside card)
-  pdf.setFillColor(241, 245, 249)
-  pdf.setDrawColor(15, 23, 42)
-  pdf.setLineWidth(0.3)
-  pdf.roundedRect(cardX + cardW - 30, cardY + 2.5, 26.5, 9, 1, 1, "FD")
-  pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(5)
-  pdf.setTextColor(100, 116, 139)
-  pdf.text("CARTON NO", cardX + cardW - 16.75, cardY + 5.3, { align: "center" })
-  pdf.setFontSize(8)
-  pdf.setTextColor(15, 23, 42)
-  pdf.text(`${displayCartonNum} OF ${displayTotalCartons}`, cardX + cardW - 16.75, cardY + 9.5, { align: "center" })
 
   // Divider line under header
   pdf.setDrawColor(15, 23, 42)
@@ -1257,7 +1400,7 @@ export function drawStickerPage(
 
   // 4. Logistics Cross-Reference Bar (4 Structured Cells with dividers)
   const logY = cardY + 15
-  const logH = 7.5
+  const logH = 7.8
   const logW = cardW - 7
   const colW = logW / 4
 
@@ -1273,31 +1416,31 @@ export function drawStickerPage(
 
   // Cell 1: B/L Number
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(4.8)
+  pdf.setFontSize(5.2)
   pdf.setTextColor(100, 116, 139)
   pdf.text("B/L NUMBER", cardX + 5, logY + 2.8)
-  pdf.setFontSize(6.2)
+  pdf.setFontSize(7.2)
   pdf.setTextColor(15, 23, 42)
-  pdf.text(valueLines(pdf, data.bolNumber || "—", colW - 3)[0] || "—", cardX + 5, logY + 6)
+  pdf.text(valueLines(pdf, data.bolNumber || "—", colW - 3)[0] || "—", cardX + 5, logY + 6.2)
 
   // Cell 2: Invoice No
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(4.8)
+  pdf.setFontSize(5.2)
   pdf.setTextColor(100, 116, 139)
   pdf.text("INVOICE NO", cardX + 5 + colW, logY + 2.8)
-  pdf.setFontSize(6.2)
+  pdf.setFontSize(7.2)
   pdf.setTextColor(15, 23, 42)
-  pdf.text(valueLines(pdf, data.invoiceNumber || "—", colW - 3)[0] || "—", cardX + 5 + colW, logY + 6)
+  pdf.text(valueLines(pdf, data.invoiceNumber || "—", colW - 3)[0] || "—", cardX + 5 + colW, logY + 6.2)
 
   // Cell 3: Destination
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(4.8)
+  pdf.setFontSize(5.2)
   pdf.setTextColor(100, 116, 139)
   pdf.text("DESTINATION", cardX + 5 + colW * 2, logY + 2.8)
-  pdf.setFontSize(6.2)
+  pdf.setFontSize(7.2)
   pdf.setTextColor(15, 23, 42)
   const destVal = data.finalDestination || data.portOfDischarge || "—"
-  pdf.text(valueLines(pdf, destVal, colW - 3)[0] || "—", cardX + 5 + colW * 2, logY + 6)
+  pdf.text(valueLines(pdf, destVal, colW - 3)[0] || "—", cardX + 5 + colW * 2, logY + 6.2)
 
   // Cell 4: Vehicle / Container (with intelligent truck fallback)
   const hasContainer = Boolean(data.containerNumber && data.containerNumber !== "—" && data.containerNumber !== "N/M")
@@ -1307,16 +1450,16 @@ export function drawStickerPage(
     : (data.truckNumber || "—")
 
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(4.8)
+  pdf.setFontSize(5.2)
   pdf.setTextColor(100, 116, 139)
   pdf.text(vehicleLabel, cardX + 5 + colW * 3, logY + 2.8)
-  pdf.setFontSize(6.2)
+  pdf.setFontSize(7.2)
   pdf.setTextColor(15, 23, 42)
   if (isPashtoOrArabic(vehicleVal) && fontStatus.hasArabic) {
     pdf.setFont("NotoNaskhArabic", "bold")
-    pdf.text(prepareBidiPdfText(vehicleVal), cardX + 5 + colW * 3, logY + 6)
+    pdf.text(prepareBidiPdfText(vehicleVal), cardX + 5 + colW * 3, logY + 6.2)
   } else {
-    pdf.text(valueLines(pdf, vehicleVal, colW - 3)[0] || "—", cardX + 5 + colW * 3, logY + 6)
+    pdf.text(valueLines(pdf, vehicleVal, colW - 3)[0] || "—", cardX + 5 + colW * 3, logY + 6.2)
   }
 
   const textX = cardX + 3.5
@@ -1328,49 +1471,49 @@ export function drawStickerPage(
   pdf.setFillColor(238, 242, 255)
   pdf.setDrawColor(199, 210, 254)
   pdf.setLineWidth(0.2)
-  pdf.roundedRect(textX, cursorY, 32, 4, 0.6, 0.6, "FD")
+  pdf.roundedRect(textX, cursorY, 34, 4.2, 0.6, 0.6, "FD")
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(5.2)
+  pdf.setFontSize(5.6)
   pdf.setTextColor(30, 64, 175)
-  pdf.text("EXPORTER / صادرکننده", textX + 1.2, cursorY + 2.9)
+  pdf.text("EXPORTER / صادرکننده", textX + 1.2, cursorY + 3)
 
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
-  pdf.setFontSize(5)
+  pdf.setFontSize(5.2)
   pdf.setTextColor(100, 116, 139)
-  pdf.text("Name & Complete Address", textX + 35, cursorY + 2.9)
+  pdf.text("Name & Complete Address", textX + 37, cursorY + 3)
   cursorY += 7.2
 
   // Exporter Company Name in Bold Navy Blue (#1e40af)
   const displayShipper = data.shipper || companyName || data.companyName || "NASIB OBID AKBARI LTD"
   if (isPashtoOrArabic(displayShipper) && fontStatus.hasArabic) {
     pdf.setFont("NotoNaskhArabic", "bold")
-    pdf.setFontSize(9.5)
+    pdf.setFontSize(10.5)
     pdf.setTextColor(30, 64, 175)
     pdf.text(prepareBidiPdfText(displayShipper), textX, cursorY)
   } else {
     pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-    pdf.setFontSize(10)
+    pdf.setFontSize(11)
     pdf.setTextColor(30, 64, 175)
     pdf.text(displayShipper, textX, cursorY)
   }
-  cursorY += 3.8
+  cursorY += 4
 
   // Exporter Address (max 2 lines)
   const expAddr = data.shipperAddress || ""
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
-  pdf.setFontSize(6.8)
+  pdf.setFontSize(7.4)
   pdf.setTextColor(51, 65, 85)
   if (isPashtoOrArabic(expAddr) && fontStatus.hasArabic) {
     const expLines = splitTextSafely(expAddr, 50).slice(0, 2)
     expLines.forEach((line) => {
       pdf.text(prepareBidiPdfText(line), textX, cursorY)
-      cursorY += 3.1
+      cursorY += 3.2
     })
   } else {
     const expLines = valueLines(pdf, expAddr, contentWidth).slice(0, 2)
     if (expLines.length > 0) {
       pdf.text(expLines, textX, cursorY)
-      cursorY += expLines.length * 3.1
+      cursorY += expLines.length * 3.2
     }
   }
 
@@ -1381,10 +1524,10 @@ export function drawStickerPage(
   ].filter(Boolean).join("   •   ")
   if (expMetaParts) {
     pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-    pdf.setFontSize(6)
+    pdf.setFontSize(6.5)
     pdf.setTextColor(71, 85, 105)
     pdf.text(expMetaParts, textX, cursorY)
-    cursorY += 3.5
+    cursorY += 3.6
   }
 
   // Divider line under Exporter
@@ -1398,49 +1541,49 @@ export function drawStickerPage(
   pdf.setFillColor(238, 242, 255)
   pdf.setDrawColor(199, 210, 254)
   pdf.setLineWidth(0.2)
-  pdf.roundedRect(textX, cursorY, 32, 4, 0.6, 0.6, "FD")
+  pdf.roundedRect(textX, cursorY, 34, 4.2, 0.6, 0.6, "FD")
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(5.2)
+  pdf.setFontSize(5.6)
   pdf.setTextColor(30, 64, 175)
-  pdf.text("IMPORTER / واردکننده", textX + 1.2, cursorY + 2.9)
+  pdf.text("IMPORTER / واردکننده", textX + 1.2, cursorY + 3)
 
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
-  pdf.setFontSize(5)
+  pdf.setFontSize(5.2)
   pdf.setTextColor(100, 116, 139)
-  pdf.text("Consignee Information", textX + 35, cursorY + 2.9)
+  pdf.text("Consignee Information", textX + 37, cursorY + 3)
   cursorY += 7.2
 
   // Importer Company Name in Bold Navy Blue (#1e40af)
   const displayConsignee = data.consignee || "JDM ENTERPRISES"
   if (isPashtoOrArabic(displayConsignee) && fontStatus.hasArabic) {
     pdf.setFont("NotoNaskhArabic", "bold")
-    pdf.setFontSize(9.5)
+    pdf.setFontSize(10.5)
     pdf.setTextColor(30, 64, 175)
     pdf.text(prepareBidiPdfText(displayConsignee), textX, cursorY)
   } else {
     pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-    pdf.setFontSize(10)
+    pdf.setFontSize(11)
     pdf.setTextColor(30, 64, 175)
     pdf.text(displayConsignee, textX, cursorY)
   }
-  cursorY += 3.8
+  cursorY += 4
 
   // Importer Address (max 2 lines)
   const impAddr = data.consigneeAddress || ""
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
-  pdf.setFontSize(6.8)
+  pdf.setFontSize(7.4)
   pdf.setTextColor(51, 65, 85)
   if (isPashtoOrArabic(impAddr) && fontStatus.hasArabic) {
     const impLines = splitTextSafely(impAddr, 50).slice(0, 2)
     impLines.forEach((line) => {
       pdf.text(prepareBidiPdfText(line), textX, cursorY)
-      cursorY += 3.1
+      cursorY += 3.2
     })
   } else {
     const impLines = valueLines(pdf, impAddr, contentWidth).slice(0, 2)
     if (impLines.length > 0) {
       pdf.text(impLines, textX, cursorY)
-      cursorY += impLines.length * 3.1
+      cursorY += impLines.length * 3.2
     }
   }
 
@@ -1452,10 +1595,10 @@ export function drawStickerPage(
   ].filter(Boolean).join("   •   ")
   if (impIdParts1) {
     pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-    pdf.setFontSize(5.8)
+    pdf.setFontSize(6.2)
     pdf.setTextColor(71, 85, 105)
     pdf.text(impIdParts1, textX, cursorY)
-    cursorY += 3.1
+    cursorY += 3.2
   }
 
   const impIdParts2 = [
@@ -1464,10 +1607,10 @@ export function drawStickerPage(
   ].filter(Boolean).join("   •   ")
   if (impIdParts2) {
     pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-    pdf.setFontSize(5.8)
+    pdf.setFontSize(6.2)
     pdf.setTextColor(71, 85, 105)
     pdf.text(impIdParts2, textX, cursorY)
-    cursorY += 3.1
+    cursorY += 3.2
   }
 
   // Divider line under Importer
@@ -1481,34 +1624,34 @@ export function drawStickerPage(
   pdf.setFillColor(248, 250, 252)
   pdf.setDrawColor(226, 232, 240)
   pdf.setLineWidth(0.2)
-  pdf.roundedRect(textX, cursorY, contentWidth, 5.5, 0.6, 0.6, "FD")
+  pdf.roundedRect(textX, cursorY, contentWidth, 6, 0.6, 0.6, "FD")
 
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(5.2)
+  pdf.setFontSize(5.6)
   pdf.setTextColor(100, 116, 139)
-  pdf.text("COMMODITY:", textX + 2, cursorY + 3.8)
+  pdf.text("COMMODITY:", textX + 2, cursorY + 4.2)
 
-  pdf.setFontSize(7.5)
+  pdf.setFontSize(8.5)
   pdf.setTextColor(15, 23, 42)
   if (isPashtoOrArabic(activeCommodity) && fontStatus.hasArabic) {
     pdf.setFont("NotoNaskhArabic", "bold")
-    pdf.text(prepareBidiPdfText(activeCommodity), textX + 18, cursorY + 3.8)
+    pdf.text(prepareBidiPdfText(activeCommodity), textX + 20, cursorY + 4.2)
   } else {
-    pdf.text((activeCommodity || "BLACK RAISINS").toUpperCase(), textX + 18, cursorY + 3.8)
+    pdf.text((activeCommodity || "BLACK RAISINS").toUpperCase(), textX + 20, cursorY + 4.2)
   }
 
   // Lot No in Bold Deep Green (#007a3d) on right of commodity bar
   if (lotNo) {
     pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-    pdf.setFontSize(6.8)
+    pdf.setFontSize(7.5)
     pdf.setTextColor(0, 122, 61)
-    pdf.text(`LOT NO: ${lotNo}`, textX + contentWidth - 2, cursorY + 3.8, { align: "right" })
+    pdf.text(`LOT NO: ${lotNo}`, textX + contentWidth - 2, cursorY + 4.2, { align: "right" })
   }
-  cursorY += 7
+  cursorY += 7.5
 
   // 4-Box Physical Specifications
   const specW = contentWidth / 4
-  const specH = 6.8
+  const specH = 7.2
   const specs = [
     { label: "NET WEIGHT", val: activeNetWeight || "—" },
     { label: "GROSS WEIGHT", val: activeGrossWeight || "—" },
@@ -1524,26 +1667,26 @@ export function drawStickerPage(
     pdf.roundedRect(boxX + 0.5, cursorY, specW - 1, specH, 0.6, 0.6, "FD")
 
     pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-    pdf.setFontSize(4.5)
+    pdf.setFontSize(5)
     pdf.setTextColor(100, 116, 139)
-    pdf.text(item.label, boxX + specW / 2, cursorY + 2.5, { align: "center" })
+    pdf.text(item.label, boxX + specW / 2, cursorY + 2.7, { align: "center" })
 
-    pdf.setFontSize(6.5)
+    pdf.setFontSize(7.5)
     pdf.setTextColor(15, 23, 42)
-    pdf.text(item.val, boxX + specW / 2, cursorY + 5.5, { align: "center" })
+    pdf.text(item.val, boxX + specW / 2, cursorY + 5.8, { align: "center" })
   })
-  cursorY += 8.5
+  cursorY += 9
 
   // 8. OFFICIAL CUSTOMS VERIFICATION & AUTHENTIC BADGES
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "bold")
-  pdf.setFontSize(5.2)
+  pdf.setFontSize(5.8)
   pdf.setTextColor(71, 85, 105)
   pdf.text("CUSTOMS INSPECTED • ګمرکي تفتیش", textX, cursorY + 3)
 
   pdf.setFont(fontStatus.hasSans ? "NotoSans" : "helvetica", "normal")
-  pdf.setFontSize(4.6)
+  pdf.setFontSize(5)
   pdf.setTextColor(100, 116, 139)
-  pdf.text("AFGHANISTAN CHAMBER OF COMMERCE & INDUSTRY (ACCI)", textX, cursorY + 6.5)
+  pdf.text("AFGHANISTAN CHAMBER OF COMMERCE & INDUSTRY (ACCI)", textX, cursorY + 6.8)
 
   // Badges on bottom right
   const badgeY = cardY + cardH - 18

@@ -7,7 +7,13 @@ const pdfFonts = load('lib/utils/pdf-fonts.ts', {
   './pashto-bidi': pashtoBidi,
   './pdf-arabic-font': pdfArabicFont,
 });
-const {generateShippingDocumentsPDF}=load('lib/utils/shipping-documents.ts',{
+const {
+  generateShippingDocumentsPDF,
+  parseCommodityItems,
+  parsePackagesNumbers,
+  sumWeightStrings,
+  deriveShippingDocumentData,
+}=load('lib/utils/shipping-documents.ts',{
   '@/lib/sticker-badges-data':load('lib/sticker-badges-data.ts'),
   '@/lib/utils/pashto-bidi':pashtoBidi,
   '@/lib/utils/pdf-fonts':pdfFonts,
@@ -25,3 +31,52 @@ test('single sticker pages honor quantity and default master remains one page',a
 test('rejects invalid sticker quantities',async()=>{
  for(const stickerQuantity of [0,-1,1.5,Infinity])await assert.rejects(pages({stickerQuantity}),/positive whole number/);
 });
+
+test('parses multi-item cargo (2, 3, 4, 5 items) stacked on top of each other and sums packages', ()=>{
+  const parsedNumbers = parsePackagesNumbers("330 - 200 Bags");
+  assert.deepEqual(parsedNumbers, [330, 200]);
+
+  const parsedFive = parsePackagesNumbers("100 + 200 + 300 + 400 + 500 Bags");
+  assert.deepEqual(parsedFive, [100, 200, 300, 400, 500]);
+
+  const items = parseCommodityItems(
+    "DRIED FIGS - ALMONDS",
+    "330 - 200 Bags",
+    "19,800 KG - 12,400 KG",
+    "19,899 KG - 12,060 KG",
+    "",
+    "",
+    "Bags",
+    "0804.20",
+    "",
+    "JUL/2026",
+    "JUL/2028"
+  );
+  assert.equal(items.length, 2);
+  assert.equal(items[0].packageCount, 330);
+  assert.equal(items[0].commodity, "DRIED FIGS");
+  assert.equal(items[0].grossWeight, "19,899 KG");
+  assert.equal(items[0].netWeight, "19,800 KG");
+
+  assert.equal(items[1].packageCount, 200);
+  assert.equal(items[1].commodity, "ALMONDS");
+  assert.equal(items[1].grossWeight, "12,060 KG");
+  assert.equal(items[1].netWeight, "12,400 KG");
+
+  // Sum weights correctly
+  assert.equal(sumWeightStrings("19,899 KG - 12,060 KG"), "31,959 KG");
+  assert.equal(sumWeightStrings("19,800 KG - 12,400 KG"), "32,200 KG");
+
+  // Derive BOL data with multi-item cargo
+  const derived = deriveShippingDocumentData({
+    bol_number: "BOL-MULTI",
+    cargo_description: "DRIED FIGS - ALMONDS",
+    number_of_packages: "330 - 200 Bags",
+    gross_weight: "19,899 KG - 12,060 KG",
+    net_weight: "19,800 KG - 12,400 KG",
+  }, "BOL-MULTI", "2026-09-17");
+
+  assert.equal(derived.packageCount, 530);
+  assert.equal(derived.commodities.length, 2);
+});
+

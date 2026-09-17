@@ -65,7 +65,7 @@ export function CombinedShippingPdf({
   onPrint,
 }: CombinedShippingPdfProps) {
   const [currentPage, setCurrentPage] = useState<number>(1)
-  const [zoom, setZoom] = useState<number>(0.72)
+  const [zoom, setZoom] = useState<number>(1.0)
   const [busyAction, setBusyAction] = useState<"download" | "print" | null>(null)
 
   useEffect(() => {

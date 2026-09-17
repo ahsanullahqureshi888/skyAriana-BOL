@@ -1,6 +1,11 @@
 "use client"
 
-import type { ShippingDocumentData } from "@/lib/utils/shipping-documents"
+import { useMemo } from "react"
+import {
+  parseCommodityItems,
+  sumWeightStrings,
+  type ShippingDocumentData,
+} from "@/lib/utils/shipping-documents"
 import { Truck, ShieldCheck } from "lucide-react"
 import { isPashtoOrArabic } from "@/lib/utils/pashto-bidi"
 
@@ -15,7 +20,8 @@ export interface PackingListPdfPageProps {
  * PackingListPdfPage - Professional A4 Shipping Document Packing List.
  * Fully automated from BOL master record with dedicated Driver & Transport information.
  * Features enlarged readable typography, modern executive logistics UI styling,
- * high-contrast fields, multi-commodity support, and strict 1-page A4 balance.
+ * high-contrast fields, multi-commodity support (2, 3, 4, 5+ items stacked on top of each other),
+ * and strict 1-page A4 balance.
  */
 export function PackingListPdfPage({
   data,
@@ -40,20 +46,92 @@ export function PackingListPdfPage({
     ? data.containers.map((c) => `${c.containerNumber}${c.sealNumber ? ` / ${c.sealNumber}` : ""}`).join(", ")
     : [data.containerNumber, data.sealNumber].filter(Boolean).join(" / ") || (data.truckNumber ? `TRUCK: ${data.truckNumber}` : "—")
 
-  const items = data.commodities && data.commodities.length > 0
-    ? data.commodities
-    : [
-        {
-          itemNo: 1,
-          commodity: data.commodity,
-          packageCount: data.packageCount,
-          packageCountText: data.packageCountText,
-          packageType: data.packageType,
-          netWeight: data.netWeight,
-          grossWeight: data.grossWeight,
-          hsCode: data.hsCode,
-        },
-      ]
+  // Resilient multi-item resolution: if data.commodities has 1 item but input has multi-items, parse discrete records
+  const items = useMemo(() => {
+    if (data.commodities && data.commodities.length > 1) {
+      return data.commodities
+    }
+    const parsed = parseCommodityItems(
+      data.commodity,
+      data.packageCountText || (data.packageCount ? String(data.packageCount) : ""),
+      data.netWeight,
+      data.grossWeight,
+      "",
+      "",
+      data.packageType,
+      data.hsCode,
+      data.measurement,
+      data.packingDateMonthYear,
+      data.expiryDateMonthYear,
+    )
+    if (parsed.length > 1) {
+      return parsed
+    }
+    return data.commodities && data.commodities.length > 0
+      ? data.commodities
+      : [
+          {
+            itemNo: 1,
+            commodity: data.commodity,
+            packageCount: data.packageCount,
+            packageCountText: data.packageCountText,
+            packageType: data.packageType,
+            netWeight: data.netWeight,
+            grossWeight: data.grossWeight,
+            hsCode: data.hsCode,
+          },
+        ]
+  }, [data])
+
+  // Compute grand totals for bottom summary cards
+  const grandGrossWeight = useMemo(() => {
+    if (items.length > 1) {
+      let sum = 0
+      let unit = "KG"
+      let parsedAny = false
+      for (const it of items) {
+        const num = parseFloat(String(it.grossWeight || "").replace(/,/g, "").replace(/[^\d.]/g, ""))
+        if (!isNaN(num) && num > 0) {
+          sum += num
+          parsedAny = true
+        }
+        const uMatch = String(it.grossWeight || "").match(/\b(KG|KGS|MT|TONS?|LBS?)\b/i)
+        if (uMatch) unit = uMatch[1].toUpperCase()
+      }
+      if (parsedAny && sum > 0) return `${sum.toLocaleString("en-US")} ${unit}`
+    }
+    return sumWeightStrings(data.grossWeight) || data.grossWeight || "—"
+  }, [items, data.grossWeight])
+
+  const grandNetWeight = useMemo(() => {
+    if (items.length > 1) {
+      let sum = 0
+      let unit = "KG"
+      let parsedAny = false
+      for (const it of items) {
+        const num = parseFloat(String(it.netWeight || "").replace(/,/g, "").replace(/[^\d.]/g, ""))
+        if (!isNaN(num) && num > 0) {
+          sum += num
+          parsedAny = true
+        }
+        const uMatch = String(it.netWeight || "").match(/\b(KG|KGS|MT|TONS?|LBS?)\b/i)
+        if (uMatch) unit = uMatch[1].toUpperCase()
+      }
+      if (parsedAny && sum > 0) return `${sum.toLocaleString("en-US")} ${unit}`
+    }
+    return sumWeightStrings(data.netWeight) || data.netWeight || "—"
+  }, [items, data.netWeight])
+
+  const grandPackageCount = useMemo(() => {
+    if (items.length > 1) {
+      const sum = items.reduce((acc, it) => acc + (it.packageCount || 0), 0)
+      if (sum > 0) {
+        const pType = items[0]?.packageType || data.packageType || "Bags"
+        return `${sum.toLocaleString("en-US")} ${pType}`
+      }
+    }
+    return [data.packageCountText || (data.packageCount ? String(data.packageCount) : ""), data.packageType].filter(Boolean).join(" ") || "—"
+  }, [items, data.packageCountText, data.packageCount, data.packageType])
 
   return (
     <section
@@ -271,14 +349,14 @@ export function PackingListPdfPage({
       </div>
 
       {/* Packages & Commodity Table */}
-      <div className="my-3 overflow-hidden rounded-lg border border-slate-300 shadow-2xs shrink-0">
+      <div className="my-2.5 overflow-hidden rounded-lg border border-slate-300 shadow-2xs shrink-0">
         <table className="w-full table-fixed border-collapse">
           <thead className="bg-[#583184] text-white">
             <tr>
-              <th className="w-[20%] p-2 text-left font-black tracking-wider text-[8.5px] uppercase">CONTAINER / VEHICLE</th>
-              <th className="w-[18%] p-2 text-left font-black tracking-wider text-[8.5px] uppercase">MARKS & NUMBERS</th>
+              <th className="w-[19%] p-2 text-left font-black tracking-wider text-[8.5px] uppercase">CONTAINER / VEHICLE</th>
+              <th className="w-[17%] p-2 text-left font-black tracking-wider text-[8.5px] uppercase">MARKS & NUMBERS</th>
               <th className="w-[18%] p-2 text-left font-black tracking-wider text-[8.5px] uppercase">PACKAGES & KIND</th>
-              <th className="w-[26%] p-2 text-left font-black tracking-wider text-[8.5px] uppercase">COMMODITY / HS CODE</th>
+              <th className="w-[28%] p-2 text-left font-black tracking-wider text-[8.5px] uppercase">COMMODITY / HS CODE</th>
               <th className="w-[9%] p-2 text-right font-black tracking-wider text-[8.5px] uppercase">GROSS WT</th>
               <th className="w-[9%] p-2 text-right font-black tracking-wider text-[8.5px] uppercase">NET WT</th>
             </tr>
@@ -290,31 +368,50 @@ export function PackingListPdfPage({
                 item.packageType,
               ].filter(Boolean).join(" ") || data.packageCountText || item.packageType || "—"
 
+              const cellPadding = items.length <= 2 ? "p-2.5" : items.length === 3 ? "p-2" : "p-1.5"
+
               return (
-                <tr key={idx} className="min-h-[52px] align-top bg-white hover:bg-slate-50/50">
-                  <td className={`p-2.5 font-bold text-slate-900 break-words text-[10px] ${isPashtoOrArabic(cntrSealLines || "") ? "font-[vazirmatn]" : "font-mono"}`}>
-                    {idx === 0 ? cntrSealLines : ""}
+                <tr key={idx} className="align-top bg-white hover:bg-slate-50/50">
+                  {idx === 0 && (
+                    <td
+                      rowSpan={items.length}
+                      className={`${cellPadding} font-bold text-slate-900 break-words text-[10px] border-r border-slate-200 align-top ${isPashtoOrArabic(cntrSealLines || "") ? "font-[vazirmatn]" : "font-mono"}`}
+                    >
+                      {cntrSealLines}
+                    </td>
+                  )}
+                  {idx === 0 && (
+                    <td
+                      rowSpan={items.length}
+                      className={`${cellPadding} font-semibold text-slate-900 break-words text-[10px] border-r border-slate-200 align-top ${isPashtoOrArabic(data.marksAndNumbers || "") ? "font-[vazirmatn]" : ""}`}
+                    >
+                      {data.marksAndNumbers || "N/M"}
+                    </td>
+                  )}
+                  <td className={`${cellPadding} font-black text-slate-950 text-[11px] border-r border-slate-100`}>
+                    <div className="flex items-center gap-1.5">
+                      {items.length > 1 && (
+                        <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-purple-100 text-[#583184] text-[8.5px] font-black shrink-0">
+                          {idx + 1}
+                        </span>
+                      )}
+                      <span>{packDisplay}</span>
+                    </div>
                   </td>
-                  <td className={`p-2.5 font-semibold text-slate-900 break-words text-[10px] ${isPashtoOrArabic(data.marksAndNumbers || "") ? "font-[vazirmatn]" : ""}`}>
-                    {idx === 0 ? (data.marksAndNumbers || "N/M") : ""}
-                  </td>
-                  <td className="p-2.5 font-black text-slate-950 text-[11px]">
-                    {packDisplay}
-                  </td>
-                  <td className="p-2.5 font-semibold text-slate-900 text-[10.5px]">
+                  <td className={`${cellPadding} font-semibold text-slate-900 text-[10.5px] border-r border-slate-100`}>
                     <span className={`font-black uppercase text-slate-950 text-[11px] block leading-tight ${isPashtoOrArabic(item.commodity || data.commodity || "") ? "font-[vazirmatn]" : ""}`}>
                       {item.commodity || data.commodity || "—"}
                     </span>
                     {item.hsCode && (
-                      <span className="mt-1 block font-mono font-bold text-[9px] text-slate-600">
-                        HS CODE: {item.hsCode}
+                      <span className="mt-0.5 block font-mono font-bold text-[8.5px] text-slate-600">
+                        HS: {item.hsCode}
                       </span>
                     )}
                   </td>
-                  <td className="p-2.5 font-black font-mono text-slate-950 text-[11px] text-right">
+                  <td className={`${cellPadding} font-black font-mono text-slate-950 text-[11px] text-right border-r border-slate-100`}>
                     {item.grossWeight || data.grossWeight || "—"}
                   </td>
-                  <td className="p-2.5 font-black font-mono text-slate-950 text-[11px] text-right">
+                  <td className={`${cellPadding} font-black font-mono text-slate-950 text-[11px] text-right`}>
                     {item.netWeight || data.netWeight || "—"}
                   </td>
                 </tr>
@@ -325,20 +422,104 @@ export function PackingListPdfPage({
       </div>
 
       {/* Bottom Summary, Sign-off & Footer Group */}
-      <div className="space-y-3 shrink-0">
+      <div className="space-y-2.5 shrink-0">
         {/* Totals & Summary Grid */}
         <div className="grid grid-cols-4 gap-2.5 text-[9px] shrink-0">
-          {[
-            ["TOTAL PACKAGES", [data.packageCountText || (data.packageCount ? String(data.packageCount) : ""), data.packageType].filter(Boolean).join(" ") || "—"],
-            ["TOTAL GROSS WEIGHT", data.grossWeight || "—"],
-            ["TOTAL NET WEIGHT", data.netWeight || "—"],
-            ["MEASUREMENT / CBM", data.measurement || "—"],
-          ].map(([label, value]) => (
-            <div key={label} className="rounded-xl border-2 border-slate-200 bg-slate-50/90 p-2 shadow-2xs">
-              <p className="text-[7.5px] font-black uppercase tracking-wider text-[#583184]">{label}</p>
-              <p className="mt-0.5 font-mono font-black text-slate-950 text-[12.5px] truncate">{value}</p>
+          {/* TOTAL PACKAGES */}
+          <div className="rounded-xl border-2 border-slate-200 bg-slate-50/90 p-2 shadow-2xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-[7.5px] font-black uppercase tracking-wider text-[#583184]">TOTAL PACKAGES</p>
+                {items.length > 1 && (
+                  <span className="text-[7px] font-bold text-purple-700 bg-purple-100 px-1 py-0.2 rounded font-mono">
+                    {items.length} ITEMS
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 font-mono font-black text-slate-950 text-[13px] truncate leading-tight">
+                {grandPackageCount}
+              </p>
             </div>
-          ))}
+            {items.length > 1 && (
+              <div className="mt-1 pt-1 border-t border-slate-200/90 space-y-0.5 text-[8px] font-mono">
+                {items.map((it, i) => (
+                  <div key={i} className="flex items-center justify-between text-slate-600">
+                    <span className="font-semibold text-slate-500">#{i + 1}:</span>
+                    <span className="font-bold text-slate-900 truncate ml-1">
+                      {[it.packageCountText || (it.packageCount ? String(it.packageCount) : ""), it.packageType].filter(Boolean).join(" ")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* TOTAL GROSS WEIGHT */}
+          <div className="rounded-xl border-2 border-slate-200 bg-slate-50/90 p-2 shadow-2xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-[7.5px] font-black uppercase tracking-wider text-[#583184]">TOTAL GROSS WEIGHT</p>
+                {items.length > 1 && (
+                  <span className="text-[7px] font-bold text-purple-700 bg-purple-100 px-1 py-0.2 rounded font-mono">
+                    {items.length} ITEMS
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 font-mono font-black text-slate-950 text-[13px] truncate leading-tight">
+                {grandGrossWeight}
+              </p>
+            </div>
+            {items.length > 1 && (
+              <div className="mt-1 pt-1 border-t border-slate-200/90 space-y-0.5 text-[8px] font-mono">
+                {items.map((it, i) => (
+                  <div key={i} className="flex items-center justify-between text-slate-600">
+                    <span className="font-semibold text-slate-500">#{i + 1}:</span>
+                    <span className="font-bold text-slate-900 truncate ml-1">{it.grossWeight || "—"}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* TOTAL NET WEIGHT */}
+          <div className="rounded-xl border-2 border-slate-200 bg-slate-50/90 p-2 shadow-2xs flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-[7.5px] font-black uppercase tracking-wider text-[#583184]">TOTAL NET WEIGHT</p>
+                {items.length > 1 && (
+                  <span className="text-[7px] font-bold text-purple-700 bg-purple-100 px-1 py-0.2 rounded font-mono">
+                    {items.length} ITEMS
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 font-mono font-black text-slate-950 text-[13px] truncate leading-tight">
+                {grandNetWeight}
+              </p>
+            </div>
+            {items.length > 1 && (
+              <div className="mt-1 pt-1 border-t border-slate-200/90 space-y-0.5 text-[8px] font-mono">
+                {items.map((it, i) => (
+                  <div key={i} className="flex items-center justify-between text-slate-600">
+                    <span className="font-semibold text-slate-500">#{i + 1}:</span>
+                    <span className="font-bold text-slate-900 truncate ml-1">{it.netWeight || "—"}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* MEASUREMENT / CBM */}
+          <div className="rounded-xl border-2 border-slate-200 bg-slate-50/90 p-2 shadow-2xs flex flex-col justify-between">
+            <div>
+              <p className="text-[7.5px] font-black uppercase tracking-wider text-[#583184]">MEASUREMENT / CBM</p>
+              <p className="mt-0.5 font-mono font-black text-slate-950 text-[13px] truncate leading-tight">
+                {data.measurement || "—"}
+              </p>
+            </div>
+            <div className="mt-1 pt-1 border-t border-slate-200/90 text-[8px] text-slate-500 font-semibold">
+              <span>Standard Maritime / Transit</span>
+            </div>
+          </div>
         </div>
 
         {/* Footer & Authorized Signatures */}

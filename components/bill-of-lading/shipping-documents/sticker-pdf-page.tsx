@@ -1,6 +1,10 @@
 "use client"
 
-import type { ShippingDocumentData, CommodityItem } from "@/lib/utils/shipping-documents"
+import {
+  parseListSegments,
+  type ShippingDocumentData,
+  type CommodityItem,
+} from "@/lib/utils/shipping-documents"
 import {
   STICKER_FSSAI_VEG_DATA_URL,
   STICKER_AFGHANISTAN_LOGO_DATA_URL,
@@ -59,6 +63,9 @@ export function StickerPdfPage({
   const lotNo = data.lotNo?.trim() || ""
   const displayTotalCartons = totalCartons || data.packageCount || 1
 
+  const netSegments = parseListSegments(activeNetWeight)
+  const grossSegments = parseListSegments(activeGrossWeight)
+
   // Intelligent vehicle identification: fallback to Truck Number if Container Number is absent
   const hasContainer = Boolean(data.containerNumber && data.containerNumber !== "—" && data.containerNumber !== "N/M")
   const vehicleLabel = hasContainer ? "Container / Seal" : (data.truckNumber ? "Truck / موتر" : "Vehicle / Cntr")
@@ -85,62 +92,52 @@ export function StickerPdfPage({
           style={{ width: "142mm", height: "142mm" }}
         >
           {/* Top Authentic Export Header Bar */}
-          <header className="border-b-2 border-slate-950 pb-2 flex items-center justify-between gap-2 shrink-0">
-            <div className="flex items-center gap-2 min-w-0">
+          <header className="border-b-2 border-slate-950 pb-2.5 flex items-center justify-between gap-3 shrink-0">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               {logoUrl && (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={logoUrl}
                   alt="Company Logo"
-                  className="h-10 w-10 object-contain shrink-0 rounded-full border border-slate-200 bg-white p-0.5 shadow-2xs"
+                  className="h-11 w-11 object-contain shrink-0 rounded-full border border-slate-200 bg-white p-0.5 shadow-2xs"
                 />
               )}
-              <div className="min-w-0">
-                <div className="flex items-baseline gap-2 flex-wrap">
-                  <h2 className="text-[12px] font-black tracking-tight text-slate-950 uppercase leading-none">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                  <h2 className="text-[13.5px] font-black tracking-tight text-slate-950 uppercase leading-none">
                     PRODUCE OF AFGHANISTAN
                   </h2>
-                  <span className="text-[10px] font-bold text-slate-600 font-[vazirmatn] leading-none" dir="rtl">
+                  <span className="text-[11.5px] font-bold text-slate-700 font-[vazirmatn] leading-none" dir="rtl">
                     د افغانستان صادراتي محصولات
                   </span>
                 </div>
-                <p className="text-[7px] font-bold uppercase tracking-wider text-slate-600 truncate mt-0.5 leading-tight">
+                <p className="text-[8px] font-black uppercase tracking-wider text-slate-700 truncate mt-1 leading-tight">
                   {displayCompany} • {displaySubtitle}
                 </p>
-                <p className="text-[6.5px] font-black uppercase tracking-widest text-[#583184] leading-tight">
+                <p className="text-[7.5px] font-black uppercase tracking-widest text-[#583184] leading-tight mt-0.5">
                   OFFICIAL EXPORT CARGO IDENTIFICATION STICKER
                 </p>
               </div>
             </div>
-
-            {/* Carton Counter Badge */}
-            <div className="rounded-lg border-2 border-slate-950 bg-slate-100 px-2.5 py-1 text-center shrink-0 shadow-2xs">
-              <span className="block text-[6px] font-black uppercase tracking-wider text-slate-600 leading-none">
-                Carton No
-              </span>
-              <span className="font-mono font-black text-[12px] text-slate-950 leading-tight">
-                {cartonNumber} <span className="text-[8.5px] font-bold text-slate-500">OF</span> {displayTotalCartons}
-              </span>
-            </div>
           </header>
 
           {/* Logistics Cross-Reference Bar (4 Structured Cells) */}
-          <div className="grid grid-cols-4 divide-x divide-slate-300 rounded border border-slate-300 bg-slate-50/90 text-[7px] font-medium text-slate-800 shrink-0">
-            <div className="p-1 min-w-0">
-              <span className="block text-[6px] font-black uppercase text-slate-500 leading-tight">B/L Number</span>
-              <span className="font-mono font-black text-slate-950 truncate block leading-tight">{data.bolNumber || "—"}</span>
+          <div className="grid grid-cols-4 divide-x divide-slate-300 rounded-lg border border-slate-300 bg-slate-50/90 text-[8px] font-medium text-slate-800 shrink-0">
+            <div className="p-1.5 min-w-0">
+              <span className="block text-[7px] font-black uppercase text-slate-500 leading-tight">B/L Number</span>
+              <span className="font-mono font-black text-slate-950 text-[10.5px] truncate block leading-tight">{data.bolNumber || "—"}</span>
             </div>
-            <div className="p-1 min-w-0">
-              <span className="block text-[6px] font-black uppercase text-slate-500 leading-tight">Invoice No</span>
-              <span className="font-mono font-black text-slate-950 truncate block leading-tight">{data.invoiceNumber || "—"}</span>
+            <div className="p-1.5 min-w-0">
+              <span className="block text-[7px] font-black uppercase text-slate-500 leading-tight">Invoice No</span>
+              <span className="font-mono font-black text-slate-950 text-[10.5px] truncate block leading-tight">{data.invoiceNumber || "—"}</span>
             </div>
-            <div className="p-1 min-w-0">
-              <span className="block text-[6px] font-black uppercase text-slate-500 leading-tight">Destination</span>
-              <span className="font-bold text-slate-950 truncate block leading-tight">{data.finalDestination || data.portOfDischarge || "—"}</span>
+            <div className="p-1.5 min-w-0">
+              <span className="block text-[7px] font-black uppercase text-slate-500 leading-tight">Destination</span>
+              <span className="font-bold text-slate-950 text-[10px] truncate block leading-tight">{data.finalDestination || data.portOfDischarge || "—"}</span>
             </div>
-            <div className="p-1 min-w-0">
-              <span className="block text-[6px] font-black uppercase text-slate-500 leading-tight">{vehicleLabel}</span>
-              <span className={`font-bold text-slate-950 truncate block leading-tight ${isPashtoOrArabic(vehicleValue) ? "font-[vazirmatn]" : "font-mono"}`}>
+            <div className="p-1.5 min-w-0">
+              <span className="block text-[7px] font-black uppercase text-slate-500 leading-tight">{vehicleLabel}</span>
+              <span className={`font-bold text-slate-950 text-[10.5px] truncate block leading-tight ${isPashtoOrArabic(vehicleValue || "") ? "font-[vazirmatn]" : "font-mono"}`}>
                 {vehicleValue}
               </span>
             </div>
@@ -149,22 +146,22 @@ export function StickerPdfPage({
           {/* EXPORTER SECTION */}
           <div className="space-y-0.5 border-b border-slate-200 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 rounded bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.2 text-[6.5px] font-black text-[#1e40af] uppercase tracking-wide">
+              <span className="inline-flex items-center gap-1 rounded bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.2 text-[7.5px] font-black text-[#1e40af] uppercase tracking-wide">
                 <span>EXPORTER</span>
                 <span>/</span>
                 <span className="font-[vazirmatn]" dir="rtl">صادرکننده</span>
               </span>
-              <span className="text-[6.5px] font-bold text-slate-500 uppercase tracking-tight">Name & Complete Address</span>
+              <span className="text-[7.5px] font-bold text-slate-500 uppercase tracking-tight">Name & Complete Address</span>
             </div>
-            <p className={`text-[12px] font-black text-[#1e40af] tracking-tight leading-tight truncate ${isPashtoOrArabic(displayShipper) ? "font-[vazirmatn]" : ""}`}>
+            <p className={`text-[13.5px] font-black text-[#1e40af] tracking-tight leading-tight truncate ${isPashtoOrArabic(displayShipper || "") ? "font-[vazirmatn]" : ""}`}>
               {displayShipper}
             </p>
             {data.shipperAddress && (
-              <p className={`text-[8px] text-slate-800 font-normal leading-tight line-clamp-2 max-w-[108mm] ${isPashtoOrArabic(data.shipperAddress) ? "font-[vazirmatn]" : ""}`}>
+              <p className={`text-[9.5px] text-slate-800 font-normal leading-snug line-clamp-2 max-w-[130mm] ${isPashtoOrArabic(data.shipperAddress || "") ? "font-[vazirmatn]" : ""}`}>
                 {data.shipperAddress}
               </p>
             )}
-            <div className="flex flex-wrap gap-x-3 text-[7.5px] text-slate-900 pt-0.5">
+            <div className="flex flex-wrap gap-x-3 text-[8.5px] text-slate-900 pt-0.5">
               {data.shipperLicence && (
                 <p>
                   <span className="font-bold text-slate-600">Licence: </span>
@@ -183,24 +180,24 @@ export function StickerPdfPage({
           {/* IMPORTER SECTION */}
           <div className="space-y-0.5 border-b border-slate-200 pb-1.5 shrink-0">
             <div className="flex items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 rounded bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.2 text-[6.5px] font-black text-[#1e40af] uppercase tracking-wide">
+              <span className="inline-flex items-center gap-1 rounded bg-indigo-50 border border-indigo-200/80 px-1.5 py-0.2 text-[7.5px] font-black text-[#1e40af] uppercase tracking-wide">
                 <span>IMPORTER</span>
                 <span>/</span>
                 <span className="font-[vazirmatn]" dir="rtl">واردکننده</span>
               </span>
-              <span className="text-[6.5px] font-bold text-slate-500 uppercase tracking-tight">Consignee Information</span>
+              <span className="text-[7.5px] font-bold text-slate-500 uppercase tracking-tight">Consignee Information</span>
             </div>
-            <p className={`text-[12px] font-black text-[#1e40af] tracking-tight leading-tight truncate ${isPashtoOrArabic(data.consignee) ? "font-[vazirmatn]" : ""}`}>
+            <p className={`text-[13.5px] font-black text-[#1e40af] tracking-tight leading-tight truncate ${isPashtoOrArabic(data.consignee || "") ? "font-[vazirmatn]" : ""}`}>
               {data.consignee || "JDM ENTERPRISES"}
             </p>
             {data.consigneeAddress && (
-              <p className={`text-[8px] text-slate-800 font-normal leading-tight line-clamp-2 max-w-[108mm] ${isPashtoOrArabic(data.consigneeAddress) ? "font-[vazirmatn]" : ""}`}>
+              <p className={`text-[9.5px] text-slate-800 font-normal leading-snug line-clamp-2 max-w-[130mm] ${isPashtoOrArabic(data.consigneeAddress || "") ? "font-[vazirmatn]" : ""}`}>
                 {data.consigneeAddress}
               </p>
             )}
 
             {/* Identification Codes Grid */}
-            <div className="grid grid-cols-4 gap-x-2 gap-y-0.5 pt-0.5 text-[7px] text-slate-900">
+            <div className="grid grid-cols-4 gap-x-2 gap-y-0.5 pt-0.5 text-[8.5px] text-slate-900">
               {data.consigneeGst && (
                 <p className="truncate">
                   <span className="font-bold text-slate-600">GST: </span>
@@ -236,70 +233,86 @@ export function StickerPdfPage({
 
           {/* COMMODITY & EXPORT SPECIFICATIONS */}
           <div className="space-y-1 shrink-0">
-            <div className="flex items-center justify-between rounded bg-slate-50 border border-slate-200 px-2 py-0.5">
-              <div className="flex items-center gap-1.5 truncate">
-                <span className="text-[7px] font-black text-slate-500 uppercase">Commodity:</span>
-                <span className={`font-black uppercase text-slate-950 text-[10.5px] truncate ${isPashtoOrArabic(activeCommodity) ? "font-[vazirmatn]" : ""}`}>
+            <div className="flex items-center justify-between rounded-lg bg-slate-50 border border-slate-200 px-2.5 py-1">
+              <div className="flex items-center gap-2 truncate">
+                <span className="text-[8px] font-black text-slate-500 uppercase">Commodity:</span>
+                <span className={`font-black uppercase text-slate-950 text-[12px] truncate ${isPashtoOrArabic(activeCommodity || "") ? "font-[vazirmatn]" : ""}`}>
                   {activeCommodity}
                 </span>
               </div>
               {lotNo && (
-                <span className="rounded bg-emerald-50 border border-emerald-300 px-1.5 py-0.2 text-[8.5px] font-black text-[#007a3d] shrink-0">
+                <span className="rounded bg-emerald-50 border border-emerald-300 px-1.5 py-0.2 text-[9px] font-black text-[#007a3d] shrink-0">
                   LOT: <span className="font-mono">{lotNo}</span>
                 </span>
               )}
             </div>
 
-            <div className="grid grid-cols-4 gap-1 text-[7.5px]">
-              <div className="rounded border border-slate-200 bg-slate-50/50 p-1 text-center">
-                <span className="block text-[6px] font-black uppercase text-slate-500 leading-tight">Net Weight</span>
-                <span className="font-mono font-black text-[9px] text-slate-950 leading-tight">{activeNetWeight}</span>
+            <div className="grid grid-cols-4 gap-1.5 text-[8.5px]">
+              <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-1.5 text-center flex flex-col justify-between">
+                <span className="block text-[7px] font-black uppercase text-slate-500 leading-tight">Net Weight</span>
+                {netSegments.length > 1 ? (
+                  <div className="flex flex-col space-y-0.5 leading-tight mt-0.5">
+                    {netSegments.map((w, i) => (
+                      <span key={i} className="font-mono font-black text-[9.5px] text-slate-950">{w}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="font-mono font-black text-[11.5px] text-slate-950 leading-tight mt-0.5">{activeNetWeight}</span>
+                )}
               </div>
-              <div className="rounded border border-slate-200 bg-slate-50/50 p-1 text-center">
-                <span className="block text-[6px] font-black uppercase text-slate-500 leading-tight">Gross Weight</span>
-                <span className="font-mono font-black text-[9px] text-slate-950 leading-tight">{activeGrossWeight || "—"}</span>
+              <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-1.5 text-center flex flex-col justify-between">
+                <span className="block text-[7px] font-black uppercase text-slate-500 leading-tight">Gross Weight</span>
+                {grossSegments.length > 1 ? (
+                  <div className="flex flex-col space-y-0.5 leading-tight mt-0.5">
+                    {grossSegments.map((w, i) => (
+                      <span key={i} className="font-mono font-black text-[9.5px] text-slate-950">{w}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="font-mono font-black text-[11.5px] text-slate-950 leading-tight mt-0.5">{activeGrossWeight || "—"}</span>
+                )}
               </div>
-              <div className="rounded border border-slate-200 bg-slate-50/50 p-1 text-center">
-                <span className="block text-[6px] font-black uppercase text-slate-500 leading-tight">Packed</span>
-                <span className="font-mono font-black text-[9px] text-slate-950 leading-tight">{activePackingDate}</span>
+              <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-1.5 text-center flex flex-col justify-between">
+                <span className="block text-[7px] font-black uppercase text-slate-500 leading-tight">Packed</span>
+                <span className="font-mono font-black text-[11px] text-slate-950 leading-tight mt-0.5">{activePackingDate}</span>
               </div>
-              <div className="rounded border border-slate-200 bg-slate-50/50 p-1 text-center">
-                <span className="block text-[6px] font-black uppercase text-slate-500 leading-tight">Expiry</span>
-                <span className="font-mono font-black text-[9px] text-slate-950 leading-tight">{activeExpiryDate}</span>
+              <div className="rounded-lg border border-slate-200 bg-slate-50/50 p-1.5 text-center flex flex-col justify-between">
+                <span className="block text-[7px] font-black uppercase text-slate-500 leading-tight">Expiry</span>
+                <span className="font-mono font-black text-[11px] text-slate-950 leading-tight mt-0.5">{activeExpiryDate}</span>
               </div>
             </div>
           </div>
 
           {/* OFFICIAL CUSTOMS VERIFICATION & BADGES ROW */}
           <div className="flex items-center justify-between pt-0.5 shrink-0">
-            <div className="text-[6.5px] text-slate-500 space-y-0.5">
+            <div className="text-[7.5px] text-slate-500 space-y-0.5">
               <p className="font-black uppercase tracking-wide text-slate-700 leading-tight">
                 CUSTOMS INSPECTED • <span className="font-[vazirmatn]" dir="rtl">ګمرکي تفتیش</span>
               </p>
-              <p className="font-semibold leading-tight">AFGHANISTAN CHAMBER OF COMMERCE & INDUSTRY (ACCI)</p>
+              <p className="font-semibold leading-tight text-[7px]">AFGHANISTAN CHAMBER OF COMMERCE & INDUSTRY (ACCI)</p>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2.5 shrink-0">
               {/* Veg Square + FSSAI Badge */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={STICKER_FSSAI_VEG_DATA_URL}
                 alt="FSSAI & Veg Logo"
-                className="h-8 w-11 object-contain"
+                className="h-8.5 w-12 object-contain"
               />
               {/* Afghanistan Export Emblem */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={STICKER_AFGHANISTAN_LOGO_DATA_URL}
                 alt="Afghanistan Export Logo"
-                className="h-8 w-8 object-contain"
+                className="h-8.5 w-8.5 object-contain"
               />
             </div>
           </div>
 
           {/* Bottom Brand Purple Compliance Strip */}
           <footer className="-mx-3.5 -mb-3.5 bg-[#583184] py-1 text-center text-white shrink-0">
-            <p className="text-[6.5px] font-black uppercase tracking-widest leading-none">
+            <p className="text-[7.5px] font-black uppercase tracking-widest leading-none">
               EXPORT STANDARD PACKAGING • OFFICIAL CUSTOMS COMPLIANT
             </p>
           </footer>
