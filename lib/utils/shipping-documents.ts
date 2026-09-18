@@ -153,10 +153,63 @@ export function taggedValue(source: string, labels: string[]): string {
   return ""
 }
 
+/**
+ * Detects decorative section headers or pure metadata labels that must never be treated as commodities.
+ */
+export function isBannerOrMetadataLine(line?: string | null): boolean {
+  if (!line) return true
+  const stripped = line.replace(/\p{Extended_Pictographic}/gu, "").trim()
+  if (!stripped) return true
+
+  // Decorative section header banners
+  if (/^(?:CONTAINER\s*&\s*CARGO|DOCUMENT\s*&\s*SHIPPING|SHIPPING\s*&\s*TRANSPORT|BILL\s*OF\s*LADING|CARGO\s*DETAILS|SHIPPING\s*DETAILS)/i.test(stripped)) {
+    return true
+  }
+
+  // Pure metadata tags without cargo description
+  if (/^(?:Transit\s*Date|Invoice\s*NO|Invoice\s*Number|Inv\s*No|Afghan\s*TC\s*No|HS\s*CODE|Lot\s*No|Batch\s*No|Container\s*No|Seal\s*No|Storage\s*Temp|Customs\s*Seal|Invoice\s*&\s*Packing|Freight\s*Payable|Booking\s*No|Booking\s*Number)\s*[:#-]?\s*$/i.test(stripped)) {
+    return true
+  }
+
+  // Pure metadata line where every part is a metadata tag (e.g. "📅 Transit Date: 2026-08-23 | 📄 Afghan TC No: 1234")
+  const parts = stripped.split(/[|│]+/).map((p) => p.trim()).filter(Boolean)
+  if (parts.length > 0 && parts.every((p) => /^(?:Transit\s*Date|Invoice\s*NO|Invoice\s*Number|Inv\s*No|Afghan\s*TC\s*No|HS\s*CODE|Lot\s*No|Batch\s*No|Container\s*No|Seal\s*No|Storage\s*Temp|Customs\s*Seal|Freight|Booking)/i.test(p))) {
+    return true
+  }
+
+  return false
+}
+
 export function cleanCommodity(value: string): string {
-  return clean(value)
-    .replace(/^\d[\d,.\s-]*(?:ctns?|cartons?|bags?|packages?|units?)\s*[-:]?\s*/i, "")
+  if (!value) return ""
+  let text = clean(value)
+  if (isBannerOrMetadataLine(text)) return ""
+
+  // Strip emojis, leading bullets, decorative dashes
+  text = text.replace(/^[\p{Extended_Pictographic}\s•*>-]+/gu, "").trim()
+
+  // Strip leading "Cargo:", "Commodity:", "Description of Goods:", "Goods:"
+  text = text.replace(/^(?:cargo|commodity|description\s+of\s+goods|goods)\s*[:#-]?\s*/i, "").trim()
+
+  // If text contains pipe-separated segments, filter out metadata parts (like invoice no, transit date)
+  if (text.includes("|") || text.includes("│")) {
+    const parts = text.split(/[|│]+/).map((p) => p.trim()).filter(Boolean)
+    const validParts = parts.filter((p) => {
+      const strippedP = p.replace(/\p{Extended_Pictographic}/gu, "").trim()
+      if (isBannerOrMetadataLine(strippedP)) return false
+      if (/^(?:invoice|inv|transit|hs\s*code|afghan\s*tc|container|seal|lot|batch|booking|date)\b/i.test(strippedP)) return false
+      return true
+    })
+    text = validParts.join(" - ")
+  }
+
+  // Strip leading package numbers like "330 - BAGS - " or "630 CTNS - " or "514- 49.5-KGS "
+  text = text
+    .replace(/^\d[\d,.\s-]*(?:ctns?|cartons?|bags?|packages?|pkgs?|units?|boxes?)\s*[-:]?\s*/i, "")
     .replace(/^[\s:|-]+|[\s:|-]+$/g, "")
+    .trim()
+
+  return isBannerOrMetadataLine(text) ? "" : text
 }
 
 export function parseListSegments(str: string): string[] {
@@ -222,7 +275,9 @@ export function sumWeightStrings(weightStr?: string, fallbackUnit = "KG"): strin
   let total = 0
   let unit = fallbackUnit
   for (const seg of segments) {
-    const num = parseFloat(seg.replace(/,/g, "").replace(/[^\d.]/g, ""))
+    const cleanedSeg = seg.replace(/,/g, "")
+    const numMatch = cleanedSeg.match(/\b\d+(?:\.\d+)?\b/)
+    const num = numMatch ? parseFloat(numMatch[0]) : 0
     if (!isNaN(num) && num > 0) {
       total += num
     }
@@ -418,24 +473,20 @@ export function parseCommodityItems(
   packingDateMY: string,
   expiryDateMY: string,
 ): CommodityItem[] {
-  const lines = (cargoText || "")
+  const rawLines = (cargoText || "")
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter((l) => {
-      if (!l) return false
-      // Filter out pure container/shipping header decorative banners
-      if (/^(?:📦|🧾|📄|📅|CONTAINER & CARGO|DOCUMENT & SHIPPING)/i.test(l)) return false
-      return true
-    })
+    .filter((l) => l && !isBannerOrMetadataLine(l))
 
+  // 1. Structured lines parser (e.g. "BLACK RAISINS | 630 CTNS | 16 KG" or "1. BLACK RAISINS | 630 CTNS")
   const detectedItems: CommodityItem[] = []
 
-  for (const line of lines) {
-    // Check if line contains a pipe or hyphen breakdown with quantity/commodity
-    // e.g. "BLACK RAISINS | 630 CTNS | 16 KG" or "DRY APRICOT | 300 CTNS | 10 KG"
-    // or "🥬 Cargo: BLACK RAISINS | 630 CTNS"
-    const cleanedLine = line.replace(/^[0-9]+[.)]\s*/, "").replace(/^🥬\s*Cargo:\s*/i, "").trim()
-    if (!cleanedLine) continue
+  for (const line of rawLines) {
+    const cleanedLine = line
+      .replace(/^[0-9]+[.)]\s*/, "")
+      .replace(/^[\p{Extended_Pictographic}\s•*>-]*(?:cargo|commodity)?\s*[:#-]?\s*/iu, "")
+      .trim()
+    if (!cleanedLine || isBannerOrMetadataLine(cleanedLine)) continue
 
     const parts = cleanedLine.split(/[|│]+/).map((p) => p.trim()).filter(Boolean)
     if (parts.length >= 2) {
@@ -448,7 +499,6 @@ export function parseCommodityItems(
       let hs = hsCodeStr
 
       for (const part of parts) {
-        // Check for package count like "630 CTNS" or "300 BAGS" or "1000 PACKAGES"
         const pkgMatch = part.match(/^(\d[\d,\s]*)\s*(CTNS?|CARTONS?|BAGS?|PKGS?|PACKAGES?|UNITS?|BOXES?)\b/i)
         if (pkgMatch) {
           countText = pkgMatch[1].replace(/\s+/g, "").trim()
@@ -460,37 +510,33 @@ export function parseCommodityItems(
           continue
         }
 
-        // Check for weight like "16 KG" or "NET 10,080 KGS" or "GROSS 10,800 KGS"
         const netMatch = part.match(/(?:NET(?:\s*WT)?:?\s*)?(\d[\d,\s.]*\s*(?:KG|KGS|MT|TONS?|LBS?))/i)
         const grossMatch = part.match(/(?:GROSS(?:\s*WT)?:?\s*)(\d[\d,\s.]*\s*(?:KG|KGS|MT|TONS?|LBS?))/i)
 
         if (grossMatch) {
-          gross = clean(grossMatch[1])
+          gross = grossMatch[1].trim()
           continue
         } else if (netMatch && /\b(?:KG|KGS|MT|TONS?)\b/i.test(part)) {
-          net = clean(netMatch[1])
+          net = netMatch[1].trim()
           continue
         }
 
-        // Check for HS CODE
         const hsMatch = part.match(/HS\s*(?:CODE)?:?\s*([0-9.]+)/i)
         if (hsMatch) {
-          hs = clean(hsMatch[1])
+          hs = hsMatch[1].trim()
           continue
         }
 
-        // Otherwise assume this part is the commodity name
-        if (!commodity && part.length > 2 && !/^(?:NET|GROSS|TOTAL|CONTAINER|INVOICE|DATE)/i.test(part)) {
-          commodity = cleanCommodity(part)
+        if (!commodity && part.length > 1 && !/^(?:NET|GROSS|TOTAL|CONTAINER|INVOICE|DATE|TRANSIT|AFGHAN)/i.test(part)) {
+          const c = cleanCommodity(part)
+          if (c) commodity = c
         }
       }
 
       if (commodity && (countNum > 0 || net || parts.length >= 2)) {
-        // Calculate total weight if net was given per carton (e.g. 16 KG with 630 CTNS)
         if (countNum > 0 && net && !gross) {
           const numWeight = parseFloat(net.replace(/[^0-9.]/g, ""))
           if (numWeight > 0 && numWeight <= 100) {
-            // Likely per-carton weight!
             const totalItemNet = Math.round(countNum * numWeight)
             net = `${totalItemNet.toLocaleString("en-US")} KGS`
             gross = `${Math.round(totalItemNet * 1.07).toLocaleString("en-US")} KGS`
@@ -503,8 +549,8 @@ export function parseCommodityItems(
           packageCount: countNum || 1,
           packageCountText: countText || (countNum ? String(countNum) : ""),
           packageType: pkgType,
-          netWeight: net || netWeightStr,
-          grossWeight: gross || grossWeightStr,
+          netWeight: net,
+          grossWeight: gross,
           measurement: measurementStr,
           hsCode: hs,
           packingDateMonthYear: packingDateMY,
@@ -514,34 +560,54 @@ export function parseCommodityItems(
     }
   }
 
-  // If multiple distinct commodity items were successfully parsed, return them
   if (detectedItems.length > 1) {
     return detectedItems
   }
 
-  // Multi-item fallback: Detect multiple items separated by " - ", "/", "+", or newlines in packages, weights, or cargo
+  // 2. Discrete multi-item fallback: Detect items from packages, weights, or commodities
   const pkgNumbers = parsePackagesNumbers(totalPackagesStr)
   const netSegments = parseListSegments(netWeightStr)
   const grossSegments = parseListSegments(grossWeightStr)
-  const cargoSegments = parseListSegments(cargoText)
   const hsSegments = parseListSegments(hsCodeStr)
   const netPerCtSegments = parseListSegments(kgsPerCartonStr)
   const grossPerCtSegments = parseListSegments(grossPerCartonStr)
 
-  const multiCount = Math.max(
+  // Extract valid commodities from non-banner lines
+  const cargoCommodities: string[] = []
+  for (const line of rawLines) {
+    const cleaned = cleanCommodity(line)
+    if (cleaned) {
+      const subSegments = parseListSegments(cleaned)
+      if (subSegments.length > 1) {
+        cargoCommodities.push(...subSegments)
+      } else {
+        cargoCommodities.push(cleaned)
+      }
+    }
+  }
+
+  // Multi-item count determination:
+  // Discrete numbers in packages or weights define the true item count of the shipment
+  const physicalCounts = [
     pkgNumbers.length,
     netSegments.length,
     grossSegments.length,
-    cargoSegments.length > 1 ? cargoSegments.length : 0,
     netPerCtSegments.length > 1 ? netPerCtSegments.length : 0,
-    grossPerCtSegments.length > 1 ? grossPerCtSegments.length : 0
-  )
+    grossPerCtSegments.length > 1 ? grossPerCtSegments.length : 0,
+  ].filter((c) => c > 1)
+
+  let multiCount = 0
+  if (physicalCounts.length > 0) {
+    multiCount = Math.max(...physicalCounts)
+  } else if (cargoCommodities.length > 1) {
+    multiCount = cargoCommodities.length
+  }
+
+  const basePkgType = clean(packageTypeStr) || (/bags?/i.test(totalPackagesStr) ? "Bags" : "Cartons")
+  const masterCommodity = cargoCommodities[0] || cleanCommodity(cargoText) || "CONSOLIDATED CARGO"
 
   if (multiCount > 1) {
     const multiItems: CommodityItem[] = []
-    const basePkgType = clean(packageTypeStr) || (/bags?/i.test(totalPackagesStr) ? "Bags" : "Cartons")
-    const masterCommodity = cleanCommodity(taggedValue(cargoText, ["Commodity", "Cargo", "Description of Goods"])) || cleanCommodity(cargoText) || "CONSOLIDATED CARGO"
-
     for (let i = 0; i < multiCount; i++) {
       const countNum = pkgNumbers[i] !== undefined ? pkgNumbers[i] : (pkgNumbers[0] || 0)
       const countText = countNum > 0 ? String(countNum) : ""
@@ -568,17 +634,17 @@ export function parseCommodityItems(
         grossVal = `${grossVal.trim()} KG`
       }
 
-      const itemCommodity = cargoSegments.length > 1 ? (cargoSegments[i] || cargoSegments[0]) : masterCommodity
+      const itemCommodity = cargoCommodities[i] || cargoCommodities[0] || masterCommodity
       const itemHs = hsSegments[i] || hsSegments[0] || clean(hsCodeStr) || ""
 
       multiItems.push({
         itemNo: i + 1,
         commodity: cleanCommodity(itemCommodity) || masterCommodity,
         packageCount: countNum || 1,
-        packageCountText: countText || "1",
+        packageCountText: countText || (countNum ? String(countNum) : "1"),
         packageType: basePkgType,
-        netWeight: netVal || netWeightStr || "—",
-        grossWeight: grossVal || grossWeightStr || "—",
+        netWeight: netVal || (netSegments.length === 1 ? netSegments[0] : "—"),
+        grossWeight: grossVal || (grossSegments.length === 1 ? grossSegments[0] : "—"),
         measurement: measurementStr,
         hsCode: itemHs,
         packingDateMonthYear: packingDateMY,
@@ -589,15 +655,15 @@ export function parseCommodityItems(
     return multiItems
   }
 
-  // Default single master commodity item
+  // 3. Default single master commodity item
   const masterCount = positiveInteger(totalPackagesStr)
   return [
     {
       itemNo: 1,
-      commodity: cleanCommodity(taggedValue(cargoText, ["Commodity", "Cargo", "Description of Goods"])) || cleanCommodity(cargoText) || "CONSOLIDATED CARGO",
+      commodity: cleanCommodity(taggedValue(cargoText, ["Commodity", "Cargo", "Description of Goods"])) || masterCommodity,
       packageCount: masterCount,
       packageCountText: clean(totalPackagesStr) ? String(masterCount) : "",
-      packageType: clean(packageTypeStr) || (/bags?/i.test(totalPackagesStr) ? "Bags" : "Cartons"),
+      packageType: basePkgType,
       netWeight: clean(netWeightStr),
       grossWeight: clean(grossWeightStr),
       measurement: clean(measurementStr),

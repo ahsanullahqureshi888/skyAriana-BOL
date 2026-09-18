@@ -78,5 +78,27 @@ test('parses multi-item cargo (2, 3, 4, 5 items) stacked on top of each other an
 
   assert.equal(derived.packageCount, 530);
   assert.equal(derived.commodities.length, 2);
+
+  // User scenario: Template headers + single cargo tag + 2 package/weight items => strictly 2 items!
+  const userCargo = "📦 CONTAINER & CARGO DETAILS | 📄 DOCUMENT & SHIPPING DETAILS\n🍃 CARGO: 330 - BAGS - CARAWAY SEEDS (ZEERAH KAJAK) | 📄 INVOICE NO:INV - 04\n📦 CONTAINER & CARGO DETAILS | 📄 DOCUMENT & SHIPPING DETAILS";
+  const userDerived = deriveShippingDocumentData({
+    bol_number: "BOL-2026-NSA498",
+    cargo_description: userCargo,
+    number_of_packages: "330 - 200 Bags",
+    gross_weight: "19,899 KG - 12,060 KG",
+    net_weight: "19,800 KG - 12,400 KG",
+  }, "BOL-2026-NSA498", "2026-08-23");
+
+  assert.equal(userDerived.commodities.length, 2, "Must show exactly 2 items, never 3 items");
+  assert.equal(userDerived.commodities[0].packageCount, 330);
+  assert.equal(userDerived.commodities[0].commodity, "CARAWAY SEEDS (ZEERAH KAJAK)");
+  assert.equal(userDerived.commodities[0].grossWeight, "19,899 KG");
+  assert.equal(userDerived.commodities[0].netWeight, "19,800 KG");
+
+  assert.equal(userDerived.commodities[1].packageCount, 200);
+  assert.equal(userDerived.commodities[1].commodity, "CARAWAY SEEDS (ZEERAH KAJAK)");
+  assert.equal(userDerived.commodities[1].grossWeight, "12,060 KG");
+  assert.equal(userDerived.commodities[1].netWeight, "12,400 KG");
 });
+
 

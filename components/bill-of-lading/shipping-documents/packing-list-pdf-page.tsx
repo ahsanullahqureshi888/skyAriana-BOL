@@ -90,7 +90,9 @@ export function PackingListPdfPage({
       let unit = "KG"
       let parsedAny = false
       for (const it of items) {
-        const num = parseFloat(String(it.grossWeight || "").replace(/,/g, "").replace(/[^\d.]/g, ""))
+        const cleanedStr = String(it.grossWeight || "").replace(/,/g, "")
+        const numMatch = cleanedStr.match(/\b\d+(?:\.\d+)?\b/)
+        const num = numMatch ? parseFloat(numMatch[0]) : 0
         if (!isNaN(num) && num > 0) {
           sum += num
           parsedAny = true
@@ -109,7 +111,9 @@ export function PackingListPdfPage({
       let unit = "KG"
       let parsedAny = false
       for (const it of items) {
-        const num = parseFloat(String(it.netWeight || "").replace(/,/g, "").replace(/[^\d.]/g, ""))
+        const cleanedStr = String(it.netWeight || "").replace(/,/g, "")
+        const numMatch = cleanedStr.match(/\b\d+(?:\.\d+)?\b/)
+        const num = numMatch ? parseFloat(numMatch[0]) : 0
         if (!isNaN(num) && num > 0) {
           sum += num
           parsedAny = true
@@ -409,10 +413,10 @@ export function PackingListPdfPage({
                     )}
                   </td>
                   <td className={`${cellPadding} font-black font-mono text-slate-950 text-[11px] text-right border-r border-slate-100`}>
-                    {item.grossWeight || data.grossWeight || "—"}
+                    {item.grossWeight || (items.length === 1 ? data.grossWeight : "—")}
                   </td>
                   <td className={`${cellPadding} font-black font-mono text-slate-950 text-[11px] text-right`}>
-                    {item.netWeight || data.netWeight || "—"}
+                    {item.netWeight || (items.length === 1 ? data.netWeight : "—")}
                   </td>
                 </tr>
               )
