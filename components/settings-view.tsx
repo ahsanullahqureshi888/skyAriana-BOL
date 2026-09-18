@@ -1861,7 +1861,7 @@ export function SettingsView() {
 
                     const backup = {
                       app: "SKY_ARIANA_LOGISTICS",
-                      version: "3.2.0",
+                      version: CURRENT_SYSTEM_VERSION.version,
                       exportedAt: new Date().toISOString(),
                       totalDocuments: allDocs.length,
                       savedDocuments: allDocs,

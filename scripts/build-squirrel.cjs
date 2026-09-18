@@ -15,9 +15,9 @@ installer.createWindowsInstaller({
   description: "Sky Ariana logistics, Bill of Lading, documents, invoicing, and ledger desktop workspace",
   title: "Sky Ariana BOL",
   name: "SkyArianaBOL",
-  version: "3.2.0",
+  version: "5.1.0",
   exe: "Sky Ariana BOL.exe",
-  setupExe: "Sky-Ariana-BOL-3.2.0-Setup.exe",
+  setupExe: "Sky-Ariana-BOL-5.1.0-Setup.exe",
   setupIcon: path.join(packageRoot, "public", "app-icon.ico"),
   noMsi: true,
 }).then(

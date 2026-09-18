@@ -9,7 +9,7 @@ export function PWARegister() {
       if ('caches' in window) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'sky-ariana-v3.2.2') {
+            if (k !== 'sky-ariana-v5.1pro') {
               caches.delete(k).catch(() => {})
             }
           })

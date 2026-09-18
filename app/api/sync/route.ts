@@ -5,9 +5,10 @@ import { saveBolAccountLedgerDatabase, getBolAccountLedgerDatabase } from "@/lib
 import { getAllInvoices, saveInvoice } from "@/lib/services/invoice-storage-service"
 import { validateLedgerInvariance } from "@/lib/services/ledger-sync-utils"
 import path from "path"
+import { getDataPath } from "@/lib/server-paths"
 
-const syncCodesFile = path.join(process.cwd(), ".local-sync-codes.json")
-const fullSnapshotFile = path.join(process.cwd(), ".local-full-snapshot.json")
+const syncCodesFile = getDataPath(".local-sync-codes.json")
+const fullSnapshotFile = getDataPath(".local-full-snapshot.json")
 
 interface SyncPayload {
   documents?: any[]
@@ -41,7 +42,7 @@ async function saveToGlobalRelay(key: string, data: any): Promise<boolean> {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "SkyArianaLogistics/3.2",
+        "User-Agent": "SkyArianaLogistics/5.1pro",
       },
       body: bodyStr,
       cache: "no-store",
@@ -61,7 +62,7 @@ async function fetchFromGlobalRelay(key: string): Promise<any | null> {
     const timeoutId = setTimeout(() => controller.abort(), 1200)
 
     const res = await fetch(url, {
-      headers: { "User-Agent": "SkyArianaLogistics/3.2" },
+      headers: { "User-Agent": "SkyArianaLogistics/5.1pro" },
       cache: "no-store",
       signal: controller.signal,
     })

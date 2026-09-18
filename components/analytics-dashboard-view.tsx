@@ -227,7 +227,7 @@ export function AnalyticsDashboardView() {
                 Sky Ariana Executive Analytics & Data Apps
               </h1>
               <Badge className="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 font-mono text-[10px]">
-                ENTERPRISE V3.2
+                ENTERPRISE V5.1 PRO
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1 font-medium">

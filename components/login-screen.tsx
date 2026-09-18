@@ -132,7 +132,7 @@ export function LoginScreen() {
           <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
         </div>
         <div className="text-[11px] font-black tracking-wider uppercase">
-          SKY ARIANA LIMITED <span className="text-amber-400 font-bold ml-1 text-[9px]">v3.2</span>
+          SKY ARIANA LIMITED <span className="text-amber-400 font-bold ml-1 text-[9px]">v5.1pro</span>
         </div>
       </div>
 

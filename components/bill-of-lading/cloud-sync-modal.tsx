@@ -577,7 +577,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete }: CloudSync
 
       const backup = {
         app: "SKY_ARIANA_LOGISTICS",
-        version: "3.2.0",
+        version: "5.1.0",
         exportedAt: new Date().toISOString(),
         totalDocuments: allDocs.length,
         totalInvoices: allInvoices.length,

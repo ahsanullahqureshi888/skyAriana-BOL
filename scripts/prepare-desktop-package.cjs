@@ -11,7 +11,7 @@ fs.copyFileSync(path.join(root, "LICENSE"), path.join(stage, "LICENSE"))
 const packageJson = {
   name: "sky-ariana-bol",
   productName: "Sky Ariana BOL",
-  version: "3.2.0",
+  version: "5.1.0",
   description: "Sky Ariana logistics, Bill of Lading, documents, invoicing, and ledger desktop workspace",
   author: "AHSANULLAH QURESHI",
   copyright: "Copyright © AHSANULLAH QURESHI",

@@ -9,8 +9,8 @@ const icon = path.join(root, "public", "app-icon.ico")
 execFileSync(rcedit, [
   executable,
   "--set-icon", icon,
-  "--set-file-version", "3.2.0.0",
-  "--set-product-version", "3.2.0.0",
+  "--set-file-version", "5.1.0.0",
+  "--set-product-version", "5.1.0.0",
   "--set-version-string", "ProductName", "Sky Ariana BOL",
   "--set-version-string", "FileDescription", "Sky Ariana BOL Desktop Application",
   "--set-version-string", "CompanyName", "AHSANULLAH QURESHI",

@@ -3,7 +3,7 @@ const path = require('path');
 
 const prefix = `{
   "app": "SKY_ARIANA_LOGISTICS",
-  "version": "3.2.0",
+  "version": "5.1pro",
   "exportedAt": "2026-08-27T04:49:47.757Z",
   "totalDocuments": 79,
   "savedDocuments": [

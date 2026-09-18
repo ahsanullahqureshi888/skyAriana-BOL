@@ -22,16 +22,28 @@ export interface SystemVersionInfo {
 }
 
 export const CURRENT_SYSTEM_VERSION: SystemVersionInfo = {
-  version: "v3.2.0",
-  buildNumber: "2026.08.08-PRO",
-  releaseDate: "2026-08-08",
-  edition: "SKY ARIANA LIMITED Enterprise Edition",
+  version: "v5.1pro",
+  buildNumber: "2026.09.17-PRO",
+  releaseDate: "2026-09-17",
+  edition: "SKY ARIANA LIMITED Enterprise Pro Edition",
   companyName: "SKY ARIANA LIMITED",
-  applicationName: "Sky Ariana BOL",
+  applicationName: "Sky Ariana BOL v5.1pro",
   developer: "AHSANULLAH QURESHI",
-  platform: "Windows Desktop / Electron",
+  platform: "Windows Desktop / Electron / Web",
   updateChannel: "stable",
   changelog: [
+    {
+      version: "v5.1pro",
+      date: "2026-09-17",
+      title: "Executive Shipping Documents & Multi-Commodity Cargo Stacking",
+      changes: [
+        "Upgraded Packing List to support multi-commodity cargo items (2 to 5+ items) strictly stacked on top of each other.",
+        "Added automatic weight & packages summing for combined shipments with discrete breakdown in summary cards.",
+        "Refined Export Cargo Sticker with enlarged typography and removed carton counter badge.",
+        "Enhanced A4 preview with default 100% scale and high-definition vector rendering.",
+        "Updated system version to v5.1pro.",
+      ],
+    },
     {
       version: "v3.2.0",
       date: "2026-08-08",
