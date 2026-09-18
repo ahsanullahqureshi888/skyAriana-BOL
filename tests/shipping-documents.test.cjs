@@ -99,6 +99,23 @@ test('parses multi-item cargo (2, 3, 4, 5 items) stacked on top of each other an
   assert.equal(userDerived.commodities[1].commodity, "CARAWAY SEEDS (ZEERAH KAJAK)");
   assert.equal(userDerived.commodities[1].grossWeight, "12,060 KG");
   assert.equal(userDerived.commodities[1].netWeight, "12,400 KG");
+
+  // User scenario: Single physical item with rate/weight spec text in cargo => strictly 1 item, never 3!
+  const singleItemCargo = "📦 CONTAINER & CARGO DETAILS | 📄 DOCUMENT & SHIPPING DETAILS\n🥬 Cargo: BLACK-RAISNIS\nBLACK-RAISNIS\n16KGS-@ 4.45 $";
+  const singleDerived = deriveShippingDocumentData({
+    bol_number: "BOL-SINGLE",
+    cargo_description: singleItemCargo,
+    number_of_packages: "630 Cartons",
+    gross_weight: "10,899 KG",
+    net_weight: "10,080 KG",
+  }, "BOL-SINGLE", "2026-08-22");
+
+  assert.equal(singleDerived.commodities.length, 1, "Must show strictly 1 item when user entered 1 package count and weight");
+  assert.equal(singleDerived.packageCount, 630);
+  assert.equal(singleDerived.commodities[0].packageCount, 630);
+  assert.equal(singleDerived.commodities[0].commodity, "BLACK-RAISNIS");
+  assert.equal(singleDerived.commodities[0].grossWeight, "10,899 KG");
+  assert.equal(singleDerived.commodities[0].netWeight, "10,080 KG");
 });
 
 

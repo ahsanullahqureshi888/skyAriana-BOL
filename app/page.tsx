@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { safeLazy } from '@/lib/safe-lazy'
 import { AppProvider, useApp } from '@/lib/app-context'
@@ -24,90 +24,16 @@ function ViewLoadingSkeleton() {
   )
 }
 
-// Dynamic loaders with safe lazy wrappers
-const viewLoaders: Record<string, () => Promise<any>> = {
-  accounts: () => import('@/components/accounts-view'),
-  companies: () => import('@/components/companies-view'),
-  ledger: () => import('@/components/ledger-view'),
-  invoice: () => import('@/components/invoice-view'),
-  bol: () => import('@/components/bill-of-lading/bol-editor'),
-  settings: () => import('@/components/settings-view'),
-  bank: () => import('@/components/sky-bank-view'),
-  'invoice-pad': () => import('@/components/invoice-pad-view'),
-  'sky-cmr': () => import('@/components/sky-cmr-view'),
-  'sky-doc': () => import('@/components/sky-doc-view'),
-  reports: () => import('@/components/reports-view'),
-  'shipper-portal': () => import('@/components/shipper-dashboard'),
-  analytics: () => import('@/components/analytics-dashboard-view'),
-  'export-calculator': () => import('@/components/export-calculator-view'),
-  'acci-portal': () => import('@/components/acci-portal-view'),
-}
-
-export function preloadView(viewName: string) {
-  try {
-    const loader = viewLoaders[viewName]
-    if (loader) {
-      void loader()
-    }
-  } catch (_) {}
-}
-
-export function preloadAllViews() {
-  if (typeof window === 'undefined') return
-  const views = Object.keys(viewLoaders)
-  const schedulePreload = () => {
-    views.forEach((v, index) => {
-      setTimeout(() => {
-        preloadView(v)
-      }, index * 40)
-    })
-  }
-
-  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-    (window as any).requestIdleCallback(schedulePreload, { timeout: 1500 })
-  } else {
-    setTimeout(schedulePreload, 100)
-  }
-}
-
+const BOLEditor = dynamic(safeLazy(() => import('@/components/bill-of-lading/bol-editor').then(m => m.BOLEditor)), { loading: ViewLoadingSkeleton })
 const AccountsView = dynamic(safeLazy(() => import('@/components/accounts-view').then(m => m.AccountsView)), { loading: ViewLoadingSkeleton })
 const CompaniesView = dynamic(safeLazy(() => import('@/components/companies-view').then(m => m.CompaniesView)), { loading: ViewLoadingSkeleton })
 const LedgerView = dynamic(safeLazy(() => import('@/components/ledger-view').then(m => m.LedgerView)), { loading: ViewLoadingSkeleton })
-const InvoiceView = dynamic(safeLazy(() => import('@/components/invoice-view').then(m => m.InvoiceView)), { loading: ViewLoadingSkeleton })
-const BOLEditor = dynamic(safeLazy(() => import('@/components/bill-of-lading/bol-editor').then(m => m.BOLEditor)), { loading: ViewLoadingSkeleton })
-const SettingsView = dynamic(safeLazy(() => import('@/components/settings-view').then(m => m.SettingsView)), { loading: ViewLoadingSkeleton })
-const SkyBankView = dynamic(safeLazy(() => import('@/components/sky-bank-view').then(m => m.SkyBankView)), { loading: ViewLoadingSkeleton })
-const InvoicePadView = dynamic(safeLazy(() => import('@/components/invoice-pad-view').then(m => m.InvoicePadView)), { loading: ViewLoadingSkeleton })
-const SkyCmrView = dynamic(safeLazy(() => import('@/components/sky-cmr-view').then(m => m.SkyCmrView)), { loading: ViewLoadingSkeleton })
-const SkyDocView = dynamic(safeLazy(() => import('@/components/sky-doc-view').then(m => m.SkyDocView)), { loading: ViewLoadingSkeleton })
-const ReportsView = dynamic(safeLazy(() => import('@/components/reports-view').then(m => m.ReportsView)), { loading: ViewLoadingSkeleton })
-const ShipperDashboardView = dynamic(safeLazy(() => import('@/components/shipper-dashboard').then(m => m.ShipperDashboardView)), { loading: ViewLoadingSkeleton })
-const AnalyticsDashboardView = dynamic(safeLazy(() => import('@/components/analytics-dashboard-view').then(m => m.AnalyticsDashboardView)), { loading: ViewLoadingSkeleton })
-const ExportCalculatorView = dynamic(safeLazy(() => import('@/components/export-calculator-view').then(m => m.ExportCalculatorView)), { loading: ViewLoadingSkeleton })
-const AcciPortalView = dynamic(safeLazy(() => import('@/components/acci-portal-view').then(m => m.AcciPortalView)), { loading: ViewLoadingSkeleton })
-const QuickActionsWidget = dynamic(safeLazy(() => import('@/components/quick-actions-widget').then(m => m.QuickActionsWidget)), { ssr: false })
 
+const SettingsView = dynamic(safeLazy(() => import('@/components/settings-view').then(m => m.SettingsView)), { loading: ViewLoadingSkeleton })
+const ShipmentOperationsDashboard = dynamic(safeLazy(() => import('@/components/shipments/shipment-operations-dashboard').then(m => m.ShipmentOperationsDashboard)), { loading: ViewLoadingSkeleton })
 
 function MainContent() {
-  const { view, isAuthenticated, currentUser, setView } = useApp()
-  const [visitedViews, setVisitedViews] = useState<Set<string>>(() => new Set(['accounts']))
-
-  // Track visited views to keep them alive and ready
-  useEffect(() => {
-    if (view) {
-      setVisitedViews(prev => {
-        if (prev.has(view)) return prev
-        const next = new Set(prev)
-        next.add(view)
-        return next
-      })
-    }
-  }, [view])
-
-  // Instant background preloading for all modules
-  useEffect(() => {
-    preloadAllViews()
-  }, [])
+  const { view, setView, accounts, selectAccount, selectCompany, isAuthenticated, currentUser, currentAccount, currentCompany } = useApp()
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -304,127 +230,40 @@ function MainContent() {
     return <LoginScreen />
   }
 
-  if (currentUser?.role === 'shipper' || view === 'shipper-portal') {
-    return <ShipperDashboardView />
-  }
-
-  const isFullBleedView = view === "bank" || view === "invoice-pad" || view === "sky-cmr" || view === "sky-doc" || view === "acci-portal"
+  const ledgerPanel = currentAccount && currentCompany && view !== 'accounts' && view !== 'companies'
+    ? <LedgerView />
+    : currentAccount && view !== 'accounts'
+      ? <CompaniesView />
+      : <AccountsView />
 
   return (
-    <div className={isFullBleedView ? "h-screen w-full flex flex-col overflow-hidden bg-slate-950" : "min-h-screen flex flex-col"}>
-      <Header showBack={view !== 'accounts' && view !== 'settings' && !isFullBleedView} />
-      <main className={isFullBleedView ? "flex-1 w-full h-full overflow-hidden flex flex-col min-h-0 relative" : "flex-1 relative"}>
-        {/* Accounts View */}
-        {visitedViews.has('accounts') && (
-          <div className={view === 'accounts' ? 'w-full' : 'hidden'}>
-            <AccountsView />
-          </div>
-        )}
-
-        {/* Companies View */}
-        {visitedViews.has('companies') && (
-          <div className={view === 'companies' ? 'w-full' : 'hidden'}>
-            <CompaniesView />
-          </div>
-        )}
-
-        {/* Ledger View */}
-        {visitedViews.has('ledger') && (
-          <div className={view === 'ledger' ? 'w-full' : 'hidden'}>
-            <LedgerView />
-          </div>
-        )}
-
-        {/* Invoice View */}
-        {visitedViews.has('invoice') && (
-          <div className={view === 'invoice' ? 'w-full' : 'hidden'}>
-            <InvoiceView />
-          </div>
-        )}
-
-        {/* Bill of Lading (BOL) Editor */}
-        {visitedViews.has('bol') && (
-          <div className={view === 'bol' ? 'w-full' : 'hidden'}>
-            <BOLEditor />
-          </div>
-        )}
-
-        {/* Export Logistics & Reverse Transit Calculator */}
-        {visitedViews.has('export-calculator') && (
-          <div className={view === 'export-calculator' ? 'w-full' : 'hidden'}>
-            <ExportCalculatorView />
-          </div>
-        )}
-
-        {/* Settings View */}
-        {visitedViews.has('settings') && (
-          <div className={view === 'settings' ? 'w-full' : 'hidden'}>
-            <SettingsView />
-          </div>
-        )}
-
-        {/* Reports View */}
-        {visitedViews.has('reports') && (
-          <div className={view === 'reports' ? 'w-full' : 'hidden'}>
-            <ReportsView />
-          </div>
-        )}
-
-        {/* Executive Analytics Dashboard View */}
-        {visitedViews.has('analytics') && (
-          <div className={view === 'analytics' ? 'w-full' : 'hidden'}>
-            <AnalyticsDashboardView />
-          </div>
-        )}
-
-        {/* Full-bleed Iframes: Keep mounted to avoid reconnect/re-render lag */}
-        {visitedViews.has('bank') && (
-          <div className={view === 'bank' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
-            <SkyBankView />
-          </div>
-        )}
-
-        {/* ACCI Chamber of Commerce Portal */}
-        {visitedViews.has('acci-portal') && (
-          <div className={view === 'acci-portal' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
-            <AcciPortalView />
-          </div>
-        )}
-
-        {visitedViews.has('invoice-pad') && (
-          <div className={view === 'invoice-pad' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
-            <InvoicePadView />
-          </div>
-        )}
-
-        {visitedViews.has('sky-cmr') && (
-          <div className={view === 'sky-cmr' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
-            <SkyCmrView />
-          </div>
-        )}
-
-        {visitedViews.has('sky-doc') && (
-          <div className={view === 'sky-doc' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
-            <SkyDocView />
-          </div>
+    <div className="liquid-workspace min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-1 min-w-0">
+        <div className={view === 'settings' || view === 'shipments' ? 'hidden' : undefined}>
+          <BOLEditor accountLedgerPanel={ledgerPanel} />
+        </div>
+        {view === 'settings' && <SettingsView />}
+        {view === 'shipments' && (
+          <ShipmentOperationsDashboard
+            onOpenBol={() => {
+              setView('bol')
+            }}
+            onOpenLedger={(accountName?: string) => {
+              if (accountName) {
+                const foundAccount = accounts.find((a) => a.name.toLowerCase() === accountName.toLowerCase())
+                if (foundAccount) {
+                  selectAccount(foundAccount)
+                  if (foundAccount.companies && foundAccount.companies.length > 0) {
+                    selectCompany(foundAccount.companies[0])
+                  }
+                }
+              }
+              setView('ledger')
+            }}
+          />
         )}
       </main>
-
-
-      {/* Global Floating Quick Actions Speed Dial */}
-      {!isFullBleedView && view !== 'bol' && (
-        <QuickActionsWidget
-          onOpenCommandPalette={() => {
-            window.dispatchEvent(new CustomEvent('skybol:open-command-palette'))
-          }}
-          onOpenCloudSync={() => {
-            window.dispatchEvent(new CustomEvent('skybol:open-cloud-sync'))
-          }}
-          onOpenChat={() => {
-            setView('analytics')
-          }}
-        />
-      )}
     </div>
   )
 }

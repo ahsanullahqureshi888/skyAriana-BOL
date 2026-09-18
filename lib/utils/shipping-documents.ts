@@ -180,10 +180,23 @@ export function isBannerOrMetadataLine(line?: string | null): boolean {
   return false
 }
 
+/**
+ * Checks if a string is solely a weight, rate, or price annotation rather than an actual commodity name.
+ */
+export function isRateOrWeightOnly(str?: string | null): boolean {
+  if (!str) return true
+  const s = str.trim()
+  if (/^(?:@|rate|price)\s*[:#-]?\s*[\d,.]+/i.test(s)) return true
+  if (/^[@$€£\d.,\s-]+$/.test(s)) return true
+  if (/^\d+[\d,.\s-]*(?:kgs?|kg|kilo|lbs?|mt|tons?)\s*(?:-?\s*@\s*[\d,.]+\s*[$€£]?)?$/i.test(s)) return true
+  if (/^[@$€£\s]*\d+[\d,.\s]*[$€£\s]*$/i.test(s)) return true
+  return false
+}
+
 export function cleanCommodity(value: string): string {
   if (!value) return ""
   let text = clean(value)
-  if (isBannerOrMetadataLine(text)) return ""
+  if (isBannerOrMetadataLine(text) || isRateOrWeightOnly(text)) return ""
 
   // Strip emojis, leading bullets, decorative dashes
   text = text.replace(/^[\p{Extended_Pictographic}\s•*>-]+/gu, "").trim()
@@ -196,7 +209,7 @@ export function cleanCommodity(value: string): string {
     const parts = text.split(/[|│]+/).map((p) => p.trim()).filter(Boolean)
     const validParts = parts.filter((p) => {
       const strippedP = p.replace(/\p{Extended_Pictographic}/gu, "").trim()
-      if (isBannerOrMetadataLine(strippedP)) return false
+      if (isBannerOrMetadataLine(strippedP) || isRateOrWeightOnly(strippedP)) return false
       if (/^(?:invoice|inv|transit|hs\s*code|afghan\s*tc|container|seal|lot|batch|booking|date)\b/i.test(strippedP)) return false
       return true
     })
@@ -204,12 +217,23 @@ export function cleanCommodity(value: string): string {
   }
 
   // Strip leading package numbers like "330 - BAGS - " or "630 CTNS - " or "514- 49.5-KGS "
-  text = text
-    .replace(/^\d[\d,.\s-]*(?:ctns?|cartons?|bags?|packages?|pkgs?|units?|boxes?)\s*[-:]?\s*/i, "")
-    .replace(/^[\s:|-]+|[\s:|-]+$/g, "")
-    .trim()
+  text = text.replace(/^\d[\d,.\s-]*(?:ctns?|cartons?|bags?|packages?|pkgs?|units?|boxes?)\s*[-:]?\s*/i, "")
 
-  return isBannerOrMetadataLine(text) ? "" : text
+  // Strip trailing rate / price annotations like "@ 4.45 $", "RATE 1.35 $", "@ 4.45", "RATE: 4.45"
+  text = text.replace(/\s*[-–—|/@]\s*(?:@|rate|price)?\s*[\d,.]+\s*(?:\$|usd|afn)?\s*$/i, "")
+  text = text.replace(/\s*@\s*[\d,.]+\s*(?:\$|usd|afn)?/i, "")
+
+  // Strip trailing carton weight annotations like "- 16KGS" or "- 16 - KG"
+  text = text.replace(/\s*[-–—|/]\s*\d+[\d,.\s-]*(?:kgs?|kg|kilo|lbs?|mt|tons?)\s*$/i, "")
+
+  // Deduplicate repeated identical phrases like "BLACK-RAISNIS - BLACK-RAISNIS"
+  const segments = text.split(/\s*[-–—/|,]\s*/).map((s) => s.trim()).filter(Boolean)
+  if (segments.length > 1 && new Set(segments.map((s) => s.toLowerCase())).size === 1) {
+    text = segments[0]
+  }
+
+  text = text.replace(/^[\s:|-]+|[\s:|-]+$/g, "").trim()
+  return isBannerOrMetadataLine(text) || isRateOrWeightOnly(text) ? "" : text
 }
 
 export function parseListSegments(str: string): string[] {
@@ -533,7 +557,7 @@ export function parseCommodityItems(
         }
       }
 
-      if (commodity && (countNum > 0 || net || parts.length >= 2)) {
+      if (commodity && !isRateOrWeightOnly(commodity) && (countNum > 0 || net || gross)) {
         if (countNum > 0 && net && !gross) {
           const numWeight = parseFloat(net.replace(/[^0-9.]/g, ""))
           if (numWeight > 0 && numWeight <= 100) {
@@ -564,7 +588,7 @@ export function parseCommodityItems(
     return detectedItems
   }
 
-  // 2. Discrete multi-item fallback: Detect items from packages, weights, or commodities
+  // 2. Discrete multi-item fallback: Physical quantity counts strictly define multi-item count!
   const pkgNumbers = parsePackagesNumbers(totalPackagesStr)
   const netSegments = parseListSegments(netWeightStr)
   const grossSegments = parseListSegments(grossWeightStr)
@@ -572,14 +596,17 @@ export function parseCommodityItems(
   const netPerCtSegments = parseListSegments(kgsPerCartonStr)
   const grossPerCtSegments = parseListSegments(grossPerCartonStr)
 
-  // Extract valid commodities from non-banner lines
+  // Extract valid commodities from non-banner lines, ignoring pure rate/weight annotations
   const cargoCommodities: string[] = []
   for (const line of rawLines) {
     const cleaned = cleanCommodity(line)
-    if (cleaned) {
+    if (cleaned && !isRateOrWeightOnly(cleaned)) {
       const subSegments = parseListSegments(cleaned)
       if (subSegments.length > 1) {
-        cargoCommodities.push(...subSegments)
+        for (const sub of subSegments) {
+          const c = cleanCommodity(sub)
+          if (c && !isRateOrWeightOnly(c)) cargoCommodities.push(c)
+        }
       } else {
         cargoCommodities.push(cleaned)
       }
@@ -587,7 +614,9 @@ export function parseCommodityItems(
   }
 
   // Multi-item count determination:
-  // Discrete numbers in packages or weights define the true item count of the shipment
+  // Discrete numbers in packages or weights define the true item count of the shipment.
+  // CRITICAL: If the user only entered 1 package count and 1 weight, the shipment is strictly ONE SINGLE ITEM.
+  // We NEVER duplicate a single physical package count across text lines!
   const physicalCounts = [
     pkgNumbers.length,
     netSegments.length,
@@ -599,8 +628,6 @@ export function parseCommodityItems(
   let multiCount = 0
   if (physicalCounts.length > 0) {
     multiCount = Math.max(...physicalCounts)
-  } else if (cargoCommodities.length > 1) {
-    multiCount = cargoCommodities.length
   }
 
   const basePkgType = clean(packageTypeStr) || (/bags?/i.test(totalPackagesStr) ? "Bags" : "Cartons")
