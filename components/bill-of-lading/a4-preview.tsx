@@ -34,7 +34,9 @@ import {
   getStoredCompanyStampConfig,
   type CompanyStampConfig,
 } from "@/lib/company-stamp-data"
+import { AfghanTruckPlate } from "@/components/ui/afghan-truck-plate"
 import { BackgroundMotionAccent } from "./background-motion-accent"
+import { isPashtoOrArabic } from "@/lib/utils/pashto-bidi"
 
 interface A4PreviewProps {
   bolNumber: string
@@ -1253,7 +1255,9 @@ function ShipmentOverview({
   pdfMode?: boolean
 }) {
   const driverNameVal = formData.driver_name ? formData.driver_name.trim() : ""
-  const driverFatherNameVal = formData.driver_father_name ? ` S/O ${formData.driver_father_name.trim()}` : ""
+  const isPersianDriver = isPashtoOrArabic(driverNameVal) || isPashtoOrArabic(formData.driver_father_name || "")
+  const fatherPrefix = isPersianDriver ? " ولد " : " S/O "
+  const driverFatherNameVal = formData.driver_father_name ? `${fatherPrefix}${formData.driver_father_name.trim()}` : ""
   const driverFullInfo = driverNameVal || driverFatherNameVal ? `${driverNameVal}${driverFatherNameVal}` : ""
 
   const phones = parseDriverContactPhones(formData.driver_contact)
@@ -1263,20 +1267,21 @@ function ShipmentOverview({
   const hasTruck = hasValue(formData.truck_number)
   const hasDriver = hasValue(driverFullInfo)
   const hasContact = phones.length > 0
+  const hasDriverOrContact = hasDriver || hasContact
   const hasRent = hasValue(formData.driver_rent)
   const hasBol = hasValue(formData.bol_number)
 
-  const activeCardsCount = [hasIssueDate, hasTruck, hasDriver, hasContact, hasRent, hasBol].filter(Boolean).length
+  const activeCardsCount = [hasIssueDate, hasTruck, hasDriverOrContact, hasRent, hasBol].filter(Boolean).length
   if (activeCardsCount === 0) return null
 
   return (
     <div
       className={`grid gap-1.5 ${
         activeCardsCount >= 6 ? "grid-cols-3 sm:grid-cols-6 print:grid-cols-6" :
-        activeCardsCount === 5 ? "grid-cols-5" :
-        activeCardsCount === 4 ? "grid-cols-4" :
-        activeCardsCount === 3 ? "grid-cols-3" :
-        activeCardsCount === 2 ? "grid-cols-2" : "grid-cols-1"
+        activeCardsCount === 5 ? "grid-cols-2 sm:grid-cols-5 print:grid-cols-5" :
+        activeCardsCount === 4 ? "grid-cols-2 sm:grid-cols-4 print:grid-cols-4" :
+        activeCardsCount === 3 ? "grid-cols-3 print:grid-cols-3" :
+        activeCardsCount === 2 ? "grid-cols-2 print:grid-cols-2" : "grid-cols-1 print:grid-cols-1"
       }`}
       dir="ltr"
     >
@@ -1288,22 +1293,22 @@ function ShipmentOverview({
           }`}
         >
           <div>
-            <div className="text-[5.4pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
+            <div className="text-[5.4pt] font-black uppercase tracking-wider text-blue-700 leading-tight text-center">
               ISSUE DATE
             </div>
-            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
+            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5pt] font-bold text-blue-600 leading-tight mt-0.2 text-center" dir="rtl">
               تاریخ صدور
             </div>
           </div>
-          <div className="mt-0.5 space-y-0.2">
+          <div className="mt-0.5 space-y-0.2 text-center">
             {hasValue(issueDate) && (
-              <div className="font-mono font-black text-slate-950 text-[7.4pt] leading-tight break-words">
+              <div className="font-mono font-black text-slate-950 text-[7.4pt] leading-tight break-words text-center">
                 {issueDate}
               </div>
             )}
             {hasValue(persianDateNumeric) && (
               <div
-                className="persian-text bol-persian-text font-[vazirmatn] font-black text-blue-900 text-[6.8pt] leading-tight break-words"
+                className="persian-text bol-persian-text font-[vazirmatn] font-black text-blue-900 text-[6.8pt] leading-tight break-words text-center"
                 dir="ltr"
                 style={{ direction: "ltr", unicodeBidi: "isolate" }}
               >
@@ -1322,69 +1327,57 @@ function ShipmentOverview({
           }`}
         >
           <div>
-            <div className="text-[5.4pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
+            <div className="text-[5.4pt] font-black uppercase tracking-wider text-blue-700 leading-tight text-center">
               TRUCK NUMBER
             </div>
-            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
+            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5pt] font-bold text-blue-600 leading-tight mt-0.2 text-center" dir="rtl">
               شماره کامیون / موټر
             </div>
           </div>
-          <div className="mt-0.5 flex items-center justify-center">
-            <div className="inline-flex items-center gap-0.5 font-mono font-black text-[7.4pt] text-slate-950 bg-slate-100/90 px-1 py-0.2 rounded border border-slate-300 shadow-2xs break-all">
-              <span>🚛</span>
-              <span className="tracking-wide">{formData.truck_number}</span>
-            </div>
+          <div className="mt-0.5 flex items-center justify-center w-full">
+            <AfghanTruckPlate value={formData.truck_number} size="compact" />
           </div>
         </div>
       )}
 
-      {/* 3. DRIVER NAME */}
-      {hasDriver && (
+      {/* 3. DRIVER NAME & CONTACT */}
+      {hasDriverOrContact && (
         <div
           className={`rounded-lg border px-1 py-0.5 text-center flex flex-col justify-between min-h-[10mm] overflow-visible ${
             pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-2xs shadow-blue-100/50"
           }`}
         >
           <div>
-            <div className="text-[5.4pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
-              DRIVER NAME
+            <div className="text-[5.4pt] font-black uppercase tracking-wider text-blue-700 leading-tight text-center">
+              {hasDriver ? "DRIVER NAME" : "DRIVER CONTACT"}
             </div>
-            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
-              نام راننده
-            </div>
-          </div>
-          <div className="mt-0.5 font-[vazirmatn] font-black text-slate-950 text-[7.4pt] leading-tight break-words" dir="rtl">
-            {driverFullInfo}
-          </div>
-        </div>
-      )}
-
-      {/* 4. DRIVER CONTACT */}
-      {hasContact && (
-        <div
-          className={`rounded-lg border px-1 py-0.5 text-center flex flex-col justify-between min-h-[10mm] overflow-visible ${
-            pdfMode ? "border-blue-100 bg-white" : "border-blue-100/90 bg-white/95 shadow-2xs shadow-blue-100/50"
-          }`}
-        >
-          <div>
-            <div className="text-[5.4pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
-              DRIVER CONTACT
-            </div>
-            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
-              تماس راننده
+            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5pt] font-bold text-blue-600 leading-tight mt-0.2 text-center" dir="rtl">
+              {hasDriver ? "نام راننده" : "تماس راننده"}
             </div>
           </div>
-          <div className="mt-0.5 space-y-0.2 flex flex-col items-center justify-center">
-            {phones.map((phone, idx) => (
-              <div key={idx} className="font-mono font-bold text-blue-950 text-[7.2pt] leading-tight tracking-wider bg-blue-50/80 px-1 py-0.1 rounded border border-blue-200/80 w-full text-center break-all">
-                {phone}
+          <div className="mt-0.5 space-y-0.2 text-center">
+            {hasDriver && (
+              <div className="font-[vazirmatn] font-black text-slate-950 text-[7.4pt] leading-tight break-words text-center" dir="rtl">
+                {driverFullInfo}
               </div>
-            ))}
+            )}
+            {hasContact && (
+              <div className="space-y-0.2 flex flex-col items-center justify-center">
+                {phones.map((phone, idx) => (
+                  <div
+                    key={idx}
+                    className="font-mono font-bold text-blue-950 text-[6.8pt] leading-tight tracking-wider bg-blue-50/80 px-1 py-0.1 rounded border border-blue-200/80 w-full text-center break-all"
+                  >
+                    {phone}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* 5. DRIVER RENT */}
+      {/* 4. DRIVER RENT */}
       {hasRent && (
         <div
           className={`rounded-lg border px-1 py-0.5 text-center flex flex-col justify-between min-h-[10mm] overflow-visible ${
@@ -1392,19 +1385,19 @@ function ShipmentOverview({
           }`}
         >
           <div>
-            <div className="text-[5.4pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
+            <div className="text-[5.4pt] font-black uppercase tracking-wider text-blue-700 leading-tight text-center">
               DRIVER RENT
             </div>
-            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
+            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5pt] font-bold text-blue-600 leading-tight mt-0.2 text-center" dir="rtl">
               کرایه راننده
             </div>
           </div>
-          <div className="mt-0.5 space-y-0.2">
-            <div className="font-mono font-black text-emerald-950 text-[7.4pt] leading-tight break-words">
+          <div className="mt-0.5 space-y-0.2 text-center">
+            <div className="font-mono font-black text-emerald-950 text-[7.4pt] leading-tight break-words text-center">
               {rentInfo.amount || formData.driver_rent}
             </div>
             {rentInfo.note && (
-              <div className="persian-text bol-persian-text font-[vazirmatn] font-extrabold text-[6.2pt] text-emerald-800 leading-tight break-words whitespace-normal" dir="rtl">
+              <div className="persian-text bol-persian-text font-[vazirmatn] font-extrabold text-[6.2pt] text-emerald-800 leading-tight break-words whitespace-normal text-center" dir="rtl">
                 {rentInfo.note}
               </div>
             )}
@@ -1412,7 +1405,7 @@ function ShipmentOverview({
         </div>
       )}
 
-      {/* 6. BOL NUMBER */}
+      {/* 5. BOL NUMBER */}
       {hasBol && (
         <div
           className={`rounded-lg border px-1 py-0.5 text-center flex flex-col justify-between min-h-[10mm] overflow-visible ${
@@ -1420,14 +1413,14 @@ function ShipmentOverview({
           }`}
         >
           <div>
-            <div className="text-[5.4pt] font-black uppercase tracking-wider text-blue-700 leading-tight">
+            <div className="text-[5.4pt] font-black uppercase tracking-wider text-blue-700 leading-tight text-center">
               BOL NUMBER
             </div>
-            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5pt] font-bold text-blue-600 leading-tight mt-0.2" dir="rtl">
+            <div className="persian-text bol-persian-text font-[vazirmatn] text-[5pt] font-bold text-blue-600 leading-tight mt-0.2 text-center" dir="rtl">
               شماره بارنامه
             </div>
           </div>
-          <div className="mt-0.5 font-mono font-black text-blue-950 text-[7.4pt] leading-tight break-words">
+          <div className="mt-0.5 font-mono font-black text-blue-950 text-[7.4pt] leading-tight break-words text-center">
             {formData.bol_number}
           </div>
         </div>
