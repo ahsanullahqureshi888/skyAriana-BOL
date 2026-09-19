@@ -7,6 +7,7 @@ import { DraftSaveQueue } from "@/lib/services/draft-save-queue"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ShipperNameInput } from "./shipper-name-input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -23,9 +24,10 @@ import {
 import { BackgroundGallery } from "./background-gallery"
 import { DOCUMENT_BACKGROUNDS } from "@/lib/document-backgrounds"
 import { A4Preview } from "./a4-preview"
+import { CopyWhatsAppButton } from "./copy-whatsapp-button"
 import PrintSafeBOL from "./print-safe-bol"
 import { ShippingDocumentCenter } from "./shipping-document-center"
-import { BillOfLadingFormData, initialFormData, RouteStop, AFGHANISTAN_DOCUMENT_OPTIONS, DOCUMENT_CATEGORIES, AfghanistanDocumentDetail, type DocumentCategory, NOTE_THEMES, type NoteTheme } from "@/lib/types/bill-of-lading"
+import { BillOfLadingFormData, initialFormData, RouteStop, AFGHANISTAN_DOCUMENT_OPTIONS, DOCUMENT_CATEGORIES, AfghanistanDocumentDetail, type DocumentCategory, NOTE_THEMES, type NoteTheme, CARGO_ROUTE_NOTE_OPTIONS } from "@/lib/types/bill-of-lading"
 import consigneeSeedData from "@/lib/data/consignees-from-pdf.json"
 import shipperSeedData from "@/lib/data/shippers-from-pdf.json"
 import notifyPartySeedData from "@/lib/data/notify-parties-from-pdf.json"
@@ -48,9 +50,11 @@ import {
   type StickerLayout,
 } from "@/lib/utils/shipping-documents"
 import { PackingListPdfPage, StickerPdfPage } from "./shipping-documents"
+import { AfghanTruckPlate } from "@/components/ui/afghan-truck-plate"
 const SavedDocuments = dynamic(() => import("./saved-documents").then(m => m.SavedDocuments), { loading: () => <p role="status" className="p-6 text-sm text-slate-600">Loading saved BOLs…</p> })
 const LedgerView = dynamic(() => import("@/components/ledger-view").then(m => m.LedgerView), { loading: () => <p role="status" className="p-6 text-sm text-slate-600">Loading account ledger…</p> })
 import { getFinancialsMap, saveFinancialsForEntry } from "@/lib/services/ledger-sync-utils"
+import { findDuplicatePartyCandidates } from "@/lib/utils/duplicate-prevention"
 import { PrintOptionsDialog, type PrintOptions } from "@/components/print-options-dialog"
 import { CloudSyncModal } from "./cloud-sync-modal"
 import {
@@ -377,6 +381,21 @@ function syncBolToAccountLedger(data: BillOfLadingFormData & { bol_number?: stri
 export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocumentLoaded, savedDocumentsPanel, accountLedgerPanel }: BOLEditorProps) {
   const [formData, setFormData] = useState<BillOfLadingFormData>(initialFormData)
   const deferredFormData = useDeferredValue(formData)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+
+  // Section 23: Warn user before navigating away if they have unsaved changes in the BOL editor
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault()
+        e.returnValue = "You have unsaved changes. Are you sure you want to leave?"
+        return e.returnValue
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [hasUnsavedChanges])
+
   const [bolNumber, setBolNumber] = useState<string>("BOL-2026-NSA470")
   const [isEditingBolNumber, setIsEditingBolNumber] = useState(false)
   const [issueDate, setIssueDate] = useState<string>("")
@@ -1007,6 +1026,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           port_of_discharge: doc.port_of_discharge || "",
           place_of_delivery: doc.place_of_delivery || "",
           cargo_description: doc.cargo_description || initialFormData.cargo_description,
+          cargo_route_note: doc.cargo_route_note || "",
           net_weight: doc.net_weight || "",
           gross_weight: doc.gross_weight || "",
           measurement: doc.measurement || "",
@@ -1091,6 +1111,31 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target
+    handleFieldChange(name, value)
+  }
+
+  const handleFieldChange = (name: string, value: string) => {
+    setHasUnsavedChanges(true)
+
+    // Master Directory Decoupling: If user edits party name directly in the form,
+    // detach the directory ID reference so saving BOL doesn't mutate old directory record
+    if (name === "shipper_name") {
+      const match = savedShippers.find((s) => s.id === selectedShipperId)
+      if (match && match.name.trim().toLowerCase() !== value.trim().toLowerCase()) {
+        setSelectedShipperId("")
+      }
+    } else if (name === "consignee_name") {
+      const match = savedConsignees.find((c) => c.id === selectedConsigneeId)
+      if (match && match.name.trim().toLowerCase() !== value.trim().toLowerCase()) {
+        setSelectedConsigneeId("")
+      }
+    } else if (name === "notify_party") {
+      const match = savedNotifyParties.find((n) => n.id === selectedNotifyPartyId)
+      if (match && match.name.trim().toLowerCase() !== value.trim().toLowerCase()) {
+        setSelectedNotifyPartyId("")
+      }
+    }
+
     setFormData((prev) => {
       const next = { ...prev, [name]: value }
 
@@ -1558,8 +1603,19 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     }
 
     const existingMatch = savedShippers.find(
-      (s) => s.name.trim().toLowerCase() === shipperName.toLowerCase() || (selectedShipperId && s.id === selectedShipperId)
+      (s) => s.name.trim().toLowerCase() === shipperName.toLowerCase() || 
+             (selectedShipperId && s.id === selectedShipperId && s.name.trim().toLowerCase() === shipperName.toLowerCase())
     )
+
+    if (!existingMatch) {
+      const candidates = findDuplicatePartyCandidates(shipperName, savedShippers)
+      if (candidates.length > 0 && candidates[0].similarity >= 0.88) {
+        toast.warning(`Potential duplicate detected: "${candidates[0].name}"`, {
+          description: `Existing party matches canonical format (${candidates[0].matchedCanonical}). Saved as distinct record.`,
+          duration: 6000,
+        })
+      }
+    }
 
     const currentShipper: SavedParty = {
       id: existingMatch ? existingMatch.id : crypto.randomUUID(),
@@ -1573,7 +1629,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     const nextShippers = [
       currentShipper,
       ...savedShippers.filter((s) => s.id !== currentShipper.id && s.name.trim().toLowerCase() !== shipperName.toLowerCase()),
-    ].slice(0, 150)
+    ].slice(0, 500)
 
     persistSavedParties(SAVED_SHIPPERS_STORAGE_KEY, nextShippers, setSavedShippers)
     setSelectedShipperId(currentShipper.id)
@@ -1620,8 +1676,19 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     }
 
     const existingMatch = savedConsignees.find(
-      (c) => c.name.trim().toLowerCase() === consigneeName.toLowerCase() || (selectedConsigneeId && c.id === selectedConsigneeId)
+      (c) => c.name.trim().toLowerCase() === consigneeName.toLowerCase() ||
+             (selectedConsigneeId && c.id === selectedConsigneeId && c.name.trim().toLowerCase() === consigneeName.toLowerCase())
     )
+
+    if (!existingMatch) {
+      const candidates = findDuplicatePartyCandidates(consigneeName, savedConsignees)
+      if (candidates.length > 0 && candidates[0].similarity >= 0.88) {
+        toast.warning(`Potential duplicate detected: "${candidates[0].name}"`, {
+          description: `Existing consignee matches canonical format (${candidates[0].matchedCanonical}). Saved as distinct record.`,
+          duration: 6000,
+        })
+      }
+    }
 
     const currentConsignee: SavedParty = {
       id: existingMatch ? existingMatch.id : crypto.randomUUID(),
@@ -1635,7 +1702,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     const nextConsignees = [
       currentConsignee,
       ...savedConsignees.filter((c) => c.id !== currentConsignee.id && c.name.trim().toLowerCase() !== consigneeName.toLowerCase()),
-    ].slice(0, 150)
+    ].slice(0, 500)
 
     persistSavedParties(SAVED_CONSIGNEES_STORAGE_KEY, nextConsignees, setSavedConsignees)
     setSelectedConsigneeId(currentConsignee.id)
@@ -1686,8 +1753,19 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     }
 
     const existingMatch = savedNotifyParties.find(
-      (n) => n.name.trim().toLowerCase() === notifyPartyName.toLowerCase() || (selectedNotifyPartyId && n.id === selectedNotifyPartyId)
+      (n) => n.name.trim().toLowerCase() === notifyPartyName.toLowerCase() ||
+             (selectedNotifyPartyId && n.id === selectedNotifyPartyId && n.name.trim().toLowerCase() === notifyPartyName.toLowerCase())
     )
+
+    if (!existingMatch) {
+      const candidates = findDuplicatePartyCandidates(notifyPartyName, savedNotifyParties)
+      if (candidates.length > 0 && candidates[0].similarity >= 0.88) {
+        toast.warning(`Potential duplicate detected: "${candidates[0].name}"`, {
+          description: `Existing notify party matches canonical format (${candidates[0].matchedCanonical}). Saved as distinct record.`,
+          duration: 6000,
+        })
+      }
+    }
 
     const currentNotifyParty: SavedParty = {
       id: existingMatch ? existingMatch.id : crypto.randomUUID(),
@@ -1955,6 +2033,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       gross_weight: "",
       measurement: "",
       cargo_description: "",
+      cargo_route_note: "",
     }))
     toast.info("All cargo fields cleared", { description: "تمامی مشخصات کالا پاک شد" })
   }
@@ -3473,6 +3552,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         setIsEditMode(true)
         setEditDocumentId(savedId)
         setBolNumber(savedBolNumber)
+        setHasUnsavedChanges(false)
 
         // Save directly to browser local storage for 100% instant UI sync
         try {
@@ -4188,7 +4268,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64 rounded-xl p-1.5 shadow-xl">
                   <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-slate-500">Download PDF</DropdownMenuLabel>
-                  <DropdownMenuItem onClick={() => void handleShippingDocumentsDownload("all")} className="gap-2 text-xs font-black text-[#583184] cursor-pointer">
+                  <DropdownMenuItem onClick={() => void handleShippingDocumentsDownload("all")} className="gap-2 text-xs font-black text-[#0284c7] cursor-pointer">
                     <Package className="h-3.5 w-3.5" />Download Complete PDF
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -4203,7 +4283,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setIsDocumentCenterOpen(true)} className="gap-2 text-xs font-bold cursor-pointer">
-                    <Eye className="h-3.5 w-3.5 text-[#583184]" />Preview Documents (3-in-1)
+                    <Eye className="h-3.5 w-3.5 text-[#0284c7]" />Preview Documents (3-in-1)
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -4715,9 +4795,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         name="truck_number"
                         value={formData.truck_number}
                         onChange={handleInputChange}
-                        placeholder="e.g. AF-1234-KBL"
+                        placeholder="e.g. 2877 کابل"
                         className="rounded-xl h-8.5 sm:h-9 font-mono text-xs sm:text-sm font-black uppercase text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       />
+                      {formData.truck_number?.trim() && (
+                        <div className="mt-1.5 flex items-center justify-center">
+                          <AfghanTruckPlate value={formData.truck_number} size="compact" />
+                        </div>
+                      )}
                     </div>
 
                     {/* 2. Driver Name */}
@@ -5311,14 +5396,15 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         <div className="absolute left-3 text-blue-600 pointer-events-none">
                           <User className="w-4 h-4" />
                         </div>
-                        <Input
+                        <ShipperNameInput
                           name="shipper_name"
+                          aria-label="Shipper Name"
                           value={formData.shipper_name}
                           onFocus={() => setShowShipperDropdown(true)}
-                          onChange={(e) => {
-                            handleInputChange(e)
+                          onValueChange={(value) => {
+                            handleFieldChange("shipper_name", value)
                             setShowShipperDropdown(true)
-                            setShipperSearchQuery(e.target.value)
+                            setShipperSearchQuery(value)
                           }}
                           placeholder="Type or search shipper..."
                           className="pl-9 rounded-xl h-10 text-xs sm:text-sm font-extrabold text-slate-950 bg-white border-slate-200 shadow-inner focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs transition-all"
@@ -6074,6 +6160,151 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 px-4 pb-5 pt-4 sm:px-5">
+                <div className="mx-auto max-w-3xl rounded-2xl border-2 border-red-200 bg-gradient-to-br from-red-50 via-white to-rose-50/60 p-4 shadow-sm sm:p-5">
+                  {/* Header */}
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-100 px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-widest text-red-700">
+                      🗺️ Route / مسیر
+                    </span>
+                    {formData.cargo_route_note && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, cargo_route_note: "" }))}
+                        className="rounded-lg border border-red-200 bg-white px-2.5 py-1 text-[10px] font-bold text-red-500 transition-all hover:border-red-400 hover:bg-red-50 hover:text-red-700"
+                      >
+                        ✕ پاک کردن
+                      </button>
+                    )}
+                  </div>
+
+                  <label htmlFor="cargo-route-note" className="mb-1 block text-sm font-semibold text-slate-700">
+                    Route text / متن مسیر
+                  </label>
+                  <Textarea
+                    id="cargo-route-note"
+                    name="cargo_route_note"
+                    value={formData.cargo_route_note}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, cargo_route_note: event.target.value }))}
+                    dir="rtl"
+                    rows={2}
+                    placeholder="مسیر را از پایین انتخاب کنید یا متن دلخواه بنویسید…"
+                    className="mb-4 min-h-[3.5rem] w-full resize-y rounded-xl border-2 border-red-300 bg-white p-3 text-center font-[vazirmatn] text-xl font-black leading-snug text-red-800 shadow-inner transition-colors placeholder:text-red-300 focus-visible:border-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200"
+                  />
+
+                  {/* Grouped preset pills */}
+                  <div className="space-y-3" dir="rtl">
+                    {[
+                      {
+                        label: "دوغارون",
+                        sublabel: "Dogharoun — Iran/Khorasan",
+                        color: "orange",
+                        options: [
+                          "ازدوغارون کانتینر معمولی ازبندرعباس کانتینر معمولی",
+                          "ازدوغارون کانتینر معمولی ازبندرعباس کانتینر یخچالی",
+                          "ازدوغارون کانتینر یخچالی ازبندرعباس کانتینر یخچالی",
+                          "ازدوغارون کانتینر یخچالی ازبندرعباس کانتینر معمولی",
+                          "مسیر ازدوغارون کانتینر یخچالی ازبندرعباس کانتینر یخچالی",
+                        ],
+                      },
+                      {
+                        label: "اسلام قلعه",
+                        sublabel: "Islam Qala — Herat",
+                        color: "blue",
+                        options: [
+                          "ازاسلام قلعه کانتینر معمولی ازبندرعباس کانتینر معمولی",
+                          "ازاسلام قلعه کانتینر معمولی ازبندرعباس کانتینر یخچالی",
+                          "ازاسلام قلعه کانتینر یخچالی ازبندرعباس کانتینر یخچالی",
+                          "ازاسلام قلعه کانتینر یخچالی ازبندرعباس کانتینر معمولی",
+                        ],
+                      },
+                      {
+                        label: "تورغندی",
+                        sublabel: "Torghundi — Turkmenistan",
+                        color: "green",
+                        options: [
+                          "ازتورغندی کانتینر معمولی ازبندرعباس کانتینر معمولی",
+                          "ازتورغندی کانتینر معمولی ازبندرعباس کانتینر یخچالی",
+                          "ازتورغندی کانتینر یخچالی ازبندرعباس کانتینر یخچالی",
+                        ],
+                      },
+                      {
+                        label: "حیرتان",
+                        sublabel: "Hairatan — Uzbekistan",
+                        color: "purple",
+                        options: [
+                          "ازحیرتان کانتینر معمولی ازبندرعباس کانتینر معمولی",
+                          "ازحیرتان کانتینر معمولی ازبندرعباس کانتینر یخچالی",
+                          "ازحیرتان کانتینر یخچالی ازبندرعباس کانتینر یخچالی",
+                        ],
+                      },
+                      {
+                        label: "سپین بولدک",
+                        sublabel: "Spin Boldak — Pakistan",
+                        color: "yellow",
+                        options: [
+                          "ازسپین بولدک کانتینر معمولی ازبندرعباس کانتینر معمولی",
+                          "ازسپین بولدک کانتینر معمولی ازبندرعباس کانتینر یخچالی",
+                          "ازسپین بولدک کانتینر یخچالی ازبندرعباس کانتینر یخچالی",
+                        ],
+                      },
+                      {
+                        label: "نمیروز",
+                        sublabel: "Nimroz — Iran/Sistan",
+                        color: "red",
+                        options: [
+                          "ازنمیروز کانتینر معمولی ازبندرعباس کانتینر معمولی",
+                          "ازنمیروز کانتینر معمولی ازبندرعباس کانتینر یخچالی",
+                          "ازنمیروز کانتینر یخچالی ازبندرعباس کانتینر یخچالی",
+                          "ازنمیروز کانتینر یخچالی ازبندرعباس کانتینر معمولی",
+                        ],
+                      },
+                    ].map((group) => {
+                      const colorMap: Record<string, { badge: string; pill: string; active: string }> = {
+                        orange:  { badge: "border-orange-200 bg-orange-100 text-orange-800",  pill: "border-orange-200 bg-white text-orange-800 hover:border-orange-400 hover:bg-orange-50",  active: "border-orange-500 bg-orange-500 text-white shadow-sm" },
+                        blue:    { badge: "border-blue-200 bg-blue-100 text-blue-800",        pill: "border-blue-200 bg-white text-blue-800 hover:border-blue-400 hover:bg-blue-50",          active: "border-blue-500 bg-blue-500 text-white shadow-sm" },
+                        green:   { badge: "border-emerald-200 bg-emerald-100 text-emerald-800", pill: "border-emerald-200 bg-white text-emerald-800 hover:border-emerald-400 hover:bg-emerald-50", active: "border-emerald-500 bg-emerald-500 text-white shadow-sm" },
+                        purple:  { badge: "border-purple-200 bg-purple-100 text-purple-800",  pill: "border-purple-200 bg-white text-purple-800 hover:border-purple-400 hover:bg-purple-50",  active: "border-purple-500 bg-purple-500 text-white shadow-sm" },
+                        yellow:  { badge: "border-amber-200 bg-amber-100 text-amber-800",     pill: "border-amber-200 bg-white text-amber-800 hover:border-amber-400 hover:bg-amber-50",      active: "border-amber-500 bg-amber-500 text-white shadow-sm" },
+                        red:     { badge: "border-red-200 bg-red-100 text-red-800",           pill: "border-red-200 bg-white text-red-800 hover:border-red-400 hover:bg-red-50",              active: "border-red-500 bg-red-500 text-white shadow-sm" },
+                      }
+                      const c = colorMap[group.color]
+                      return (
+                        <div key={group.label}>
+                          {/* Group header */}
+                          <div className="mb-1.5 flex items-center gap-2">
+                            <span className={`rounded-full border px-2 py-0.5 font-[vazirmatn] text-[11px] font-extrabold ${c.badge}`}>
+                              {group.label}
+                            </span>
+                            <span className="text-[10px] font-medium text-slate-400">{group.sublabel}</span>
+                          </div>
+                          {/* Pills */}
+                          <div className="flex flex-wrap gap-1.5">
+                            {group.options.map((option) => {
+                              const isActive = formData.cargo_route_note === option
+                              return (
+                                <button
+                                  key={option}
+                                  type="button"
+                                  onClick={() => setFormData((prev) => ({ ...prev, cargo_route_note: option }))}
+                                  className={`rounded-lg border px-2.5 py-1.5 font-[vazirmatn] text-xs font-bold leading-tight transition-all active:scale-95 ${isActive ? c.active : c.pill}`}
+                                >
+                                  {option
+                                    .replace("ازبندرعباس", "← ازبندرعباس")
+                                    .split("← ")
+                                    .map((part, i) => (
+                                      <span key={i} className={i === 1 ? "block opacity-80" : "block"}>
+                                        {i === 1 ? "← " + part : part}
+                                      </span>
+                                    ))}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
                 {/* Live Weights & Calculation Metrics KPI Cards */}
                 {(() => {
                   const liveCargoCalc = calculateMultiCargo(
@@ -8756,7 +8987,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               </div>
 
               {/* Right: Primary Print & PDF Download Buttons */}
-              <div className="flex items-center gap-1.5 ml-auto">
+              <div className="flex flex-wrap items-center justify-end gap-1.5 ml-auto min-w-0">
                 <Button
                   type="button"
                   size="sm"
@@ -8765,12 +8996,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   disabled={isSaving}
                   className="h-8 px-2.5 rounded-lg border-slate-200 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs shadow-2xs cursor-pointer gap-1.5"
                 >
-                  <Eye className="h-3.5 w-3.5 text-[#583184]" />
+                  <Eye className="h-3.5 w-3.5 text-[#0284c7]" />
                   <span className="hidden sm:inline">Preview Documents</span>
                   <span className="sm:hidden">Preview</span>
                 </Button>
 
-                <div className="inline-flex items-center rounded-lg shadow-sm shadow-purple-950/20">
+                <CopyWhatsAppButton bol={{ ...formData, bol_number: bolNumber, issue_date: issueDate }} />
+
+                <div className="inline-flex items-center rounded-lg shadow-sm shadow-sky-950/20">
                   <Button
                     type="button"
                     size="sm"
@@ -8778,11 +9011,12 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     onMouseEnter={() => void preloadBOLPDFGeneration()}
                     onFocus={() => void preloadBOLPDFGeneration()}
                     disabled={isSaving}
-                    className="h-8 px-3 rounded-r-none bg-gradient-to-r from-[#583184] to-[#432366] hover:from-[#4a2673] hover:to-[#351b52] text-white font-extrabold text-xs cursor-pointer gap-1.5"
+                    className="h-8 px-3 rounded-r-none bg-gradient-to-r from-[#0369a1] to-[#0284c7] hover:from-[#0284c7] hover:to-[#0369a1] text-white font-extrabold text-xs cursor-pointer gap-1.5"
                     title="Download Complete PDF (Page 1: BOL, Page 2: Packing List, Page 3: Sticker Label)"
                   >
                     {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                    <span>Download Complete PDF</span>
+                    <span className="hidden sm:inline">Download Complete PDF</span>
+                    <span className="sm:hidden">Complete PDF</span>
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -8790,7 +9024,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         type="button"
                         size="sm"
                         disabled={isSaving}
-                        className="h-8 px-1.5 rounded-l-none border-l border-white/20 bg-[#432366] hover:bg-[#351b52] text-white cursor-pointer"
+                        className="h-8 px-1.5 rounded-l-none border-l border-white/20 bg-[#0284c7] hover:bg-[#0369a1] text-white cursor-pointer"
                         title="Download options"
                       >
                         <ChevronDown className="h-3.5 w-3.5" />
@@ -8798,7 +9032,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-64 rounded-xl p-1.5 shadow-xl">
                       <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-slate-500">Shipping documents</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => void handleShippingDocumentsDownload("all")} className="gap-2 text-xs font-black text-[#583184] cursor-pointer">
+                      <DropdownMenuItem onClick={() => void handleShippingDocumentsDownload("all")} className="gap-2 text-xs font-black text-[#0284c7] cursor-pointer">
                         <Package className="h-3.5 w-3.5" />Download Complete PDF (All 3 Documents)
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
