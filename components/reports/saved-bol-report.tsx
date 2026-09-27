@@ -1721,7 +1721,7 @@ export function SavedBolReport({
                   <Button
                     type="button"
                     onClick={handlePrint}
-                    className="h-8 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-black text-xs shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all"
+                    className="h-8.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-extrabold text-xs shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all"
                     title="Print Saved BOL Report (A4 Landscape / Portrait)"
                   >
                     <Printer className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
@@ -1732,7 +1732,7 @@ export function SavedBolReport({
                     type="button"
                     onClick={handleGeneratePdf}
                     disabled={isGeneratingPdf}
-                    className="h-8 px-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-60"
+                    className="h-8.5 px-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-extrabold text-xs shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-60"
                     title="Download complete report as PDF"
                   >
                     {isGeneratingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
@@ -1743,7 +1743,7 @@ export function SavedBolReport({
                     type="button"
                     variant="outline"
                     onClick={handleExportExcel}
-                    className="h-8 px-2.5 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100 font-extrabold text-xs shadow-2xs flex items-center gap-1 cursor-pointer"
+                    className="h-8.5 px-3 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100 font-extrabold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer"
                     title="Export table data to Excel (.xlsx)"
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -1757,19 +1757,19 @@ export function SavedBolReport({
                     type="button"
                     variant="outline"
                     onClick={() => setIsFitScreen(!isFitScreen)}
-                    className={`h-8 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                    className={`h-8.5 px-3 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
                       isFitScreen
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 shadow-2xs"
+                        ? "border-blue-600 bg-blue-600 text-white shadow-xs"
                         : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
                     }`}
                     title={isFitScreen ? "Switch to Scrollable Wide View" : "Fit all columns on screen at once without horizontal scrolling"}
                   >
-                    {isFitScreen ? <Minimize2 className="w-3.5 h-3.5 text-blue-600" /> : <Maximize2 className="w-3.5 h-3.5 text-slate-600" />}
+                    {isFitScreen ? <Minimize2 className="w-3.5 h-3.5 text-white" /> : <Maximize2 className="w-3.5 h-3.5 text-slate-600" />}
                     <span>{isFitScreen ? "Fit Screen (فعال)" : "Wide Scroll"}</span>
                   </Button>
 
                   {/* Density Toggle (Compact vs Normal) */}
-                  <div className="flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5 bg-slate-100 dark:bg-slate-800">
+                  <div className="flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5 bg-slate-100 dark:bg-slate-800 h-8.5">
                     <button
                       type="button"
                       onClick={() => setTableDensity("compact")}
@@ -1797,8 +1797,8 @@ export function SavedBolReport({
                   </div>
 
                   {/* Rows per page dropdown */}
-                  <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-0.5 h-8">
-                    <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">Rows:</span>
+                  <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-0.5 h-8.5">
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">Rows:</span>
                     <select
                       value={pageSize}
                       onChange={(e) => {
@@ -1818,37 +1818,52 @@ export function SavedBolReport({
                 </div>
               </div>
 
-              {/* Data Table with Zero-Scroll Fit-Screen Option */}
-              <div className={`w-full ${isFitScreen ? "overflow-x-hidden" : "overflow-x-auto"} print:overflow-visible border border-slate-200/90 dark:border-slate-800 print:border-none rounded-2xl print:rounded-none max-h-[calc(100vh-210px)] print:max-h-none overflow-y-auto print:overflow-y-visible scrollbar-thin`}>
+              {/* Data Table with Rebalanced Column Proportions */}
+              <div className={`w-full ${isFitScreen ? "overflow-x-hidden" : "overflow-x-auto"} print:overflow-visible border border-slate-200/90 dark:border-slate-800 print:border-none rounded-2xl print:rounded-none max-h-[calc(100vh-210px)] print:max-h-none overflow-y-auto print:overflow-y-visible shadow-xs bg-white dark:bg-slate-900 scrollbar-thin`}>
                 <table className={`w-full ${isFitScreen ? "table-fixed" : "min-w-[1300px]"} text-xs text-left border-collapse`}>
                   {isFitScreen && (
-                    <colgroup><col style={{ width: "2.8%" }}/><col style={{ width: "9.2%" }}/><col style={{ width: "6.8%" }}/><col style={{ width: "7.5%" }}/><col style={{ width: "6.2%" }}/><col style={{ width: "13.5%" }}/><col style={{ width: "13.5%" }}/><col style={{ width: "6.5%" }}/><col style={{ width: "8.5%" }}/><col style={{ width: "7.0%" }}/><col style={{ width: "7.0%" }}/><col style={{ width: "5.0%" }}/><col style={{ width: "8.0%" }}/><col style={{ width: "2.5%" }}/></colgroup>
+                    <colgroup>
+                      <col style={{ width: "2.5%" }} />{/* # */}
+                      <col style={{ width: "7.5%" }} />{/* BOL No */}
+                      <col style={{ width: "6.0%" }} />{/* Date */}
+                      <col style={{ width: "7.5%" }} />{/* Truck No */}
+                      <col style={{ width: "5.0%" }} />{/* Invoice */}
+                      <col style={{ width: "15.0%" }} />{/* Shipper */}
+                      <col style={{ width: "15.0%" }} />{/* Consignee */}
+                      <col style={{ width: "4.0%" }} />{/* Route */}
+                      <col style={{ width: "11.0%" }} />{/* Packages */}
+                      <col style={{ width: "6.5%" }} />{/* Gross Wt */}
+                      <col style={{ width: "6.5%" }} />{/* Net Wt */}
+                      <col style={{ width: "4.0%" }} />{/* Rate/KG */}
+                      <col style={{ width: "7.5%" }} />{/* Value */}
+                      <col style={{ width: "2.0%" }} />{/* PDF */}
+                    </colgroup>
                   )}
-                  <thead className="sticky top-0 z-10 bg-slate-900 text-white shadow-sm print:static print:table-header-group">
-                    <tr className="border-b-2 border-blue-600 bg-slate-900 text-white">
-                      <th className={`px-1.5 font-black text-white text-center ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-xs"}`}>#</th>
-                      <th className={`px-2 font-black text-white ${tableDensity === "compact" ? "py-2 text-[10.5px]" : "py-2.5 text-xs"}`}>BOL No.</th>
-                      <th className={`px-1.5 font-black text-white ${tableDensity === "compact" ? "py-2 text-[10.5px]" : "py-2.5 text-xs"}`}>Date</th>
-                      <th className={`px-2 font-black text-white ${tableDensity === "compact" ? "py-2 text-[10.5px]" : "py-2.5 text-xs"}`}>Truck No.</th>
-                      <th className={`px-1.5 font-black text-white ${tableDensity === "compact" ? "py-2 text-[10.5px]" : "py-2.5 text-xs"}`}>Invoice</th>
-                      <th className={`px-2 font-black text-white ${tableDensity === "compact" ? "py-2 text-[10.5px]" : "py-2.5 text-xs"}`}>Shipper</th>
-                      <th className={`px-2 font-black text-white ${tableDensity === "compact" ? "py-2 text-[10.5px]" : "py-2.5 text-xs"}`}>Consignee</th>
-                      <th className={`px-1.5 font-black text-white ${tableDensity === "compact" ? "py-2 text-[10.5px]" : "py-2.5 text-xs"}`}>Route</th>
-                      <th className={`px-2 font-black text-white text-right ${tableDensity === "compact" ? "py-2 text-[10.5px]" : "py-2.5 text-xs"}`}>Packages</th>
-                      <th className={`px-1.5 font-black text-white text-right ${tableDensity === "compact" ? "py-2 text-[10.5px]" : "py-2.5 text-xs"}`}>Gross Wt</th>
-                      <th className={`px-1.5 font-black text-white text-right ${tableDensity === "compact" ? "py-2 text-[10.5px]" : "py-2.5 text-xs"}`}>Net Wt</th>
-                      <th className={`px-1.5 font-black text-white text-right ${tableDensity === "compact" ? "py-2 text-[10.5px]" : "py-2.5 text-xs"}`}>Rate/KG</th>
-                      <th className={`px-2 font-black text-white text-right ${tableDensity === "compact" ? "py-2 text-[10.5px]" : "py-2.5 text-xs"}`}>Value</th>
-                      <th className={`px-1 font-black text-white text-center print:hidden no-print ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-xs"}`}>PDF</th>
+                  <thead className="sticky top-0 z-10 bg-slate-900 text-slate-100 shadow-sm print:static print:table-header-group">
+                    <tr className="border-b border-slate-700 bg-slate-900 text-slate-100">
+                      <th className={`px-1.5 font-extrabold text-slate-300 text-center uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>#</th>
+                      <th className={`px-2 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>BOL No.</th>
+                      <th className={`px-1.5 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Date</th>
+                      <th className={`px-2 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Truck No.</th>
+                      <th className={`px-1.5 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Invoice</th>
+                      <th className={`px-2 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Shipper</th>
+                      <th className={`px-2 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Consignee</th>
+                      <th className={`px-1.5 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Route</th>
+                      <th className={`px-2 font-extrabold text-slate-200 text-right uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Packages</th>
+                      <th className={`px-1.5 font-extrabold text-slate-200 text-right uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Gross Wt</th>
+                      <th className={`px-1.5 font-extrabold text-slate-200 text-right uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Net Wt</th>
+                      <th className={`px-1.5 font-extrabold text-slate-200 text-right uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Rate/KG</th>
+                      <th className={`px-2 font-extrabold text-slate-200 text-right uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Value</th>
+                      <th className={`px-1 font-extrabold text-slate-300 text-center uppercase tracking-wider print:hidden no-print ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>PDF</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                     {paginatedRows.map((doc, idx) => {
                       const rowNum = pageSize === "all" ? idx + 1 : (currentPage - 1) * pageSize + idx + 1
                       const isSelected = selectedIds.includes(doc.id)
                       const isShipperRtl = isRtlText(doc.shipper_name)
                       const isConsigneeRtl = isRtlText(doc.consignee_name)
-                      const cellPad = tableDensity === "compact" ? "py-1.5 px-1.5 text-[10.5px]" : "py-2 px-2 text-xs"
+                      const cellPad = tableDensity === "compact" ? "py-1.5 px-2 text-[10.5px]" : "py-2.5 px-2.5 text-xs"
                       const bolInfo = formatDisplayBolNo(doc.bol_number)
                       const compactDate = formatCompactDate(doc.issue_date || doc.created_at)
                       const truckText = extractTruckNo(doc) || "-"
@@ -1865,81 +1880,87 @@ export function SavedBolReport({
                         <tr
                           key={`${doc.id}-${idx}`}
                           onClick={() => setQuickViewDoc(doc)}
-                          className={`cursor-pointer transition-colors ${
+                          className={`cursor-pointer transition-colors duration-150 ${
                             isSelected
-                              ? "bg-blue-50/80 dark:bg-blue-950/60 font-semibold"
+                              ? "bg-blue-50/90 dark:bg-blue-950/70 ring-1 ring-inset ring-blue-300 dark:ring-blue-700"
                               : idx % 2 === 1
-                              ? "bg-slate-50/50 dark:bg-slate-850/40 hover:bg-blue-50/60 dark:hover:bg-blue-950/40"
-                              : "bg-white dark:bg-slate-900 hover:bg-blue-50/60 dark:hover:bg-blue-950/40"
+                              ? "bg-slate-50/60 dark:bg-slate-800/30 hover:bg-blue-50/70 dark:hover:bg-blue-950/40"
+                              : "bg-white dark:bg-slate-900 hover:bg-blue-50/70 dark:hover:bg-blue-950/40"
                           }`}
                         >
-                          <td className={`${cellPad} font-bold text-slate-400 text-center truncate`}>{rowNum}</td>
-                          <td className={`${cellPad} font-black font-mono text-slate-950 dark:text-blue-200 truncate`} title={`Full BOL: ${bolInfo.full}`}>
-                            <span className="truncate">{bolInfo.display}</span>
+                          <td className={`${cellPad} font-bold text-slate-400 dark:text-slate-500 text-center tabular-nums`}>{rowNum}</td>
+                          <td className={`${cellPad} truncate`} title={`Full BOL: ${bolInfo.full}`}>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded font-mono font-bold text-[11px] bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 border border-blue-200/80 dark:border-blue-800/80 tracking-tight truncate max-w-full">
+                              {bolInfo.display}
+                            </span>
                           </td>
-                          <td className={`${cellPad} font-bold font-mono text-slate-600 dark:text-slate-400 truncate`} title={formatDisplayDate(doc.issue_date || doc.created_at)}>
+                          <td className={`${cellPad} font-medium text-slate-600 dark:text-slate-400 tabular-nums truncate`} title={formatDisplayDate(doc.issue_date || doc.created_at)}>
                             <span className="truncate">{compactDate}</span>
                           </td>
-                          <td className={`${cellPad} font-bold font-mono text-amber-900 dark:text-amber-300 truncate`} title={`${truckText}${doc.driver_rent ? ` • Driver Rent: ${doc.driver_rent}` : ""}`}>
+                          <td className={`${cellPad} truncate`} title={`${truckText}${doc.driver_rent ? ` • Driver Rent: ${doc.driver_rent}` : ""}`}>
                             <div className="flex flex-col min-w-0">
-                              <span className="truncate">{truckText}</span>
+                              <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{truckText}</span>
                               {doc.driver_rent && (
-                                <span className="text-[9.5px] font-black text-amber-700 dark:text-amber-400 truncate" title={`Driver Rent: ${doc.driver_rent}`}>
+                                <span className="inline-flex items-center text-[9px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800/70 rounded px-1 py-0.2 mt-0.5 w-fit max-w-full truncate" title={`Driver Rent: ${doc.driver_rent}`}>
                                   {doc.driver_rent}
                                 </span>
                               )}
                             </div>
                           </td>
-                          <td className={`${cellPad} font-bold font-mono text-slate-700 dark:text-slate-300 truncate`} title={invText}>
+                          <td className={`${cellPad} truncate`} title={invText}>
                             {invText !== "-" && invText !== "NO" ? (
-                              <span className="inline-block px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-[10px] truncate max-w-full font-black">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold tracking-tight truncate max-w-full">
                                 {invText}
                               </span>
                             ) : (
-                              <span className="text-slate-400">-</span>
+                              <span className="text-slate-300 dark:text-slate-600 font-light">—</span>
                             )}
                           </td>
                           <td
-                            className={`${cellPad} font-bold text-slate-900 dark:text-slate-100 truncate ${
+                            className={`${cellPad} font-semibold text-slate-900 dark:text-slate-100 truncate ${
                               isShipperRtl ? "text-right font-[vazirmatn]" : ""
                             }`}
                             dir={isShipperRtl ? "rtl" : "ltr"}
                             title={doc.shipper_name || "Missing"}
                           >
-                            {doc.shipper_name || <span className="text-red-500 italic">Missing</span>}
+                            {doc.shipper_name || <span className="text-rose-500 italic font-normal">Missing</span>}
                           </td>
                           <td
-                            className={`${cellPad} font-semibold text-slate-800 dark:text-slate-200 truncate ${
+                            className={`${cellPad} font-medium text-slate-800 dark:text-slate-200 truncate ${
                               isConsigneeRtl ? "text-right font-[vazirmatn]" : ""
                             }`}
                             dir={isConsigneeRtl ? "rtl" : "ltr"}
                             title={doc.consignee_name || "Missing"}
                           >
-                            {doc.consignee_name || <span className="text-red-500 italic">Missing</span>}
+                            {doc.consignee_name || <span className="text-rose-500 italic font-normal">Missing</span>}
                           </td>
-                          <td className={`${cellPad} font-semibold text-slate-600 dark:text-slate-400 truncate`} title={routeDisplay}>
-                            <span className="truncate">{routeDisplay}</span>
+                          <td className={`${cellPad} text-slate-500 dark:text-slate-400 truncate`} title={routeDisplay}>
+                            {routeDisplay !== "-" ? (
+                              <span className="truncate text-slate-700 dark:text-slate-300 font-medium">{routeDisplay}</span>
+                            ) : (
+                              <span className="text-slate-300 dark:text-slate-600 font-light">—</span>
+                            )}
                           </td>
-                          <td className={`${cellPad} font-bold font-mono text-right text-slate-800 dark:text-slate-200 truncate`} title={doc.number_of_packages || "-"}>
-                            <span className="truncate">{doc.number_of_packages || "-"}</span>
+                          <td className={`${cellPad} font-semibold tabular-nums text-right text-slate-800 dark:text-slate-200 truncate`} title={doc.number_of_packages || "-"}>
+                            <span className="truncate">{doc.number_of_packages || "—"}</span>
                           </td>
-                          <td className={`${cellPad} font-bold font-mono text-right text-slate-800 dark:text-slate-200 truncate`} title={doc.gross_weight || "-"}>
-                            <span className="truncate">{doc.gross_weight || "-"}</span>
+                          <td className={`${cellPad} font-semibold tabular-nums text-right text-slate-700 dark:text-slate-300 truncate`} title={doc.gross_weight || "-"}>
+                            <span className="truncate">{doc.gross_weight || "—"}</span>
                           </td>
-                          <td className={`${cellPad} font-bold font-mono text-right text-slate-800 dark:text-slate-200 truncate`} title={doc.net_weight || "-"}>
-                            <span className="truncate">{doc.net_weight || "-"}</span>
+                          <td className={`${cellPad} font-semibold tabular-nums text-right text-slate-700 dark:text-slate-300 truncate`} title={doc.net_weight || "-"}>
+                            <span className="truncate">{doc.net_weight || "—"}</span>
                           </td>
-                          <td className={`${cellPad} font-bold font-mono text-right text-blue-700 dark:text-blue-300 truncate`} title={doc.rate_per_kgs || "-"}>
-                            <span className="truncate">{doc.rate_per_kgs || "-"}</span>
+                          <td className={`${cellPad} font-semibold tabular-nums text-right text-blue-700 dark:text-blue-300 truncate`} title={doc.rate_per_kgs || "-"}>
+                            <span className="truncate">{doc.rate_per_kgs || "—"}</span>
                           </td>
-                          <td className={`${cellPad} font-black font-mono text-right text-emerald-800 dark:text-emerald-300 truncate`} title={doc.goods_value || "-"}>
-                            <span className="truncate">{doc.goods_value || "-"}</span>
+                          <td className={`${cellPad} font-bold tabular-nums text-right text-emerald-700 dark:text-emerald-400 truncate`} title={doc.goods_value || "-"}>
+                            <span className="truncate">{doc.goods_value || "—"}</span>
                           </td>
                           <td className={`${cellPad} text-center print:hidden no-print`}>
                             {doc.pdf_url ? (
-                              <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-xs" title="PDF Uploaded & Ready" />
+                              <span className="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-2xs" title="PDF Uploaded & Ready" />
                             ) : (
-                              <span className="inline-block w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700" title="No PDF Attached" />
+                              <span className="inline-flex items-center justify-center w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700" title="No PDF Attached" />
                             )}
                           </td>
                         </tr>
@@ -1955,25 +1976,25 @@ export function SavedBolReport({
                     )}
                   </tbody>
                   {activeReportData.length > 0 && (
-                    <tfoot className="sticky bottom-0 z-10 bg-slate-900 text-white font-bold print:static print:table-footer-group shadow-md">
-                      <tr className="border-t-2 border-blue-500">
-                        <td colSpan={8} className="py-2.5 px-2 text-right font-black text-white text-[11px] uppercase tracking-wide">
+                    <tfoot className="sticky bottom-0 z-10 bg-slate-900 text-white font-bold print:static print:table-footer-group shadow-lg border-t-2 border-blue-500">
+                      <tr className="bg-slate-900 text-white">
+                        <td colSpan={8} className="py-2.5 px-3 text-right font-black text-white text-[11px] uppercase tracking-wider">
                           SUBTOTAL ({activeReportData.length} BOLS):
                         </td>
-                        <td className="py-2.5 px-2 text-right font-mono font-black text-white text-[11px] truncate" title={`${overviewKpis.totalPackages.toLocaleString()} CTNS`}>
+                        <td className="py-2.5 px-2 text-right tabular-nums font-bold text-white text-[11px] truncate" title={`${overviewKpis.totalPackages.toLocaleString()} CTNS`}>
                           {overviewKpis.totalPackages.toLocaleString()}
                         </td>
-                        <td className="py-2.5 px-1.5 text-right font-mono font-black text-white text-[10.5px] truncate" title={`${overviewKpis.totalGrossWeightKg.toLocaleString()} KG`}>
+                        <td className="py-2.5 px-1.5 text-right tabular-nums font-semibold text-slate-200 text-[10.5px] truncate" title={`${overviewKpis.totalGrossWeightKg.toLocaleString()} KG`}>
                           {overviewKpis.totalGrossWeightKg.toLocaleString()} KG
                         </td>
-                        <td className="py-2.5 px-1.5 text-right font-mono font-black text-white text-[10.5px] truncate" title={`${overviewKpis.totalNetWeightKg.toLocaleString()} KG`}>
+                        <td className="py-2.5 px-1.5 text-right tabular-nums font-semibold text-amber-300 text-[10.5px] truncate" title={`${overviewKpis.totalNetWeightKg.toLocaleString()} KG`}>
                           {overviewKpis.totalNetWeightKg.toLocaleString()} KG
                         </td>
-                        <td className="py-2.5 px-1 text-right font-mono font-bold text-slate-400 text-[10.5px]">
+                        <td className="py-2.5 px-1 text-right tabular-nums font-medium text-slate-500 text-[10.5px]">
                           —
                         </td>
-                        <td className="py-2.5 px-2 text-right font-mono font-black text-emerald-400 text-[11px] truncate">
-                          $${(overviewKpis.currencyTotals.find((c) => c.currency === "USD")?.amount || 0).toLocaleString(undefined, {
+                        <td className="py-2.5 px-2 text-right tabular-nums font-extrabold text-emerald-400 text-[11.5px] truncate">
+                          ${(overviewKpis.currencyTotals.find((c) => c.currency === "USD")?.amount || 0).toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}
