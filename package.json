@@ -26,7 +26,7 @@
     "dev": "next dev --webpack -p 3001",
     "electron:dev": "concurrently -k -s first \"npm:dev\" \"npm:electron:dev:launch\"",
     "electron:dev:launch": "wait-on http://127.0.0.1:3001 && cross-env ELECTRON_START_URL=http://127.0.0.1:3001 npm run build:electron && electron .",
-    "build": "next build --webpack",
+    "build": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" next build --webpack",
     "build:electron": "tsc -p tsconfig.electron.json",
     "build:backend": "node scripts/build-backend.cjs",
     "build:frontend": "node scripts/local-production.cjs build",
