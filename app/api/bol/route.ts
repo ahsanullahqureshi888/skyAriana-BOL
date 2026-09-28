@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import * as localStorage from "@/lib/services/local-storage-service"
 import { getNextAtomicBolNumber, getNextAvailableBolNumber, advanceBolSequenceIfHigher } from "@/lib/services/bol-sequence"
+import { getFastApiBaseUrl, isFastApiHealthy } from "@/lib/api/backend-url"
+import seedBolsData from "@/lib/data/seed-bols.json"
 
 function extractBolNumberSuffix(bolNum: any): number {
   if (!bolNum) return 0
@@ -26,7 +28,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ bolNumber })
     } catch (err) {
       console.error("[bol API] Error generating next number:", err)
-      return NextResponse.json({ bolNumber: "BOL-NSA598" })
+      return NextResponse.json({ bolNumber: "BOL-NSA619" })
     }
   }
 
@@ -48,24 +50,25 @@ export async function GET(request: Request) {
 
   // 1. Ultra-Fast FastAPI SQLite Backend with server-side pagination (<10ms)
   try {
-    const fastApiUrl = new URL("http://127.0.0.1:8000/api/v1/bols")
-    const searchParam = searchParams.get("search") || searchParams.get("q")
-    if (searchParam) fastApiUrl.searchParams.set("q", searchParam)
-    const pageParam = searchParams.get("page")
-    if (pageParam) fastApiUrl.searchParams.set("page", pageParam)
-    const pageSizeParam = searchParams.get("page_size") || searchParams.get("limit")
-    if (pageSizeParam) fastApiUrl.searchParams.set("page_size", pageSizeParam)
+    if (await isFastApiHealthy()) {
+      const fastApiUrl = new URL(`${getFastApiBaseUrl()}/api/v1/bols`)
+      const searchParam = searchParams.get("search") || searchParams.get("q")
+      if (searchParam) fastApiUrl.searchParams.set("q", searchParam)
+      const pageParam = searchParams.get("page")
+      if (pageParam) fastApiUrl.searchParams.set("page", pageParam)
+      const pageSizeParam = searchParams.get("page_size") || searchParams.get("limit")
+      if (pageSizeParam) fastApiUrl.searchParams.set("page_size", pageSizeParam)
 
-    const filterKeys = ["status", "date_from", "date_to", "shipper", "consignee", "notify_party", "company_id"]
-    for (const key of filterKeys) {
-      const val = searchParams.get(key)
-      if (val) fastApiUrl.searchParams.set(key, val)
-    }
+      const filterKeys = ["status", "date_from", "date_to", "shipper", "consignee", "notify_party", "company_id"]
+      for (const key of filterKeys) {
+        const val = searchParams.get(key)
+        if (val) fastApiUrl.searchParams.set(key, val)
+      }
 
-    const fastRes = await fetch(fastApiUrl.toString(), {
-      signal: AbortSignal.timeout(600),
-      headers: { Accept: "application/json" },
-    })
+      const fastRes = await fetch(fastApiUrl.toString(), {
+        signal: AbortSignal.timeout(600),
+        headers: { Accept: "application/json" },
+      })
     if (fastRes.ok) {
       const fastResult = await fastRes.json()
       if (fastResult && Array.isArray(fastResult.items)) {
@@ -79,6 +82,7 @@ export async function GET(request: Request) {
         })
       }
     }
+  }
   } catch {
     // Seamless fallback to Supabase and local storage
   }
@@ -125,6 +129,20 @@ export async function GET(request: Request) {
              }
           }
         }
+      }
+    }
+
+    if (mergedByNumber.size === 0 && Array.isArray(seedBolsData) && seedBolsData.length > 0) {
+      for (const bol of seedBolsData as any[]) {
+        const key = bol.bol_number || bol.id
+        if (key && !mergedByNumber.has(key)) {
+          mergedByNumber.set(key, bol)
+        }
+      }
+      // If cloud Supabase is available, sync seed BOLs in the background
+      if (supabase && (!data || data.length === 0)) {
+        const toSync = Array.from(mergedByNumber.values()).slice(0, 20)
+        supabase.from("bill_of_lading").upsert(toSync, { onConflict: "bol_number" }).then(() => {}).catch(() => {})
       }
     }
 
@@ -316,31 +334,33 @@ export async function POST(request: Request) {
 
       // Forward creation to FastAPI SQLite backend (<10ms)
       try {
-        await fetch("http://127.0.0.1:8000/api/v1/bols", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify({
-            bol_number: bolNumber,
-            issue_date: bolData.issue_date,
-            origin: bolData.origin || "Bandar Abbas",
-            destination: bolData.destination || "Kabul",
-            border_station: bolData.border_station || "Islam Qala",
-            driver_name: bolData.driver_name || "",
-            father_name: bolData.driver_father_name || bolData.father_name || null,
-            driver_rent: parseFloat(bolData.driver_rent || "0") || 0,
-            carton_count: parseInt(bolData.number_of_packages || "0", 10) || 0,
-            gross_weight_kg: parseFloat(bolData.gross_weight || "0") || 0,
-            net_weight_kg: parseFloat(bolData.net_weight || "0") || 0,
-            cargo_description: bolData.cargo_description || bolData.goods_description || null,
-            status: "active",
-            shipper_name: bolData.shipper_name || null,
-            consignee_name: bolData.consignee_name || null,
-            notify_party_name: bolData.notify_party || null,
-            truck_number: bolData.truck_number || null,
-            driver_phone: bolData.driver_contact || null,
-          }),
-          signal: AbortSignal.timeout(1200),
-        })
+        if (await isFastApiHealthy()) {
+          await fetch(`${getFastApiBaseUrl()}/api/v1/bols`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({
+              bol_number: bolNumber,
+              issue_date: bolData.issue_date,
+              origin: bolData.origin || "Bandar Abbas",
+              destination: bolData.destination || "Kabul",
+              border_station: bolData.border_station || "Islam Qala",
+              driver_name: bolData.driver_name || "",
+              father_name: bolData.driver_father_name || bolData.father_name || null,
+              driver_rent: parseFloat(bolData.driver_rent || "0") || 0,
+              carton_count: parseInt(bolData.number_of_packages || "0", 10) || 0,
+              gross_weight_kg: parseFloat(bolData.gross_weight || "0") || 0,
+              net_weight_kg: parseFloat(bolData.net_weight || "0") || 0,
+              cargo_description: bolData.cargo_description || bolData.goods_description || null,
+              status: "active",
+              shipper_name: bolData.shipper_name || null,
+              consignee_name: bolData.consignee_name || null,
+              notify_party_name: bolData.notify_party || null,
+              truck_number: bolData.truck_number || null,
+              driver_phone: bolData.driver_contact || null,
+            }),
+            signal: AbortSignal.timeout(1200),
+          })
+        }
       } catch {}
 
       // Automatically connect BOL to Accounting Ledger

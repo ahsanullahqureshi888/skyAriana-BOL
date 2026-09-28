@@ -47,12 +47,14 @@ import {
   Banknote,
   Wallet,
   FolderArchive,
+  Compass,
 } from "lucide-react"
 import { generateBOLPDFBlob, savePDFToDevice, buildBolSmartFileName } from "@/lib/utils/pdf-upload"
-import { generateShippingDocumentsPDF, deriveShippingDocumentData, buildShippingDocumentFileName } from "@/lib/utils/shipping-documents"
+import { generateShippingDocumentsPDF, deriveShippingDocumentData, buildShippingDocumentFileName, extractInvoiceNumber } from "@/lib/utils/shipping-documents"
 import { CloudSyncModal } from "./cloud-sync-modal"
 import { useApp } from "@/lib/app-context"
 import { SavedBolReport } from "@/components/reports/saved-bol-report"
+import { extractBolRoute } from "@/lib/reports/parsers"
 import type { ReportTab } from "@/lib/reports/types"
 
 type DocumentCategoryKey = "all" | "latest" | "account" | "export" | "import" | "with-pdf"
@@ -95,6 +97,18 @@ interface SavedDocument {
   container_numbers?: string
   seal_numbers?: string
   measurement?: string
+  cargo_route_note?: string
+  routes?: Array<{
+    id?: string
+    location?: string
+    locationPersian?: string
+    stopOrder?: number
+    transportMode?: string
+    stopLabel?: string
+  }>
+  borderCrossing?: string
+  route_name?: string
+  driverFreight?: string
   created_at: string
   pdf_url?: string | null
   pdf_uploaded_at?: string | null
@@ -130,16 +144,7 @@ const categoryButtons: { key: DocumentCategoryKey; label: string }[] = [
 ]
 
 function extractInvoiceNo(doc: SavedDocument): string {
-  if (doc.invoice_no && doc.invoice_no.trim()) return doc.invoice_no.trim()
-  if (doc.invoice_number && doc.invoice_number.trim()) return doc.invoice_number.trim()
-  const texts = [
-    doc.cargo_description,
-    doc.goods_description,
-    doc.description_of_goods,
-    doc.remarks,
-  ].filter(Boolean).join(" ")
-  const match = texts.match(/(?:invoice|inv|fakt[ou]r|فاکتور)\s*(?:no|number|#)?\s*[:#-]?\s*([A-Z0-9][A-Z0-9/_-]*)/i)
-  return match?.[1]?.trim() || ""
+  return extractInvoiceNumber(doc)
 }
 
 interface DocumentGridCardProps {
@@ -245,15 +250,29 @@ const DocumentGridCard = memo(function DocumentGridCard({
         </div>
       </div>
 
-      {/* Route / Ports (if present) */}
-      {(doc.port_of_loading || doc.port_of_discharge || doc.origin_country || doc.destination_country) && (
-        <div className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100/80 border border-slate-200/70 rounded-lg px-2 py-0.5 relative z-10 truncate">
-          <MapPin className="h-3 w-3 text-blue-600 shrink-0" />
-          <span className="truncate">
-            {doc.port_of_loading || doc.origin_country} ➔ {doc.port_of_discharge || doc.destination_country}
-          </span>
-        </div>
-      )}
+      {/* Route / Corridor Badge */}
+      {(() => {
+        const routeInfo = extractBolRoute(doc)
+        if (routeInfo.display === "—") return null
+        return (
+          <div className="mt-1.5 flex items-center gap-1.5 text-[10px] font-bold text-indigo-950 dark:text-indigo-200 bg-indigo-50/90 dark:bg-indigo-950/50 border border-indigo-200/80 dark:border-indigo-800/60 rounded-xl px-2.5 py-1 relative z-10 truncate" title={`Transit Route: ${routeInfo.display}`}>
+            <Compass className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span className="truncate" dir={routeInfo.isPersian ? "rtl" : "ltr"}>
+              {routeInfo.shortDisplay || routeInfo.display}
+            </span>
+            <div className="ml-auto flex items-center gap-1 shrink-0">
+              {routeInfo.isFullReefer ? (
+                <span className="text-[8.5px] font-black text-cyan-800 dark:text-cyan-200 bg-cyan-100 dark:bg-cyan-950/80 border border-cyan-300 dark:border-cyan-800 rounded px-1">❄️ Full Reefer</span>
+              ) : routeInfo.hasReefer ? (
+                <span className="text-[8.5px] font-black text-cyan-700 dark:text-cyan-300">❄️ Reefer</span>
+              ) : null}
+              {routeInfo.hasSwitchBl && (
+                <span className="text-[8.5px] font-black text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border border-purple-300 dark:border-purple-800 rounded px-1">🔄 Switch BL</span>
+              )}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Cargo & Weight Details Box */}
       <div className="mt-2 rounded-2xl bg-gradient-to-br from-blue-50/60 via-indigo-50/40 to-slate-50 border border-blue-100/80 p-2.5 text-xs text-slate-700 space-y-1.5 relative z-10">
@@ -561,7 +580,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
 
       if (response.ok) {
         const result = await response.json()
-        if (result.source === "fastapi-sqlite" && Array.isArray(result.data)) {
+        if ((result.total !== undefined || result.source === "fastapi-sqlite") && Array.isArray(result.data)) {
           setDocuments(result.data)
           setServerTotal(result.total ?? result.data.length)
           setCurrentPage(result.page ?? pageToFetch)
@@ -1350,7 +1369,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     try {
       const response = await fetch("/api/bol?action=next-number")
       const result = await response.json()
-      const newBolNumber = result.bolNumber || "BOL-NSA598"
+      const newBolNumber = result.bolNumber || "BOL-NSA619"
 
       const clonedDoc = {
         ...doc,
@@ -1426,7 +1445,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
           doc.bol_number || doc.id,
           doc.issue_date || "",
         )
-        const fileName = buildShippingDocumentFileName("all", shippingDocData)
+        const fileName = buildBolSmartFileName(doc, doc.bol_number || doc.id, ".pdf")
         let pdfBlob: Blob
         try {
           pdfBlob = await generateShippingDocumentsPDF({
@@ -2330,13 +2349,54 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
             )}
 
             {activeCategory === "account" ? null : filteredDocuments.length === 0 ? (
-              <div className="flex min-h-80 items-center justify-center">
-                <div className="max-w-sm rounded-3xl border border-dashed border-blue-300 bg-white/90 p-8 text-center shadow-lg backdrop-blur-xl">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3">
-                    <FileText className="h-7 w-7" />
+              <div className="flex min-h-80 items-center justify-center p-4">
+                <div className="max-w-md w-full rounded-3xl border border-dashed border-blue-300 dark:border-blue-800 bg-white/95 dark:bg-slate-900/90 p-8 text-center shadow-lg backdrop-blur-xl space-y-4">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400">
+                    <FileText className="h-8 w-8" />
                   </div>
-                  <p className="text-lg font-extrabold text-blue-950">No documents found</p>
-                  <p className="mt-1 text-xs font-medium text-slate-500">Try adjusting your search query or category filters.</p>
+                  <div>
+                    <p className="text-lg font-black text-slate-900 dark:text-slate-100">
+                      {documents.length === 0 ? "No Saved Bills of Lading" : "No documents match your filters"}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                      {documents.length === 0
+                        ? "Sync your saved records from cloud or recover existing BOLs from server storage."
+                        : "Try adjusting your search terms, date range, or active category filter."}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
+                    <Button
+                      type="button"
+                      onClick={handleRecoverAllBOLs}
+                      className="h-9 px-3.5 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      <span>Recover & Refresh BOLs</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCloudSyncModalOpen(true)}
+                      className="h-9 px-3.5 text-xs font-bold rounded-xl border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Cloud className="h-3.5 w-3.5 text-blue-600" />
+                      <span>Cloud Sync</span>
+                    </Button>
+                    {(query || activeCategory !== "all" || dateFilter !== "all") && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setQuery("")
+                          setActiveCategory("all")
+                          setDateFilter("all")
+                        }}
+                        className="h-9 px-3 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 cursor-pointer"
+                      >
+                        Reset Filters
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
@@ -2378,21 +2438,22 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                   const hasUploadedPdf = Boolean(doc.pdf_url)
                   const isLatest = idx < 2 && sortBy === "latest"
                   const invoiceNo = extractInvoiceNo(doc)
+                  const routeInfo = extractBolRoute(doc)
 
                   return (
                     <div
                       key={`list-${doc.id}`}
-                      className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-blue-300 hover:shadow-md transition-all"
+                      className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-blue-400 dark:hover:border-blue-700 hover:shadow-md transition-all"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 font-black text-xs shrink-0">
-                          <FileText className="w-5 h-5 text-blue-600" />
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/80 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-xs shrink-0">
+                          <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-black text-slate-900 text-sm">{doc.bol_number || "BOL"}</span>
+                            <span className="font-black text-slate-900 dark:text-white text-sm">{doc.bol_number || "BOL"}</span>
                             {invoiceNo && (
-                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black font-mono">
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[10px] font-black font-mono">
                                 INV: {invoiceNo}
                               </span>
                             )}
@@ -2401,26 +2462,50 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                                 LATEST
                               </span>
                             )}
-                            <span className="text-xs font-bold text-slate-500">
+                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                               • {doc.issue_date ? new Date(doc.issue_date).toLocaleDateString(undefined, { timeZone: "UTC" }) : "No date"}
                             </span>
                           </div>
-                          <p className="text-xs font-semibold text-slate-700 truncate mt-0.5">
-                            <span className="font-extrabold text-slate-900">{doc.shipper_name}</span> ➔ {doc.consignee_name}
-                          </p>
-                          {(doc.number_of_packages || doc.net_weight || doc.goods_value || doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent) && (
-                            <p className="text-[11px] font-bold text-blue-900 mt-1 flex items-center gap-2 flex-wrap">
-                              {doc.number_of_packages && <span>📦 {doc.number_of_packages}</span>}
-                              {doc.net_weight && <span>⚖️ {doc.net_weight}</span>}
-                              {doc.goods_value && <span>💰 {doc.goods_value}</span>}
+                          <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                              <span className="font-extrabold text-slate-900 dark:text-white">{doc.shipper_name || "Missing Shipper"}</span> ➔ {doc.consignee_name || "Missing Consignee"}
+                            </p>
+                            {routeInfo.display !== "—" && (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-800/60 text-[10.5px] font-bold shadow-2xs"
+                                title={`Transit Route: ${routeInfo.display}`}
+                              >
+                                <Compass className="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                <span dir={routeInfo.isPersian ? "rtl" : "ltr"}>{routeInfo.shortDisplay || routeInfo.display}</span>
+                                {routeInfo.borderCrossing && (
+                                  <span className="text-[9.5px] font-normal text-indigo-600 dark:text-indigo-400">
+                                    • {routeInfo.borderCrossing.split(" ")[0]}
+                                  </span>
+                                )}
+                                {routeInfo.isFullReefer ? (
+                                  <span className="text-[8.5px] font-black text-cyan-800 dark:text-cyan-200 bg-cyan-100 dark:bg-cyan-950/80 border border-cyan-300 dark:border-cyan-800 rounded px-1">❄️ Full Reefer</span>
+                                ) : routeInfo.hasReefer ? (
+                                  <span className="text-[8.5px] font-black text-cyan-700 dark:text-cyan-300">❄️ Reefer</span>
+                                ) : null}
+                                {routeInfo.hasSwitchBl && (
+                                  <span className="text-[8.5px] font-black text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border border-purple-300 dark:border-purple-800 rounded px-1">🔄 Switch BL</span>
+                                )}
+                              </span>
+                            )}
+                          </div>
+                          {(doc.number_of_packages || doc.net_weight || doc.goods_value || doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent || doc.truck_number) && (
+                            <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
+                              {doc.number_of_packages && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">📦 {doc.number_of_packages}</span>}
+                              {doc.net_weight && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">⚖️ {doc.net_weight}</span>}
+                              {doc.goods_value && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">💰 {doc.goods_value}</span>}
                               {(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent) && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200/80 font-mono text-[10.5px]">
-                                  <Banknote className="w-3 h-3 text-amber-700 shrink-0" />
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 font-mono text-[10.5px]">
+                                  <Banknote className="w-3 h-3 text-amber-700 dark:text-amber-400 shrink-0" />
                                   <span>Rent: {doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent}</span>
                                 </span>
                               )}
-                              {doc.truck_number && <span>🚚 {doc.truck_number}</span>}
-                            </p>
+                              {doc.truck_number && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 border border-blue-200/80 dark:border-blue-800">🚚 {doc.truck_number}</span>}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -2430,7 +2515,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                           type="button"
                           size="sm"
                           onClick={() => editBOL(doc)}
-                          className="h-9 px-3 rounded-xl bg-blue-600 text-white font-extrabold text-xs cursor-pointer"
+                          className="h-9 px-3 rounded-xl bg-blue-600 text-white font-extrabold text-xs cursor-pointer shadow-xs hover:bg-blue-700 active:scale-95"
                         >
                           <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
                         </Button>
@@ -2440,10 +2525,10 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                           size="sm"
                           variant="outline"
                           onClick={() => onLoadDocument(doc.id || doc.bol_number, "attachments")}
-                          className="h-9 px-3 rounded-xl border-cyan-300 bg-cyan-50 text-cyan-900 font-black text-xs cursor-pointer hover:bg-cyan-100"
+                          className="h-9 px-3 rounded-xl border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/60 text-cyan-900 dark:text-cyan-200 font-black text-xs cursor-pointer hover:bg-cyan-100 dark:hover:bg-cyan-900/60"
                           title="Digital Shipment Folder & Attachments"
                         >
-                          <FolderArchive className="w-3.5 h-3.5 mr-1 text-cyan-600" /> Files
+                          <FolderArchive className="w-3.5 h-3.5 mr-1 text-cyan-600 dark:text-cyan-400" /> Files
                         </Button>
 
                         <Button
@@ -2451,9 +2536,9 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                           size="sm"
                           variant="outline"
                           onClick={() => downloadBOLPDF(doc)}
-                          className="h-9 px-3 rounded-xl border-amber-300 bg-amber-50 text-amber-900 font-black text-xs cursor-pointer hover:bg-amber-100"
+                          className="h-9 px-3 rounded-xl border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-black text-xs cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/60"
                         >
-                          <FileDown className="w-3.5 h-3.5 mr-1 text-amber-600" /> Download PDF
+                          <FileDown className="w-3.5 h-3.5 mr-1 text-amber-600 dark:text-amber-400" /> Download PDF
                         </Button>
 
                         <Button
@@ -2461,7 +2546,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                           size="sm"
                           variant="outline"
                           onClick={() => viewBOLPreview(doc)}
-                          className="h-9 px-3 rounded-xl border-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
+                          className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
                         >
                           <Eye className="w-3.5 h-3.5 mr-1" /> Preview
                         </Button>
@@ -2472,7 +2557,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                           variant="outline"
                           onClick={(e) => handleDelete(doc, e)}
                           disabled={deletingId === (doc.id || doc.bol_number)}
-                          className="h-9 w-9 p-0 rounded-xl border-red-200/80 bg-red-50 text-red-600 hover:bg-red-100 font-black text-xs cursor-pointer flex items-center justify-center"
+                          className="h-9 w-9 p-0 rounded-xl border-red-200/80 dark:border-red-800/70 bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/60 font-black text-xs cursor-pointer flex items-center justify-center"
                           title="Delete Bill of Lading"
                         >
                           {deletingId === (doc.id || doc.bol_number) ? (
@@ -2490,33 +2575,35 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
 
             {/* 3. DETAILED TABLE VIEW MODE */}
             {viewMode === "table" && (
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <table className="w-full text-left text-xs text-slate-700">
-                  <thead className="bg-slate-100/80 text-slate-900 uppercase font-black tracking-wider text-[11px] border-b border-slate-200">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+                <table className="w-full text-left text-xs text-slate-700 dark:text-slate-200">
+                  <thead className="bg-slate-100/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 uppercase font-black tracking-wider text-[11px] border-b border-slate-200 dark:border-slate-700">
                     <tr>
                       <th className="p-3.5">BOL & Invoice #</th>
                       <th className="p-3.5">Issue Date</th>
                       <th className="p-3.5">Shipper</th>
                       <th className="p-3.5">Consignee</th>
+                      <th className="p-3.5">Route</th>
                       <th className="p-3.5">Cargo / Weight</th>
                       <th className="p-3.5">Truck / Driver Rent</th>
                       <th className="p-3.5">PDF Status</th>
                       <th className="p-3.5 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-semibold">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-semibold">
                     {filteredDocuments.slice(0, visibleCount).map((doc, idx) => {
                       const hasUploadedPdf = Boolean(doc.pdf_url)
                       const isLatest = idx < 2 && sortBy === "latest"
                       const invoiceNo = extractInvoiceNo(doc)
+                      const routeInfo = extractBolRoute(doc)
 
                       return (
-                        <tr key={`table-${doc.id}`} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="p-3.5 font-black text-blue-900">
+                        <tr key={`table-${doc.id}`} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="p-3.5 font-black text-blue-900 dark:text-blue-300">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span>{doc.bol_number || "N/A"}</span>
                               {invoiceNo && (
-                                <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-200 text-[9.5px] font-mono font-bold">
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[9.5px] font-mono font-bold">
                                   {invoiceNo}
                                 </span>
                               )}
@@ -2527,25 +2614,54 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                               )}
                             </div>
                           </td>
-                          <td className="p-3.5">
+                          <td className="p-3.5 text-slate-600 dark:text-slate-400">
                             {doc.issue_date ? new Date(doc.issue_date).toLocaleDateString(undefined, { timeZone: "UTC" }) : "N/A"}
                           </td>
-                          <td className="p-3.5 font-bold text-slate-900 max-w-[160px] truncate">
+                          <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100 max-w-[160px] truncate" title={doc.shipper_name || "N/A"}>
                             {doc.shipper_name || "N/A"}
                           </td>
-                          <td className="p-3.5 font-bold text-slate-800 max-w-[160px] truncate">
+                          <td className="p-3.5 font-bold text-slate-800 dark:text-slate-200 max-w-[160px] truncate" title={doc.consignee_name || "N/A"}>
                             {doc.consignee_name || "N/A"}
                           </td>
-                          <td className="p-3.5 font-medium text-slate-700 max-w-[180px] truncate">
+                          <td className="p-3.5 max-w-[220px] truncate" title={routeInfo.display}>
+                            {routeInfo.display !== "—" ? (
+                              <div className="flex flex-col min-w-0 max-w-full">
+                                <span className="inline-flex items-center gap-1 font-bold text-slate-800 dark:text-slate-200 text-[11px] truncate">
+                                  <Compass className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                  <span className="truncate" dir={routeInfo.isPersian ? "rtl" : "ltr"}>{routeInfo.shortDisplay || routeInfo.display}</span>
+                                </span>
+                                {(routeInfo.borderCrossing || routeInfo.hasReefer || routeInfo.hasSwitchBl) && (
+                                  <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                                    {routeInfo.borderCrossing && (
+                                      <span className="inline-flex items-center text-[9px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/60 rounded px-1 py-0.2 truncate" title={`Border: ${routeInfo.borderCrossing}`}>
+                                        {routeInfo.borderCrossing.split(" ")[0]}
+                                      </span>
+                                    )}
+                                    {routeInfo.isFullReefer ? (
+                                      <span className="text-[8.5px] font-black text-cyan-800 dark:text-cyan-200 bg-cyan-100 dark:bg-cyan-950/80 border border-cyan-300 dark:border-cyan-800 rounded px-1 py-0.2">❄️ Full Reefer</span>
+                                    ) : routeInfo.hasReefer ? (
+                                      <span className="text-[8.5px] font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200 dark:border-cyan-800 rounded px-1 py-0.2">❄️ Reefer</span>
+                                    ) : null}
+                                    {routeInfo.hasSwitchBl && (
+                                      <span className="text-[8.5px] font-black text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border border-purple-300 dark:border-purple-800 rounded px-1 py-0.2">🔄 Switch BL</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-slate-300 dark:text-slate-600 font-light">—</span>
+                            )}
+                          </td>
+                          <td className="p-3.5 font-medium text-slate-700 dark:text-slate-300 max-w-[180px] truncate">
                             {doc.number_of_packages || doc.net_weight ? (
                               <span>{doc.number_of_packages} {doc.net_weight ? `(${doc.net_weight})` : ""}</span>
                             ) : "—"}
                           </td>
                           <td className="p-3.5">
                             <div className="flex flex-col min-w-0">
-                              <span className="font-extrabold text-slate-800">{doc.truck_number || "N/A"}</span>
+                              <span className="font-extrabold text-slate-800 dark:text-slate-200">{doc.truck_number || "N/A"}</span>
                               {(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent) && (
-                                <span className="text-amber-800 font-bold font-mono text-[10px] truncate max-w-[140px]" title={`Driver Rent: ${doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent}`}>
+                                <span className="text-amber-800 dark:text-amber-300 font-bold font-mono text-[10px] truncate max-w-[140px]" title={`Driver Rent: ${doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent}`}>
                                   Rent: {doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent}
                                 </span>
                               )}
@@ -2553,7 +2669,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                           </td>
                           <td className="p-3.5">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                              hasUploadedPdf ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                              hasUploadedPdf ? "bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
                             }`}>
                               {hasUploadedPdf ? "PDF Ready" : "No PDF"}
                             </span>
@@ -2564,51 +2680,57 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                                 type="button"
                                 size="sm"
                                 onClick={() => editBOL(doc)}
-                                className="h-8 px-2.5 rounded-lg bg-blue-600 text-white font-extrabold text-[11px] cursor-pointer"
+                                className="h-8 px-2.5 rounded-lg bg-blue-600 text-white font-extrabold text-xs cursor-pointer shadow-xs hover:bg-blue-700"
                               >
-                                Edit
+                                <Pencil className="w-3 h-3 mr-1" /> Edit
                               </Button>
+
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
                                 onClick={() => onLoadDocument(doc.id || doc.bol_number, "attachments")}
-                                className="h-8 px-2.5 rounded-lg border-cyan-300 bg-cyan-50 text-cyan-900 font-extrabold text-[11px] cursor-pointer hover:bg-cyan-100"
-                                title="Digital Shipment Folder & Attachments"
+                                className="h-8 px-2 rounded-lg border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/60 text-cyan-900 dark:text-cyan-200 font-black text-xs cursor-pointer"
+                                title="Digital Shipment Folder"
                               >
-                                Files
+                                <FolderArchive className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
                               </Button>
+
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
                                 onClick={() => downloadBOLPDF(doc)}
-                                className="h-8 px-2.5 rounded-lg border-amber-300 bg-amber-50 text-amber-900 font-extrabold text-[11px] cursor-pointer hover:bg-amber-100"
+                                className="h-8 px-2 rounded-lg border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-black text-xs cursor-pointer"
+                                title="Download PDF"
                               >
-                                PDF
+                                <FileDown className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                               </Button>
+
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
                                 onClick={() => viewBOLPreview(doc)}
-                                className="h-8 px-2.5 rounded-lg border-slate-200 text-slate-700 font-bold text-[11px] cursor-pointer"
+                                className="h-8 px-2 rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs cursor-pointer"
+                                title="Preview"
                               >
-                                View
+                                <Eye className="w-3 h-3" />
                               </Button>
+
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
                                 onClick={(e) => handleDelete(doc, e)}
                                 disabled={deletingId === (doc.id || doc.bol_number)}
-                                className="h-8 w-8 p-0 rounded-lg border-red-200/80 bg-red-50 text-red-600 hover:bg-red-100 font-black text-[11px] cursor-pointer flex items-center justify-center"
+                                className="h-8 w-8 p-0 rounded-lg border-red-200/80 dark:border-red-800/70 bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 hover:bg-red-100 font-black text-xs cursor-pointer flex items-center justify-center"
                                 title="Delete Bill of Lading"
                               >
                                 {deletingId === (doc.id || doc.bol_number) ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  <Loader2 className="w-3 h-3 animate-spin" />
                                 ) : (
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-3 h-3" />
                                 )}
                               </Button>
                             </div>

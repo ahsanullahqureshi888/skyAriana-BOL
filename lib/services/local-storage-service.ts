@@ -3,6 +3,7 @@ import { mutateJsonFile, readJsonFile, writeJsonFile } from "./blob-db"
 import { getDataPath } from "@/lib/server-paths"
 import { incrementDatabaseRevision } from "@/lib/backup/revision"
 import { scheduleAutoBackupOnDataChange } from "@/lib/google-drive/sync"
+import seedBolsData from "@/lib/data/seed-bols.json"
 
 const localBolsFile = getDataPath(".local-bols.json")
 const fullSnapshotFile = getDataPath(".local-full-snapshot.json")
@@ -13,13 +14,30 @@ const CACHE_TTL_MS = 3000
 
 async function readAllBols(): Promise<any[]> {
   const now = Date.now()
-  if (memoryCacheBols && (now - lastCacheTime < CACHE_TTL_MS)) {
+  if (memoryCacheBols && memoryCacheBols.length > 0 && (now - lastCacheTime < CACHE_TTL_MS)) {
     return memoryCacheBols
   }
   const loaded = await readJsonFile<any[]>(localBolsFile, [])
-  memoryCacheBols = loaded
+  if (Array.isArray(loaded) && loaded.length > 0) {
+    memoryCacheBols = loaded
+    lastCacheTime = now
+    return loaded
+  }
+
+  // Cloud fallback: if local file is empty or missing (e.g. initial Vercel deploy), seed from bundled records
+  const initialSeed = Array.isArray(seedBolsData) ? (seedBolsData as any[]) : []
+  if (initialSeed.length > 0) {
+    memoryCacheBols = initialSeed
+    lastCacheTime = now
+    try {
+      await writeJsonFile<any[]>(localBolsFile, initialSeed)
+    } catch {}
+    return initialSeed
+  }
+
+  memoryCacheBols = []
   lastCacheTime = now
-  return loaded
+  return []
 }
 
 async function writeAllBols(bols: any[]): Promise<void> {
