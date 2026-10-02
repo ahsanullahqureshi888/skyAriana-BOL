@@ -69,15 +69,20 @@ export function NotificationWorkspace() {
   // Settings modal
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
+  const currentUserName = currentUser?.username || currentUser?.name
+  const currentUserRole = currentUser?.role
+  const currentClientId = currentUser?.clientId
+  const currentClientName = currentUser?.clientName
+
   const fetchNotifications = useCallback(async () => {
-    if (!currentUser) return
+    if (!currentUserName || !currentUserRole) return
     setIsLoading(true)
     try {
       const q = new URLSearchParams({
-        user: currentUser.username || currentUser.name,
-        role: currentUser.role,
-        ...(currentUser.clientId ? { clientId: currentUser.clientId } : {}),
-        ...(currentUser.clientName ? { clientName: currentUser.clientName } : {}),
+        user: currentUserName,
+        role: currentUserRole,
+        ...(currentClientId ? { clientId: currentClientId } : {}),
+        ...(currentClientName ? { clientName: currentClientName } : {}),
         activeOnly: statusFilter === 'active' ? 'true' : 'false',
       })
       const res = await fetch(`/api/notifications?${q.toString()}`, { cache: 'no-store' })
@@ -93,7 +98,7 @@ export function NotificationWorkspace() {
     } finally {
       setIsLoading(false)
     }
-  }, [currentUser, statusFilter])
+  }, [currentUserName, currentUserRole, currentClientId, currentClientName, statusFilter])
 
   useEffect(() => {
     fetchNotifications()

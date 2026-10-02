@@ -75,7 +75,6 @@ import { AIAssistantSettingsTab } from "./settings/ai-assistant-settings-tab"
 import { PerformanceDiagnosticsTab } from "./settings/performance-diagnostics-tab"
 import {
   COMPANY_STAMP_SIGNATURE_SRC,
-  COMPANY_STAMP_SIGNATURE_DATA_URL,
   DEFAULT_STAMP_CONFIG,
   getStoredCompanyStampConfig,
   saveStoredCompanyStampConfig,
@@ -85,6 +84,7 @@ import {
   getStoredCompanyStampScale,
   type CompanyStampConfig,
 } from "@/lib/company-stamp-data"
+import { COMPANY_STAMP_SIGNATURE_DATA_URL } from "@/lib/company-stamp-fallback"
 import { toast } from "sonner"
 
 // Preset Official Company Stamps and Seals
@@ -642,7 +642,7 @@ export function SettingsView() {
   const passStrength = getPasswordStrength(newPassword)
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-2.5 sm:p-4 md:p-6 space-y-4 sm:space-y-6 font-sans">
+    <div data-settings-view="true" className="w-full max-w-7xl mx-auto p-2.5 sm:p-4 md:p-6 space-y-4 sm:space-y-6 font-sans">
       {/* Top Banner - Luxury Glassmorphic Sapphire Theme */}
       <div className="rounded-3xl border border-blue-200/70 bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-950 p-5 sm:p-7 md:p-8 text-white shadow-2xl shadow-blue-950/30 relative overflow-hidden">
         {/* Subtle Ambient Background Glows */}

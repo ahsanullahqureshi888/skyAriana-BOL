@@ -225,21 +225,21 @@ export function AgingReportTab({ onSelectAccount }: AgingReportTabProps) {
         </div>
       </div>
 
-      {/* Aging Table */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
+      {/* Aging Table Container */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs flex flex-col overflow-hidden">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-320px)] min-h-[300px] scrollbar-thin [scrollbar-color:rgba(148,163,184,0.45)_transparent]">
+          <table className="w-full text-left text-xs border-collapse min-w-[860px]">
+            <thead className="bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-md text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20 shadow-2xs">
               <tr>
-                <th className="py-2.5 px-3 w-10">#</th>
-                <th className="py-2.5 px-3 min-w-[200px]">Account Name</th>
-                <th className="py-2.5 px-3 w-28">Invoice #</th>
-                <th className="py-2.5 px-3 w-24">Date</th>
-                <th className="py-2.5 px-3 w-28 text-right">Original Amount</th>
-                <th className="py-2.5 px-3 w-28 text-right">Outstanding</th>
-                <th className="py-2.5 px-3 w-24 text-center">Days Overdue</th>
-                <th className="py-2.5 px-3 w-24 text-center">Category</th>
-                <th className="py-2.5 px-3 w-20 text-center">Action</th>
+                <th className="py-2.5 px-3 w-10 sticky top-0 bg-slate-100 dark:bg-slate-800">#</th>
+                <th className="py-2.5 px-3 min-w-[200px] sticky top-0 bg-slate-100 dark:bg-slate-800">Account Name</th>
+                <th className="py-2.5 px-3 w-28 sticky top-0 bg-slate-100 dark:bg-slate-800">Invoice #</th>
+                <th className="py-2.5 px-3 w-24 sticky top-0 bg-slate-100 dark:bg-slate-800">Date</th>
+                <th className="py-2.5 px-3 w-28 text-right sticky top-0 bg-slate-100 dark:bg-slate-800">Original Amount</th>
+                <th className="py-2.5 px-3 w-28 text-right sticky top-0 bg-slate-100 dark:bg-slate-800">Outstanding</th>
+                <th className="py-2.5 px-3 w-24 text-center sticky top-0 bg-slate-100 dark:bg-slate-800">Days Overdue</th>
+                <th className="py-2.5 px-3 w-24 text-center sticky top-0 bg-slate-100 dark:bg-slate-800">Category</th>
+                <th className="py-2.5 px-3 w-20 text-center sticky top-0 bg-slate-100 dark:bg-slate-800">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
@@ -286,7 +286,7 @@ export function AgingReportTab({ onSelectAccount }: AgingReportTabProps) {
                         </Badge>
                       </td>
                       <td className="py-2 px-3 text-center">
-                        <Button variant="ghost" size="sm" className="h-6 text-[10px] text-blue-600">
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px] text-blue-600 cursor-pointer">
                           Open
                         </Button>
                       </td>
@@ -296,6 +296,29 @@ export function AgingReportTab({ onSelectAccount }: AgingReportTabProps) {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Aging Summary Footer */}
+        <div className="border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0 select-none">
+          <span className="font-semibold text-slate-600 dark:text-slate-400">
+            Overdue Invoices: <span className="font-bold text-slate-900 dark:text-white">{filteredItems.length}</span>
+          </span>
+          <div className="flex items-center gap-4 font-mono text-[11px]">
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-500 font-semibold">Total USD:</span>
+              <span className="font-bold text-amber-700 dark:text-amber-400">
+                ${filteredItems.filter((i) => (i.currency || "USD") === "USD").reduce((a, b) => a + b.outstanding, 0).toLocaleString()}
+              </span>
+            </div>
+            {filteredItems.some((i) => i.currency === "AFN") && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-500 font-semibold">Total AFN:</span>
+                <span className="font-bold text-amber-700 dark:text-amber-400">
+                  ؋{filteredItems.filter((i) => i.currency === "AFN").reduce((a, b) => a + b.outstanding, 0).toLocaleString()}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

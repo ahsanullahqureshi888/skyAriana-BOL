@@ -610,8 +610,8 @@ export const LedgerView = memo(function LedgerView() {
       const { jsPDF } = await import('jspdf')
 
       const canvas = await toCanvas(printContainer as HTMLElement, {
-        pixelRatio: 1.8, // ~172 DPI optimal sharpness without main-thread canvas exhaustion
-        quality: 0.98,
+        pixelRatio: 2.8, // ~270 DPI high-definition sharpness for complex financial tables
+        quality: 1.0,
         skipFonts: true,
         backgroundColor: '#ffffff',
         style: {
@@ -621,13 +621,16 @@ export const LedgerView = memo(function LedgerView() {
           opacity: '1',
           visibility: 'visible',
           fontFamily: "'NotoNaskhArabic', 'Vazirmatn', Tahoma, Arial, sans-serif",
-        },
+          WebkitFontSmoothing: 'antialiased',
+          MozOsxFontSmoothing: 'grayscale',
+          textRendering: 'optimizeLegibility',
+        } as any,
       })
 
       // Cooperative yield between rasterization and PDF generation
       await new Promise((resolve) => setTimeout(resolve, 0))
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.96)
+      const imgData = canvas.toDataURL('image/jpeg', 0.99)
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
@@ -642,13 +645,13 @@ export const LedgerView = memo(function LedgerView() {
       let heightLeft = canvasHeightMM
       let position = 0
 
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'FAST')
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'SLOW')
       heightLeft -= pdfHeight
 
       while (heightLeft > 0) {
         position = heightLeft - canvasHeightMM
         pdf.addPage()
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'FAST')
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'SLOW')
         heightLeft -= pdfHeight
       }
 
@@ -2374,33 +2377,33 @@ export const LedgerView = memo(function LedgerView() {
                         key={entry.id || idx}
                         className={`p-3.5 rounded-2xl border transition-all relative overflow-hidden shadow-sm ${
                           isCredit
-                            ? 'bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/50 border-emerald-300/80 shadow-emerald-900/5'
-                            : 'bg-gradient-to-br from-white via-blue-50/20 to-slate-50 border-blue-200/80 shadow-blue-900/5'
+                            ? 'bg-gradient-to-br from-emerald-50/90 via-white to-emerald-50/50 dark:from-emerald-950/40 dark:via-slate-900 dark:to-emerald-950/20 border-emerald-300/80 dark:border-emerald-800/80 shadow-emerald-900/5 dark:shadow-none'
+                            : 'bg-gradient-to-br from-white via-blue-50/20 to-slate-50 dark:from-slate-900 dark:via-slate-850 dark:to-slate-900 border-blue-200/80 dark:border-slate-800 shadow-blue-900/5 dark:shadow-none'
                         }`}
                       >
                         {/* Card Header: S.No, Date, Status */}
-                        <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
+                        <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
                           <div className="flex items-center gap-2">
                             <span className={`px-2 py-0.5 rounded-lg text-xs font-black font-mono ${
-                              isCredit ? 'bg-emerald-600 text-white' : 'bg-blue-900 text-white'
+                              isCredit ? 'bg-emerald-600 text-white' : 'bg-blue-900 dark:bg-blue-800 text-white'
                             }`}>
                               #{entry.sNo || idx + 1}
                             </span>
-                            <span className="text-xs font-bold text-slate-800">
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                               {entry.date}
                             </span>
                             {entry.dateOfShip && (
-                              <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
                                 Ship: {entry.dateOfShip}
                               </span>
                             )}
                           </div>
                           {isCredit ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                               CREDIT / ترلاسه
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-900 border border-blue-200">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 dark:bg-blue-950/80 text-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                               DEBIT / پور
                             </span>
                           )}
@@ -2410,50 +2413,50 @@ export const LedgerView = memo(function LedgerView() {
                         <div className="space-y-2 pt-1 text-xs">
                           {/* Shipper & Description */}
                           <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Shipper / Description:</span>
-                            <p className="font-bold text-slate-900 text-sm mt-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">Shipper / Description:</span>
+                            <p className="font-bold text-slate-900 dark:text-slate-100 text-sm mt-0.5">
                               {entry.shipperDescription || (isCredit ? 'RECEIVING MONEY' : '—')}
                             </p>
                           </div>
 
                           {/* Logistics Identifiers Row */}
-                          <div className="grid grid-cols-2 gap-2 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                          <div className="grid grid-cols-2 gap-2 bg-slate-50/80 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
                             <div>
-                              <span className="text-[9px] font-black uppercase text-slate-500 block">Barnameh No:</span>
-                              <span className="font-mono text-xs font-bold text-blue-950 block truncate">
+                              <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 block">Barnameh No:</span>
+                              <span className="font-mono text-xs font-bold text-blue-950 dark:text-sky-300 block truncate">
                                 {entry.barnamehNo || "—"}
                               </span>
                             </div>
                             <div>
-                              <span className="text-[9px] font-black uppercase text-slate-500 block">Bill of Lading:</span>
-                              <span className="font-mono text-xs font-bold text-slate-800 block truncate">
+                              <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 block">Bill of Lading:</span>
+                              <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
                                 {entry.billOfLanding || "—"}
                               </span>
                             </div>
                             <div>
-                              <span className="text-[9px] font-black uppercase text-slate-500 block">Container:</span>
-                              <span className="font-mono text-xs font-bold text-slate-800 block truncate">
+                              <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 block">Container:</span>
+                              <span className="font-mono text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
                                 {entry.containerNo || "—"}
                               </span>
                             </div>
                             <div>
-                              <span className="text-[9px] font-black uppercase text-slate-500 block">Consignee:</span>
-                              <span className="text-xs font-bold text-slate-800 block truncate">
+                              <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 block">Consignee:</span>
+                              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
                                 {entry.consignee || "—"}
                               </span>
                             </div>
                             {entry.quantity && (
                               <div>
-                                <span className="text-[9px] font-black uppercase text-slate-500 block">Quantity:</span>
-                                <span className="text-xs font-bold text-slate-800 block truncate">
+                                <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 block">Quantity:</span>
+                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
                                   {entry.quantity}
                                 </span>
                               </div>
                             )}
                             {entry.invoiceNo && (
                               <div>
-                                <span className="text-[9px] font-black uppercase text-slate-500 block">Invoice No:</span>
-                                <span className="text-xs font-bold text-slate-800 block truncate">
+                                <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 block">Invoice No:</span>
+                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
                                   {entry.invoiceNo}
                                 </span>
                               </div>
@@ -2462,29 +2465,29 @@ export const LedgerView = memo(function LedgerView() {
 
                           {/* Driver Freight (if exists) */}
                           {entry.driverFreight && entry.driverFreight.trim() !== '' && (
-                            <div className="flex items-center justify-between bg-amber-50/80 px-2.5 py-1.5 rounded-xl border border-amber-200/80">
-                              <span className="text-[10px] font-bold text-amber-900 uppercase">Driver Freight (کرایه موتر):</span>
-                              <span className="font-mono text-xs font-black text-amber-950">{entry.driverFreight}</span>
+                            <div className="flex items-center justify-between bg-amber-50/80 dark:bg-amber-950/30 px-2.5 py-1.5 rounded-xl border border-amber-200/80 dark:border-amber-800/60">
+                              <span className="text-[10px] font-bold text-amber-900 dark:text-amber-300 uppercase">Driver Freight (کرایه موتر):</span>
+                              <span className="font-mono text-xs font-black text-amber-950 dark:text-amber-200">{entry.driverFreight}</span>
                             </div>
                           )}
 
                           {/* Financials Row */}
                           <div className="grid grid-cols-3 gap-1.5 pt-1">
-                            <div className="p-2 rounded-xl bg-red-50/70 border border-red-200/60 text-center">
-                              <span className="text-[9px] font-bold uppercase text-red-700 block">Debit</span>
-                              <span className="font-mono text-xs sm:text-sm font-black text-red-600 block mt-0.5">
+                            <div className="p-2 rounded-xl bg-red-50/70 dark:bg-red-950/30 border border-red-200/60 dark:border-red-900/50 text-center">
+                              <span className="text-[9px] font-bold uppercase text-red-700 dark:text-red-400 block">Debit</span>
+                              <span className="font-mono text-xs sm:text-sm font-black text-red-600 dark:text-red-300 block mt-0.5">
                                 {entry.debit > 0 ? formatCurrency(entry.debit) : '$0'}
                               </span>
                             </div>
-                            <div className="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200/60 text-center">
-                              <span className="text-[9px] font-bold uppercase text-emerald-700 block">Credit</span>
-                              <span className="font-mono text-xs sm:text-sm font-black text-emerald-700 block mt-0.5">
+                            <div className="p-2 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/50 text-center">
+                              <span className="text-[9px] font-bold uppercase text-emerald-700 dark:text-emerald-400 block">Credit</span>
+                              <span className="font-mono text-xs sm:text-sm font-black text-emerald-700 dark:text-emerald-300 block mt-0.5">
                                 {entry.credit > 0 ? formatCurrency(entry.credit) : '$0'}
                               </span>
                             </div>
-                            <div className="p-2 rounded-xl bg-blue-50/70 border border-blue-200/60 text-center">
-                              <span className="text-[9px] font-bold uppercase text-blue-800 block">Balance</span>
-                              <span className="font-mono text-xs sm:text-sm font-black text-blue-950 block mt-0.5">
+                            <div className="p-2 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/50 text-center">
+                              <span className="text-[9px] font-bold uppercase text-blue-800 dark:text-blue-400 block">Balance</span>
+                              <span className="font-mono text-xs sm:text-sm font-black text-blue-950 dark:text-blue-200 block mt-0.5">
                                 {entry.debit > 0 || entry.credit > 0 ? formatCurrency(entry.balance) : '$0'}
                               </span>
                             </div>
@@ -2492,15 +2495,15 @@ export const LedgerView = memo(function LedgerView() {
                         </div>
 
                         {/* Card Actions Footer */}
-                        <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 mt-2">
+                        <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800 mt-2">
                           <div className="flex items-center gap-2">
                             {/* Surrender BL Checkbox */}
-                            <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 cursor-pointer select-none">
+                            <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
                               <Checkbox
                                 id={`m-surrendered-${entry.id}`}
                                 checked={entry.surrenderedBL || false}
                                 onCheckedChange={() => toggleSurrenderedBL(currentAccount.id, currentCompany.id, entry.id)}
-                                className="h-3.5 w-3.5 border-blue-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                                className="h-3.5 w-3.5 border-blue-300 dark:border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                               />
                               <span>{entry.surrenderedBL ? 'Surrendered' : 'Surrender B/L'}</span>
                             </label>
@@ -2510,7 +2513,7 @@ export const LedgerView = memo(function LedgerView() {
                                 href={entry.pdfPathname.startsWith('http') || entry.pdfPathname.startsWith('/') ? entry.pdfPathname : `/api/pdf/${entry.pdfPathname}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-900/60 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
                               >
                                 <FileText className="h-3 w-3" />
                                 <span>PDF</span>
@@ -2523,7 +2526,7 @@ export const LedgerView = memo(function LedgerView() {
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="h-8 px-2.5 rounded-xl border-blue-200 text-blue-800 hover:bg-blue-50 text-xs font-bold gap-1"
+                              className="h-8 px-2.5 rounded-xl border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/50 text-xs font-bold gap-1"
                               onClick={() => handleEditEntry(entry)}
                             >
                               <Edit3 className="h-3.5 w-3.5" />
@@ -2533,7 +2536,7 @@ export const LedgerView = memo(function LedgerView() {
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="h-8 px-2 rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-xs"
+                              className="h-8 px-2 rounded-xl border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 hover:text-red-700 text-xs"
                               onClick={() => {
                                 setEntryToDelete(entry)
                                 setIsDeleteDialogOpen(true)

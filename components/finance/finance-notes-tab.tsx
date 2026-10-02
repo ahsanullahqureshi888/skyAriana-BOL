@@ -299,7 +299,7 @@ export function FinanceNotesTab({
                   Related BOL / Invoice
                 </label>
                 <Input
-                  placeholder="e.g. BOL-NSA583"
+                  placeholder="e.g. BOL-2026-NSA626"
                   value={bolNumber}
                   onChange={(e) => setBolNumber(e.target.value)}
                   className="mt-1 h-8 text-xs"

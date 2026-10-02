@@ -220,17 +220,17 @@ export function OutstandingDashboardTab({ onSelectAccount }: OutstandingDashboar
             <span className="text-[11px] text-slate-500 font-semibold">Ordered by outstanding amount</span>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[460px] overflow-y-auto scrollbar-thin [scrollbar-color:rgba(148,163,184,0.45)_transparent]">
             <table className="w-full text-xs text-left">
-              <thead className="text-slate-500 font-semibold border-b border-slate-100 dark:border-slate-800">
+              <thead className="text-slate-600 dark:text-slate-400 font-semibold border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md z-10">
                 <tr>
-                  <th className="py-2 px-3 w-8">#</th>
-                  <th className="py-2 px-3">Account Name</th>
-                  <th className="py-2 px-3 w-20">Currency</th>
-                  <th className="py-2 px-3 w-28 text-right">Debit</th>
-                  <th className="py-2 px-3 w-28 text-right">Credit</th>
-                  <th className="py-2 px-3 w-32 text-right">Outstanding</th>
-                  <th className="py-2 px-3 w-20 text-center">Action</th>
+                  <th className="py-2 px-3 w-8 sticky top-0 bg-white dark:bg-slate-900">#</th>
+                  <th className="py-2 px-3 sticky top-0 bg-white dark:bg-slate-900">Account Name</th>
+                  <th className="py-2 px-3 w-20 sticky top-0 bg-white dark:bg-slate-900">Currency</th>
+                  <th className="py-2 px-3 w-28 text-right sticky top-0 bg-white dark:bg-slate-900">Debit</th>
+                  <th className="py-2 px-3 w-28 text-right sticky top-0 bg-white dark:bg-slate-900">Credit</th>
+                  <th className="py-2 px-3 w-32 text-right sticky top-0 bg-white dark:bg-slate-900">Outstanding</th>
+                  <th className="py-2 px-3 w-20 text-center sticky top-0 bg-white dark:bg-slate-900">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">

@@ -373,101 +373,132 @@ export function AccountDetailView({ accountId, onBack, onOpenBol }: AccountDetai
             </div>
           </div>
 
-          {/* Transactions Table */}
-          <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700 sticky top-0 z-1">
-                <tr>
-                  <th className="py-2.5 px-3 w-10">#</th>
-                  <th className="py-2.5 px-3 w-24">Date</th>
-                  <th className="py-2.5 px-3 min-w-[200px]">Description</th>
-                  <th className="py-2.5 px-3 w-28">Ref / BOL</th>
-                  <th className="py-2.5 px-3 w-24">Invoice</th>
-                  <th className="py-2.5 px-3 w-28 text-right">Debit</th>
-                  <th className="py-2.5 px-3 w-28 text-right">Credit</th>
-                  <th className="py-2.5 px-3 w-32 text-right">Running Balance</th>
-                  <th className="py-2.5 px-3 w-16 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                {filteredTransactions.length === 0 ? (
+          {/* Transactions Table Container */}
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs flex flex-col overflow-hidden">
+            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-340px)] min-h-[300px] scrollbar-thin [scrollbar-color:rgba(148,163,184,0.45)_transparent]">
+              <table className="w-full text-left text-xs border-collapse min-w-[880px]">
+                <thead className="bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-md text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20 shadow-2xs">
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-slate-400">
-                      No ledger transactions found matching filters.
-                    </td>
+                    <th className="py-2.5 px-3 w-10 sticky top-0 bg-slate-100 dark:bg-slate-800">#</th>
+                    <th className="py-2.5 px-3 w-24 sticky top-0 bg-slate-100 dark:bg-slate-800">Date</th>
+                    <th className="py-2.5 px-3 min-w-[200px] sticky top-0 bg-slate-100 dark:bg-slate-800">Description</th>
+                    <th className="py-2.5 px-3 w-28 sticky top-0 bg-slate-100 dark:bg-slate-800">Ref / BOL</th>
+                    <th className="py-2.5 px-3 w-24 sticky top-0 bg-slate-100 dark:bg-slate-800">Invoice</th>
+                    <th className="py-2.5 px-3 w-28 text-right sticky top-0 bg-slate-100 dark:bg-slate-800">Debit</th>
+                    <th className="py-2.5 px-3 w-28 text-right sticky top-0 bg-slate-100 dark:bg-slate-800">Credit</th>
+                    <th className="py-2.5 px-3 w-32 text-right sticky top-0 bg-slate-100 dark:bg-slate-800">Running Balance</th>
+                    <th className="py-2.5 px-3 w-16 text-center sticky top-0 bg-slate-100 dark:bg-slate-800">Actions</th>
                   </tr>
-                ) : (
-                  filteredTransactions.map((t, idx) => (
-                    <tr
-                      key={t.id || idx}
-                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group"
-                    >
-                      <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                      <td className="py-2 px-3 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                        {t.transaction_date}
-                      </td>
-                      <td className="py-2 px-3">
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{t.description}</div>
-                        {(t.container_number || t.consignee_name || t.truck_number) && (
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                            {t.container_number && <span className="font-mono mr-2">Cont: {t.container_number}</span>}
-                            {t.consignee_name && <span>To: {t.consignee_name} </span>}
-                            {t.truck_number && <span className="mr-2">Truck: {t.truck_number}</span>}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-[11px] text-slate-600 dark:text-slate-400">
-                        {t.bol_number ? (
-                          <button
-                            onClick={() => onOpenBol && onOpenBol(t.bol_number!)}
-                            className="text-blue-600 hover:underline cursor-pointer"
-                          >
-                            {t.bol_number}
-                          </button>
-                        ) : (
-                          t.reference_number || "-"
-                        )}
-                      </td>
-                      <td className="py-2 px-3 font-mono text-[11px] text-slate-600 dark:text-slate-400">
-                        {t.invoice_number || "-"}
-                      </td>
-                      <td className="py-2 px-3 text-right font-mono font-semibold text-slate-900 dark:text-slate-100">
-                        {t.debit > 0 ? (
-                          <span className="text-blue-700 dark:text-blue-400">
-                            {currSym}{t.debit.toLocaleString()}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="py-2 px-3 text-right font-mono font-semibold">
-                        {t.credit > 0 ? (
-                          <span className="text-emerald-600 dark:text-emerald-400">
-                            {currSym}{t.credit.toLocaleString()}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
-                        {currSym}{t.running_balance.toLocaleString()}
-                      </td>
-                      <td className="py-2 px-3 text-center">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 opacity-60 group-hover:opacity-100 cursor-pointer"
-                          onClick={() => setEditingTx(t)}
-                          title="Edit or Delete Transaction"
-                        >
-                          <Edit3 className="h-3 w-3" />
-                        </Button>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                  {filteredTransactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="py-8 text-center text-slate-400">
+                        No ledger transactions found matching filters.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredTransactions.map((t, idx) => (
+                      <tr
+                        key={t.id || idx}
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group"
+                      >
+                        <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                        <td className="py-2 px-3 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                          {t.transaction_date}
+                        </td>
+                        <td className="py-2 px-3">
+                          <div className="font-medium text-slate-900 dark:text-slate-100">{t.description}</div>
+                          {(t.container_number || t.consignee_name || t.truck_number) && (
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                              {t.container_number && <span className="font-mono mr-2">Cont: {t.container_number}</span>}
+                              {t.consignee_name && <span>To: {t.consignee_name} </span>}
+                              {t.truck_number && <span className="mr-2">Truck: {t.truck_number}</span>}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2 px-3 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                          {t.bol_number ? (
+                            <button
+                              onClick={() => onOpenBol && onOpenBol(t.bol_number!)}
+                              className="text-blue-600 hover:underline cursor-pointer"
+                            >
+                              {t.bol_number}
+                            </button>
+                          ) : (
+                            t.reference_number || "-"
+                          )}
+                        </td>
+                        <td className="py-2 px-3 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                          {t.invoice_number || "-"}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-semibold text-slate-900 dark:text-slate-100">
+                          {t.debit > 0 ? (
+                            <span className="text-blue-700 dark:text-blue-400">
+                              {currSym}{t.debit.toLocaleString()}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-semibold">
+                          {t.credit > 0 ? (
+                            <span className="text-emerald-600 dark:text-emerald-400">
+                              {currSym}{t.credit.toLocaleString()}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100">
+                          {currSym}{t.running_balance.toLocaleString()}
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 opacity-60 group-hover:opacity-100 cursor-pointer"
+                            onClick={() => setEditingTx(t)}
+                            title="Edit or Delete Transaction"
+                          >
+                            <Edit3 className="h-3 w-3" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Transactions Summary Footer */}
+            {account && (
+              <div className="border-t border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0 select-none">
+                <span className="font-semibold text-slate-600 dark:text-slate-400">
+                  Total Transactions: <span className="font-bold text-slate-900 dark:text-white">{filteredTransactions.length}</span>
+                </span>
+                <div className="flex items-center gap-4 font-mono text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 font-semibold">Total Debit:</span>
+                    <span className="font-bold text-blue-700 dark:text-blue-400">
+                      {currSym}{filteredTransactions.reduce((acc, t) => acc + (t.debit || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 font-semibold">Total Credit:</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      {currSym}{filteredTransactions.reduce((acc, t) => acc + (t.credit || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-500 font-semibold">Current Balance:</span>
+                    <span className="font-bold text-slate-900 dark:text-slate-100">
+                      {currSym}{account.current_balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </TabsContent>
 

@@ -48,6 +48,7 @@ interface FileUploadModalProps {
   defaultBolNumber?: string
   defaultContainerNumber?: string
   defaultCategory?: DocumentCategoryCode
+  existingFileNames?: string[]
   onUploadSuccess?: () => void
 }
 
@@ -136,6 +137,7 @@ export function FileUploadModal({
   defaultBolNumber = "",
   defaultContainerNumber = "",
   defaultCategory = "SHIPPING",
+  existingFileNames = [],
   onUploadSuccess,
 }: FileUploadModalProps) {
   const [stagedFiles, setStagedFiles] = useState<StagedUploadItem[]>([])
@@ -461,6 +463,14 @@ export function FileUploadModal({
                               <span className="text-[10px] text-slate-400 font-mono">
                                 {Math.round(item.size / 1024)} KB
                               </span>
+                              {existingFileNames.some((n) => n.toLowerCase() === item.name.toLowerCase()) && (
+                                <div className="mt-1">
+                                  <Badge className="bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-300 text-[10px] font-bold inline-flex items-center gap-1 shadow-2xs">
+                                    <AlertTriangle className="h-2.5 w-2.5 text-amber-600 shrink-0" />
+                                    <span>Existing file detected — will create new version</span>
+                                  </Badge>
+                                </div>
+                              )}
                             </div>
                           </div>
 

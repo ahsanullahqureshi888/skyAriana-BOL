@@ -172,15 +172,15 @@ export function BackupRestoreTab() {
           </Button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-360px)] min-h-[260px] scrollbar-thin [scrollbar-color:rgba(148,163,184,0.45)_transparent]">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 font-semibold border-b">
+            <thead className="bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-md text-slate-700 dark:text-slate-300 font-bold border-b sticky top-0 z-20 shadow-2xs">
               <tr>
-                <th className="p-3 w-10 text-center">#</th>
-                <th className="p-3">Backup File Name</th>
-                <th className="p-3 w-36">Created Timestamp</th>
-                <th className="p-3 w-28 text-right">File Size</th>
-                <th className="p-3 w-48 text-center">Actions</th>
+                <th className="p-3 w-10 text-center sticky top-0 bg-slate-100 dark:bg-slate-800">#</th>
+                <th className="p-3 sticky top-0 bg-slate-100 dark:bg-slate-800">Backup File Name</th>
+                <th className="p-3 w-36 sticky top-0 bg-slate-100 dark:bg-slate-800">Created Timestamp</th>
+                <th className="p-3 w-28 text-right sticky top-0 bg-slate-100 dark:bg-slate-800">File Size</th>
+                <th className="p-3 w-48 text-center sticky top-0 bg-slate-100 dark:bg-slate-800">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">

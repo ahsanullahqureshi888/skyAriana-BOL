@@ -41,8 +41,9 @@ import type {
   DocumentChecklistItem,
   BOLChecklistSummary,
 } from "@/lib/types/shipment-file"
-import { FilePreviewModal } from "./file-preview-modal"
-import { FileUploadModal } from "./file-upload-modal"
+import dynamic from "next/dynamic"
+const FilePreviewModal = dynamic(() => import("./file-preview-modal").then(m => m.FilePreviewModal), { ssr: false })
+const FileUploadModal = dynamic(() => import("./file-upload-modal").then(m => m.FileUploadModal), { ssr: false })
 import { toast } from "sonner"
 
 type FileCenterSubpage =
@@ -163,7 +164,7 @@ export function FileCenterWorkspace() {
   const today = new Date().toISOString().split("T")[0]
 
   return (
-    <div className="w-full max-w-[1780px] mx-auto p-4 sm:p-6 space-y-6 animate-in fade-in duration-200">
+    <div data-file-center="true" className="w-full max-w-[1780px] mx-auto p-4 sm:p-6 space-y-6 animate-in fade-in duration-200">
       {/* 1. Header & Quick Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">

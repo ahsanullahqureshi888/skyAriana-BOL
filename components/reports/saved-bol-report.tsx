@@ -9,6 +9,15 @@ import {
   SavedFilterPreset,
   SavedReportPreset,
   ReportHistoryEntry,
+  ContainerRecord,
+  RouteSummary,
+  TruckSummary,
+  ShipperSummary,
+  ConsigneeSummary,
+  CommoditySummary,
+  DestinationSummary,
+  MonthlySummary,
+  FinancialBreakdown,
 } from "@/lib/reports/types"
 import {
   calculateOverviewKpis,
@@ -23,6 +32,8 @@ import {
   groupContainers,
   groupMonthly,
   calculateFinancialMetrics,
+  groupRoutes,
+  groupTrucks,
 } from "@/lib/reports/grouping"
 import {
   auditDataQuality,
@@ -38,18 +49,31 @@ import {
   deleteReportPreset,
   getReportHistory,
   addReportHistoryEntry,
+  getDefaultReportPreset,
+  setDefaultReportPreset,
 } from "@/lib/reports/history-storage"
 import {
   formatDisplayDate,
   isRtlText,
   extractInvoiceNo,
-  extractTruckNo
+  extractTruckNo,
+  extractBolRoute,
+  extractCleanCommodity,
+  parseWeight,
+  parsePackages,
+  parseMoney,
+  normalizeDate,
 } from "@/lib/reports/parsers"
+import { parseSyncedCargoItems, splitMultiCargoItems } from "@/lib/utils/cargo-grid"
+import type { BillOfLadingFormData } from "@/lib/types/bill-of-lading"
 import { OperationsReportTab } from "./operations-report-tab"
 import { OperationsPeriodType } from "@/lib/reports/types"
 import { ReportCharts } from "./report-charts"
 import { BolQuickView } from "./bol-quick-view"
+import { DetailedReportTable } from "./detailed-report-table"
 import { AdvancedFiltersDrawer } from "./advanced-filters"
+import { ReportDataTable, ReportColumnDef, SummaryMetricPill } from "./report-data-table"
+import { ReportDetailDrawer, DrawerKpiItem, DrawerBreakdownSection } from "./report-detail-drawer"
 import { buildManagementSummary } from "@/lib/whatsapp/bulk-message"
 import { normalizeToWhatsAppShipment } from "@/lib/whatsapp/normalized-shipment"
 import { Button } from "@/components/ui/button"
@@ -98,6 +122,13 @@ import {
   Download,
   ChevronDown,
   Loader2,
+  Navigation,
+  Scale,
+  Star,
+  X,
+  Trash2,
+  Tag,
+  MoreHorizontal,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -130,6 +161,59 @@ function formatDisplayBolNo(bolNumber?: string | null): { display: string; full:
   return { display: clean, full }
 }
 
+function extractCargoItemList(doc: any): string[] {
+  if (Array.isArray(doc.cargo_items) && doc.cargo_items.length > 0) {
+    return doc.cargo_items
+      .map((it: any) => (typeof it === "string" ? it : it.description || it.commodity || ""))
+      .filter(Boolean)
+  }
+  const raw = doc.goods_description || doc.cargo_description || doc.description_of_goods || ""
+  if (!raw.trim()) {
+    const pkgParts = splitMultiCargoItems(doc.number_of_packages)
+    if (pkgParts.length > 0) return pkgParts
+    return []
+  }
+
+  const lines = raw
+    .split(/\r?\n|•|\u2022|\*|(?<=\w);|\|/)
+    .map((l: string) => l.trim().replace(/^[-•*]\s*/, ""))
+    .filter((l: string) => {
+      if (l.length < 2) return false
+      if (/^📦?\s*(?:CONTAINER|CARGO|PARTICULARS|DOCUMENT|SHIPPING|DETAILS)/i.test(l)) return false
+      if (/^Transit Date/i.test(l)) return false
+      if (/^HS Code/i.test(l)) return false
+      if (/^INV-?\d+/i.test(l)) return false
+      if (/^Invoice\s*(?:NO)?:/i.test(l)) return false
+      return true
+    })
+    .map((l: string) => {
+      let cleaned = l.replace(/^Description:\s*/i, "").trim()
+      if (cleaned.includes("│")) {
+        const parts = cleaned.split("│").map((p) => p.trim()).filter((p) => !/invoice|inv-|transit date|hs code/i.test(p))
+        cleaned = parts.join(" │ ")
+      }
+      return cleaned
+    })
+    .filter(Boolean)
+
+  if (lines.length > 0) return lines
+
+  const pkgParts = splitMultiCargoItems(doc.number_of_packages)
+  if (pkgParts.length > 0) return pkgParts
+
+  return raw.trim() ? [raw.trim()] : []
+}
+
+function getMissingFieldCategory(field: string): "Shipper" | "Consignee" | "Route" | "Truck" | "Weight" | "Other" {
+  const f = field.toLowerCase()
+  if (f.includes("shipper")) return "Shipper"
+  if (f.includes("consignee") || f.includes("notify")) return "Consignee"
+  if (f.includes("port") || f.includes("delivery") || f.includes("route")) return "Route"
+  if (f.includes("truck") || f.includes("driver") || f.includes("plate") || f.includes("container")) return "Truck"
+  if (f.includes("weight") || f.includes("package") || f.includes("cargo") || f.includes("goods") || f.includes("carton")) return "Weight"
+  return "Other"
+}
+
 export function SavedBolReport({
   documents,
   filteredDocuments,
@@ -141,10 +225,46 @@ export function SavedBolReport({
 }: SavedBolReportProps) {
   // Navigation & View State
   const [activeTab, setActiveTab] = useState<ReportTab>(initialTab)
+  const [expandedCargoIds, setExpandedCargoIds] = useState<Set<string>>(new Set())
+  const toggleCargoExpanded = (id: string) => {
+    setExpandedCargoIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  type QuickDate = "all" | "today" | "yesterday" | "7days" | "30days" | "this_month" | "last_month" | "this_year"
+  const [quickDate, setQuickDate] = useState<QuickDate>("all")
   const [drillDownEntity, setDrillDownEntity] = useState<{
-    type: "shipper" | "consignee" | "commodity" | "destination" | "missing_field"
+    type: "shipper" | "consignee" | "commodity" | "destination" | "route" | "truck" | "missing_field" | "container" | "month"
     name: string
   } | null>(null)
+
+  // Drill-down Detail Drawer State
+  const [drawerState, setDrawerState] = useState<{
+    isOpen: boolean
+    entityType:
+      | "shipper"
+      | "consignee"
+      | "commodity"
+      | "destination"
+      | "route"
+      | "truck"
+      | "container"
+      | "month"
+    entityName: string
+    entityBadge?: string
+    kpis: DrawerKpiItem[]
+    breakdowns?: DrawerBreakdownSection[]
+    recentBols?: SavedDocument[]
+    matchingCount?: number
+  }>({
+    isOpen: false,
+    entityType: "shipper",
+    entityName: "",
+    kpis: [],
+  })
 
   // Quick View Drawer State
   const [quickViewDoc, setQuickViewDoc] = useState<SavedDocument | null>(null)
@@ -171,7 +291,7 @@ export function SavedBolReport({
   const [pdfOrientation, setPdfOrientation] = useState<"landscape" | "portrait">("landscape")
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
-  const [isFitScreen, setIsFitScreen] = useState(true)
+  const [isFitScreen, setIsFitScreen] = useState(false)
   const [tableDensity, setTableDensity] = useState<"compact" | "normal">("compact")
   const [reportCompanyName, setReportCompanyName] = useState<string>("AQ COMPANIES")
   const reportRef = useRef<HTMLDivElement>(null)
@@ -183,15 +303,64 @@ export function SavedBolReport({
 
   useEffect(() => {
     setSavedFilters(getSavedFilterPresets())
-    setSavedReportPresets(getSavedReportPresets())
+    const presets = getSavedReportPresets()
+    setSavedReportPresets(presets)
     setReportHistory(getReportHistory())
-  }, [])
+
+    // If an initialTab was not provided or was default "overview", check if user has a default view
+    if (!initialTab || initialTab === "overview") {
+      const defPreset = getDefaultReportPreset()
+      if (defPreset) {
+        if (defPreset.reportType) setActiveTab(defPreset.reportType)
+        if (defPreset.filters) setAdvancedFilters(defPreset.filters)
+        if (defPreset.densityMode) setTableDensity(defPreset.densityMode)
+        if (defPreset.orientation) setPdfOrientation(defPreset.orientation === "portrait" ? "portrait" : "landscape")
+      }
+    }
+  }, [initialTab])
+
+  const defaultPreset = useMemo(() => {
+    return savedReportPresets.find((p) => p.isDefault) || null
+  }, [savedReportPresets])
+
+  const handleSetDefaultPreset = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setDefaultReportPreset(id)
+    setSavedReportPresets(getSavedReportPresets())
+    toast.success("Set as default Report Center view")
+  }
 
   // 1. Resolve Active Dataset based on Filters and Drill-downs
   const baseData = useMemo(() => {
-    // Start with all documents from parent
     return documents
   }, [documents])
+
+  // Extract unique options for quick dropdown filters
+  const filterOptions = useMemo(() => {
+    const shippers = new Set<string>()
+    const consignees = new Set<string>()
+    const commodities = new Set<string>()
+    const destinations = new Set<string>()
+    const routes = new Set<string>()
+
+    for (const d of baseData) {
+      if (d.shipper_name?.trim()) shippers.add(d.shipper_name.trim())
+      if (d.consignee_name?.trim()) consignees.add(d.consignee_name.trim())
+      const comm = extractCleanCommodity(d.cargo_description || d.goods_description)
+      if (comm && comm !== "General Cargo") commodities.add(comm)
+      const rInfo = extractBolRoute(d)
+      if (rInfo.destination && rInfo.destination !== "—") destinations.add(rInfo.destination)
+      if (rInfo.shortDisplay && rInfo.shortDisplay !== "—") routes.add(rInfo.shortDisplay)
+    }
+
+    return {
+      shippers: Array.from(shippers).sort(),
+      consignees: Array.from(consignees).sort(),
+      commodities: Array.from(commodities).sort(),
+      destinations: Array.from(destinations).sort(),
+      routes: Array.from(routes).sort(),
+    }
+  }, [baseData])
 
   const filteredData = useMemo(() => {
     const combinedCriteria: ReportFilterCriteria = {
@@ -229,11 +398,126 @@ export function SavedBolReport({
           ).toLowerCase()
           return dest.includes(drillDownEntity.name.toLowerCase())
         })
+      } else if (drillDownEntity.type === "route") {
+        result = result.filter((d) => {
+          const rInfo = extractBolRoute(d)
+          const text = (rInfo.display + " " + rInfo.shortDisplay + " " + (d.cargo_route_note || "")).toLowerCase()
+          return text.includes(drillDownEntity.name.toLowerCase())
+        })
+      } else if (drillDownEntity.type === "truck") {
+        result = result.filter((d) => {
+          const tText = (d.truck_number + " " + extractTruckNo(d)).toLowerCase()
+          return tText.includes(drillDownEntity.name.toLowerCase())
+        })
+      } else if (drillDownEntity.type === "container") {
+        result = result.filter((d) =>
+          (d.container_numbers || "").toUpperCase().includes(drillDownEntity.name.toUpperCase())
+        )
+      } else if (drillDownEntity.type === "month") {
+        result = result.filter((d) => {
+          const dt = normalizeDate(d.issue_date || d.created_at)
+          if (!dt) return false
+          const mKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`
+          const mLabel = dt.toLocaleDateString("en-US", { month: "short", year: "numeric" })
+          return mKey === drillDownEntity.name || mLabel.toLowerCase() === drillDownEntity.name.toLowerCase()
+        })
+      } else if (drillDownEntity.type === "missing_field") {
+        if (drillDownEntity.name === "container") {
+          result = result.filter((d) => !d.container_numbers || !d.container_numbers.trim())
+        } else if (drillDownEntity.name === "invoice") {
+          result = result.filter((d) => !d.invoice_no && !d.invoice_number)
+        } else if (drillDownEntity.name === "truck") {
+          result = result.filter((d) => (!d.truck_number || !d.truck_number.trim()) && !extractTruckNo(d))
+        } else if (drillDownEntity.name === "driver") {
+          result = result.filter((d) => !d.driver_name || !d.driver_name.trim())
+        } else if (drillDownEntity.name === "pdf") {
+          result = result.filter((d) => !d.pdf_url)
+        }
       }
     }
 
     return result
   }, [baseData, advancedFilters, searchQuery, drillDownEntity])
+
+  // Count active filters for badge
+  const activeFiltersCount = useMemo(() => {
+    let count = 0
+    if (searchQuery.trim()) count++
+    if (advancedFilters.dateFrom || advancedFilters.dateTo) count++
+    if (advancedFilters.shipper) count++
+    if (advancedFilters.consignee) count++
+    if (advancedFilters.commodity) count++
+    if (advancedFilters.destination) count++
+    if (advancedFilters.route) count++
+    if (advancedFilters.truckNumber) count++
+    if (advancedFilters.containerType && advancedFilters.containerType !== "all") count++
+    if (advancedFilters.shipmentType && advancedFilters.shipmentType !== "all") count++
+    if (advancedFilters.hasPdf && advancedFilters.hasPdf !== "all") count++
+    if (advancedFilters.missingData && advancedFilters.missingData !== "all") count++
+    if (drillDownEntity) count++
+    return count
+  }, [searchQuery, advancedFilters, drillDownEntity])
+
+  const handleQuickDateSelect = (opt: QuickDate) => {
+    setQuickDate(opt)
+    if (opt === "all") {
+      setAdvancedFilters((prev) => {
+        const next = { ...prev }
+        delete next.dateFrom
+        delete next.dateTo
+        return next
+      })
+      return
+    }
+    const now = new Date()
+    const todayStr = now.toISOString().split("T")[0]
+
+    let from = ""
+    let to = todayStr
+
+    if (opt === "today") {
+      from = todayStr
+      to = todayStr
+    } else if (opt === "yesterday") {
+      const y = new Date(now)
+      y.setDate(y.getDate() - 1)
+      from = y.toISOString().split("T")[0]
+      to = from
+    } else if (opt === "7days") {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 7)
+      from = d.toISOString().split("T")[0]
+    } else if (opt === "30days") {
+      const d = new Date(now)
+      d.setDate(d.getDate() - 30)
+      from = d.toISOString().split("T")[0]
+    } else if (opt === "this_month") {
+      const d = new Date(now.getFullYear(), now.getMonth(), 1)
+      from = d.toISOString().split("T")[0]
+    } else if (opt === "last_month") {
+      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const last = new Date(now.getFullYear(), now.getMonth(), 0)
+      from = first.toISOString().split("T")[0]
+      to = last.toISOString().split("T")[0]
+    } else if (opt === "this_year") {
+      const d = new Date(now.getFullYear(), 0, 1)
+      from = d.toISOString().split("T")[0]
+    }
+
+    setAdvancedFilters((prev) => ({
+      ...prev,
+      dateFrom: from,
+      dateTo: to,
+    }))
+  }
+
+  const handleClearAllFilters = () => {
+    setSearchQuery("")
+    setAdvancedFilters({})
+    setDrillDownEntity(null)
+    setQuickDate("all")
+    toast.info("All filters cleared")
+  }
 
   // Data to display in detailed tables / exports (honors manual row selections if any)
   const activeReportData = useMemo(() => {
@@ -252,36 +536,1932 @@ export function SavedBolReport({
 
   const totalPages = pageSize === "all" ? 1 : Math.ceil(activeReportData.length / pageSize)
 
-  // 2. Shared Calculation Engine Outputs
+  // 2. Shared Calculation Engine Outputs (Lazy loaded and cached per filter revision)
   const overviewKpis = useMemo(() => {
     return calculateOverviewKpis(filteredData)
   }, [filteredData])
 
   const periodComparison = useMemo(() => {
+    if (activeTab !== "overview" && activeTab !== "operations") return null
     return calculatePeriodComparison(filteredData, baseData, comparisonMode)
-  }, [filteredData, baseData, comparisonMode])
+  }, [filteredData, baseData, comparisonMode, activeTab])
 
-  const shippersList = useMemo(() => groupShippers(filteredData), [filteredData])
-  const consigneesList = useMemo(() => groupConsignees(filteredData), [filteredData])
-  const commoditiesList = useMemo(() => groupCommodities(filteredData), [filteredData])
-  const destinationsList = useMemo(() => groupDestinations(filteredData), [filteredData])
-  const { containers: containerList, stats: containerStats } = useMemo(
-    () => groupContainers(filteredData),
-    [filteredData]
-  )
-  const monthlySummaries = useMemo(
-    () => groupMonthly(filteredData, monthlyYear),
-    [filteredData, monthlyYear]
-  )
-  const financialMetrics = useMemo(
-    () => calculateFinancialMetrics(filteredData),
-    [filteredData]
-  )
+  // In-memory tab cache to avoid recomputing data when switching back and forth
+  const reportDataCacheRef = useRef<Map<string, any>>(new Map())
+  const lastFilterHashRef = useRef<string>("")
+
+  const filterHash = useMemo(() => {
+    return `${filteredData.length}:${searchQuery}:${JSON.stringify(advancedFilters)}:${drillDownEntity?.name || ""}`
+  }, [filteredData.length, searchQuery, advancedFilters, drillDownEntity])
+
+  if (lastFilterHashRef.current !== filterHash) {
+    lastFilterHashRef.current = filterHash
+    reportDataCacheRef.current.clear()
+  }
+
+  const shippersList = useMemo(() => {
+    if (activeTab !== "shippers" && activeTab !== "operations") {
+      return (reportDataCacheRef.current.get("shippers") as ShipperSummary[]) || []
+    }
+    if (reportDataCacheRef.current.has("shippers")) {
+      return reportDataCacheRef.current.get("shippers") as ShipperSummary[]
+    }
+    const result = groupShippers(filteredData)
+    reportDataCacheRef.current.set("shippers", result)
+    return result
+  }, [filteredData, activeTab])
+
+  const consigneesList = useMemo(() => {
+    if (activeTab !== "consignees") {
+      return (reportDataCacheRef.current.get("consignees") as ConsigneeSummary[]) || []
+    }
+    if (reportDataCacheRef.current.has("consignees")) {
+      return reportDataCacheRef.current.get("consignees") as ConsigneeSummary[]
+    }
+    const result = groupConsignees(filteredData)
+    reportDataCacheRef.current.set("consignees", result)
+    return result
+  }, [filteredData, activeTab])
+
+  const commoditiesList = useMemo(() => {
+    if (activeTab !== "commodities" && activeTab !== "operations") {
+      return (reportDataCacheRef.current.get("commodities") as CommoditySummary[]) || []
+    }
+    if (reportDataCacheRef.current.has("commodities")) {
+      return reportDataCacheRef.current.get("commodities") as CommoditySummary[]
+    }
+    const result = groupCommodities(filteredData)
+    reportDataCacheRef.current.set("commodities", result)
+    return result
+  }, [filteredData, activeTab])
+
+  const destinationsList = useMemo(() => {
+    if (activeTab !== "destinations" && activeTab !== "operations") {
+      return (reportDataCacheRef.current.get("destinations") as DestinationSummary[]) || []
+    }
+    if (reportDataCacheRef.current.has("destinations")) {
+      return reportDataCacheRef.current.get("destinations") as DestinationSummary[]
+    }
+    const result = groupDestinations(filteredData)
+    reportDataCacheRef.current.set("destinations", result)
+    return result
+  }, [filteredData, activeTab])
+
+  const routesList = useMemo(() => {
+    if (activeTab !== "routes" && activeTab !== "operations") {
+      return (reportDataCacheRef.current.get("routes") as RouteSummary[]) || []
+    }
+    if (reportDataCacheRef.current.has("routes")) {
+      return reportDataCacheRef.current.get("routes") as RouteSummary[]
+    }
+    const result = groupRoutes(filteredData)
+    reportDataCacheRef.current.set("routes", result)
+    return result
+  }, [filteredData, activeTab])
+
+  const trucksList = useMemo(() => {
+    if (activeTab !== "trucks" && activeTab !== "operations") {
+      return (reportDataCacheRef.current.get("trucks") as TruckSummary[]) || []
+    }
+    if (reportDataCacheRef.current.has("trucks")) {
+      return reportDataCacheRef.current.get("trucks") as TruckSummary[]
+    }
+    const result = groupTrucks(filteredData)
+    reportDataCacheRef.current.set("trucks", result)
+    return result
+  }, [filteredData, activeTab])
+
+  const { containers: containerList, stats: containerStats } = useMemo(() => {
+    if (activeTab !== "containers") {
+      return (
+        reportDataCacheRef.current.get("containers") || {
+          containers: [] as ContainerRecord[],
+          stats: {
+            total: 0,
+            dry: 0,
+            reefer: 0,
+            twentyFt: 0,
+            fortyFt: 0,
+            fortyHc: 0,
+            fortyRf: 0,
+            other: 0,
+          },
+        }
+      )
+    }
+    if (reportDataCacheRef.current.has("containers")) {
+      return reportDataCacheRef.current.get("containers")
+    }
+    const result = groupContainers(filteredData)
+    reportDataCacheRef.current.set("containers", result)
+    return result
+  }, [filteredData, activeTab])
+
+  const monthlySummaries = useMemo(() => {
+    const key = `monthly:${monthlyYear}`
+    if (activeTab !== "monthly") {
+      return (reportDataCacheRef.current.get(key) as any[]) || []
+    }
+    if (reportDataCacheRef.current.has(key)) {
+      return reportDataCacheRef.current.get(key) as any[]
+    }
+    const result = groupMonthly(filteredData, monthlyYear)
+    reportDataCacheRef.current.set(key, result)
+    return result
+  }, [filteredData, monthlyYear, activeTab])
+
+  const financialMetrics: FinancialBreakdown = useMemo(() => {
+    if (activeTab !== "financial") {
+      return (
+        (reportDataCacheRef.current.get("financial") as FinancialBreakdown) || {
+          currencyTotals: {},
+          averageValuePerBol: {},
+          highestValue: null,
+          lowestValue: null,
+          byShipper: [],
+          byCommodity: [],
+          byDestination: [],
+          byMonth: [],
+        }
+      )
+    }
+    if (reportDataCacheRef.current.has("financial")) {
+      return reportDataCacheRef.current.get("financial") as FinancialBreakdown
+    }
+    const result = calculateFinancialMetrics(filteredData)
+    reportDataCacheRef.current.set("financial", result)
+    return result
+  }, [filteredData, activeTab])
+
   const dataQualityAudit = useMemo(() => auditDataQuality(filteredData), [filteredData])
-  const possibleDuplicates = useMemo(
-    () => detectPossibleDuplicates(filteredData),
+
+  const possibleDuplicates = useMemo(() => {
+    if (activeTab !== "missing_data") return []
+    return detectPossibleDuplicates(filteredData)
+  }, [filteredData, activeTab])
+
+  // Drill-down Detail Drawer Handlers
+  const openDetailDrawerForEntity = useCallback(
+    (
+      type: "shipper" | "consignee" | "commodity" | "destination" | "route" | "truck" | "container" | "month",
+      name: string
+    ) => {
+      let matching: SavedDocument[] = []
+      let kpis: DrawerKpiItem[] = []
+      let breakdowns: DrawerBreakdownSection[] = []
+
+      if (type === "shipper") {
+        matching = filteredData.filter(
+          (d) => (d.shipper_name || "").trim().toLowerCase() === name.toLowerCase()
+        )
+        const totalPkgs = matching.reduce((sum, d) => sum + parsePackages(d.number_of_packages), 0)
+        const totalNet =
+          Math.round(matching.reduce((sum, d) => sum + parseWeight(d.net_weight), 0) * 100) / 100
+        const totalGross =
+          Math.round(matching.reduce((sum, d) => sum + parseWeight(d.gross_weight), 0) * 100) / 100
+        const usdVal = matching.reduce((sum, d) => {
+          const { amount, currency } = parseMoney(d.goods_value)
+          return currency === "USD" ? sum + amount : sum
+        }, 0)
+
+        kpis = [
+          { label: "Total BOLs", value: matching.length, color: "blue" },
+          { label: "Total Packages", value: totalPkgs.toLocaleString(), color: "slate" },
+          { label: "Net Weight", value: `${totalNet.toLocaleString()} KG`, color: "slate" },
+          { label: "Gross Weight", value: `${totalGross.toLocaleString()} KG`, color: "slate" },
+          {
+            label: "Goods Value (USD)",
+            value: `$${usdVal.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`,
+            color: "emerald",
+          },
+        ]
+
+        const consMap = new Map<string, number>()
+        const commMap = new Map<string, number>()
+        matching.forEach((d) => {
+          if (d.consignee_name) {
+            consMap.set(d.consignee_name.trim(), (consMap.get(d.consignee_name.trim()) || 0) + 1)
+          }
+          const c = extractCleanCommodity(d.cargo_description || d.goods_description || d.commodity)
+          if (c && c !== "General Cargo") {
+            commMap.set(c, (commMap.get(c) || 0) + 1)
+          }
+        })
+
+        breakdowns = [
+          {
+            title: "Top Consignees / Receivers",
+            items: Array.from(consMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([cName, cnt]) => ({
+                label: cName,
+                value: `${cnt} BOLs`,
+              })),
+          },
+          {
+            title: "Cargo Types & Commodities",
+            items: Array.from(commMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([comm, cnt]) => ({
+                label: comm,
+                value: `${cnt} shipments`,
+              })),
+          },
+        ]
+      } else if (type === "consignee") {
+        matching = filteredData.filter(
+          (d) => (d.consignee_name || "").trim().toLowerCase() === name.toLowerCase()
+        )
+        const totalPkgs = matching.reduce((sum, d) => sum + parsePackages(d.number_of_packages), 0)
+        const totalNet =
+          Math.round(matching.reduce((sum, d) => sum + parseWeight(d.net_weight), 0) * 100) / 100
+        const totalGross =
+          Math.round(matching.reduce((sum, d) => sum + parseWeight(d.gross_weight), 0) * 100) / 100
+        const usdVal = matching.reduce((sum, d) => {
+          const { amount, currency } = parseMoney(d.goods_value)
+          return currency === "USD" ? sum + amount : sum
+        }, 0)
+
+        kpis = [
+          { label: "Total BOLs", value: matching.length, color: "blue" },
+          { label: "Total Packages", value: totalPkgs.toLocaleString(), color: "slate" },
+          { label: "Net Weight", value: `${totalNet.toLocaleString()} KG`, color: "slate" },
+          { label: "Gross Weight", value: `${totalGross.toLocaleString()} KG`, color: "slate" },
+          {
+            label: "Goods Value (USD)",
+            value: `$${usdVal.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`,
+            color: "emerald",
+          },
+        ]
+
+        const shipMap = new Map<string, number>()
+        const commMap = new Map<string, number>()
+        matching.forEach((d) => {
+          if (d.shipper_name) {
+            shipMap.set(d.shipper_name.trim(), (shipMap.get(d.shipper_name.trim()) || 0) + 1)
+          }
+          const c = extractCleanCommodity(d.cargo_description || d.goods_description || d.commodity)
+          if (c && c !== "General Cargo") {
+            commMap.set(c, (commMap.get(c) || 0) + 1)
+          }
+        })
+
+        breakdowns = [
+          {
+            title: "Supplying Shippers",
+            items: Array.from(shipMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([sName, cnt]) => ({
+                label: sName,
+                value: `${cnt} BOLs`,
+              })),
+          },
+          {
+            title: "Received Commodities",
+            items: Array.from(commMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([comm, cnt]) => ({
+                label: comm,
+                value: `${cnt} shipments`,
+              })),
+          },
+        ]
+      } else if (type === "commodity") {
+        matching = filteredData.filter((d) => {
+          const c = extractCleanCommodity(d.cargo_description || d.goods_description || d.commodity)
+          return (
+            c.toLowerCase() === name.toLowerCase() ||
+            (d.cargo_description || "").toLowerCase().includes(name.toLowerCase())
+          )
+        })
+        const totalPkgs = matching.reduce((sum, d) => sum + parsePackages(d.number_of_packages), 0)
+        const totalNet =
+          Math.round(matching.reduce((sum, d) => sum + parseWeight(d.net_weight), 0) * 100) / 100
+        const totalGross =
+          Math.round(matching.reduce((sum, d) => sum + parseWeight(d.gross_weight), 0) * 100) / 100
+        const usdVal = matching.reduce((sum, d) => {
+          const { amount, currency } = parseMoney(d.goods_value)
+          return currency === "USD" ? sum + amount : sum
+        }, 0)
+
+        kpis = [
+          { label: "Total BOLs", value: matching.length, color: "blue" },
+          { label: "Total Packages", value: totalPkgs.toLocaleString(), color: "slate" },
+          { label: "Net Weight", value: `${totalNet.toLocaleString()} KG`, color: "slate" },
+          { label: "Gross Weight", value: `${totalGross.toLocaleString()} KG`, color: "slate" },
+          {
+            label: "Goods Value (USD)",
+            value: `$${usdVal.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`,
+            color: "emerald",
+          },
+        ]
+
+        const shipMap = new Map<string, number>()
+        const destMap = new Map<string, number>()
+        matching.forEach((d) => {
+          if (d.shipper_name) {
+            shipMap.set(d.shipper_name.trim(), (shipMap.get(d.shipper_name.trim()) || 0) + 1)
+          }
+          const dest = d.port_of_discharge || d.place_of_delivery || d.destination_country || ""
+          if (dest) destMap.set(dest.trim(), (destMap.get(dest.trim()) || 0) + 1)
+        })
+
+        breakdowns = [
+          {
+            title: "Leading Shippers for this Cargo",
+            items: Array.from(shipMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([sName, cnt]) => ({
+                label: sName,
+                value: `${cnt} shipments`,
+              })),
+          },
+          {
+            title: "Primary Transit Destinations",
+            items: Array.from(destMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([dest, cnt]) => ({
+                label: dest,
+                value: `${cnt} BOLs`,
+              })),
+          },
+        ]
+      } else if (type === "destination") {
+        matching = filteredData.filter((d) => {
+          const dest = (
+            d.port_of_discharge ||
+            d.place_of_delivery ||
+            d.destination_country ||
+            ""
+          ).toLowerCase()
+          const pol = (d.port_of_loading || "").toLowerCase()
+          return dest.includes(name.toLowerCase()) || pol.includes(name.toLowerCase())
+        })
+        const totalNet =
+          Math.round(matching.reduce((sum, d) => sum + parseWeight(d.net_weight), 0) * 100) / 100
+        const totalGross =
+          Math.round(matching.reduce((sum, d) => sum + parseWeight(d.gross_weight), 0) * 100) / 100
+        const usdVal = matching.reduce((sum, d) => {
+          const { amount, currency } = parseMoney(d.goods_value)
+          return currency === "USD" ? sum + amount : sum
+        }, 0)
+
+        kpis = [
+          { label: "Total BOLs", value: matching.length, color: "blue" },
+          { label: "Net Weight", value: `${totalNet.toLocaleString()} KG`, color: "slate" },
+          { label: "Gross Weight", value: `${totalGross.toLocaleString()} KG`, color: "slate" },
+          {
+            label: "Goods Value (USD)",
+            value: `$${usdVal.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`,
+            color: "emerald",
+          },
+        ]
+
+        const commMap = new Map<string, number>()
+        const shipMap = new Map<string, number>()
+        matching.forEach((d) => {
+          const c = extractCleanCommodity(d.cargo_description || d.goods_description || d.commodity)
+          if (c && c !== "General Cargo") {
+            commMap.set(c, (commMap.get(c) || 0) + 1)
+          }
+          if (d.shipper_name) {
+            shipMap.set(d.shipper_name.trim(), (shipMap.get(d.shipper_name.trim()) || 0) + 1)
+          }
+        })
+
+        breakdowns = [
+          {
+            title: "Top Cargo Shipped Through Hub",
+            items: Array.from(commMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([c, cnt]) => ({
+                label: c,
+                value: `${cnt} shipments`,
+              })),
+          },
+          {
+            title: "Active Shippers",
+            items: Array.from(shipMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([s, cnt]) => ({
+                label: s,
+                value: `${cnt} BOLs`,
+              })),
+          },
+        ]
+      } else if (type === "route") {
+        matching = filteredData.filter((d) => {
+          const routeInfo = extractBolRoute(d)
+          return (
+            routeInfo.display.toLowerCase().includes(name.toLowerCase()) ||
+            `${routeInfo.origin} ➜ ${routeInfo.destination}`.toLowerCase().includes(name.toLowerCase())
+          )
+        })
+        const totalNet =
+          Math.round(matching.reduce((sum, d) => sum + parseWeight(d.net_weight), 0) * 100) / 100
+        const usdVal = matching.reduce((sum, d) => {
+          const { amount, currency } = parseMoney(d.goods_value)
+          return currency === "USD" ? sum + amount : sum
+        }, 0)
+
+        kpis = [
+          { label: "Total BOLs", value: matching.length, color: "blue" },
+          { label: "Net Weight", value: `${totalNet.toLocaleString()} KG`, color: "slate" },
+          {
+            label: "Goods Value (USD)",
+            value: `$${usdVal.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`,
+            color: "emerald",
+          },
+        ]
+
+        const truckMap = new Map<string, number>()
+        matching.forEach((d) => {
+          const t = extractTruckNo(d) || d.truck_number
+          if (t) truckMap.set(t.trim(), (truckMap.get(t.trim()) || 0) + 1)
+        })
+
+        breakdowns = [
+          {
+            title: "Fleet Trucks on this Corridor",
+            items: Array.from(truckMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([t, cnt]) => ({
+                label: t,
+                value: `${cnt} trips`,
+              })),
+          },
+        ]
+      } else if (type === "truck") {
+        matching = filteredData.filter((d) => {
+          const t = extractTruckNo(d) || d.truck_number || ""
+          return t.toLowerCase().includes(name.toLowerCase())
+        })
+        const totalRent = matching.reduce((acc, d) => {
+          const rentRaw = d.driver_rent || d.driverFreight || ""
+          if (rentRaw.trim()) {
+            const { amount, currency } = parseMoney(rentRaw)
+            acc[currency] = (acc[currency] || 0) + amount
+          }
+          return acc
+        }, {} as Record<string, number>)
+
+        const rentStr =
+          Object.entries(totalRent)
+            .map(([curr, amt]) => `${amt.toLocaleString()} ${curr}`)
+            .join(", ") || "—"
+
+        kpis = [
+          { label: "Total Trips / BOLs", value: matching.length, color: "blue" },
+          { label: "Driver Rent Total", value: rentStr, color: "amber" },
+          { label: "Last Driver", value: matching[0]?.driver_name || "—", color: "slate" },
+        ]
+
+        const routeMap = new Map<string, number>()
+        matching.forEach((d) => {
+          const r = extractBolRoute(d)
+          if (r.shortDisplay !== "—") {
+            routeMap.set(r.shortDisplay, (routeMap.get(r.shortDisplay) || 0) + 1)
+          }
+        })
+
+        breakdowns = [
+          {
+            title: "Routes Driven",
+            items: Array.from(routeMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([r, cnt]) => ({
+                label: r,
+                value: `${cnt} trips`,
+              })),
+          },
+        ]
+      } else if (type === "container") {
+        matching = filteredData.filter((d) =>
+          (d.container_numbers || "").toUpperCase().includes(name.toUpperCase())
+        )
+        kpis = [
+          { label: "Total BOLs", value: matching.length, color: "blue" },
+          { label: "Assigned Shipper", value: matching[0]?.shipper_name || "—", color: "slate" },
+          { label: "Destination", value: matching[0]?.port_of_discharge || "—", color: "slate" },
+        ]
+      } else if (type === "month") {
+        matching = filteredData.filter((d) => {
+          const dt = normalizeDate(d.issue_date || d.created_at)
+          if (!dt) return false
+          const mKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`
+          const mLabel = dt.toLocaleDateString("en-US", { month: "short", year: "numeric" })
+          return mKey === name || mLabel.toLowerCase() === name.toLowerCase()
+        })
+        const totalNet =
+          Math.round(matching.reduce((sum, d) => sum + parseWeight(d.net_weight), 0) * 100) / 100
+        const usdVal = matching.reduce((sum, d) => {
+          const { amount, currency } = parseMoney(d.goods_value)
+          return currency === "USD" ? sum + amount : sum
+        }, 0)
+
+        kpis = [
+          { label: "Total BOLs", value: matching.length, color: "blue" },
+          { label: "Net Weight", value: `${totalNet.toLocaleString()} KG`, color: "slate" },
+          {
+            label: "Goods Value (USD)",
+            value: `$${usdVal.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`,
+            color: "emerald",
+          },
+        ]
+      }
+
+      setDrawerState({
+        isOpen: true,
+        entityType: type,
+        entityName: name,
+        kpis,
+        breakdowns,
+        recentBols: matching,
+        matchingCount: matching.length,
+      })
+    },
     [filteredData]
   )
+
+  const handleViewMatchingBols = useCallback(
+    (type: string, name: string) => {
+      setDrillDownEntity({
+        type: type as any,
+        name,
+      })
+      setActiveTab("detailed")
+      toast.info(`Filtering Detailed Report for ${type}: ${name}`)
+    },
+    []
+  )
+
+  // =========================================================================
+  // Report Tab Columns & Summary Metrics
+  // =========================================================================
+
+  // 1. Shippers Columns & Metrics
+  const shipperColumns: ReportColumnDef<ShipperSummary>[] = useMemo(
+    () => [
+      {
+        id: "shipperName",
+        header: "Shipper",
+        accessor: (r) => r.shipperName,
+        cell: (r) => {
+          const isRtl = isRtlText(r.shipperName)
+          return (
+            <div
+              className={`font-bold text-slate-950 dark:text-slate-100 max-w-[220px] truncate ${
+                isRtl ? "text-right font-[vazirmatn]" : ""
+              }`}
+              dir={isRtl ? "rtl" : "ltr"}
+              title={r.shipperName}
+            >
+              {r.shipperName}
+            </div>
+          )
+        },
+      },
+      {
+        id: "bolCount",
+        header: "BOL Count",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.bolCount,
+        cell: (r) => (
+          <span className="font-mono font-black text-blue-700 dark:text-blue-400">
+            {r.bolCount}
+          </span>
+        ),
+      },
+      {
+        id: "packages",
+        header: "Packages",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.packages,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.packages.toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        id: "netWeightKg",
+        header: "Net Weight",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.netWeightKg,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.netWeightKg.toLocaleString()} KG
+          </span>
+        ),
+      },
+      {
+        id: "grossWeightKg",
+        header: "Gross Weight",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.grossWeightKg,
+        cell: (r) => (
+          <span className="font-mono text-slate-600 dark:text-slate-400">
+            {r.grossWeightKg.toLocaleString()} KG
+          </span>
+        ),
+      },
+      {
+        id: "goodsValueUsd",
+        header: "Goods Value (USD)",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.goodsValueByCurrency["USD"] || 0,
+        cell: (r) => (
+          <span className="font-mono font-black text-emerald-700 dark:text-emerald-400">
+            ${(r.goodsValueByCurrency["USD"] || 0).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        ),
+      },
+      {
+        id: "topCommodity",
+        header: "Commodities",
+        accessor: (r) => r.topCommodity || r.commodities?.join(", ") || "",
+        cell: (r) => (
+          <span
+            className="text-slate-700 dark:text-slate-300 truncate max-w-[180px] inline-block"
+            title={r.commodities?.join(", ") || r.topCommodity || "—"}
+          >
+            {r.topCommodity || r.commodities?.slice(0, 2).join(", ") || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "topConsignee",
+        header: "Top Consignee",
+        accessor: (r) => r.topConsignee || "",
+        cell: (r) => (
+          <span
+            className="text-slate-700 dark:text-slate-300 font-semibold truncate max-w-[160px] inline-block"
+            title={r.topConsignee || "—"}
+          >
+            {r.topConsignee || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "topDestination",
+        header: "Top Destination",
+        accessor: (r) => r.topDestination,
+        cell: (r) => (
+          <span className="text-slate-700 dark:text-slate-300 font-semibold truncate max-w-[150px] inline-block">
+            {r.topDestination || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "containerCount",
+        header: "Containers",
+        align: "center",
+        sortable: true,
+        defaultHidden: true,
+        accessor: (r) => r.containerCount,
+        cell: (r) => (
+          <span className="font-mono font-bold text-purple-700 dark:text-purple-400">
+            {r.containerCount}
+          </span>
+        ),
+      },
+      {
+        id: "lastShipmentDate",
+        header: "Last Shipment",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.lastShipmentDate,
+        cell: (r) => (
+          <span className="font-mono text-slate-600 dark:text-slate-400 text-xs">
+            {r.lastShipmentDate || "—"}
+          </span>
+        ),
+      },
+    ],
+    []
+  )
+
+  const shipperSummaryMetrics: SummaryMetricPill[] = useMemo(() => {
+    const totalBols = shippersList.reduce((s, r) => s + r.bolCount, 0)
+    const totalNet = Math.round(shippersList.reduce((s, r) => s + r.netWeightKg, 0))
+    const totalUsd = shippersList.reduce((s, r) => s + (r.goodsValueByCurrency["USD"] || 0), 0)
+    return [
+      { label: "Active Shippers", value: shippersList.length, color: "blue" },
+      { label: "Total BOLs", value: totalBols, color: "slate" },
+      { label: "Net Weight", value: `${totalNet.toLocaleString()} KG`, color: "slate" },
+      {
+        label: "Goods Value (USD)",
+        value: `$${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        color: "emerald",
+      },
+    ]
+  }, [shippersList])
+
+  // 2. Consignees Columns & Metrics
+  const consigneeColumns: ReportColumnDef<ConsigneeSummary>[] = useMemo(
+    () => [
+      {
+        id: "consigneeName",
+        header: "Consignee",
+        accessor: (r) => r.consigneeName,
+        cell: (r) => {
+          const isRtl = isRtlText(r.consigneeName)
+          return (
+            <div
+              className={`font-bold text-slate-950 dark:text-slate-100 max-w-[220px] truncate ${
+                isRtl ? "text-right font-[vazirmatn]" : ""
+              }`}
+              dir={isRtl ? "rtl" : "ltr"}
+              title={r.consigneeName}
+            >
+              {r.consigneeName}
+            </div>
+          )
+        },
+      },
+      {
+        id: "bolCount",
+        header: "BOL Count",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.bolCount,
+        cell: (r) => (
+          <span className="font-mono font-black text-blue-700 dark:text-blue-400">
+            {r.bolCount}
+          </span>
+        ),
+      },
+      {
+        id: "shipperCount",
+        header: "Suppliers",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.shipperCount,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+            {r.shipperCount}
+          </span>
+        ),
+      },
+      {
+        id: "packages",
+        header: "Packages",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.packages,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.packages.toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        id: "netWeightKg",
+        header: "Net Weight",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.netWeightKg,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.netWeightKg.toLocaleString()} KG
+          </span>
+        ),
+      },
+      {
+        id: "grossWeightKg",
+        header: "Gross Weight",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.grossWeightKg,
+        cell: (r) => (
+          <span className="font-mono text-slate-600 dark:text-slate-400">
+            {r.grossWeightKg.toLocaleString()} KG
+          </span>
+        ),
+      },
+      {
+        id: "goodsValueUsd",
+        header: "Goods Value (USD)",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.goodsValueByCurrency["USD"] || 0,
+        cell: (r) => (
+          <span className="font-mono font-black text-emerald-700 dark:text-emerald-400">
+            ${(r.goodsValueByCurrency["USD"] || 0).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        ),
+      },
+      {
+        id: "topShipper",
+        header: "Top Shipper",
+        accessor: (r) => r.topShipper || "",
+        cell: (r) => (
+          <span
+            className="text-slate-700 dark:text-slate-300 font-semibold truncate max-w-[160px] inline-block"
+            title={r.topShipper || "—"}
+          >
+            {r.topShipper || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "topCommodity",
+        header: "Commodities",
+        accessor: (r) => r.topCommodity || r.commodities?.join(", ") || "",
+        cell: (r) => (
+          <span
+            className="text-slate-700 dark:text-slate-300 truncate max-w-[160px] inline-block"
+            title={r.commodities?.join(", ") || r.topCommodity || "—"}
+          >
+            {r.topCommodity || r.commodities?.slice(0, 2).join(", ") || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "topDestination",
+        header: "Destination / Port",
+        accessor: (r) => r.topDestination,
+        cell: (r) => (
+          <span className="text-slate-700 dark:text-slate-300 font-semibold truncate max-w-[150px] inline-block">
+            {r.topDestination || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "lastShipmentDate",
+        header: "Last Shipment",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.lastShipmentDate,
+        cell: (r) => (
+          <span className="font-mono text-slate-600 dark:text-slate-400 text-xs">
+            {r.lastShipmentDate || "—"}
+          </span>
+        ),
+      },
+    ],
+    []
+  )
+
+  const consigneeSummaryMetrics: SummaryMetricPill[] = useMemo(() => {
+    const totalBols = consigneesList.reduce((s, r) => s + r.bolCount, 0)
+    const totalNet = Math.round(consigneesList.reduce((s, r) => s + r.netWeightKg, 0))
+    const totalUsd = consigneesList.reduce((s, r) => s + (r.goodsValueByCurrency["USD"] || 0), 0)
+    return [
+      { label: "Active Consignees", value: consigneesList.length, color: "blue" },
+      { label: "Total BOLs", value: totalBols, color: "slate" },
+      { label: "Net Weight", value: `${totalNet.toLocaleString()} KG`, color: "slate" },
+      {
+        label: "Goods Value (USD)",
+        value: `$${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        color: "emerald",
+      },
+    ]
+  }, [consigneesList])
+
+  // 3. Commodities Columns & Metrics
+  const commodityColumns: ReportColumnDef<CommoditySummary>[] = useMemo(
+    () => [
+      {
+        id: "commodityName",
+        header: "Commodity",
+        accessor: (r) => r.commodityName,
+        cell: (r) => (
+          <span
+            className="font-bold text-slate-950 dark:text-slate-100 max-w-[220px] truncate inline-block"
+            title={r.commodityName}
+          >
+            {r.commodityName}
+          </span>
+        ),
+      },
+      {
+        id: "bolCount",
+        header: "BOL Count",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.bolCount,
+        cell: (r) => (
+          <span className="font-mono font-black text-blue-700 dark:text-blue-400">
+            {r.bolCount}
+          </span>
+        ),
+      },
+      {
+        id: "cargoRowCount",
+        header: "Cargo Rows",
+        align: "center",
+        sortable: true,
+        defaultHidden: true,
+        accessor: (r) => r.cargoRowCount || r.bolCount,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-700 dark:text-slate-300">
+            {r.cargoRowCount || r.bolCount}
+          </span>
+        ),
+      },
+      {
+        id: "packages",
+        header: "Packages",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.packages,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.packages.toLocaleString()} {r.packageUnit || ""}
+          </span>
+        ),
+      },
+      {
+        id: "netWeightKg",
+        header: "Net Weight",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.netWeightKg,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.netWeightKg.toLocaleString()} KG
+          </span>
+        ),
+      },
+      {
+        id: "grossWeightKg",
+        header: "Gross Weight",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.grossWeightKg || 0,
+        cell: (r) => (
+          <span className="font-mono text-slate-600 dark:text-slate-400">
+            {(r.grossWeightKg || 0).toLocaleString()} KG
+          </span>
+        ),
+      },
+      {
+        id: "goodsValueUsd",
+        header: "Goods Value (USD)",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.goodsValueByCurrency["USD"] || 0,
+        cell: (r) => (
+          <span className="font-mono font-black text-emerald-700 dark:text-emerald-400">
+            ${(r.goodsValueByCurrency["USD"] || 0).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        ),
+      },
+      {
+        id: "averageValueUsd",
+        header: "Avg Value / BOL",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.averageValueUsd,
+        cell: (r) => (
+          <span className="font-mono text-slate-700 dark:text-slate-300">
+            ${r.averageValueUsd.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        ),
+      },
+      {
+        id: "topShipper",
+        header: "Top Shipper",
+        accessor: (r) => r.topShipper || "",
+        cell: (r) => (
+          <span
+            className="text-slate-700 dark:text-slate-300 font-semibold truncate max-w-[160px] inline-block"
+            title={r.topShipper || "—"}
+          >
+            {r.topShipper || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "topConsignee",
+        header: "Top Consignee",
+        accessor: (r) => r.topConsignee || "",
+        cell: (r) => (
+          <span
+            className="text-slate-700 dark:text-slate-300 font-semibold truncate max-w-[160px] inline-block"
+            title={r.topConsignee || "—"}
+          >
+            {r.topConsignee || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "destinations",
+        header: "Destinations",
+        accessor: (r) => r.destinations.join(", "),
+        cell: (r) => (
+          <span
+            className="text-slate-600 dark:text-slate-400 truncate max-w-[180px] inline-block"
+            title={r.destinations.join(", ") || "—"}
+          >
+            {r.destinations.join(", ") || "—"}
+          </span>
+        ),
+      },
+    ],
+    []
+  )
+
+  const commoditySummaryMetrics: SummaryMetricPill[] = useMemo(() => {
+    const totalBols = commoditiesList.reduce((s, r) => s + r.bolCount, 0)
+    const totalNet = Math.round(commoditiesList.reduce((s, r) => s + r.netWeightKg, 0))
+    const totalUsd = commoditiesList.reduce((s, r) => s + (r.goodsValueByCurrency["USD"] || 0), 0)
+    return [
+      { label: "Cargo Types", value: commoditiesList.length, color: "blue" },
+      { label: "Total BOLs", value: totalBols, color: "slate" },
+      { label: "Total Net Weight", value: `${totalNet.toLocaleString()} KG`, color: "slate" },
+      {
+        label: "Goods Value (USD)",
+        value: `$${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        color: "emerald",
+      },
+    ]
+  }, [commoditiesList])
+
+  // 4. Destinations Columns & Metrics
+  const destinationColumns: ReportColumnDef<DestinationSummary>[] = useMemo(
+    () => [
+      {
+        id: "locationName",
+        header: "Transit Hub / Port",
+        accessor: (r) => r.locationName,
+        cell: (r) => (
+          <span
+            className="font-bold text-slate-950 dark:text-slate-100 max-w-[200px] truncate inline-block"
+            title={r.locationName}
+          >
+            {r.locationName}
+          </span>
+        ),
+      },
+      {
+        id: "type",
+        header: "Route Role",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.type,
+        cell: (r) => (
+          <span
+            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+              r.type === "POL"
+                ? "bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300"
+                : r.type === "POD"
+                ? "bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300"
+                : "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300"
+            }`}
+          >
+            {r.type}
+          </span>
+        ),
+      },
+      {
+        id: "country",
+        header: "Country",
+        accessor: (r) => r.country || "",
+        cell: (r) => (
+          <span className="text-slate-700 dark:text-slate-300 font-semibold">
+            {r.country || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "bolCount",
+        header: "BOL Count",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.bolCount,
+        cell: (r) => (
+          <span className="font-mono font-black text-blue-700 dark:text-blue-400">
+            {r.bolCount}
+          </span>
+        ),
+      },
+      {
+        id: "packages",
+        header: "Packages",
+        align: "right",
+        sortable: true,
+        defaultHidden: true,
+        accessor: (r) => r.packages || 0,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {(r.packages || 0).toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        id: "netWeightKg",
+        header: "Net Weight",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.netWeightKg,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.netWeightKg.toLocaleString()} KG
+          </span>
+        ),
+      },
+      {
+        id: "grossWeightKg",
+        header: "Gross Weight",
+        align: "right",
+        sortable: true,
+        defaultHidden: true,
+        accessor: (r) => r.grossWeightKg || 0,
+        cell: (r) => (
+          <span className="font-mono text-slate-600 dark:text-slate-400">
+            {(r.grossWeightKg || 0).toLocaleString()} KG
+          </span>
+        ),
+      },
+      {
+        id: "goodsValueUsd",
+        header: "Goods Value (USD)",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.goodsValueByCurrency["USD"] || 0,
+        cell: (r) => (
+          <span className="font-mono font-black text-emerald-700 dark:text-emerald-400">
+            ${(r.goodsValueByCurrency["USD"] || 0).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        ),
+      },
+      {
+        id: "topShipper",
+        header: "Top Shipper",
+        accessor: (r) => r.topShipper || r.topShippers?.join(", ") || "",
+        cell: (r) => (
+          <span
+            className="text-slate-700 dark:text-slate-300 font-semibold truncate max-w-[160px] inline-block"
+            title={r.topShipper || r.topShippers?.join(", ") || "—"}
+          >
+            {r.topShipper || r.topShippers?.slice(0, 2).join(", ") || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "topCommodity",
+        header: "Top Commodity",
+        accessor: (r) => r.topCommodity || "",
+        cell: (r) => (
+          <span
+            className="text-slate-700 dark:text-slate-300 truncate max-w-[150px] inline-block"
+            title={r.topCommodity || "—"}
+          >
+            {r.topCommodity || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "lastShipmentDate",
+        header: "Last Shipment",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.lastShipmentDate || "",
+        cell: (r) => (
+          <span className="font-mono text-slate-600 dark:text-slate-400 text-xs">
+            {r.lastShipmentDate || "—"}
+          </span>
+        ),
+      },
+    ],
+    []
+  )
+
+  const destinationSummaryMetrics: SummaryMetricPill[] = useMemo(() => {
+    const totalBols = destinationsList.reduce((s, r) => s + r.bolCount, 0)
+    const totalNet = Math.round(destinationsList.reduce((s, r) => s + r.netWeightKg, 0))
+    const totalUsd = destinationsList.reduce((s, r) => s + (r.goodsValueByCurrency["USD"] || 0), 0)
+    return [
+      { label: "Transit Hubs & Ports", value: destinationsList.length, color: "blue" },
+      { label: "Total Route Mentions", value: totalBols, color: "slate" },
+      { label: "Cargo Net Weight", value: `${totalNet.toLocaleString()} KG`, color: "slate" },
+      {
+        label: "Goods Value (USD)",
+        value: `$${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        color: "emerald",
+      },
+    ]
+  }, [destinationsList])
+
+  // 5. Routes Columns & Metrics
+  const routeColumns: ReportColumnDef<RouteSummary>[] = useMemo(
+    () => [
+      {
+        id: "routePath",
+        header: "Transit Corridor (Origin ➜ Destination)",
+        accessor: (r) => r.routePath,
+        cell: (r) => (
+          <div className="max-w-[260px] truncate" title={r.routePath}>
+            <div className="flex items-center gap-1.5 font-bold text-slate-950 dark:text-slate-100">
+              <Navigation className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <span>{r.origin}</span>
+              <span className="text-slate-400">➜</span>
+              <span className="text-blue-700 dark:text-blue-400">{r.destination}</span>
+            </div>
+            {r.routePath !== `${r.origin} ➜ ${r.destination}` && (
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5 font-normal">
+                {r.routePath}
+              </p>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "borderCrossing",
+        header: "Border Crossing / Via",
+        accessor: (r) => r.borderCrossing || r.via || "",
+        cell: (r) =>
+          r.borderCrossing || r.via ? (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+              {r.borderCrossing || r.via}
+            </span>
+          ) : (
+            <span className="text-slate-400">—</span>
+          ),
+      },
+      {
+        id: "bolCount",
+        header: "Total BOLs",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.bolCount,
+        cell: (r) => (
+          <span className="font-mono font-black text-blue-700 dark:text-blue-400">
+            {r.bolCount}
+          </span>
+        ),
+      },
+      {
+        id: "packages",
+        header: "Packages",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.packages,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.packages.toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        id: "netWeightKg",
+        header: "Net Weight",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.netWeightKg,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.netWeightKg.toLocaleString()} KG
+          </span>
+        ),
+      },
+      {
+        id: "grossWeightKg",
+        header: "Gross Weight",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.grossWeightKg,
+        cell: (r) => (
+          <span className="font-mono text-slate-600 dark:text-slate-400">
+            {r.grossWeightKg.toLocaleString()} KG
+          </span>
+        ),
+      },
+      {
+        id: "goodsValueUsd",
+        header: "Goods Value (USD)",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.goodsValueByCurrency["USD"] || 0,
+        cell: (r) => (
+          <span className="font-mono font-black text-emerald-700 dark:text-emerald-400">
+            ${(r.goodsValueByCurrency["USD"] || 0).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        ),
+      },
+      {
+        id: "equipmentSplit",
+        header: "Equipment Split",
+        align: "center",
+        cell: (r) => (
+          <div className="flex items-center justify-center gap-1">
+            {r.reeferCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-black bg-cyan-100 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-200">
+                {r.reeferCount} Reefer
+              </span>
+            )}
+            {r.dryCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                {r.dryCount} Dry
+              </span>
+            )}
+          </div>
+        ),
+      },
+    ],
+    []
+  )
+
+  const routeSummaryMetrics: SummaryMetricPill[] = useMemo(() => {
+    const totalBols = routesList.reduce((s, r) => s + r.bolCount, 0)
+    const totalNet = Math.round(routesList.reduce((s, r) => s + r.netWeightKg, 0))
+    const totalUsd = routesList.reduce((s, r) => s + (r.goodsValueByCurrency["USD"] || 0), 0)
+    return [
+      { label: "Corridors", value: routesList.length, color: "blue" },
+      { label: "Total Trips", value: totalBols, color: "slate" },
+      { label: "Net Weight", value: `${totalNet.toLocaleString()} KG`, color: "slate" },
+      {
+        label: "Goods Value (USD)",
+        value: `$${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        color: "emerald",
+      },
+    ]
+  }, [routesList])
+
+  // 6. Containers Columns & Metrics
+  const containerColumns: ReportColumnDef<ContainerRecord>[] = useMemo(
+    () => [
+      {
+        id: "containerNumber",
+        header: "Container No.",
+        accessor: (r) => r.containerNumber,
+        cell: (r) => (
+          <span className="font-mono font-black text-slate-950 dark:text-slate-100">
+            {r.containerNumber}
+          </span>
+        ),
+      },
+      {
+        id: "containerType",
+        header: "Type",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.containerType,
+        cell: (r) => (
+          <span
+            className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+              r.containerType.includes("RF") || r.containerType.includes("Reefer")
+                ? "bg-cyan-50 dark:bg-cyan-950/60 text-cyan-800 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+            }`}
+          >
+            {r.containerType}
+          </span>
+        ),
+      },
+      {
+        id: "bolNumber",
+        header: "BOL No.",
+        accessor: (r) => r.bolNumber,
+        cell: (r) => (
+          <span className="font-mono font-bold text-blue-700 dark:text-blue-400">
+            {r.bolNumber}
+          </span>
+        ),
+      },
+      {
+        id: "shipper",
+        header: "Shipper",
+        accessor: (r) => r.shipper,
+        cell: (r) => (
+          <span
+            className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[160px] inline-block"
+            title={r.shipper}
+          >
+            {r.shipper}
+          </span>
+        ),
+      },
+      {
+        id: "consignee",
+        header: "Consignee",
+        accessor: (r) => r.consignee,
+        cell: (r) => (
+          <span
+            className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[160px] inline-block"
+            title={r.consignee}
+          >
+            {r.consignee}
+          </span>
+        ),
+      },
+      {
+        id: "commodity",
+        header: "Commodity",
+        accessor: (r) => r.commodity,
+        cell: (r) => (
+          <span
+            className="font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[150px] inline-block"
+            title={r.commodity}
+          >
+            {r.commodity}
+          </span>
+        ),
+      },
+      {
+        id: "weightKg",
+        header: "Weight",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.weightKg,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.weightKg.toLocaleString()} KG
+          </span>
+        ),
+      },
+      {
+        id: "route",
+        header: "Origin ➜ Destination",
+        accessor: (r) => `${r.origin} ➜ ${r.destination}`,
+        cell: (r) => (
+          <span
+            className="text-slate-600 dark:text-slate-400 text-[11px] truncate max-w-[170px] inline-block"
+            title={`${r.origin} ➜ ${r.destination}`}
+          >
+            {r.origin} ➜ {r.destination}
+          </span>
+        ),
+      },
+      {
+        id: "date",
+        header: "Date",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.date,
+        cell: (r) => (
+          <span className="font-mono text-slate-600 dark:text-slate-400 text-xs">
+            {r.date}
+          </span>
+        ),
+      },
+    ],
+    []
+  )
+
+  const containerSummaryMetrics: SummaryMetricPill[] = useMemo(
+    () => [
+      { label: "Total Equipment", value: containerStats.total, color: "blue" },
+      { label: "Dry Containers", value: containerStats.dry, color: "slate" },
+      { label: "Reefer Containers", value: containerStats.reefer, color: "cyan" },
+      { label: "40 FT / 40 HC", value: containerStats.fortyFt + containerStats.fortyHc, color: "purple" },
+    ],
+    [containerStats]
+  )
+
+  // 7. Trucks Columns & Metrics
+  const truckColumns: ReportColumnDef<TruckSummary>[] = useMemo(
+    () => [
+      {
+        id: "truckNumber",
+        header: "Truck Plate No.",
+        accessor: (r) => r.truckNumber,
+        cell: (r) => (
+          <span
+            dir="ltr"
+            className="inline-block px-2 py-0.5 rounded font-mono font-black bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+          >
+            {r.truckNumber}
+          </span>
+        ),
+      },
+      {
+        id: "plateRegion",
+        header: "Region / Origin",
+        accessor: (r) => r.plateRegion || "",
+        cell: (r) => (
+          <span className="font-semibold text-slate-700 dark:text-slate-300">
+            {r.plateRegion || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "lastDriver",
+        header: "Assigned Driver & Phone",
+        accessor: (r) => `${r.lastDriver} ${r.lastDriverPhone || ""}`,
+        cell: (r) => (
+          <div>
+            <p className="font-bold text-slate-900 dark:text-slate-100">{r.lastDriver}</p>
+            {r.lastDriverPhone && r.lastDriverPhone !== "—" && (
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                {r.lastDriverPhone}
+              </p>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "bolCount",
+        header: "Total BOLs / Trips",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.bolCount,
+        cell: (r) => (
+          <span className="font-mono font-black text-blue-700 dark:text-blue-400">
+            {r.bolCount}
+          </span>
+        ),
+      },
+      {
+        id: "totalDriverRent",
+        header: "Total Driver Rent",
+        align: "right",
+        sortable: true,
+        accessor: (r) => Object.values(r.totalDriverRent).reduce((s, v) => s + v, 0),
+        cell: (r) => {
+          const rentEntries = Object.entries(r.totalDriverRent)
+          return (
+            <div className="font-mono font-bold text-amber-700 dark:text-amber-400">
+              {rentEntries.length > 0 ? (
+                rentEntries.map(([currency, val]) => (
+                  <div key={currency}>
+                    {val.toLocaleString()} {currency}
+                  </div>
+                ))
+              ) : (
+                <span className="text-slate-400 font-normal">—</span>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        id: "topRoute",
+        header: "Top Corridor",
+        accessor: (r) => r.topRoute || r.routesUsed.join(", "),
+        cell: (r) => (
+          <span
+            className="text-slate-600 dark:text-slate-400 text-[11px] truncate max-w-[200px] inline-block"
+            title={r.routesUsed.join(", ") || r.topRoute || "—"}
+          >
+            {r.topRoute || r.routesUsed.join(", ") || "—"}
+          </span>
+        ),
+      },
+      {
+        id: "topShipper",
+        header: "Primary Shipper",
+        accessor: (r) => r.topShipper,
+        cell: (r) => (
+          <span
+            className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[180px] inline-block"
+            title={r.topShipper}
+          >
+            {r.topShipper}
+          </span>
+        ),
+      },
+      {
+        id: "lastShipmentDate",
+        header: "Last Active Date",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.lastShipmentDate,
+        cell: (r) => (
+          <span className="font-mono text-slate-600 dark:text-slate-400 text-xs">
+            {r.lastShipmentDate}
+          </span>
+        ),
+      },
+    ],
+    []
+  )
+
+  const truckSummaryMetrics: SummaryMetricPill[] = useMemo(() => {
+    const totalTrips = trucksList.reduce((s, r) => s + r.bolCount, 0)
+    return [
+      { label: "Fleet Units", value: trucksList.length, color: "blue" },
+      { label: "Total Trips / BOLs", value: totalTrips, color: "slate" },
+    ]
+  }, [trucksList])
+
+  // 8. Monthly Columns & Metrics
+  const monthlyColumns: ReportColumnDef<MonthlySummary>[] = useMemo(
+    () => [
+      {
+        id: "monthLabel",
+        header: "Operating Month",
+        accessor: (r) => r.monthLabel,
+        cell: (r) => (
+          <span className="font-mono font-black text-slate-950 dark:text-slate-100">
+            {r.monthLabel}
+          </span>
+        ),
+      },
+      {
+        id: "bolCount",
+        header: "BOLs",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.bolCount,
+        cell: (r) => (
+          <span className="font-mono font-black text-blue-700 dark:text-blue-400">
+            {r.bolCount}
+          </span>
+        ),
+      },
+      {
+        id: "packages",
+        header: "Packages",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.packages,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.packages.toLocaleString()}
+          </span>
+        ),
+      },
+      {
+        id: "netWeightKg",
+        header: "Net Weight",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.netWeightKg,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.netWeightKg.toLocaleString()} KG
+          </span>
+        ),
+      },
+      {
+        id: "goodsValueUsd",
+        header: "Goods Value (USD)",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.goodsValueByCurrency["USD"] || 0,
+        cell: (r) => (
+          <span className="font-mono font-black text-emerald-700 dark:text-emerald-400">
+            ${(r.goodsValueByCurrency["USD"] || 0).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
+        ),
+      },
+      {
+        id: "containerCount",
+        header: "Containers",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.containerCount,
+        cell: (r) => (
+          <span className="font-mono font-bold text-purple-700 dark:text-purple-400">
+            {r.containerCount}
+          </span>
+        ),
+      },
+      {
+        id: "shipperCount",
+        header: "Shippers",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.shipperCount,
+        cell: (r) => (
+          <span className="font-mono text-slate-700 dark:text-slate-300">
+            {r.shipperCount}
+          </span>
+        ),
+      },
+      {
+        id: "consigneeCount",
+        header: "Consignees",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.consigneeCount,
+        cell: (r) => (
+          <span className="font-mono text-slate-700 dark:text-slate-300">
+            {r.consigneeCount}
+          </span>
+        ),
+      },
+    ],
+    []
+  )
+
+  const monthlySummaryMetrics: SummaryMetricPill[] = useMemo(() => {
+    const totalBols = monthlySummaries.reduce((s, r) => s + r.bolCount, 0)
+    const totalNet = Math.round(monthlySummaries.reduce((s, r) => s + r.netWeightKg, 0))
+    const totalUsd = monthlySummaries.reduce((s, r) => s + (r.goodsValueByCurrency["USD"] || 0), 0)
+    return [
+      { label: "Operating Months", value: monthlySummaries.length, color: "blue" },
+      { label: "Total BOLs", value: totalBols, color: "slate" },
+      { label: "Net Weight", value: `${totalNet.toLocaleString()} KG`, color: "slate" },
+      {
+        label: "Goods Value (USD)",
+        value: `$${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        color: "emerald",
+      },
+    ]
+  }, [monthlySummaries])
+
+  // 9. Financial Monthly Columns & Rows (Adheres strictly to real stored fields; never fabricates profit)
+  interface FinancialMonthlyRow {
+    monthKey: string
+    monthLabel: string
+    bolCount: number
+    goodsValueUsd: number
+    goodsValueAfn: number
+    driverRentAfn: number
+    driverRentUsd: number
+    freightUsd: number
+    status: string
+  }
+
+  const financialMonthlyRows: FinancialMonthlyRow[] = useMemo(() => {
+    return monthlySummaries.map((m) => {
+      let driverRentAFN = 0
+      let driverRentUSD = 0
+      let freightUSD = 0
+      for (const doc of filteredData) {
+        const rawDate = doc.issue_date || doc.created_at || ""
+        if (rawDate.startsWith(m.monthKey)) {
+          const dRent = String(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent || "")
+          if (dRent) {
+            const num = parseFloat(dRent.replace(/[^0-9.]/g, ""))
+            if (!isNaN(num)) {
+              if (dRent.toUpperCase().includes("USD") || dRent.includes("$")) {
+                driverRentUSD += num
+              } else {
+                driverRentAFN += num
+              }
+            }
+          }
+          const fr = String((doc as any).freight || (doc as any).freight_charges || "")
+          if (fr) {
+            const num = parseFloat(fr.replace(/[^0-9.]/g, ""))
+            if (!isNaN(num)) freightUSD += num
+          }
+        }
+      }
+      return {
+        monthKey: m.monthKey,
+        monthLabel: m.monthLabel,
+        bolCount: m.bolCount,
+        goodsValueUsd: m.goodsValueByCurrency["USD"] || 0,
+        goodsValueAfn: m.goodsValueByCurrency["AFN"] || 0,
+        driverRentAfn: driverRentAFN,
+        driverRentUsd: driverRentUSD,
+        freightUsd: freightUSD,
+        status: "Financial data incomplete",
+      }
+    })
+  }, [monthlySummaries, filteredData])
+
+  const financialColumns: ReportColumnDef<FinancialMonthlyRow>[] = useMemo(
+    () => [
+      {
+        id: "monthLabel",
+        header: "Operating Month",
+        accessor: (r) => r.monthLabel,
+        cell: (r) => (
+          <span className="font-mono font-black text-slate-950 dark:text-slate-100">
+            {r.monthLabel}
+          </span>
+        ),
+      },
+      {
+        id: "bolCount",
+        header: "BOLs",
+        align: "center",
+        sortable: true,
+        accessor: (r) => r.bolCount,
+        cell: (r) => (
+          <span className="font-mono font-black text-blue-700 dark:text-blue-400">
+            {r.bolCount}
+          </span>
+        ),
+      },
+      {
+        id: "goodsValueUsd",
+        header: "Goods Value (USD)",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.goodsValueUsd,
+        cell: (r) => (
+          <span className="font-mono font-black text-emerald-700 dark:text-emerald-400">
+            ${r.goodsValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        ),
+      },
+      {
+        id: "driverRent",
+        header: "Driver Rent",
+        align: "right",
+        cell: (r) => (
+          <div className="font-mono text-xs">
+            {r.driverRentAfn > 0 && (
+              <span className="text-amber-700 dark:text-amber-400 block font-bold">
+                AFN {r.driverRentAfn.toLocaleString()}
+              </span>
+            )}
+            {r.driverRentUsd > 0 && (
+              <span className="text-emerald-700 dark:text-emerald-400 block font-bold">
+                ${r.driverRentUsd.toLocaleString()}
+              </span>
+            )}
+            {r.driverRentAfn === 0 && r.driverRentUsd === 0 && (
+              <span className="text-slate-400 font-medium">-</span>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "freightUsd",
+        header: "Freight (USD)",
+        align: "right",
+        sortable: true,
+        accessor: (r) => r.freightUsd,
+        cell: (r) => (
+          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+            {r.freightUsd > 0 ? `$${r.freightUsd.toLocaleString()}` : "-"}
+          </span>
+        ),
+      },
+      {
+        id: "status",
+        header: "Accounting Status",
+        align: "center",
+        cell: () => (
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300">
+            Financial data incomplete
+          </span>
+        ),
+      },
+    ],
+    []
+  )
+
+  const financialSummaryMetrics: SummaryMetricPill[] = useMemo(() => {
+    const totalUsd = financialMonthlyRows.reduce((s, r) => s + r.goodsValueUsd, 0)
+    const totalDriverRentAfn = financialMonthlyRows.reduce((s, r) => s + r.driverRentAfn, 0)
+    return [
+      { label: "Operating Months", value: financialMonthlyRows.length, color: "blue" },
+      {
+        label: "Goods Value (USD)",
+        value: `$${totalUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        color: "emerald",
+      },
+      {
+        label: "Driver Rent (AFN)",
+        value: `AFN ${totalDriverRentAfn.toLocaleString()}`,
+        color: "amber",
+      },
+    ]
+  }, [financialMonthlyRows])
 
   // Selection handlers
   const isAllPageSelected =
@@ -314,7 +2494,8 @@ export function SavedBolReport({
     try {
       await exportReportToExcel(
         activeReportData,
-        `Sky-Ariana-${activeTab.toUpperCase()}-Report`
+        `Sky-Ariana-${activeTab.toUpperCase()}-Report`,
+        activeTab
       )
       toast.dismiss(toastId)
       toast.success("Excel (.xlsx) report generated successfully")
@@ -781,8 +2962,8 @@ export function SavedBolReport({
         await new Promise((resolve) => setTimeout(resolve, 0))
 
         const canvas = await toCanvas(element as HTMLElement, {
-          pixelRatio: 2,
-          quality: 0.98,
+          pixelRatio: 3,
+          quality: 1.0,
           cacheBust: false,
           skipFonts: true,
           backgroundColor: "#ffffff",
@@ -795,7 +2976,10 @@ export function SavedBolReport({
             overflow: "visible",
             maxHeight: "none",
             height: "auto",
-          },
+            WebkitFontSmoothing: "antialiased",
+            MozOsxFontSmoothing: "grayscale",
+            textRendering: "optimizeLegibility",
+          } as any,
           filter: (node: HTMLElement) => {
             const tagName = node.tagName?.toUpperCase?.()
             if (tagName === "BUTTON" || node.getAttribute?.("role") === "button") return false
@@ -806,7 +2990,7 @@ export function SavedBolReport({
           },
         })
 
-        const imgData = canvas.toDataURL("image/jpeg", 0.98)
+        const imgData = canvas.toDataURL("image/jpeg", 0.99)
         if (!imgData || imgData === "data:,") {
           throw new Error("Failed to capture report visually. Please ensure the report is visible on screen.")
         }
@@ -832,19 +3016,19 @@ export function SavedBolReport({
           }
           
           const xOffset = (pdfWidth - finalWidthMM) / 2
-          pdf.addImage(imgData, "JPEG", xOffset, 0, finalWidthMM, finalHeightMM, undefined, "FAST")
+          pdf.addImage(imgData, "JPEG", xOffset, 0, finalWidthMM, finalHeightMM, undefined, "SLOW")
         } else {
           // Multi-page logic for Detailed, Shippers, Commodities, etc.
           let heightLeft = canvasHeightMM
           let position = 0
 
-          pdf.addImage(imgData, "JPEG", 0, position, pdfWidth, canvasHeightMM, undefined, "FAST")
+          pdf.addImage(imgData, "JPEG", 0, position, pdfWidth, canvasHeightMM, undefined, "SLOW")
           heightLeft -= pdfHeight
 
           while (heightLeft > 0) {
             position -= pdfHeight
             pdf.addPage()
-            pdf.addImage(imgData, "JPEG", 0, position, pdfWidth, canvasHeightMM, undefined, "FAST")
+            pdf.addImage(imgData, "JPEG", 0, position, pdfWidth, canvasHeightMM, undefined, "SLOW")
             heightLeft -= pdfHeight
           }
         }
@@ -941,136 +3125,119 @@ export function SavedBolReport({
     <div className="flex h-full w-full flex-col overflow-hidden print:h-auto print:overflow-visible bg-slate-100/60 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       {/* 1. TOP HEADER & BREADCRUMB */}
       <div className="print:hidden sticky top-0 z-20 flex flex-col border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between p-4 gap-4">
-          <div className="flex items-center gap-3">
+        {/* ROW 1: Branding, Back Navigation, Subtitle & Personalization Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:px-4 sm:py-3 gap-3 border-b border-slate-100 dark:border-slate-800/80">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <Button
               variant="outline"
               size="sm"
               onClick={onClose}
-              className="rounded-xl border-slate-200 dark:border-slate-700 h-9 font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="rounded-xl border-slate-200 dark:border-slate-700 h-9 font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
             >
               <ArrowLeft className="w-4 h-4 mr-1.5" />
-              Saved BOLs
+              <span>Saved BOLs</span>
             </Button>
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block"></div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-black tracking-tight text-slate-950 dark:text-slate-50 flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
-                  REPORT CENTER
+            <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block shrink-0"></div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <h1 className="text-lg font-black tracking-tight text-slate-950 dark:text-slate-50 flex items-center gap-2 whitespace-nowrap">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse shrink-0"></span>
+                  <span>REPORT CENTER</span>
                 </h1>
-                <span className="text-[11px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                  Operations & Management
+                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 whitespace-nowrap shrink-0">
+                  OPERATIONS & MANAGEMENT
                 </span>
               </div>
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 truncate mt-0.5">
                 Saved BOL • Shipment • Logistics • Financial Analytics
               </p>
             </div>
           </div>
 
-          
-          {/* Quick Actions (Fit Screen, Preview, Print, PDF, Excel, CSV) */}
-          <div className="flex items-center gap-2 flex-wrap xl:flex-nowrap">
-            {/* View Settings Group */}
-            <div className="flex items-center p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsFitScreen(!isFitScreen)}
-                className={"h-8 px-2 rounded-lg text-xs font-bold transition-all " + (isFitScreen ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100")}
-                title={isFitScreen ? "Standard width" : "Fit to width"}
-              >
-                {isFitScreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-              </Button>
-              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsPreviewMode(!isPreviewMode)}
-                className={"h-8 px-2.5 rounded-lg text-xs font-bold transition-all " + (isPreviewMode ? "bg-slate-800 text-white dark:bg-blue-600" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100")}
-              >
-                <Eye className="w-3.5 h-3.5 mr-1.5" />
-                {isPreviewMode ? "Exit Preview" : "A4 Preview"}
-              </Button>
-              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-              <button
-                type="button"
-                onClick={() => setPdfOrientation("landscape")}
-                className={"px-2.5 py-1 text-xs font-bold rounded-lg transition-all " + (pdfOrientation === "landscape" ? "bg-slate-800 text-white dark:bg-blue-600" : "text-slate-600 hover:bg-slate-100")}
-              >
-                Landscape
-              </button>
-              <button
-                type="button"
-                onClick={() => setPdfOrientation("portrait")}
-                className={"px-2.5 py-1 text-xs font-bold rounded-lg transition-all " + (pdfOrientation === "portrait" ? "bg-slate-800 text-white dark:bg-blue-600" : "text-slate-600 hover:bg-slate-100")}
-              >
-                Portrait
-              </button>
-            </div>
-
-            {/* Report Company Name */}
-            <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 h-9 shadow-2xs gap-1.5 shrink-0" title="Company name displayed on printed report">
-              <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-              <input
-                type="text"
-                value={reportCompanyName}
-                onChange={(e) => setReportCompanyName(e.target.value)}
-                placeholder="AQ COMPANIES"
-                className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight bg-transparent focus:outline-none w-28 sm:w-36"
-              />
-            </div>
-
-            {/* Direct Action Buttons: Print Report, Download PDF, Export Excel */}
-            <Button
-              onClick={handlePrint}
-              className="h-9 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-black text-xs shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shrink-0"
-              title="Print this report / Save as PDF (Ctrl+P)"
-            >
-              <Printer className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
-              <span>Print Report</span>
-            </Button>
-
-            <Button
-              onClick={handleGeneratePdf}
-              disabled={isGeneratingPdf}
-              className="h-9 px-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs shadow-md shadow-blue-500/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shrink-0 disabled:opacity-60"
-              title="Download complete report as PDF file"
-            >
-              {isGeneratingPdf ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Generating PDF...</span>
-                </>
-              ) : (
-                <>
-                  <FileDown className="w-4 h-4" />
-                  <span>Download PDF</span>
-                </>
-              )}
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={handleExportExcel}
-              className="h-9 px-3 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 text-emerald-900 dark:text-emerald-200 font-bold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer shrink-0 hidden sm:flex"
-              title="Export report dataset to Microsoft Excel (.xlsx)"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Excel</span>
-            </Button>
+          {/* Row 1 Right: Saved Views & More Actions (Ample space, never clipped) */}
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            {/* Saved Views Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  title="Load or manage saved views and presets"
+                >
+                  <Bookmark className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>Saved Views</span>
+                  <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 font-sans p-1.5 shadow-lg">
+                <DropdownMenuLabel className="text-[11px] font-black uppercase text-slate-400 px-2 py-1">
+                  Saved Configurations
+                </DropdownMenuLabel>
+                {savedReportPresets.map((preset) => {
+                  const isCurrentDefault = preset.isDefault || defaultPreset?.id === preset.id
+                  return (
+                    <DropdownMenuItem
+                      key={preset.id}
+                      onClick={() => handleApplyPreset(preset)}
+                      className="flex items-center justify-between text-xs font-semibold py-2 px-2 cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <Bookmark className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{preset.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => handleSetDefaultPreset(preset.id, e)}
+                          title={isCurrentDefault ? "Current Default View" : "Set as Default View"}
+                          className={`p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 ${
+                            isCurrentDefault ? "text-amber-500 font-bold" : "text-slate-300 hover:text-slate-600"
+                          }`}
+                        >
+                          <Star className="w-3.5 h-3.5 fill-current" />
+                        </button>
+                      </div>
+                    </DropdownMenuItem>
+                  )
+                })}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleSaveCurrentReportPreset}
+                  className="text-xs font-bold text-blue-700 dark:text-blue-400 cursor-pointer py-1.5"
+                >
+                  <Bookmark className="w-3.5 h-3.5 mr-2" />
+                  Save Current View As...
+                </DropdownMenuItem>
+                {defaultPreset && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setDefaultReportPreset(null)
+                      setSavedReportPresets(getSavedReportPresets())
+                      toast.info("Cleared default view")
+                    }}
+                    className="text-xs font-semibold text-slate-500 cursor-pointer py-1.5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 mr-2" />
+                    Reset Default View
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* More Actions Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-9 px-2.5 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-2xs shrink-0">
+                <Button
+                  variant="outline"
+                  className="h-9 px-2.5 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-2xs shrink-0 cursor-pointer"
+                  title="More actions and exports"
+                >
                   <Download className="w-3.5 h-3.5 mr-1 text-slate-500" />
-                  More
-                  <ChevronDown className="w-3 h-3 ml-1 opacity-70" />
+                  <span>More</span>
+                  <ChevronDown className="w-3.5 h-3.5 ml-1 opacity-70" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52 font-sans">
+              <DropdownMenuContent align="end" className="w-52 font-sans shadow-lg">
                 <DropdownMenuLabel className="text-xs font-bold text-slate-500">Document Actions</DropdownMenuLabel>
                 <DropdownMenuItem onClick={handlePrint} className="text-xs font-bold cursor-pointer">
                   <Printer className="w-4 h-4 mr-2 text-slate-600" />
@@ -1103,73 +3270,517 @@ export function SavedBolReport({
           </div>
         </div>
 
-        {/* Search & Filter Bar */}
-        <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3">
-          {/* Search Box */}
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search report data (BOL, Shipper, Cargo, Container, Truck...)"
-              className="w-full h-9 pl-9 pr-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+        {/* ROW 2: ACTION TOOLBAR (View Layout, Company Selector, Primary Exports) */}
+        <div className="flex flex-wrap items-center justify-between px-4 py-2 gap-2.5 bg-slate-50/70 dark:bg-slate-900/60">
+          {/* Left Group: View & Organization Controls */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* View Settings Group */}
+            <div className="flex items-center p-0.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsFitScreen(!isFitScreen)}
+                className={"h-8 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer " + (isFitScreen ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100")}
+                title={isFitScreen ? "Standard width" : "Fit to width"}
               >
-                ×
+                {isFitScreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              </Button>
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsPreviewMode(!isPreviewMode)}
+                className={"h-8 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer " + (isPreviewMode ? "bg-slate-800 text-white dark:bg-blue-600" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100")}
+              >
+                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                <span>{isPreviewMode ? "Exit Preview" : "A4 Preview"}</span>
+              </Button>
+              <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+              <button
+                type="button"
+                onClick={() => setPdfOrientation("landscape")}
+                className={"px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer " + (pdfOrientation === "landscape" ? "bg-slate-800 text-white dark:bg-blue-600" : "text-slate-600 hover:bg-slate-100")}
+              >
+                Landscape
               </button>
-            )}
+              <button
+                type="button"
+                onClick={() => setPdfOrientation("portrait")}
+                className={"px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer " + (pdfOrientation === "portrait" ? "bg-slate-800 text-white dark:bg-blue-600" : "text-slate-600 hover:bg-slate-100")}
+              >
+                Portrait
+              </button>
+            </div>
+
+            {/* Report Company Selector */}
+            <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 h-9 shadow-2xs gap-1.5 shrink-0" title="Company name displayed on printed report">
+              <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+              <input
+                type="text"
+                value={reportCompanyName}
+                onChange={(e) => setReportCompanyName(e.target.value)}
+                placeholder="AQ COMPANIES"
+                className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight bg-transparent focus:outline-none w-28 sm:w-36"
+              />
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end">
-            {/* Filter Drawer Toggle */}
+          {/* Right Group: Primary Export Actions (Print, PDF, Excel) */}
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsFilterDrawerOpen(true)}
-              className={`h-9 rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 text-xs font-bold ${
-                Object.keys(advancedFilters).length > 0 ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/80 dark:text-blue-300 dark:border-blue-700" : ""
-              }`}
+              onClick={handlePrint}
+              className="h-9 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-black text-xs shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shrink-0"
+              title="Print this report / Save as PDF (Ctrl+P)"
             >
-              <Filter className="w-3.5 h-3.5 mr-1.5" />
-              Advanced Filters
-              {Object.keys(advancedFilters).length > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-blue-600 text-white text-[10px]">
-                  {Object.keys(advancedFilters).length}
-                </span>
+              <Printer className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
+              <span>Print Report</span>
+            </Button>
+
+            <Button
+              onClick={handleGeneratePdf}
+              disabled={isGeneratingPdf}
+              className="h-9 px-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs shadow-md shadow-blue-500/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shrink-0 disabled:opacity-60"
+              title="Download complete report as PDF file"
+            >
+              {isGeneratingPdf ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Generating PDF...</span>
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-4 h-4" />
+                  <span>Download PDF</span>
+                </>
               )}
             </Button>
 
-            {/* Compare Period Selector */}
-            <div className="flex items-center gap-1 text-xs">
-              <span className="text-[11px] font-black uppercase text-slate-400">Compare:</span>
-              <select
-                value={comparisonMode}
-                onChange={(e) => setComparisonMode(e.target.value as ComparisonMode)}
-                className="h-9 px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 focus:outline-none focus:border-blue-500"
-              >
-                <option value="off">Compare: Off</option>
-                <option value="previous_period">Previous Period</option>
-                <option value="previous_month">Previous Month</option>
-                <option value="previous_year">Previous Year</option>
-              </select>
-            </div>
-
-            {/* Save Report Preset */}
             <Button
               variant="outline"
-              size="sm"
-              onClick={handleSaveCurrentReportPreset}
-              className="h-9 rounded-xl border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700"
-              title="Save current report parameters as a preset"
+              onClick={handleExportExcel}
+              className="h-9 px-3 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 text-emerald-900 dark:text-emerald-200 font-bold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer shrink-0"
+              title="Export report dataset to Microsoft Excel (.xlsx)"
             >
-              <Bookmark className="w-3.5 h-3.5 mr-1" />
-              Save Preset
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Excel</span>
             </Button>
+          </div>
+        </div>
+
+        {/* Unified Global Report Filter Bar */}
+        <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          {/* Row 1: Search, Quick Dates, Advanced Filters Toggle, Clear All */}
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
+            {/* Search Input */}
+            <div className="relative min-w-[200px] max-w-md flex-1">
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search BOL, Shipper, Cargo, Truck, Invoice..."
+                className="w-full h-9 pl-9 pr-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 shadow-2xs"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 text-sm font-bold"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            {/* Quick Date Filters Chips */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 shrink-0">
+              {[
+                { id: "all", label: "All Time" },
+                { id: "today", label: "Today" },
+                { id: "yesterday", label: "Yesterday" },
+                { id: "7days", label: "7 Days" },
+                { id: "30days", label: "30 Days" },
+                { id: "this_month", label: "This Month" },
+                { id: "last_month", label: "Last Month" },
+                { id: "this_year", label: "This Year" },
+              ].map((btn) => {
+                const isSelected =
+                  (btn.id === "all" && !advancedFilters.dateFrom && !advancedFilters.dateTo) ||
+                  quickDate === btn.id
+                return (
+                  <button
+                    key={btn.id}
+                    onClick={() => handleQuickDateSelect(btn.id as QuickDate)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                      isSelected
+                        ? "bg-blue-600 text-white shadow-xs"
+                        : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {btn.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Right side: Advanced Filters & Clear */}
+            <div className="flex items-center gap-2 shrink-0 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsFilterDrawerOpen(true)}
+                className={`h-9 rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-xs font-bold ${
+                  activeFiltersCount > 0
+                    ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/80 dark:text-blue-300"
+                    : "text-slate-700 dark:text-slate-200"
+                }`}
+              >
+                <Filter className="w-3.5 h-3.5 mr-1.5 text-blue-600" />
+                Advanced Filters
+                {activeFiltersCount > 0 && (
+                  <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-blue-600 text-white text-[10px]">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </Button>
+
+              {activeFiltersCount > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearAllFilters}
+                  className="h-9 px-3 rounded-xl text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
+                  title="Clear all active filters"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                  Clear ({activeFiltersCount})
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2: Quick Dimension Dropdowns */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 pt-1.5 border-t border-slate-200/60 dark:border-slate-800">
+            {/* Shipper Select */}
+            <select
+              value={advancedFilters.shipper || ""}
+              onChange={(e) => setAdvancedFilters((prev) => ({ ...prev, shipper: e.target.value || undefined }))}
+              className="h-8.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 truncate focus:outline-none focus:border-blue-500 shadow-2xs"
+            >
+              <option value="">All Shippers ({filterOptions.shippers.length})</option>
+              {filterOptions.shippers.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+
+            {/* Consignee Select */}
+            <select
+              value={advancedFilters.consignee || ""}
+              onChange={(e) => setAdvancedFilters((prev) => ({ ...prev, consignee: e.target.value || undefined }))}
+              className="h-8.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 truncate focus:outline-none focus:border-blue-500 shadow-2xs"
+            >
+              <option value="">All Consignees ({filterOptions.consignees.length})</option>
+              {filterOptions.consignees.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+
+            {/* Commodity Select */}
+            <select
+              value={advancedFilters.commodity || ""}
+              onChange={(e) => setAdvancedFilters((prev) => ({ ...prev, commodity: e.target.value || undefined }))}
+              className="h-8.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 truncate focus:outline-none focus:border-blue-500 shadow-2xs"
+            >
+              <option value="">All Commodities ({filterOptions.commodities.length})</option>
+              {filterOptions.commodities.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+
+            {/* Route Select */}
+            <select
+              value={advancedFilters.route || ""}
+              onChange={(e) => setAdvancedFilters((prev) => ({ ...prev, route: e.target.value || undefined }))}
+              className="h-8.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 truncate focus:outline-none focus:border-blue-500 shadow-2xs"
+            >
+              <option value="">All Routes ({filterOptions.routes.length})</option>
+              {filterOptions.routes.map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+
+            {/* Equipment / Container Select */}
+            <select
+              value={advancedFilters.containerType || "all"}
+              onChange={(e) => setAdvancedFilters((prev) => ({ ...prev, containerType: e.target.value === "all" ? undefined : e.target.value }))}
+              className="h-8.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 truncate focus:outline-none focus:border-blue-500 shadow-2xs"
+            >
+              <option value="all">All Equipment</option>
+              <option value="Reefer">Reefer Containers</option>
+              <option value="Dry">Dry Containers</option>
+              <option value="40 FT">40 FT Containers</option>
+              <option value="20 FT">20 FT Containers</option>
+              <option value="40 HC">40 FT High Cube</option>
+              <option value="40 RF">40 FT Reefer</option>
+            </select>
+
+            {/* Audit / Missing Data Select */}
+            <select
+              value={advancedFilters.missingData || "all"}
+              onChange={(e) => setAdvancedFilters((prev) => ({ ...prev, missingData: e.target.value === "all" ? undefined : (e.target.value as any) }))}
+              className="h-8.5 px-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 truncate focus:outline-none focus:border-blue-500 shadow-2xs"
+            >
+              <option value="all">Audit: All Records</option>
+              <option value="container">Missing Container</option>
+              <option value="invoice">Missing Invoice</option>
+              <option value="truck">Missing Truck</option>
+              <option value="driver">Missing Driver</option>
+              <option value="route">Missing Route</option>
+              <option value="rate">Missing Rate</option>
+              <option value="pdf">Missing PDF</option>
+            </select>
+          </div>
+
+          {/* Row 3: Removable Active Filter Chips */}
+          {activeFiltersCount > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap pt-1 text-xs">
+              <span className="text-[10px] font-black uppercase text-slate-400 mr-1">Active:</span>
+
+              {searchQuery && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-[11px]">
+                  Search: "{searchQuery}"
+                  <button onClick={() => setSearchQuery("")} className="hover:text-red-500 ml-1">×</button>
+                </span>
+              )}
+
+              {(advancedFilters.dateFrom || advancedFilters.dateTo) && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-900 dark:text-blue-200 font-bold text-[11px]">
+                  Date: {advancedFilters.dateFrom || "Start"} ➜ {advancedFilters.dateTo || "Today"}
+                  <button onClick={() => setAdvancedFilters((p) => { const n = { ...p }; delete n.dateFrom; delete n.dateTo; return n })} className="hover:text-red-500 ml-1">×</button>
+                </span>
+              )}
+
+              {advancedFilters.shipper && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 font-bold text-[11px]">
+                  Shipper: {advancedFilters.shipper}
+                  <button onClick={() => setAdvancedFilters((p) => { const n = { ...p }; delete n.shipper; return n })} className="hover:text-red-500 ml-1">×</button>
+                </span>
+              )}
+
+              {advancedFilters.consignee && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 font-bold text-[11px]">
+                  Consignee: {advancedFilters.consignee}
+                  <button onClick={() => setAdvancedFilters((p) => { const n = { ...p }; delete n.consignee; return n })} className="hover:text-red-500 ml-1">×</button>
+                </span>
+              )}
+
+              {advancedFilters.commodity && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 font-bold text-[11px]">
+                  Commodity: {advancedFilters.commodity}
+                  <button onClick={() => setAdvancedFilters((p) => { const n = { ...p }; delete n.commodity; return n })} className="hover:text-red-500 ml-1">×</button>
+                </span>
+              )}
+
+              {advancedFilters.route && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-950 text-cyan-900 dark:text-cyan-200 font-bold text-[11px]">
+                  Route: {advancedFilters.route}
+                  <button onClick={() => setAdvancedFilters((p) => { const n = { ...p }; delete n.route; return n })} className="hover:text-red-500 ml-1">×</button>
+                </span>
+              )}
+
+              {advancedFilters.truckNumber && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-200 font-bold text-[11px]">
+                  Truck: {advancedFilters.truckNumber}
+                  <button onClick={() => setAdvancedFilters((p) => { const n = { ...p }; delete n.truckNumber; return n })} className="hover:text-red-500 ml-1">×</button>
+                </span>
+              )}
+
+              {advancedFilters.containerType && advancedFilters.containerType !== "all" && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-100 dark:bg-teal-950 text-teal-900 dark:text-teal-200 font-bold text-[11px]">
+                  Container: {advancedFilters.containerType}
+                  <button onClick={() => setAdvancedFilters((p) => { const n = { ...p }; delete n.containerType; return n })} className="hover:text-red-500 ml-1">×</button>
+                </span>
+              )}
+
+              {advancedFilters.missingData && advancedFilters.missingData !== "all" && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-900 dark:text-rose-200 font-bold text-[11px]">
+                  Missing: {advancedFilters.missingData}
+                  <button onClick={() => setAdvancedFilters((p) => { const n = { ...p }; delete n.missingData; return n })} className="hover:text-red-500 ml-1">×</button>
+                </span>
+              )}
+
+              {drillDownEntity && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-600 text-white font-bold text-[11px]">
+                  {drillDownEntity.type.toUpperCase()}: {drillDownEntity.name}
+                  <button onClick={() => setDrillDownEntity(null)} className="hover:text-red-200 ml-1">×</button>
+                </span>
+              )}
+
+              <button
+                onClick={handleClearAllFilters}
+                className="text-[11px] font-bold text-red-600 hover:text-red-700 underline ml-auto cursor-pointer"
+              >
+                Clear All
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Top 8 Executive KPI Dashboard Cards (Always in sync with current filters) */}
+        <div className="px-4 py-2.5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+          <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-2.5">
+            {/* 1. Total BOLs */}
+            <div
+              onClick={() => setActiveTab("detailed")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              title="Click to view in Detailed Report"
+            >
+              <div className="flex items-center justify-between text-slate-400 group-hover:text-blue-600">
+                <span className="text-[10px] font-black uppercase tracking-wider">Total BOLs</span>
+                <FileText className="w-3.5 h-3.5 shrink-0" />
+              </div>
+              <p className="text-lg sm:text-xl font-black font-mono text-slate-900 dark:text-slate-100 mt-1 truncate" title={`${filteredData.length} BOLs`}>
+                {filteredData.length}
+              </p>
+              <p className="text-[10px] font-bold text-slate-500 truncate mt-0.5">
+                {filteredData.length === documents.length ? (
+                  `${documents.length} Total Records`
+                ) : (
+                  <span className="text-blue-600 font-extrabold">{filteredData.length} Filtered</span>
+                )}
+              </p>
+            </div>
+
+            {/* 2. Total Packages */}
+            <div
+              onClick={() => setActiveTab("detailed")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              title="Click to view in Detailed Report"
+            >
+              <div className="flex items-center justify-between text-slate-400 group-hover:text-indigo-600">
+                <span className="text-[10px] font-black uppercase tracking-wider">Total Packages</span>
+                <Boxes className="w-3.5 h-3.5 shrink-0" />
+              </div>
+              <p className="text-lg sm:text-xl font-black font-mono text-indigo-700 dark:text-indigo-400 mt-1 truncate" title={`${overviewKpis.totalPackages.toLocaleString()} Packages`}>
+                {overviewKpis.totalPackages.toLocaleString()}
+              </p>
+              <p className="text-[10px] font-bold text-slate-500 truncate mt-0.5">
+                {Object.keys(overviewKpis.packageUnitsBreakdown || {}).length > 1
+                  ? Object.entries(overviewKpis.packageUnitsBreakdown || {})
+                      .map(([unit, cnt]) => `${cnt.toLocaleString()} ${unit}`)
+                      .join(" • ")
+                  : "Cartons / CTNS"}
+              </p>
+            </div>
+
+            {/* 3. Net Weight */}
+            <div
+              onClick={() => setActiveTab("detailed")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              title="Click to view in Detailed Report"
+            >
+              <div className="flex items-center justify-between text-slate-400 group-hover:text-emerald-600">
+                <span className="text-[10px] font-black uppercase tracking-wider">Net Weight</span>
+                <Scale className="w-3.5 h-3.5 shrink-0" />
+              </div>
+              <p className="text-lg sm:text-xl font-black font-mono text-emerald-700 dark:text-emerald-400 mt-1 truncate" title={`${overviewKpis.totalNetWeightKg.toLocaleString()} KG Net Weight`}>
+                {overviewKpis.totalNetWeightKg.toLocaleString()} <span className="text-xs font-bold text-slate-500 font-sans">KG</span>
+              </p>
+              <p className="text-[10px] font-bold text-slate-500 truncate mt-0.5">KG Net Weight</p>
+            </div>
+
+            {/* 4. Gross Weight */}
+            <div
+              onClick={() => setActiveTab("detailed")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              title="Click to view in Detailed Report"
+            >
+              <div className="flex items-center justify-between text-slate-400 group-hover:text-slate-600">
+                <span className="text-[10px] font-black uppercase tracking-wider">Gross Weight</span>
+                <Scale className="w-3.5 h-3.5 shrink-0" />
+              </div>
+              <p className="text-lg sm:text-xl font-black font-mono text-slate-800 dark:text-slate-200 mt-1 truncate" title={`${overviewKpis.totalGrossWeightKg.toLocaleString()} KG Gross Weight`}>
+                {overviewKpis.totalGrossWeightKg.toLocaleString()} <span className="text-xs font-bold text-slate-500 font-sans">KG</span>
+              </p>
+              <p className="text-[10px] font-bold text-slate-500 truncate mt-0.5">KG Gross Weight</p>
+            </div>
+
+            {/* 5. Goods Value */}
+            <div
+              onClick={() => setActiveTab("financial")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              title="Click to view Financial Breakdown"
+            >
+              <div className="flex items-center justify-between text-slate-400 group-hover:text-emerald-600">
+                <span className="text-[10px] font-black uppercase tracking-wider">Goods Value</span>
+                <DollarSign className="w-3.5 h-3.5 shrink-0" />
+              </div>
+              <p className="text-lg sm:text-xl font-black font-mono text-emerald-700 dark:text-emerald-400 mt-1 truncate" title={`$${(overviewKpis.currencyTotals.find((c) => c.currency === "USD")?.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}>
+                ${(overviewKpis.currencyTotals.find((c) => c.currency === "USD")?.amount || 0).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </p>
+              <p className="text-[10px] font-bold text-slate-500 truncate mt-0.5">
+                {overviewKpis.currencyTotals.filter((c) => c.currency !== "USD" && c.amount > 0).length > 0
+                  ? overviewKpis.currencyTotals
+                      .filter((c) => c.currency !== "USD" && c.amount > 0)
+                      .map((c) => `+ ${c.amount.toLocaleString()} ${c.currency}`)
+                      .join(" ")
+                  : "USD Base"}
+              </p>
+            </div>
+
+            {/* 6. Active Shippers */}
+            <div
+              onClick={() => setActiveTab("shippers")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              title="Click to view Shippers list"
+            >
+              <div className="flex items-center justify-between text-slate-400 group-hover:text-blue-600">
+                <span className="text-[10px] font-black uppercase tracking-wider">Active Shippers</span>
+                <Building2 className="w-3.5 h-3.5 shrink-0" />
+              </div>
+              <p className="text-lg sm:text-xl font-black font-mono text-slate-900 dark:text-slate-100 mt-1 truncate" title={`${overviewKpis.totalShippers} Active Shippers`}>
+                {overviewKpis.totalShippers}
+              </p>
+              <p className="text-[10px] font-bold text-slate-500 truncate mt-0.5">Exporters / Vendors</p>
+            </div>
+
+            {/* 7. Active Consignees */}
+            <div
+              onClick={() => setActiveTab("consignees")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-purple-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              title="Click to view Consignees list"
+            >
+              <div className="flex items-center justify-between text-slate-400 group-hover:text-purple-600">
+                <span className="text-[10px] font-black uppercase tracking-wider">Consignees</span>
+                <Users className="w-3.5 h-3.5 shrink-0" />
+              </div>
+              <p className="text-lg sm:text-xl font-black font-mono text-purple-700 dark:text-purple-400 mt-1 truncate" title={`${overviewKpis.totalConsignees} Consignees`}>
+                {overviewKpis.totalConsignees}
+              </p>
+              <p className="text-[10px] font-bold text-slate-500 truncate mt-0.5">Importers / Receivers</p>
+            </div>
+
+            {/* 8. Missing Data / Quality */}
+            <div
+              onClick={() => setActiveTab("missing_data")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-amber-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              title="Click to view Data Completeness Audit"
+            >
+              <div className="flex items-center justify-between text-slate-400 group-hover:text-amber-600">
+                <span className="text-[10px] font-black uppercase tracking-wider">Missing Data</span>
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              </div>
+              <p className="text-lg sm:text-xl font-black font-mono text-amber-700 dark:text-amber-400 mt-1 truncate" title={`${overviewKpis.missingDataCount || 0} Missing Data Records`}>
+                {overviewKpis.missingDataCount || 0}
+              </p>
+              <p className="text-[10px] font-bold text-slate-500 truncate mt-0.5">
+                <span className="px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold">
+                  {overviewKpis.dataQualityScore || 100}% Score
+                </span>
+              </p>
+            </div>
           </div>
         </div>
 
@@ -1195,64 +3806,142 @@ export function SavedBolReport({
           </div>
         )}
 
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-1 px-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto no-scrollbar">
-          {[
-            { id: "overview", label: "Overview", icon: Layers },
-            { id: "operations", label: "Operations Reports", icon: Truck },
-            { id: "detailed", label: "Detailed Report", icon: FileText },
-            { id: "shippers", label: "Shippers", icon: Building2 },
-            { id: "consignees", label: "Consignees", icon: Users },
-            { id: "commodities", label: "Commodities", icon: Boxes },
-            { id: "destinations", label: "Destinations", icon: Compass },
-            { id: "containers", label: "Containers", icon: Truck },
-            { id: "monthly", label: "Monthly", icon: Calendar },
-            { id: "financial", label: "Financial", icon: DollarSign },
+        {/* Tab Navigation (Responsive Primary Tabs + More Reports Dropdown) */}
+        {(() => {
+          const primaryTabs = [
+            { id: "overview" as ReportTab, label: "Overview", icon: Layers },
+            { id: "operations" as ReportTab, label: "Operations Reports", icon: Truck },
+            { id: "detailed" as ReportTab, label: "Detailed Report", icon: FileText },
+            { id: "shippers" as ReportTab, label: "Shippers", icon: Building2 },
+            { id: "consignees" as ReportTab, label: "Consignees", icon: Users },
+            { id: "commodities" as ReportTab, label: "Commodities", icon: Boxes },
+            { id: "routes" as ReportTab, label: "Routes", icon: Navigation },
+            { id: "financial" as ReportTab, label: "Financial", icon: DollarSign },
+          ]
+
+          const secondaryTabs = [
+            { id: "destinations" as ReportTab, label: "Destinations", icon: Compass },
+            { id: "containers" as ReportTab, label: "Containers", icon: Boxes },
+            { id: "trucks" as ReportTab, label: "Trucks", icon: Truck },
+            { id: "monthly" as ReportTab, label: "Monthly", icon: Calendar },
             {
-              id: "missing_data",
+              id: "missing_data" as ReportTab,
               label: "Missing Data",
               icon: AlertTriangle,
-              badge: dataQualityAudit.attentionRecords > 0 ? dataQualityAudit.attentionRecords : undefined,
+              badge: (overviewKpis.missingDataCount || 0) > 0 ? overviewKpis.missingDataCount : undefined,
             },
-            { id: "saved_reports", label: "Saved Reports", icon: Bookmark },
-          ].map((tab) => {
-            const Icon = tab.icon
-            const isActive = activeTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as ReportTab)}
-                className={`flex items-center gap-2 py-3 px-3.5 text-xs font-bold border-b-2 whitespace-nowrap transition-colors cursor-pointer ${
-                  isActive
-                    ? "border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/40"
-                    : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-700"
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400"}`} />
-                {tab.label}
-                {tab.badge !== undefined && (
-                  <span className="ml-1 px-1.5 py-0.2 text-[10px] font-black rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
+            { id: "saved_reports" as ReportTab, label: "Saved Reports", icon: Bookmark },
+          ]
+
+          const activeSecondary = secondaryTabs.find((t) => t.id === activeTab)
+          const isSecondaryActive = Boolean(activeSecondary)
+          const secondaryBadgeTotal = secondaryTabs.reduce((sum, t) => sum + (t.badge || 0), 0)
+
+          return (
+            <div className="flex items-center gap-1 px-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto no-scrollbar">
+              {primaryTabs.map((tab) => {
+                const Icon = tab.icon
+                const isActive = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 py-3 px-3.5 text-xs font-bold border-b-2 whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                      isActive
+                        ? "border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/40"
+                        : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-700"
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 ${isActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400"}`} />
+                    <span>{tab.label}</span>
+                  </button>
+                )
+              })}
+
+              {/* Secondary Tabs / More Reports Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className={`flex items-center gap-1.5 py-3 px-3.5 text-xs font-bold border-b-2 whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                      isSecondaryActive
+                        ? "border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/40"
+                        : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-700"
+                    }`}
+                    title="Additional reports and analytics"
+                  >
+                    {activeSecondary ? (
+                      <>
+                        <activeSecondary.icon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span>{activeSecondary.label}</span>
+                        {activeSecondary.badge !== undefined && (
+                          <span className="ml-1 px-1.5 py-0.2 text-[10px] font-black rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                            {activeSecondary.badge}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <MoreHorizontal className="w-4 h-4 text-slate-400" />
+                        <span>More Reports</span>
+                        {secondaryBadgeTotal > 0 && (
+                          <span className="ml-1 px-1.5 py-0.2 text-[10px] font-black rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                            {secondaryBadgeTotal}
+                          </span>
+                        )}
+                      </>
+                    )}
+                    <ChevronDown className="w-3.5 h-3.5 ml-0.5 opacity-70" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 font-sans p-1.5 shadow-lg">
+                  <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 px-2 py-1 tracking-wider">
+                    Additional Reports
+                  </DropdownMenuLabel>
+                  {secondaryTabs.map((tab) => {
+                    const Icon = tab.icon
+                    const isTabActive = activeTab === tab.id
+                    return (
+                      <DropdownMenuItem
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center justify-between text-xs font-bold py-2 px-2.5 cursor-pointer rounded-lg ${
+                          isTabActive
+                            ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-black"
+                            : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <Icon className={`w-4 h-4 shrink-0 ${isTabActive ? "text-blue-600 dark:text-blue-400" : "text-slate-400"}`} />
+                          <span className="truncate">{tab.label}</span>
+                        </div>
+                        {tab.badge !== undefined && (
+                          <span className="ml-2 px-1.5 py-0.2 text-[10px] font-black rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 shrink-0">
+                            {tab.badge}
+                          </span>
+                        )}
+                      </DropdownMenuItem>
+                    )
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )
+        })()}
       </div>
 
       {/* 2. MAIN REPORT CANVAS */}
-      <div className={`flex-1 overflow-auto ${isFitScreen ? "p-1 sm:p-1.5 md:p-2" : "p-4 md:p-6"} print:p-0 print:overflow-visible bg-slate-100/50 dark:bg-slate-950/80 print:bg-white`}>
+      <div className={`flex-1 overflow-y-auto overflow-x-hidden ${isFitScreen ? "p-1 sm:p-1.5 md:p-2" : "p-2 sm:p-3 md:p-4"} print:p-0 print:overflow-visible bg-slate-100/50 dark:bg-slate-950/80 print:bg-white`}>
         <div
           ref={reportRef}
-          className={`mx-auto bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 print:bg-white print:border-none print:shadow-none transition-all duration-200 ${
+          className={`mx-auto bg-white dark:bg-slate-900 shadow-xs border border-slate-200 dark:border-slate-800 print:bg-white print:border-none print:shadow-none transition-all duration-200 ${
             isPreviewMode
               ? pdfOrientation === "landscape"
                 ? "w-[1100px] min-h-[750px] p-8 my-6 rounded-2xl shadow-xl"
                 : "w-[800px] min-h-[1100px] p-8 my-6 rounded-2xl shadow-xl"
               : isFitScreen
-                ? "w-full max-w-none p-2 sm:p-3 my-0 rounded-2xl"
-                : "w-full max-w-7xl p-6 md:p-8 my-2 rounded-2xl"
+                ? "w-full max-w-none p-2 sm:p-3 my-0 rounded-xl"
+                : "w-full min-w-0 max-w-full p-3 sm:p-4 md:p-5 my-0 rounded-xl"
           }`}
         >
           {/* Optional Professional Cover Page (rendered when requested for PDF/Print) */}
@@ -1675,441 +4364,133 @@ export function SavedBolReport({
           )}
 
           {/* ======================================================== */}
+          {/* ======================================================== */}
           {/* TAB 2: DETAILED REPORT */}
           {/* ======================================================== */}
           {activeTab === "detailed" && (
-            <div className="space-y-2.5">
-              {/* Modern Glassmorphic Table Toolbar */}
-              <div className="no-print print:hidden flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm" data-no-print="true">
-                {/* Selection Controls */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <label className="flex items-center gap-2 cursor-pointer font-extrabold text-slate-800 dark:text-slate-200 select-none">
-                    <input
-                      type="checkbox"
-                      checked={isAllPageSelected}
-                      onChange={toggleSelectPage}
-                      className="w-4 h-4 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span>Select Page ({paginatedRows.length})</span>
-                  </label>
-
-                  {filteredData.length > paginatedRows.length && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={selectAllFiltered}
-                      className="h-7.5 px-2.5 text-xs rounded-xl border-blue-300 dark:border-blue-800 bg-blue-50/90 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 font-black shadow-2xs hover:bg-blue-100 cursor-pointer"
-                    >
-                      Select All {filteredData.length} Filtered BOLs
-                    </Button>
-                  )}
-
-                  {selectedIds.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={clearSelection}
-                      className="text-xs font-extrabold text-rose-600 dark:text-rose-400 hover:text-rose-800 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 px-2 py-0.5 rounded-lg cursor-pointer transition-all"
-                    >
-                      Clear ({selectedIds.length})
-                    </button>
-                  )}
-                </div>
-
-                {/* Right: Actions, Fit Screen, Density & Pagination */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Print, Download PDF, and Excel Buttons */}
-                  <Button
-                    type="button"
-                    onClick={handlePrint}
-                    className="h-8.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-extrabold text-xs shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all"
-                    title="Print Saved BOL Report (A4 Landscape / Portrait)"
-                  >
-                    <Printer className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
-                    <span>Print</span>
-                  </Button>
-
-                  <Button
-                    type="button"
-                    onClick={handleGeneratePdf}
-                    disabled={isGeneratingPdf}
-                    className="h-8.5 px-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-extrabold text-xs shadow-xs cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all disabled:opacity-60"
-                    title="Download complete report as PDF"
-                  >
-                    {isGeneratingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
-                    <span>Download PDF</span>
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleExportExcel}
-                    className="h-8.5 px-3 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50/90 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100 font-extrabold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer"
-                    title="Export table data to Excel (.xlsx)"
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>Excel</span>
-                  </Button>
-
-                  <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 hidden sm:block mx-0.5" />
-
-                  {/* Fit Screen Button Toggle */}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsFitScreen(!isFitScreen)}
-                    className={`h-8.5 px-3 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      isFitScreen
-                        ? "border-blue-600 bg-blue-600 text-white shadow-xs"
-                        : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100"
-                    }`}
-                    title={isFitScreen ? "Switch to Scrollable Wide View" : "Fit all columns on screen at once without horizontal scrolling"}
-                  >
-                    {isFitScreen ? <Minimize2 className="w-3.5 h-3.5 text-white" /> : <Maximize2 className="w-3.5 h-3.5 text-slate-600" />}
-                    <span>{isFitScreen ? "Fit Screen (فعال)" : "Wide Scroll"}</span>
-                  </Button>
-
-                  {/* Density Toggle (Compact vs Normal) */}
-                  <div className="flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5 bg-slate-100 dark:bg-slate-800 h-8.5">
-                    <button
-                      type="button"
-                      onClick={() => setTableDensity("compact")}
-                      className={`px-2.5 py-1 text-[11px] font-extrabold rounded-lg transition-all cursor-pointer ${
-                        tableDensity === "compact"
-                          ? "bg-white dark:bg-slate-700 text-blue-900 dark:text-blue-200 shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                      }`}
-                      title="Compact Density (Recommended for fitting everything on screen)"
-                    >
-                      Compact
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTableDensity("normal")}
-                      className={`px-2.5 py-1 text-[11px] font-extrabold rounded-lg transition-all cursor-pointer ${
-                        tableDensity === "normal"
-                          ? "bg-white dark:bg-slate-700 text-blue-900 dark:text-blue-200 shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
-                      }`}
-                      title="Comfortable Density"
-                    >
-                      Normal
-                    </button>
-                  </div>
-
-                  {/* Rows per page dropdown */}
-                  <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-0.5 h-8.5">
-                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">Rows:</span>
-                    <select
-                      value={pageSize}
-                      onChange={(e) => {
-                        setPageSize(e.target.value === "all" ? "all" : parseInt(e.target.value, 10))
-                        setCurrentPage(1)
-                      }}
-                      className="bg-transparent text-xs font-black text-slate-800 dark:text-slate-200 outline-none cursor-pointer pr-1"
-                    >
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                      <option value={100}>100</option>
-                      <option value={250}>250</option>
-                      <option value={500}>500</option>
-                      <option value="all">All ({activeReportData.length})</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Data Table with Rebalanced Column Proportions */}
-              <div className={`w-full ${isFitScreen ? "overflow-x-hidden" : "overflow-x-auto"} print:overflow-visible border border-slate-200/90 dark:border-slate-800 print:border-none rounded-2xl print:rounded-none max-h-[calc(100vh-210px)] print:max-h-none overflow-y-auto print:overflow-y-visible shadow-xs bg-white dark:bg-slate-900 scrollbar-thin`}>
-                <table className={`w-full ${isFitScreen ? "table-fixed" : "min-w-[1300px]"} text-xs text-left border-collapse`}>
-                  {isFitScreen && (
-                    <colgroup>
-                      <col style={{ width: "2.5%" }} />{/* # */}
-                      <col style={{ width: "7.5%" }} />{/* BOL No */}
-                      <col style={{ width: "6.0%" }} />{/* Date */}
-                      <col style={{ width: "7.5%" }} />{/* Truck No */}
-                      <col style={{ width: "5.0%" }} />{/* Invoice */}
-                      <col style={{ width: "15.0%" }} />{/* Shipper */}
-                      <col style={{ width: "15.0%" }} />{/* Consignee */}
-                      <col style={{ width: "4.0%" }} />{/* Route */}
-                      <col style={{ width: "11.0%" }} />{/* Packages */}
-                      <col style={{ width: "6.5%" }} />{/* Gross Wt */}
-                      <col style={{ width: "6.5%" }} />{/* Net Wt */}
-                      <col style={{ width: "4.0%" }} />{/* Rate/KG */}
-                      <col style={{ width: "7.5%" }} />{/* Value */}
-                      <col style={{ width: "2.0%" }} />{/* PDF */}
-                    </colgroup>
-                  )}
-                  <thead className="sticky top-0 z-10 bg-slate-900 text-slate-100 shadow-sm print:static print:table-header-group">
-                    <tr className="border-b border-slate-700 bg-slate-900 text-slate-100">
-                      <th className={`px-1.5 font-extrabold text-slate-300 text-center uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>#</th>
-                      <th className={`px-2 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>BOL No.</th>
-                      <th className={`px-1.5 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Date</th>
-                      <th className={`px-2 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Truck No.</th>
-                      <th className={`px-1.5 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Invoice</th>
-                      <th className={`px-2 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Shipper</th>
-                      <th className={`px-2 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Consignee</th>
-                      <th className={`px-1.5 font-extrabold text-slate-200 uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Route</th>
-                      <th className={`px-2 font-extrabold text-slate-200 text-right uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Packages</th>
-                      <th className={`px-1.5 font-extrabold text-slate-200 text-right uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Gross Wt</th>
-                      <th className={`px-1.5 font-extrabold text-slate-200 text-right uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Net Wt</th>
-                      <th className={`px-1.5 font-extrabold text-slate-200 text-right uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Rate/KG</th>
-                      <th className={`px-2 font-extrabold text-slate-200 text-right uppercase tracking-wider ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>Value</th>
-                      <th className={`px-1 font-extrabold text-slate-300 text-center uppercase tracking-wider print:hidden no-print ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>PDF</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
-                    {paginatedRows.map((doc, idx) => {
-                      const rowNum = pageSize === "all" ? idx + 1 : (currentPage - 1) * pageSize + idx + 1
-                      const isSelected = selectedIds.includes(doc.id)
-                      const isShipperRtl = isRtlText(doc.shipper_name)
-                      const isConsigneeRtl = isRtlText(doc.consignee_name)
-                      const cellPad = tableDensity === "compact" ? "py-1.5 px-2 text-[10.5px]" : "py-2.5 px-2.5 text-xs"
-                      const bolInfo = formatDisplayBolNo(doc.bol_number)
-                      const compactDate = formatCompactDate(doc.issue_date || doc.created_at)
-                      const truckText = extractTruckNo(doc) || "-"
-                      const invText = extractInvoiceNo(doc) || "-"
-                      const routeDisplay = doc.port_of_loading && doc.port_of_discharge
-                        ? `${doc.port_of_loading} ➜ ${doc.port_of_discharge}`
-                        : doc.port_of_discharge
-                        ? `➜ ${doc.port_of_discharge}`
-                        : doc.port_of_loading
-                        ? `${doc.port_of_loading} ➜`
-                        : "-"
-
-                      return (
-                        <tr
-                          key={`${doc.id}-${idx}`}
-                          onClick={() => setQuickViewDoc(doc)}
-                          className={`cursor-pointer transition-colors duration-150 ${
-                            isSelected
-                              ? "bg-blue-50/90 dark:bg-blue-950/70 ring-1 ring-inset ring-blue-300 dark:ring-blue-700"
-                              : idx % 2 === 1
-                              ? "bg-slate-50/60 dark:bg-slate-800/30 hover:bg-blue-50/70 dark:hover:bg-blue-950/40"
-                              : "bg-white dark:bg-slate-900 hover:bg-blue-50/70 dark:hover:bg-blue-950/40"
-                          }`}
-                        >
-                          <td className={`${cellPad} font-bold text-slate-400 dark:text-slate-500 text-center tabular-nums`}>{rowNum}</td>
-                          <td className={`${cellPad} truncate`} title={`Full BOL: ${bolInfo.full}`}>
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded font-mono font-bold text-[11px] bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 border border-blue-200/80 dark:border-blue-800/80 tracking-tight truncate max-w-full">
-                              {bolInfo.display}
-                            </span>
-                          </td>
-                          <td className={`${cellPad} font-medium text-slate-600 dark:text-slate-400 tabular-nums truncate`} title={formatDisplayDate(doc.issue_date || doc.created_at)}>
-                            <span className="truncate">{compactDate}</span>
-                          </td>
-                          <td className={`${cellPad} truncate`} title={`${truckText}${doc.driver_rent ? ` • Driver Rent: ${doc.driver_rent}` : ""}`}>
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{truckText}</span>
-                              {doc.driver_rent && (
-                                <span className="inline-flex items-center text-[9px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800/70 rounded px-1 py-0.2 mt-0.5 w-fit max-w-full truncate" title={`Driver Rent: ${doc.driver_rent}`}>
-                                  {doc.driver_rent}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className={`${cellPad} truncate`} title={invText}>
-                            {invText !== "-" && invText !== "NO" ? (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold tracking-tight truncate max-w-full">
-                                {invText}
-                              </span>
-                            ) : (
-                              <span className="text-slate-300 dark:text-slate-600 font-light">—</span>
-                            )}
-                          </td>
-                          <td
-                            className={`${cellPad} font-semibold text-slate-900 dark:text-slate-100 truncate ${
-                              isShipperRtl ? "text-right font-[vazirmatn]" : ""
-                            }`}
-                            dir={isShipperRtl ? "rtl" : "ltr"}
-                            title={doc.shipper_name || "Missing"}
-                          >
-                            {doc.shipper_name || <span className="text-rose-500 italic font-normal">Missing</span>}
-                          </td>
-                          <td
-                            className={`${cellPad} font-medium text-slate-800 dark:text-slate-200 truncate ${
-                              isConsigneeRtl ? "text-right font-[vazirmatn]" : ""
-                            }`}
-                            dir={isConsigneeRtl ? "rtl" : "ltr"}
-                            title={doc.consignee_name || "Missing"}
-                          >
-                            {doc.consignee_name || <span className="text-rose-500 italic font-normal">Missing</span>}
-                          </td>
-                          <td className={`${cellPad} text-slate-500 dark:text-slate-400 truncate`} title={routeDisplay}>
-                            {routeDisplay !== "-" ? (
-                              <span className="truncate text-slate-700 dark:text-slate-300 font-medium">{routeDisplay}</span>
-                            ) : (
-                              <span className="text-slate-300 dark:text-slate-600 font-light">—</span>
-                            )}
-                          </td>
-                          <td className={`${cellPad} font-semibold tabular-nums text-right text-slate-800 dark:text-slate-200 truncate`} title={doc.number_of_packages || "-"}>
-                            <span className="truncate">{doc.number_of_packages || "—"}</span>
-                          </td>
-                          <td className={`${cellPad} font-semibold tabular-nums text-right text-slate-700 dark:text-slate-300 truncate`} title={doc.gross_weight || "-"}>
-                            <span className="truncate">{doc.gross_weight || "—"}</span>
-                          </td>
-                          <td className={`${cellPad} font-semibold tabular-nums text-right text-slate-700 dark:text-slate-300 truncate`} title={doc.net_weight || "-"}>
-                            <span className="truncate">{doc.net_weight || "—"}</span>
-                          </td>
-                          <td className={`${cellPad} font-semibold tabular-nums text-right text-blue-700 dark:text-blue-300 truncate`} title={doc.rate_per_kgs || "-"}>
-                            <span className="truncate">{doc.rate_per_kgs || "—"}</span>
-                          </td>
-                          <td className={`${cellPad} font-bold tabular-nums text-right text-emerald-700 dark:text-emerald-400 truncate`} title={doc.goods_value || "-"}>
-                            <span className="truncate">{doc.goods_value || "—"}</span>
-                          </td>
-                          <td className={`${cellPad} text-center print:hidden no-print`}>
-                            {doc.pdf_url ? (
-                              <span className="inline-flex items-center justify-center w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-2xs" title="PDF Uploaded & Ready" />
-                            ) : (
-                              <span className="inline-flex items-center justify-center w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700" title="No PDF Attached" />
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-
-                    {paginatedRows.length === 0 && (
-                      <tr key="empty-bols">
-                        <td colSpan={14} className="py-12 text-center text-slate-500 font-semibold text-sm">
-                          No Saved BOL records match the selected filters.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                  {activeReportData.length > 0 && (
-                    <tfoot className="sticky bottom-0 z-10 bg-slate-900 text-white font-bold print:static print:table-footer-group shadow-lg border-t-2 border-blue-500">
-                      <tr className="bg-slate-900 text-white">
-                        <td colSpan={8} className="py-2.5 px-3 text-right font-black text-white text-[11px] uppercase tracking-wider">
-                          SUBTOTAL ({activeReportData.length} BOLS):
-                        </td>
-                        <td className="py-2.5 px-2 text-right tabular-nums font-bold text-white text-[11px] truncate" title={`${overviewKpis.totalPackages.toLocaleString()} CTNS`}>
-                          {overviewKpis.totalPackages.toLocaleString()}
-                        </td>
-                        <td className="py-2.5 px-1.5 text-right tabular-nums font-semibold text-slate-200 text-[10.5px] truncate" title={`${overviewKpis.totalGrossWeightKg.toLocaleString()} KG`}>
-                          {overviewKpis.totalGrossWeightKg.toLocaleString()} KG
-                        </td>
-                        <td className="py-2.5 px-1.5 text-right tabular-nums font-semibold text-amber-300 text-[10.5px] truncate" title={`${overviewKpis.totalNetWeightKg.toLocaleString()} KG`}>
-                          {overviewKpis.totalNetWeightKg.toLocaleString()} KG
-                        </td>
-                        <td className="py-2.5 px-1 text-right tabular-nums font-medium text-slate-500 text-[10.5px]">
-                          —
-                        </td>
-                        <td className="py-2.5 px-2 text-right tabular-nums font-extrabold text-emerald-400 text-[11.5px] truncate">
-                          ${(overviewKpis.currencyTotals.find((c) => c.currency === "USD")?.amount || 0).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </td>
-                        <td className="print:hidden no-print"></td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
-
-              {/* Pagination Controls */}
-              {pageSize !== "all" && totalPages > 1 && (
-                <div className="no-print print:hidden flex items-center justify-between text-xs font-semibold text-slate-600 pt-2" data-no-print="true">
-                  <span>
-                    Showing {(currentPage - 1) * pageSize + 1}–
-                    {Math.min(currentPage * pageSize, activeReportData.length)} of{" "}
-                    {activeReportData.length} BOLs
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="h-7 text-xs"
-                    >
-                      Previous
-                    </Button>
-                    <span className="px-2 font-mono font-bold">
-                      {currentPage} / {totalPages}
+            <div className="space-y-4">
+              {drillDownEntity && (
+                <div className="flex items-center justify-between p-3 px-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-black uppercase tracking-wider text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded">
+                      Filtered by {drillDownEntity.type}
                     </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="h-7 text-xs"
-                    >
-                      Next
-                    </Button>
+                    <span className="font-extrabold text-sm text-slate-950 dark:text-white">
+                      {drillDownEntity.name}
+                    </span>
+                    <span className="text-slate-500 dark:text-slate-400 font-mono">
+                      ({filteredData.length} matching {filteredData.length === 1 ? "record" : "records"})
+                    </span>
                   </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setDrillDownEntity(null)}
+                    className="h-7 px-2.5 text-xs font-bold text-blue-700 hover:text-blue-900 hover:bg-blue-100 dark:text-blue-300 dark:hover:bg-blue-900/50"
+                  >
+                    Clear Filter ✕
+                  </Button>
                 </div>
               )}
+              <DetailedReportTable
+                documents={documents}
+                filteredDocuments={filteredData}
+                overviewKpis={overviewKpis}
+                selectedDocIds={selectedIds}
+                onToggleSelectId={(id) => {
+                  setSelectedIds((prev) =>
+                    prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                  )
+                }}
+                onSelectAllFiltered={selectAllFiltered}
+                onClearSelection={clearSelection}
+                onSelectPage={(pageIds) => {
+                  const allIn = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id))
+                  if (allIn) {
+                    setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
+                  } else {
+                    const combined = new Set([...selectedIds, ...pageIds])
+                    setSelectedIds(Array.from(combined))
+                  }
+                }}
+                onOpenQuickView={(doc) => setQuickViewDoc(doc)}
+                onEditBol={(id) => {
+                  if (onLoadDocument) {
+                    onClose()
+                    onLoadDocument(id, "form")
+                  }
+                }}
+                onOpenPreview={(id) => {
+                  if (onLoadDocument) {
+                    onClose()
+                    onLoadDocument(id, "preview")
+                  }
+                }}
+                onPrintReport={handlePrint}
+                onDownloadPdf={handleGeneratePdf}
+                onExportExcel={handleExportExcel}
+                isGeneratingPdf={isGeneratingPdf}
+              />
             </div>
           )}
 
+          {/* ======================================================== */}
+          {/* TAB 3: SHIPPERS REPORT */}
+          {/* ======================================================== */}
           {activeTab === "shippers" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs">
-                <p className="font-bold text-slate-600">
-                  Total Active Commercial Shippers: <span className="font-black text-slate-950 font-mono">{shippersList.length}</span>
-                </p>
-                <p className="text-[11px] text-slate-400 no-print print:hidden">Click any shipper to drill down into its individual BOL records</p>
-              </div>
-
-              <div className="w-full overflow-x-auto print:overflow-visible border border-slate-200 print:border-none rounded-xl print:rounded-none max-h-[calc(100vh-230px)] print:max-h-none overflow-y-auto print:overflow-y-visible scrollbar-thin">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead className="sticky top-0 z-10 bg-slate-100 shadow-2xs">
-                    <tr className="border-b-2 border-slate-900 bg-slate-100">
-                      <th className="py-2.5 px-3 font-black text-slate-900">Shipper</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-center">Total BOLs</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Packages</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Net Weight</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Gross Weight</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Goods Value (USD)</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-center">Containers</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900">Top Destination</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Last Shipment</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {shippersList.map((s, idx) => {
-                      const isRtl = isRtlText(s.shipperName)
-                      return (
-                        <tr
-                          key={`${s.shipperName}-${idx}`}
-                          onClick={() => {
-                            setDrillDownEntity({ type: "shipper", name: s.shipperName })
-                            setActiveTab("detailed")
-                          }}
-                          className="hover:bg-blue-50/60 cursor-pointer transition-colors"
-                        >
-                          <td className={`py-2 px-3 font-bold text-slate-950 max-w-[200px] xl:max-w-[260px] truncate ${isRtl ? "text-right font-[vazirmatn]" : ""}`} dir={isRtl ? "rtl" : "ltr"} title={s.shipperName}>
-                            {s.shipperName}
-                          </td>
-                          <td className="py-2.5 px-3 text-center font-mono font-black text-blue-700">
-                            {s.bolCount}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">
-                            {s.packages.toLocaleString()}
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">
-                            {s.netWeightKg.toLocaleString()} KG
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono text-slate-600">
-                            {s.grossWeightKg.toLocaleString()} KG
-                          </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-700">
-                            ${(s.goodsValueByCurrency["USD"] || 0).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </td>
-                          <td className="py-2.5 px-3 text-center font-mono font-bold text-purple-700">
-                            {s.containerCount}
-                          </td>
-                          <td className="py-2.5 px-3 font-semibold text-slate-700">{s.topDestination}</td>
-                          <td className="py-2.5 px-3 text-right font-mono text-slate-600">{s.lastShipmentDate}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <ReportDataTable<ShipperSummary>
+                data={shippersList}
+                columns={shipperColumns}
+                defaultSortColumn="bolCount"
+                defaultSortDirection="desc"
+                searchPlaceholder="Search commercial shippers, commodities, destinations..."
+                searchFilter={(s, q) =>
+                  s.shipperName.toLowerCase().includes(q) ||
+                  (s.topCommodity || "").toLowerCase().includes(q) ||
+                  (s.topConsignee || "").toLowerCase().includes(q) ||
+                  (s.topDestination || "").toLowerCase().includes(q) ||
+                  (s.commodities || []).some((c) => c.toLowerCase().includes(q))
+                }
+                summaryMetrics={shipperSummaryMetrics}
+                onRowClick={(s) => openDetailDrawerForEntity("shipper", s.shipperName)}
+                emptyMessage="No commercial shippers match your filter criteria."
+                tableAriaLabel="Commercial Shippers Report"
+                renderMobileCard={(s) => (
+                  <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-black text-slate-900 dark:text-white text-xs">{s.shipperName}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        {s.bolCount} BOLs
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Packages</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{s.packages.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Net WT</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{s.netWeightKg.toLocaleString()} KG</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Goods Value</span>
+                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          ${(s.goodsValueByCurrency["USD"] || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Top Cargo</span>
+                        <span className="truncate font-semibold text-slate-800 dark:text-slate-200 block">{s.topCommodity || "-"}</span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                      <span className="text-slate-400 text-[10px]">{s.lastShipmentDate ? formatDisplayDate(s.lastShipmentDate) : ""}</span>
+                      <span className="font-bold text-blue-600 dark:text-blue-400">View Details →</span>
+                    </div>
+                  </div>
+                )}
+              />
             </div>
           )}
 
@@ -2118,62 +4499,58 @@ export function SavedBolReport({
           {/* ======================================================== */}
           {activeTab === "consignees" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs">
-                <p className="font-bold text-slate-600">
-                  Total Active Consignees / Receivers: <span className="font-black text-slate-950 font-mono">{consigneesList.length}</span>
-                </p>
-                <p className="text-[11px] text-slate-400 no-print print:hidden">Click any consignee to inspect related shipment records</p>
-              </div>
-
-              <div className="w-full overflow-x-auto print:overflow-visible border border-slate-200 print:border-none rounded-xl print:rounded-none max-h-[calc(100vh-230px)] print:max-h-none overflow-y-auto print:overflow-y-visible scrollbar-thin">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead className="sticky top-0 z-10 bg-slate-100 shadow-2xs">
-                    <tr className="border-b-2 border-slate-900 bg-slate-100">
-                      <th className="py-2.5 px-3 font-black text-slate-900">Consignee</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-center">BOLs</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-center">Suppliers</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Packages</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Weight (KG)</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Goods Value (USD)</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-center">Containers</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900">Destination</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Last Shipment</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {consigneesList.map((c, idx) => {
-                      const isRtl = isRtlText(c.consigneeName)
-                      return (
-                        <tr
-                          key={`${c.consigneeName}-${idx}`}
-                          onClick={() => {
-                            setDrillDownEntity({ type: "consignee", name: c.consigneeName })
-                            setActiveTab("detailed")
-                          }}
-                          className="hover:bg-blue-50/60 cursor-pointer transition-colors"
-                        >
-                          <td className={`py-2 px-3 font-bold text-slate-950 max-w-[200px] xl:max-w-[260px] truncate ${isRtl ? "text-right font-[vazirmatn]" : ""}`} dir={isRtl ? "rtl" : "ltr"} title={c.consigneeName}>
-                            {c.consigneeName}
-                          </td>
-                          <td className="py-2.5 px-3 text-center font-mono font-black text-blue-700">{c.bolCount}</td>
-                          <td className="py-2.5 px-3 text-center font-mono font-bold text-slate-700">{c.shipperCount}</td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{c.packages.toLocaleString()}</td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{c.netWeightKg.toLocaleString()} KG</td>
-                          <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-700">
-                            ${(c.goodsValueByCurrency["USD"] || 0).toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </td>
-                          <td className="py-2.5 px-3 text-center font-mono font-bold text-purple-700">{c.containerCount}</td>
-                          <td className="py-2.5 px-3 font-semibold text-slate-700">{c.topDestination}</td>
-                          <td className="py-2.5 px-3 text-right font-mono text-slate-600">{c.lastShipmentDate}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <ReportDataTable<ConsigneeSummary>
+                data={consigneesList}
+                columns={consigneeColumns}
+                defaultSortColumn="bolCount"
+                defaultSortDirection="desc"
+                searchPlaceholder="Search receivers, suppliers, destinations..."
+                searchFilter={(c, q) =>
+                  c.consigneeName.toLowerCase().includes(q) ||
+                  (c.topShipper || "").toLowerCase().includes(q) ||
+                  (c.topCommodity || "").toLowerCase().includes(q) ||
+                  (c.topDestination || "").toLowerCase().includes(q) ||
+                  (c.commodities || []).some((comm) => comm.toLowerCase().includes(q))
+                }
+                summaryMetrics={consigneeSummaryMetrics}
+                onRowClick={(c) => openDetailDrawerForEntity("consignee", c.consigneeName)}
+                emptyMessage="No consignees or receivers match your filter criteria."
+                tableAriaLabel="Consignees and Receivers Report"
+                renderMobileCard={(c) => (
+                  <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-black text-slate-900 dark:text-white text-xs">{c.consigneeName}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        {c.bolCount} BOLs
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Packages</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{c.packages.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Net WT</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{c.netWeightKg.toLocaleString()} KG</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Goods Value</span>
+                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          ${(c.goodsValueByCurrency["USD"] || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Top Shipper</span>
+                        <span className="truncate font-semibold text-slate-800 dark:text-slate-200 block">{c.topShipper || "-"}</span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                      <span className="text-slate-400 text-[10px]">{c.topDestination || ""}</span>
+                      <span className="font-bold text-blue-600 dark:text-blue-400">View Details →</span>
+                    </div>
+                  </div>
+                )}
+              />
             </div>
           )}
 
@@ -2182,57 +4559,56 @@ export function SavedBolReport({
           {/* ======================================================== */}
           {activeTab === "commodities" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs">
-                <p className="font-bold text-slate-600">
-                  Cargo Types & Commodity Distribution: <span className="font-black text-slate-950 font-mono">{commoditiesList.length}</span>
-                </p>
-                <p className="text-[11px] text-slate-400 no-print print:hidden">Click a commodity to view corresponding shipments</p>
-              </div>
-
-              <div className="w-full overflow-x-auto print:overflow-visible border border-slate-200 print:border-none rounded-xl print:rounded-none max-h-[calc(100vh-230px)] print:max-h-none overflow-y-auto print:overflow-y-visible scrollbar-thin">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead className="sticky top-0 z-10 bg-slate-100 shadow-2xs">
-                    <tr className="border-b-2 border-slate-900 bg-slate-100">
-                      <th className="py-2.5 px-3 font-black text-slate-900">Commodity</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-center">BOLs</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Packages</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Net Weight</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Goods Value (USD)</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Avg Value / BOL</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900">Destinations</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {commoditiesList.map((c, idx) => (
-                      <tr
-                        key={`${c.commodityName}-${idx}`}
-                        onClick={() => {
-                          setDrillDownEntity({ type: "commodity", name: c.commodityName })
-                          setActiveTab("detailed")
-                        }}
-                        className="hover:bg-blue-50/60 cursor-pointer transition-colors"
-                      >
-                        <td className="py-2 px-3 font-bold text-slate-950 max-w-[200px] xl:max-w-[260px] truncate" title={c.commodityName}>
-                          {c.commodityName}
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-mono font-black text-blue-700">{c.bolCount}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{c.packages.toLocaleString()}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{c.netWeightKg.toLocaleString()} KG</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-700">
-                          ${(c.goodsValueByCurrency["USD"] || 0).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-700">
-                          ${c.averageValueUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-600 max-w-[200px] truncate">{c.destinations.join(", ") || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ReportDataTable<CommoditySummary>
+                data={commoditiesList}
+                columns={commodityColumns}
+                defaultSortColumn="bolCount"
+                defaultSortDirection="desc"
+                searchPlaceholder="Search cargo types, shippers, destinations..."
+                searchFilter={(c, q) =>
+                  c.commodityName.toLowerCase().includes(q) ||
+                  (c.topShipper || "").toLowerCase().includes(q) ||
+                  (c.topConsignee || "").toLowerCase().includes(q) ||
+                  c.destinations.some((d) => d.toLowerCase().includes(q))
+                }
+                summaryMetrics={commoditySummaryMetrics}
+                onRowClick={(c) => openDetailDrawerForEntity("commodity", c.commodityName)}
+                emptyMessage="No cargo commodities match your filter criteria."
+                tableAriaLabel="Commodities and Cargo Report"
+                renderMobileCard={(c) => (
+                  <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-black text-slate-900 dark:text-white text-xs">{c.commodityName}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        {c.bolCount} BOLs
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Packages</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{c.packages.toLocaleString()} {c.packageUnit || "CTNS"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Net WT</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{c.netWeightKg.toLocaleString()} KG</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Goods Value</span>
+                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          ${(c.goodsValueByCurrency["USD"] || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Top Shipper</span>
+                        <span className="truncate font-semibold text-slate-800 dark:text-slate-200 block">{c.topShipper || "-"}</span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end text-xs">
+                      <span className="font-bold text-blue-600 dark:text-blue-400">View Details →</span>
+                    </div>
+                  </div>
+                )}
+              />
             </div>
           )}
 
@@ -2241,63 +4617,101 @@ export function SavedBolReport({
           {/* ======================================================== */}
           {activeTab === "destinations" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-xs">
-                <p className="font-bold text-slate-600">
-                  Transit Ports, Border Stations & Delivery Hubs: <span className="font-black text-slate-950 font-mono">{destinationsList.length}</span>
-                </p>
-                <p className="text-[11px] text-slate-400 no-print print:hidden">Click a hub to drill down</p>
-              </div>
+              <ReportDataTable<DestinationSummary>
+                data={destinationsList}
+                columns={destinationColumns}
+                defaultSortColumn="bolCount"
+                defaultSortDirection="desc"
+                searchPlaceholder="Search transit hubs, ports, countries..."
+                searchFilter={(d, q) =>
+                  d.locationName.toLowerCase().includes(q) ||
+                  (d.country || "").toLowerCase().includes(q) ||
+                  (d.topShipper || "").toLowerCase().includes(q) ||
+                  (d.topCommodity || "").toLowerCase().includes(q) ||
+                  d.topShippers.some((s) => s.toLowerCase().includes(q))
+                }
+                summaryMetrics={destinationSummaryMetrics}
+                onRowClick={(d) => openDetailDrawerForEntity("destination", d.locationName)}
+                emptyMessage="No transit hubs or delivery destinations match your filter criteria."
+                tableAriaLabel="Destinations and Transit Hubs Report"
+                renderMobileCard={(d) => (
+                  <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-black text-slate-900 dark:text-white text-xs block">{d.locationName}</span>
+                        {d.country && <span className="text-[10px] text-slate-400 font-bold uppercase">{d.country}</span>}
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        {d.bolCount} BOLs
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Net WT</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{d.netWeightKg.toLocaleString()} KG</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Goods Value</span>
+                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          ${(d.goodsValueByCurrency["USD"] || 0).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end text-xs">
+                      <span className="font-bold text-blue-600 dark:text-blue-400">View Details →</span>
+                    </div>
+                  </div>
+                )}
+              />
+            </div>
+          )}
 
-              <div className="w-full overflow-x-auto print:overflow-visible border border-slate-200 print:border-none rounded-xl print:rounded-none max-h-[calc(100vh-230px)] print:max-h-none overflow-y-auto print:overflow-y-visible scrollbar-thin">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead className="sticky top-0 z-10 bg-slate-100 shadow-2xs">
-                    <tr className="border-b-2 border-slate-900 bg-slate-100">
-                      <th className="py-2.5 px-3 font-black text-slate-900">Location</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900">Route Role</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-center">BOL Count</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Net Weight</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Goods Value (USD)</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900">Top Shippers</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {destinationsList.map((d, idx) => (
-                      <tr
-                        key={`${d.type}-${d.locationName}-${idx}`}
-                        onClick={() => {
-                          setDrillDownEntity({ type: "destination", name: d.locationName })
-                          setActiveTab("detailed")
-                        }}
-                        className="hover:bg-blue-50/60 cursor-pointer transition-colors"
-                      >
-                        <td className="py-2 px-3 font-bold text-slate-950 max-w-[200px] xl:max-w-[260px] truncate" title={d.locationName}>{d.locationName}</td>
-                        <td className="py-2.5 px-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                              d.type === "POL"
-                                ? "bg-amber-100 text-amber-800"
-                                : d.type === "POD"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-purple-100 text-purple-800"
-                            }`}
-                          >
-                            {d.type}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-mono font-black text-blue-700">{d.bolCount}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{d.netWeightKg.toLocaleString()} KG</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-700">
-                          ${(d.goodsValueByCurrency["USD"] || 0).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-600">{d.topShippers.join(", ") || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          {/* ======================================================== */}
+          {/* TAB: ROUTES & TRANSIT CORRIDORS REPORT */}
+          {/* ======================================================== */}
+          {activeTab === "routes" && (
+            <div className="space-y-4">
+              <ReportDataTable<RouteSummary>
+                data={routesList}
+                columns={routeColumns}
+                defaultSortColumn="bolCount"
+                defaultSortDirection="desc"
+                searchPlaceholder="Search corridors, origins, destinations, border crossings..."
+                searchFilter={(r, q) =>
+                  r.routePath.toLowerCase().includes(q) ||
+                  r.origin.toLowerCase().includes(q) ||
+                  r.destination.toLowerCase().includes(q) ||
+                  (r.borderCrossing || "").toLowerCase().includes(q) ||
+                  (r.via || "").toLowerCase().includes(q)
+                }
+                summaryMetrics={routeSummaryMetrics}
+                onRowClick={(r) => openDetailDrawerForEntity("route", r.routePath)}
+                emptyMessage="No transit route records found in the filtered dataset."
+                tableAriaLabel="Transit Routes and Corridors Report"
+                renderMobileCard={(r) => (
+                  <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-black text-slate-900 dark:text-white text-xs leading-snug">{r.routePath}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 shrink-0">
+                        {r.bolCount} BOLs
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Reefer / Dry</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{r.reeferCount} RF / {r.dryCount} Dry</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Net WT</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{r.netWeightKg.toLocaleString()} KG</span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end text-xs">
+                      <span className="font-bold text-blue-600 dark:text-blue-400">View Details →</span>
+                    </div>
+                  </div>
+                )}
+              />
             </div>
           )}
 
@@ -2339,47 +4753,106 @@ export function SavedBolReport({
               </div>
 
               {/* Containers Table */}
-              <div className="w-full overflow-x-auto print:overflow-visible border border-slate-200 print:border-none rounded-xl print:rounded-none max-h-[calc(100vh-230px)] print:max-h-none overflow-y-auto print:overflow-y-visible scrollbar-thin">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead className="sticky top-0 z-10 bg-slate-100 shadow-2xs">
-                    <tr className="border-b-2 border-slate-900 bg-slate-100">
-                      <th className="py-2.5 px-3 font-black text-slate-900">Container No.</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900">Type</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900">BOL No.</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900">Shipper</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900">Commodity</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Weight</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900">Origin ➜ Destination</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {containerList.map((c, idx) => (
-                      <tr key={`${c.containerNumber}-${idx}`} className="hover:bg-slate-50">
-                        <td className="py-2 px-3 font-black font-mono text-slate-950">{c.containerNumber}</td>
-                        <td className="py-2 px-3">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                            {c.containerType}
-                          </span>
-                        </td>
-                        <td className="py-2 px-3 font-mono font-bold text-blue-700">{c.bolNumber}</td>
-                        <td className="py-2 px-3 truncate max-w-[150px] font-semibold text-slate-800">{c.shipper}</td>
-                        <td className="py-2 px-3 font-semibold text-slate-700">{c.commodity}</td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-800">{c.weightKg.toLocaleString()} KG</td>
-                        <td className="py-2 px-3 text-slate-600 text-[11px] truncate max-w-[160px]">{c.origin} ➜ {c.destination}</td>
-                        <td className="py-2 px-3 text-right font-mono text-slate-600">{c.date}</td>
-                      </tr>
-                    ))}
-                    {containerList.length === 0 && (
-                      <tr key="empty-containers">
-                        <td colSpan={8} className="py-10 text-center text-slate-500 font-semibold">
-                          No container equipment records found in the filtered BOL dataset.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <ReportDataTable<ContainerRecord>
+                data={containerList}
+                columns={containerColumns}
+                defaultSortColumn="date"
+                defaultSortDirection="desc"
+                searchPlaceholder="Search container numbers, types, BOLs, shippers..."
+                searchFilter={(c, q) =>
+                  c.containerNumber.toLowerCase().includes(q) ||
+                  c.containerType.toLowerCase().includes(q) ||
+                  c.bolNumber.toLowerCase().includes(q) ||
+                  c.shipper.toLowerCase().includes(q) ||
+                  c.consignee.toLowerCase().includes(q) ||
+                  c.commodity.toLowerCase().includes(q) ||
+                  c.origin.toLowerCase().includes(q) ||
+                  c.destination.toLowerCase().includes(q)
+                }
+                summaryMetrics={containerSummaryMetrics}
+                onRowClick={(c) => openDetailDrawerForEntity("container", c.containerNumber)}
+                emptyMessage="No container equipment records found in the filtered dataset."
+                tableAriaLabel="Containers and Equipment Report"
+                renderMobileCard={(c) => (
+                  <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-mono font-black text-slate-900 dark:text-white text-xs">{c.containerNumber}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300">
+                        {c.containerType}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">BOL Number</span>
+                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{c.bolNumber}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Shipper</span>
+                        <span className="truncate font-semibold text-slate-800 dark:text-slate-200 block">{c.shipper}</span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end text-xs">
+                      <span className="font-bold text-blue-600 dark:text-blue-400">View Details →</span>
+                    </div>
+                  </div>
+                )}
+              />
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* TAB: TRUCKS & FLEET ACTIVITY REPORT */}
+          {/* ======================================================== */}
+          {activeTab === "trucks" && (
+            <div className="space-y-4">
+              <ReportDataTable<TruckSummary>
+                data={trucksList}
+                columns={truckColumns}
+                defaultSortColumn="bolCount"
+                defaultSortDirection="desc"
+                searchPlaceholder="Search truck plates, drivers, corridors, shippers..."
+                searchFilter={(t, q) =>
+                  t.truckNumber.toLowerCase().includes(q) ||
+                  t.lastDriver.toLowerCase().includes(q) ||
+                  (t.lastDriverPhone || "").toLowerCase().includes(q) ||
+                  (t.plateRegion || "").toLowerCase().includes(q) ||
+                  (t.topRoute || "").toLowerCase().includes(q) ||
+                  t.topShipper.toLowerCase().includes(q) ||
+                  t.routesUsed.some((r) => r.toLowerCase().includes(q))
+                }
+                summaryMetrics={truckSummaryMetrics}
+                onRowClick={(t) => openDetailDrawerForEntity("truck", t.truckNumber)}
+                emptyMessage="No truck fleet records found in the filtered dataset."
+                tableAriaLabel="Trucks and Fleet Activity Report"
+                renderMobileCard={(t) => (
+                  <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-mono font-black text-slate-900 dark:text-white text-xs block">{t.truckNumber}</span>
+                        {t.plateRegion && <span className="text-[10px] text-slate-400 font-bold uppercase">{t.plateRegion}</span>}
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        {t.bolCount} Shipments
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Driver</span>
+                        <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate">{t.lastDriver || "-"}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Driver Rent</span>
+                        <span className="font-mono font-bold text-amber-700 dark:text-amber-400">
+                          {(Object.entries(t.totalDriverRent || {}) as [string, number][]).map(([curr, amt]) => `${curr} ${amt.toLocaleString()}`).join(", ") || "-"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end text-xs">
+                      <span className="font-bold text-blue-600 dark:text-blue-400">View Details →</span>
+                    </div>
+                  </div>
+                )}
+              />
             </div>
           )}
 
@@ -2418,41 +4891,53 @@ export function SavedBolReport({
               />
 
               {/* Monthly Table */}
-              <div className="w-full overflow-x-auto print:overflow-visible border border-slate-200 print:border-none rounded-xl print:rounded-none max-h-[calc(100vh-230px)] print:max-h-none overflow-y-auto print:overflow-y-visible scrollbar-thin">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead className="sticky top-0 z-10 bg-slate-100 shadow-2xs">
-                    <tr className="border-b-2 border-slate-900 bg-slate-100">
-                      <th className="py-2.5 px-3 font-black text-slate-900">Month</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-center">BOLs</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Packages</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Net Weight</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Goods Value (USD)</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-center">Containers</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-center">Shippers</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-center">Consignees</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {monthlySummaries.map((m) => (
-                      <tr key={m.monthKey} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3 font-black text-slate-950 font-mono">{m.monthLabel}</td>
-                        <td className="py-2.5 px-3 text-center font-mono font-black text-blue-700">{m.bolCount}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{m.packages.toLocaleString()}</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-800">{m.netWeightKg.toLocaleString()} KG</td>
-                        <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-700">
-                          ${(m.goodsValueByCurrency["USD"] || 0).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-mono font-bold text-purple-700">{m.containerCount}</td>
-                        <td className="py-2.5 px-3 text-center font-mono text-slate-700">{m.shipperCount}</td>
-                        <td className="py-2.5 px-3 text-center font-mono text-slate-700">{m.consigneeCount}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ReportDataTable<MonthlySummary>
+                data={monthlySummaries}
+                columns={monthlyColumns}
+                defaultSortColumn="monthKey"
+                defaultSortDirection="desc"
+                searchPlaceholder="Search operating months..."
+                searchFilter={(m, q) =>
+                  m.monthLabel.toLowerCase().includes(q) || m.monthKey.toLowerCase().includes(q)
+                }
+                summaryMetrics={monthlySummaryMetrics}
+                onRowClick={(m) => openDetailDrawerForEntity("month", m.monthLabel)}
+                emptyMessage="No monthly operational data for the selected period."
+                tableAriaLabel="Monthly Operations Report"
+                renderMobileCard={(m) => (
+                  <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-black text-slate-900 dark:text-white text-xs">{m.monthLabel}</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                        {m.bolCount} BOLs
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Packages</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{m.packages.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Net WT</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{m.netWeightKg.toLocaleString()} KG</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Goods Value</span>
+                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          ${(m.goodsValueByCurrency["USD"] || 0).toLocaleString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase text-slate-400 block font-bold">Shippers</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{m.shipperCount} Active</span>
+                      </div>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end text-xs">
+                      <span className="font-bold text-blue-600 dark:text-blue-400">Filter Detailed BOLs →</span>
+                    </div>
+                  </div>
+                )}
+              />
             </div>
           )}
 
@@ -2473,7 +4958,7 @@ export function SavedBolReport({
 
               {/* Currency Breakdown Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {Object.entries(financialMetrics.currencyTotals).map(([curr, total]) => {
+                {(Object.entries(financialMetrics.currencyTotals) as [string, number][]).map(([curr, total]) => {
                   const avg = financialMetrics.averageValuePerBol[curr] || 0
                   return (
                     <div key={curr} className="p-4 rounded-xl border border-slate-200 bg-slate-50/70">
@@ -2517,6 +5002,62 @@ export function SavedBolReport({
                     </p>
                   </div>
                 )}
+              </div>
+
+              {/* Monthly Financial Breakdown Table */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-wider">
+                    Monthly Operational Financial Audit
+                  </h3>
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                    Real stored amounts only • Invariance satisfied
+                  </span>
+                </div>
+                <ReportDataTable<FinancialMonthlyRow>
+                  data={financialMonthlyRows}
+                  columns={financialColumns}
+                  defaultSortColumn="monthKey"
+                  defaultSortDirection="desc"
+                  searchPlaceholder="Search operating months..."
+                  searchFilter={(r, q) =>
+                    r.monthLabel.toLowerCase().includes(q) || r.monthKey.toLowerCase().includes(q)
+                  }
+                  summaryMetrics={financialSummaryMetrics}
+                  onRowClick={(r) => openDetailDrawerForEntity("month", r.monthLabel)}
+                  emptyMessage="No financial operations recorded in the selected period."
+                  tableAriaLabel="Monthly Financial Summary"
+                  renderMobileCard={(r) => (
+                    <div className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-black text-slate-900 dark:text-white text-xs">{r.monthLabel}</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                          {r.bolCount} BOLs
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-400">
+                        <div>
+                          <span className="text-[10px] uppercase text-slate-400 block font-bold">Goods Value (USD)</span>
+                          <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                            ${r.goodsValueUsd.toLocaleString()}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase text-slate-400 block font-bold">Driver Rent</span>
+                          <span className="font-mono font-bold text-amber-700 dark:text-amber-400">
+                            {r.driverRentAfn > 0 ? `AFN ${r.driverRentAfn.toLocaleString()}` : r.driverRentUsd > 0 ? `$${r.driverRentUsd.toLocaleString()}` : "-"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300">
+                          Incomplete
+                        </span>
+                        <span className="font-bold text-blue-600 dark:text-blue-400">View Details →</span>
+                      </div>
+                    </div>
+                  )}
+                />
               </div>
 
               {/* Value by Shipper & Destination Tables */}
@@ -2598,64 +5139,114 @@ export function SavedBolReport({
                 </div>
               </div>
 
-              {/* Missing Fields Breakdown */}
-              <div className="w-full overflow-x-auto print:overflow-visible border border-slate-200 print:border-none rounded-xl print:rounded-none max-h-[calc(100vh-230px)] print:max-h-none overflow-y-auto print:overflow-y-visible scrollbar-thin">
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead className="sticky top-0 z-10 bg-slate-100 shadow-2xs">
-                    <tr className="border-b-2 border-slate-900 bg-slate-100">
-                      <th className="py-2.5 px-3 font-black text-slate-900">Field Name</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900">Severity</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-center">Missing Count</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900">Impact Description</th>
-                      <th className="py-2.5 px-3 font-black text-slate-900 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {dataQualityAudit.issues.map((issue, idx) => (
-                      <tr key={`${issue.field}-${idx}`} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3 font-black text-slate-900">{issue.label}</td>
-                        <td className="py-2.5 px-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                              issue.severity === "critical"
-                                ? "bg-red-100 text-red-800"
-                                : issue.severity === "warning"
-                                ? "bg-amber-100 text-amber-800"
-                                : "bg-slate-100 text-slate-700"
-                            }`}
-                          >
-                            {issue.severity}
+              {/* Missing Fields Breakdown Grouped by Category */}
+              {(() => {
+                const categoryOrder: Array<"Shipper" | "Consignee" | "Route" | "Truck" | "Weight" | "Other"> = [
+                  "Shipper",
+                  "Consignee",
+                  "Route",
+                  "Truck",
+                  "Weight",
+                  "Other",
+                ]
+
+                const groupedIssues = categoryOrder
+                  .map((catName) => {
+                    const catIssues = dataQualityAudit.issues.filter(
+                      (i) => getMissingFieldCategory(i.field) === catName
+                    )
+                    const totalMissing = catIssues.reduce((sum, i) => sum + i.missingCount, 0)
+                    return {
+                      category: catName,
+                      issues: catIssues,
+                      totalMissing,
+                    }
+                  })
+                  .filter((g) => g.issues.length > 0)
+
+                return (
+                  <div className="space-y-4">
+                    {groupedIssues.map((group) => (
+                      <div
+                        key={group.category}
+                        className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs"
+                      >
+                        <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                              {group.category} Fields
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                              {group.issues.length} {group.issues.length === 1 ? "field" : "fields"}
+                            </span>
+                          </div>
+                          <span className={`text-[11px] font-mono font-bold ${group.totalMissing > 0 ? "text-amber-700 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                            {group.totalMissing} total missing entries
                           </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center font-mono font-black text-slate-950">
-                          {issue.missingCount}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-600">
-                          {issue.severity === "critical"
-                            ? "Essential transport document requirement"
-                            : issue.severity === "warning"
-                            ? "Operational tracking or routing detail missing"
-                            : "Supplementary reference or attached file"}
-                        </td>
-                        <td className="py-2.5 px-3 text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedIds(issue.affectedDocIds)
-                              setActiveTab("detailed")
-                              toast.info(`Filtered ${issue.affectedDocIds.length} BOLs missing ${issue.label}`)
-                            }}
-                            className="h-7 text-xs rounded-lg font-bold"
-                          >
-                            View Affected BOLs
-                          </Button>
-                        </td>
-                      </tr>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs text-left border-collapse">
+                            <thead className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-800">
+                              <tr>
+                                <th className="py-2 px-3 font-extrabold">Field Name</th>
+                                <th className="py-2 px-3 font-extrabold">Severity</th>
+                                <th className="py-2 px-3 font-extrabold text-center">Missing Count</th>
+                                <th className="py-2 px-3 font-extrabold">Impact Description</th>
+                                <th className="py-2 px-3 font-extrabold text-right">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {group.issues.map((issue, idx) => (
+                                <tr key={`${issue.field}-${idx}`} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                                  <td className="py-2.5 px-3 font-black text-slate-900 dark:text-slate-100">{issue.label}</td>
+                                  <td className="py-2.5 px-3">
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                                        issue.severity === "critical"
+                                          ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300"
+                                          : issue.severity === "warning"
+                                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                          : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                                      }`}
+                                    >
+                                      {issue.severity}
+                                    </span>
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center font-mono font-black text-slate-950 dark:text-slate-50">
+                                    {issue.missingCount}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
+                                    {issue.severity === "critical"
+                                      ? "Essential transport document requirement"
+                                      : issue.severity === "warning"
+                                      ? "Operational tracking or routing detail missing"
+                                      : "Supplementary reference or attached file"}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-right">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setSelectedIds(issue.affectedDocIds)
+                                        setActiveTab("detailed")
+                                        toast.info(`Filtered ${issue.affectedDocIds.length} BOLs missing ${issue.label}`)
+                                      }}
+                                      className="h-7 text-xs rounded-lg font-bold"
+                                    >
+                                      View Affected BOLs
+                                    </Button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </div>
+                )
+              })()}
 
               {/* Duplicate Detection Section */}
               <div className="space-y-3 pt-4 border-t border-slate-200">
@@ -2861,6 +5452,23 @@ export function SavedBolReport({
         savedPresets={savedFilters}
         onSavePreset={handleSaveFilter}
         onDeletePreset={handleDeleteFilter}
+      />
+
+      {/* 5. ENTITY DETAIL DRILL-DOWN DRAWER */}
+      <ReportDetailDrawer
+        isOpen={drawerState.isOpen}
+        onClose={() => setDrawerState((prev) => ({ ...prev, isOpen: false }))}
+        entityType={drawerState.entityType}
+        entityName={drawerState.entityName}
+        entityBadge={drawerState.entityBadge}
+        kpis={drawerState.kpis}
+        breakdowns={drawerState.breakdowns}
+        recentBols={drawerState.recentBols}
+        matchingCount={drawerState.matchingCount}
+        onViewMatchingBols={() =>
+          handleViewMatchingBols(drawerState.entityType, drawerState.entityName)
+        }
+        onOpenBolQuickView={(doc) => setQuickViewDoc(doc)}
       />
     </div>
   )
