@@ -27,6 +27,7 @@ import {
   RefreshCw,
   Eye,
   SlidersHorizontal,
+  Copy,
 } from "lucide-react"
 import { toast } from "sonner"
 import type {
@@ -641,7 +642,51 @@ export function PeriodClosingView() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
+              {/* Mobile Account Cards for Opening Balances (md:hidden) */}
+              <div className="md:hidden space-y-2.5">
+                {filteredBalances.map((b) => (
+                  <div
+                    key={b.id}
+                    className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-900 dark:text-slate-100">{b.account_name}</span>
+                      <Badge variant="outline" className="text-[10px] font-mono font-bold bg-white dark:bg-slate-800">
+                        {b.currency}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-500 text-[11px]">
+                      <span className="capitalize">{b.account_type}</span>
+                      <div className="flex items-center gap-1 font-mono text-[10px]">
+                        <span>Hash:</span>
+                        <span>{b.snapshot_hash ? `${b.snapshot_hash.slice(0, 8)}...` : "VERIFIED"}</span>
+                        {b.snapshot_hash && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(b.snapshot_hash!)
+                              toast.success("Hash copied to clipboard")
+                            }}
+                            className="text-blue-600 hover:text-blue-700 ml-0.5 cursor-pointer"
+                            title="Copy full hash"
+                          >
+                            <Copy className="h-3 w-3 inline" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-800">
+                      <span className="text-[11px] font-bold text-slate-500">Opening Balance:</span>
+                      <span className="font-mono font-black text-sm text-slate-900 dark:text-slate-100">
+                        {b.currency} {b.opening_balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table for Opening Balances (hidden md:block) */}
+              <div className="hidden md:block overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
                 <table className="w-full text-xs text-left">
                   <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
                     <tr>
@@ -662,7 +707,22 @@ export function PeriodClosingView() {
                           {b.opening_balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </td>
                         <td className="py-2 px-3 text-[10px] text-slate-400 font-mono">
-                          {b.snapshot_hash ? `${b.snapshot_hash.slice(0, 16)}...` : "VERIFIED"}
+                          <span className="inline-flex items-center gap-1">
+                            <span>{b.snapshot_hash ? `${b.snapshot_hash.slice(0, 10)}...` : "VERIFIED"}</span>
+                            {b.snapshot_hash && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(b.snapshot_hash!)
+                                  toast.success("Integrity hash copied")
+                                }}
+                                className="text-slate-400 hover:text-blue-600 cursor-pointer p-0.5"
+                                title="Copy full SHA-256 hash"
+                              >
+                                <Copy className="h-3 w-3 inline" />
+                              </button>
+                            )}
+                          </span>
                         </td>
                       </tr>
                     ))}
@@ -686,7 +746,47 @@ export function PeriodClosingView() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
+              {/* Mobile Account Cards for Closing Balances (md:hidden) */}
+              <div className="md:hidden space-y-2.5">
+                {filteredBalances.map((b) => (
+                  <div
+                    key={b.id}
+                    className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="text-slate-900 dark:text-slate-100">{b.account_name}</span>
+                      <Badge variant="outline" className="text-[10px] font-mono font-bold bg-white dark:bg-slate-800">
+                        {b.currency}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1 text-[11px] font-mono bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-sans">Open</span>
+                        <span>{b.opening_balance.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-blue-500 block font-sans">Debit (+)</span>
+                        <span className="text-blue-600">+{b.period_debit.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-emerald-500 block font-sans">Credit (-)</span>
+                        <span className="text-emerald-600">-{b.period_credit.toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-800">
+                      <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Closing Balance:
+                      </span>
+                      <span className="font-mono font-black text-sm text-slate-900 dark:text-slate-100">
+                        {b.currency} {b.closing_balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table for Closing Balances (hidden md:block) */}
+              <div className="hidden md:block overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-lg">
                 <table className="w-full text-xs text-left">
                   <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
                     <tr>

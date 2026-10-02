@@ -442,7 +442,74 @@ export function TreasuryWorkspace() {
               </Button>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Mobile Transaction Cards (md:hidden) */}
+            <div className="md:hidden space-y-2.5">
+              {transactions.slice(0, 15).map((tx) => {
+                const acc = accounts.find((a) => a.id === tx.treasury_account_id)
+                return (
+                  <div
+                    key={tx.id}
+                    className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1.5">
+                      <span className="font-mono text-[11px] text-slate-500">{tx.transaction_date}</span>
+                      <Badge
+                        variant="outline"
+                        className={`text-[9px] font-bold ${
+                          tx.transaction_type === "CUSTOMER_RECEIPT"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                            : tx.transaction_type === "SUPPLIER_PAYMENT"
+                            ? "bg-rose-50 text-rose-700 border-rose-300"
+                            : tx.transaction_type.startsWith("INTERNAL_TRANSFER")
+                            ? "bg-blue-50 text-blue-700 border-blue-300"
+                            : tx.transaction_type.startsWith("EXCHANGE")
+                            ? "bg-indigo-50 text-indigo-700 border-indigo-300"
+                            : "bg-slate-50 text-slate-700 border-slate-300"
+                        }`}
+                      >
+                        {tx.transaction_type}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center justify-between font-semibold">
+                      <span className="text-slate-900 dark:text-slate-100">{acc?.account_name || "Account"}</span>
+                      {tx.reference_number && (
+                        <span className="font-mono text-[11px] text-blue-600">{tx.reference_number}</span>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                      {tx.party_name ? <strong className="font-semibold">{tx.party_name}: </strong> : null}
+                      {tx.description}
+                    </p>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                      <div>
+                        {tx.amount_in > 0 && (
+                          <span className="font-mono font-bold text-emerald-600">
+                            +{tx.amount_in.toLocaleString()} {tx.currency}
+                          </span>
+                        )}
+                        {tx.amount_out > 0 && (
+                          <span className="font-mono font-bold text-rose-600">
+                            -{tx.amount_out.toLocaleString()} {tx.currency}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold mr-1">Bal:</span>
+                        <span className="font-mono font-black text-slate-900 dark:text-slate-100">
+                          {tx.balance_after !== undefined ? `${tx.balance_after.toLocaleString()} ${tx.currency}` : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Desktop Table (hidden md:block) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-[10px] text-slate-500 uppercase">
@@ -953,7 +1020,56 @@ export function TreasuryWorkspace() {
               <span className="text-xs text-slate-500 font-medium">{transactions.length} Total Postings</span>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Mobile Running Ledger Cards (md:hidden) */}
+            <div className="md:hidden space-y-2.5">
+              {transactions.map((tx) => {
+                const acc = accounts.find((a) => a.id === tx.treasury_account_id)
+                return (
+                  <div
+                    key={tx.id}
+                    className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-2 text-xs"
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-1.5">
+                      <span className="font-mono text-[11px] text-slate-500">{tx.transaction_date}</span>
+                      <span className="font-mono font-bold text-[10px] text-slate-600 dark:text-slate-400">{tx.transaction_type}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between font-semibold">
+                      <span className="text-slate-900 dark:text-slate-100">{acc?.account_name}</span>
+                      {tx.reference_number && (
+                        <span className="font-mono text-[11px] text-blue-600">{tx.reference_number}</span>
+                      )}
+                    </div>
+
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400">{tx.description}</p>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                      <div>
+                        {tx.amount_in > 0 && (
+                          <span className="font-mono font-bold text-emerald-600">
+                            +{tx.amount_in.toLocaleString()} {tx.currency}
+                          </span>
+                        )}
+                        {tx.amount_out > 0 && (
+                          <span className="font-mono font-bold text-rose-600">
+                            -{tx.amount_out.toLocaleString()} {tx.currency}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold mr-1">Bal:</span>
+                        <span className="font-mono font-black text-slate-900 dark:text-slate-100">
+                          {tx.balance_after !== undefined ? `${tx.balance_after.toLocaleString()} ${tx.currency}` : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Desktop Running Ledger Table (hidden md:block) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-[10px] text-slate-500 uppercase">

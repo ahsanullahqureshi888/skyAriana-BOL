@@ -73,15 +73,29 @@ import {
   DEFAULT_AFN_USD_RATE,
   runDataMigrationCleanup
 } from "@/lib/services/currency-service"
+import { isMeaningfulBOL } from "@/lib/utils/bol-filters"
 
 /**
  * Dedicated Portal for Report Printing
  * Mounts #sky-reports-print-root directly on document.body for clean, unclipped print output
  */
 function ReportPrintPortal({ children }: { children: React.ReactNode }) {
+  const [isPrinting, setIsPrinting] = useState(false)
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
+    const handleBeforePrint = () => setIsPrinting(true)
+    const handleAfterPrint = () => setIsPrinting(false)
+    window.addEventListener("beforeprint", handleBeforePrint)
+    window.addEventListener("afterprint", handleAfterPrint)
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint)
+      window.removeEventListener("afterprint", handleAfterPrint)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isPrinting) return
     const existing = document.getElementById("sky-reports-print-root") as HTMLDivElement | null
     const root = existing || document.createElement("div")
 
@@ -98,9 +112,9 @@ function ReportPrintPortal({ children }: { children: React.ReactNode }) {
         document.body.removeChild(root)
       }
     }
-  }, [])
+  }, [isPrinting])
 
-  if (!container) return null
+  if (!isPrinting || !container) return null
   return createPortal(children, container)
 }
 
@@ -272,7 +286,7 @@ export function ReportsView() {
     setThemeMode(nextTheme)
     try {
       window.localStorage.setItem("skybol:reports-theme", nextTheme)
-      toast.success(`${nextTheme === "light" ? "â˜€ï¸ Light Theme" : "ðŸŒ™ Dark Theme"} active`)
+      toast.success(`${nextTheme === "light" ? "☀️  Light Theme" : "🌙 Dark Theme"} active`)
     } catch {
       // ignore
     }
@@ -283,7 +297,7 @@ export function ReportsView() {
   // Navigation Sub-Tab State
   const [activeTab, setActiveTab] = useState<"pnl" | "containers" | "trade" | "shipments" | "balances" | "expenses" | "bol_report">("containers")
   
-  // Direction Filter: All, Export (ØµØ§Ø¯Ø±Ø§Øª), Import (ÙˆØ§Ø±Ø¯Ø§Øª), Transit (ØªØ±Ø§Ù†Ø²ÛŒØª)
+  // Direction Filter: All, Export (صادرات), Import (واردات), Transit (ترانزیت)
   const [directionFilter, setDirectionFilter] = useState<"all" | "Export" | "Import" | "Transit">("all")
   
   // Container Size Filter: All, 20FT, 40FT, 40HQ, 40RF
@@ -299,6 +313,8 @@ export function ReportsView() {
   const [selectedShipper, setSelectedShipper] = useState<string>("all")
   const [selectedConsignee, setSelectedConsignee] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
+  const [showMobileMoreActions, setShowMobileMoreActions] = useState(false)
 
   // Print & PDF Export Configuration State
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
@@ -355,7 +371,7 @@ export function ReportsView() {
     if (newRate >= 10 && newRate <= 300) {
       setExchangeRate(newRate)
       setActiveExchangeRate(newRate)
-      toast.success(`ðŸ’± Exchange Rate updated: 1 USD = ${newRate} AFN`)
+      toast.success(`💱 Exchange Rate updated: 1 USD = ${newRate} AFN`)
       setIsRateModalOpen(false)
     } else {
       toast.error("Please enter a realistic exchange rate (10 to 300 AFN/USD)")
@@ -389,8 +405,9 @@ export function ReportsView() {
         const k = d.bol_number || d.id
         if (k && !merged.has(k)) merged.set(k, d)
       }
-
-      setBolDocs(Array.from(merged.values()))
+      const allDocs = Array.from(merged.values())
+      const validDocs = allDocs.filter(isMeaningfulBOL)
+      setBolDocs(validDocs)
     } catch (e) {
       console.error("Error loading documents for reports:", e)
     }
@@ -584,12 +601,12 @@ export function ReportsView() {
           }
 
           const isMersinReefer = (
-            lowerAll.includes('Ù…ÛŒØ±Ø³Ù†') ||
+            lowerAll.includes('میرسن') ||
             lowerAll.includes('mersin') ||
-            lowerAll.includes('ÛŒØ®Ú†Ø§Ù„') ||
+            lowerAll.includes('یخچال') ||
             lowerAll.includes('reefer') ||
-            lowerAll.includes('Ø¨Ø¯Ø±Ù‚Ù‡') ||
-            lowerAll.includes('ØªØ±Ø§Ù†Ø²ÛŒØª ØªØ±Ú©ÛŒÙ‡')
+            lowerAll.includes('بدرقه') ||
+            lowerAll.includes('ترانزیت ترکیه')
           )
 
           if (isMersinReefer) {
@@ -817,9 +834,9 @@ export function ReportsView() {
       }
 
       const isMersinReefer = (
-        (rawContainer + ' ' + (doc.container_size || '') + ' ' + desc + ' ' + pol + ' ' + pod + ' ' + shipper + ' ' + consignee).toLowerCase().includes('Ù…ÛŒØ±Ø³Ù†') ||
+        (rawContainer + ' ' + (doc.container_size || '') + ' ' + desc + ' ' + pol + ' ' + pod + ' ' + shipper + ' ' + consignee).toLowerCase().includes('میرسن') ||
         (rawContainer + ' ' + (doc.container_size || '') + ' ' + desc + ' ' + pol + ' ' + pod + ' ' + shipper + ' ' + consignee).toLowerCase().includes('mersin') ||
-        (rawContainer + ' ' + (doc.container_size || '') + ' ' + desc + ' ' + pol + ' ' + pod + ' ' + shipper + ' ' + consignee).toLowerCase().includes('ÛŒØ®Ú†Ø§Ù„') ||
+        (rawContainer + ' ' + (doc.container_size || '') + ' ' + desc + ' ' + pol + ' ' + pod + ' ' + shipper + ' ' + consignee).toLowerCase().includes('یخچال') ||
         (rawContainer + ' ' + (doc.container_size || '') + ' ' + desc + ' ' + pol + ' ' + pod + ' ' + shipper + ' ' + consignee).toLowerCase().includes('reefer')
       )
 
@@ -1562,8 +1579,8 @@ export function ReportsView() {
 
       const isLandscape = printOrientation === 'landscape'
       const canvas = await toCanvas(printContainer as HTMLElement, {
-        pixelRatio: 2,
-        quality: 0.98,
+        pixelRatio: 3,
+        quality: 1.0,
         skipFonts: true,
         backgroundColor: '#ffffff',
         style: {
@@ -1572,10 +1589,13 @@ export function ReportsView() {
           boxShadow: 'none',
           opacity: '1',
           visibility: 'visible',
-        },
+          WebkitFontSmoothing: 'antialiased',
+          MozOsxFontSmoothing: 'grayscale',
+          textRendering: 'optimizeLegibility',
+        } as any,
       })
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.98)
+      const imgData = canvas.toDataURL('image/jpeg', 0.99)
       const pdf = new jsPDF({
         orientation: isLandscape ? 'landscape' : 'portrait',
         unit: 'mm',
@@ -1590,13 +1610,13 @@ export function ReportsView() {
       let heightLeft = canvasHeightMM
       let position = 0
 
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'FAST')
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'SLOW')
       heightLeft -= pdfHeight
 
       while (heightLeft > 0) {
         position = heightLeft - canvasHeightMM
         pdf.addPage()
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'FAST')
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'SLOW')
         heightLeft -= pdfHeight
       }
 
@@ -1615,23 +1635,23 @@ export function ReportsView() {
   const getActiveReportTitle = (scope: string) => {
     switch (scope) {
       case "trade_summary":
-        return "Export vs. Import Comparative Trade Analysis (ØªØ­Ù„ÛŒÙ„ ØµØ§Ø¯Ø±Ø§Øª Ùˆ ÙˆØ§Ø±Ø¯Ø§Øª)"
+        return "Export vs. Import Comparative Trade Analysis (تحلیل صادرات و واردات)"
       case "pnl_statement":
-        return "Executive Financial Statement of Profit & Loss (ØµÙˆØ±ØªØ­Ø³Ø§Ø¨ Ø³ÙˆØ¯ Ùˆ Ø²ÛŒØ§Ù† Ù…Ø§Ù„ÛŒ)"
+        return "Executive Financial Statement of Profit & Loss (صورتحساب سود و زیان مالی)"
       case "bbl_manifest":
-        return "Bill of Lading Shipments & Manifest (Ø¨Ø§Ø±Ù†Ø§Ù…Ù‡â€ŒÙ‡Ø§ Ùˆ Ø§Ø³Ù†Ø§Ø¯ Ø­Ù…Ù„)"
+        return "Bill of Lading Shipments & Manifest (بارنامه‌ها و اسناد حمل)"
       case "company_balances":
-        return "Accounts Receivable & Client Balance Summary (Ø¨ÛŒÙ„Ø§Ù†Ø³ Ø­Ø³Ø§Ø¨â€ŒÙ‡Ø§ÛŒ Ù…Ø´ØªØ±ÛŒØ§Ù†)"
+        return "Accounts Receivable & Client Balance Summary (بیلانس حساب‌های مشتریان)"
       case "opex_expenses":
-        return "Operational Logistics OPEX & Direct Expenses (Ù…ØµØ§Ø±Ù Ø¹Ù…Ù„ÛŒØ§ØªÛŒ Ùˆ Ù„Ø¬Ø³ØªÛŒÚ©ÛŒ)"
+        return "Operational Logistics OPEX & Direct Expenses (مصارف عملیاتی و لجستیکی)"
       case "all_containers":
       default:
-        return "Container Freight & Direct Profit/Loss Statement (Ú¯Ø²Ø§Ø±Ø´ Ú©Ø§Ù†ØªÛŒÙ†Ø±Ù‡Ø§ Ùˆ Ø³ÙˆØ¯ Ú©Ø±Ø§ÛŒÙ‡â€ŒÙ‡Ø§)"
+        return "Container Freight & Direct Profit/Loss Statement (گزارش کانتینرها و سود کرایه‌ها)"
     }
   }
 
   return (
-    <div className={`min-h-screen p-2.5 sm:p-4 md:p-6 font-sans transition-colors duration-200 ${
+    <div data-reports-center="true" className={`min-h-screen p-2.5 sm:p-4 md:p-6 font-sans transition-colors duration-200 ${
       isLight 
         ? "bg-gradient-to-br from-slate-100 via-blue-50/50 to-indigo-50/70 text-slate-900" 
         : "bg-slate-950 text-slate-100"
@@ -1662,7 +1682,7 @@ export function ReportsView() {
                     ? "bg-cyan-100 text-cyan-800 border-cyan-300 font-bold text-[10px] sm:text-xs"
                     : "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold text-[10px] sm:text-xs"
                 }>
-                  Ú¯Ø²Ø§Ø±Ø´ Ú©Ø§Ù†ØªÛŒÙ†Ø±Ù‡Ø§ØŒ ØµØ§Ø¯Ø±Ø§Øª/ÙˆØ§Ø±Ø¯Ø§Øª Ùˆ Ø³ÙˆØ¯ Ú©Ø±Ø§ÛŒÙ‡â€ŒÙ‡Ø§
+                  گزارش کانتینرها، صادرات/واردات و سود کرایه‌ها
                 </Badge>
               </div>
               <p className={`text-[11px] sm:text-xs font-semibold mt-0.5 ${
@@ -1673,8 +1693,111 @@ export function ReportsView() {
             </div>
           </div>
 
-          {/* Quick Action Buttons + Theme Toggle */}
-          <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0 no-print">
+          {/* Mobile Quick Action Buttons (< sm) */}
+          <div className="flex sm:hidden flex-col w-full gap-2 no-print">
+            <div className="flex items-center gap-1.5 w-full justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadDocuments}
+                className={`h-9 px-3 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
+                  isLight
+                    ? "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200"
+                    : "bg-slate-800/80 border-slate-700 hover:bg-slate-700 text-slate-200"
+                }`}
+              >
+                <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                <span>Refresh</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAddExpenseOpen(true)}
+                className={`h-9 px-3 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
+                  isLight
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                    : "bg-emerald-950/40 text-emerald-300 border-emerald-700 hover:bg-emerald-900/60"
+                }`}
+              >
+                <Plus className="w-4 h-4 mr-1 text-emerald-600" />
+                <span>Add Expense</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportExcel}
+                className={`h-9 px-3 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
+                  isLight
+                    ? "bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100"
+                    : "bg-blue-950/40 text-blue-300 border-blue-700 hover:bg-blue-900/60"
+                }`}
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                <span>Export</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMobileMoreActions(!showMobileMoreActions)}
+                className={`h-9 px-2.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
+                  isLight ? "border-slate-300 text-slate-700" : "border-slate-700 text-slate-300"
+                }`}
+                title="More actions"
+              >
+                •••
+              </Button>
+            </div>
+
+            {showMobileMoreActions && (
+              <div className="flex items-center gap-1.5 w-full flex-wrap p-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleTheme}
+                  className="h-8 text-xs gap-1"
+                >
+                  {isLight ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-amber-400" />}
+                  <span>{isLight ? "Light Mode" : "Dark Mode"}</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleExportCSV}
+                  className="h-8 text-xs gap-1"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-cyan-600" />
+                  <span>CSV</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setTempRateInput(exchangeRate.toString())
+                    setIsRateModalOpen(true)
+                  }}
+                  className="h-8 text-xs gap-1"
+                >
+                  <Coins className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Rate ({exchangeRate} AFN)</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsPrintDialogOpen(true)}
+                  className="h-8 text-xs gap-1"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print A4</span>
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop & Tablet Action Buttons (sm+) */}
+          <div className="hidden sm:flex items-center gap-2 w-full lg:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0 no-print">
             {/* Theme Toggle Button */}
             <Button
               variant="outline"
@@ -1794,10 +1917,10 @@ export function ReportsView() {
           
           {/* Trade Direction Selector Pills */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0 max-w-full">
               <button
                 onClick={() => setDirectionFilter("all")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
                   directionFilter === "all"
                     ? "bg-blue-600 text-white shadow-md shadow-blue-500/25"
                     : isLight
@@ -1811,7 +1934,7 @@ export function ReportsView() {
 
               <button
                 onClick={() => setDirectionFilter("Export")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
                   directionFilter === "Export"
                     ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/25"
                     : isLight
@@ -1819,13 +1942,14 @@ export function ReportsView() {
                     : "bg-slate-800/80 text-slate-400 hover:text-white"
                 }`}
               >
-                <ArrowUpRight className="w-4 h-4 text-emerald-300" />
-                <span>Export / ØµØ§Ø¯Ø±Ø§Øª ({allContainerRecords.filter(r => r.direction === 'Export').length})</span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-300" />
+                <span className="sm:hidden">Export ({allContainerRecords.filter(r => r.direction === 'Export').length})</span>
+                <span className="hidden sm:inline">Export / صادرات ({allContainerRecords.filter(r => r.direction === 'Export').length})</span>
               </button>
 
               <button
                 onClick={() => setDirectionFilter("Import")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
                   directionFilter === "Import"
                     ? "bg-amber-600 text-white shadow-md shadow-amber-500/25"
                     : isLight
@@ -1833,13 +1957,14 @@ export function ReportsView() {
                     : "bg-slate-800/80 text-slate-400 hover:text-white"
                 }`}
               >
-                <ArrowDownLeft className="w-4 h-4 text-amber-300" />
-                <span>Import / ÙˆØ§Ø±Ø¯Ø§Øª ({allContainerRecords.filter(r => r.direction === 'Import').length})</span>
+                <ArrowDownLeft className="w-3.5 h-3.5 text-amber-300" />
+                <span className="sm:hidden">Import ({allContainerRecords.filter(r => r.direction === 'Import').length})</span>
+                <span className="hidden sm:inline">Import / واردات ({allContainerRecords.filter(r => r.direction === 'Import').length})</span>
               </button>
 
               <button
                 onClick={() => setDirectionFilter("Transit")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
                   directionFilter === "Transit"
                     ? "bg-purple-600 text-white shadow-md shadow-purple-500/25"
                     : isLight
@@ -1848,12 +1973,12 @@ export function ReportsView() {
                 }`}
               >
                 <Compass className="w-3.5 h-3.5 text-purple-300" />
-                <span>Transit / ØªØ±Ø§Ù†Ø²ÛŒØª ({allContainerRecords.filter(r => r.direction === 'Transit').length})</span>
+                <span>Transit / ترانزیت ({allContainerRecords.filter(r => r.direction === 'Transit').length})</span>
               </button>
             </div>
 
             {/* Container Size Quick Filter */}
-            <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
+            <div className="flex items-center gap-1 shrink-0 overflow-x-auto no-scrollbar max-w-full pb-0.5 sm:pb-0">
               <span className={`text-[11px] font-bold mr-1 hidden sm:inline ${
                 isLight ? "text-slate-500" : "text-slate-400"
               }`}>Size:</span>
@@ -1871,7 +1996,7 @@ export function ReportsView() {
                       : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
-                  {sz.toUpperCase()}
+                  {sz === 'all' ? 'All' : sz === '40HQ' ? '40HC' : sz}
                 </button>
               ))}
             </div>
@@ -1881,56 +2006,76 @@ export function ReportsView() {
           <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1 border-t ${
             isLight ? "border-slate-200" : "border-slate-800"
           }`}>
-            {/* Live Search */}
-            <div className="relative">
-              <Search className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${
-                isLight ? "text-slate-400" : "text-slate-400"
-              }`} />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search Container #, B/L, Shipper..."
-                className={`h-9 pl-9 text-xs rounded-xl ${
-                  isLight
-                    ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:bg-white"
-                    : "bg-slate-800/80 border-slate-700 text-slate-200 placeholder:text-slate-500"
+            {/* Live Search & Mobile Filters Toggle */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${
+                  isLight ? "text-slate-400" : "text-slate-400"
+                }`} />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search Container #, B/L, Shipper..."
+                  className={`h-9 pl-9 text-xs rounded-xl ${
+                    isLight
+                      ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:bg-white"
+                      : "bg-slate-800/80 border-slate-700 text-slate-200 placeholder:text-slate-500"
+                  }`}
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMobileFilters(!showMobileFilters)}
+                className={`sm:hidden h-9 px-2.5 rounded-xl text-xs font-bold gap-1 cursor-pointer shrink-0 ${
+                  (statusFilter !== 'all' || selectedShipper !== 'all' || selectedConsignee !== 'all')
+                    ? isLight ? "border-blue-500 text-blue-700 bg-blue-50" : "border-blue-500 text-blue-300 bg-blue-950/40"
+                    : isLight ? "border-slate-300 text-slate-700 bg-slate-50" : "border-slate-700 text-slate-300 bg-slate-800/80"
                 }`}
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+                title="Toggle More Filters"
+              >
+                <Filter className="w-3.5 h-3.5" />
+                <span>Filters</span>
+                {(statusFilter !== 'all' || selectedShipper !== 'all' || selectedConsignee !== 'all') && (
+                  <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                )}
+              </Button>
             </div>
 
             {/* Status Filter */}
             <select
               value={statusFilter}
               onChange={(e: any) => setStatusFilter(e.target.value)}
-              className={`h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`${showMobileFilters ? 'block' : 'hidden'} sm:block h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
                 isLight
                   ? "bg-slate-50 border border-slate-300 text-slate-800"
                   : "bg-slate-800/80 border border-slate-700 text-slate-200"
               }`}
             >
-              <option value="all">âš¡ All Statuses / ØªÙ…Ø§Ù… ÙˆØ¶Ø¹ÛŒØªâ€ŒÙ‡Ø§</option>
-              <option value="Profitable">ðŸŸ¢ Profitable / Ø³ÙˆØ¯Ø¯Ù‡ (&gt; $0)</option>
-              <option value="Loss">ðŸ”´ Loss / Ø²ÛŒØ§Ù†â€ŒØ¯Ù‡ (&lt; $0)</option>
-              <option value="Break-Even">âšª Break-Even / Ø³Ø±â€ŒØ¨Ù‡â€ŒØ³Ø± ($0)</option>
-              <option value="Pending Freight">â³ Pending Freight / Ø¯Ø± Ø§Ù†ØªØ¸Ø§Ø± Ø¯Ø±Ø¬ Ú©Ø±Ø§ÛŒÙ‡</option>
+              <option value="all">⚡ All Statuses / تمام وضعیت‌ها</option>
+              <option value="Profitable">🟢 Profitable / سودده (&gt; $0)</option>
+              <option value="Loss">🔴 Loss / زیان‌ده (&lt; $0)</option>
+              <option value="Break-Even">⚪ Break-Even / سر‌به‌سر ($0)</option>
+              <option value="Pending Freight">⏳ Pending Freight / در انتظار درج کرایه</option>
             </select>
 
             {/* Shipper Selector */}
             <select
               value={selectedShipper}
               onChange={(e) => setSelectedShipper(e.target.value)}
-              className={`h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`${showMobileFilters ? 'block' : 'hidden'} sm:block h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
                 isLight
                   ? "bg-slate-50 border border-slate-300 text-slate-800"
                   : "bg-slate-800/80 border border-slate-700 text-slate-200"
               }`}
             >
-              <option value="all">ðŸ¢ All Shippers / ØªÙ…Ø§Ù… Ø´Ø±Ú©Øªâ€ŒÙ‡Ø§ ({allShippers.length})</option>
+              <option value="all">🏢 All Shippers / تمام شرکت‌ها ({allShippers.length})</option>
               {allShippers.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -1940,13 +2085,13 @@ export function ReportsView() {
             <select
               value={selectedConsignee}
               onChange={(e) => setSelectedConsignee(e.target.value)}
-              className={`h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`${showMobileFilters ? 'block' : 'hidden'} sm:block h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
                 isLight
                   ? "bg-slate-50 border border-slate-300 text-slate-800"
                   : "bg-slate-800/80 border border-slate-700 text-slate-200"
               }`}
             >
-              <option value="all">ðŸ“¦ All Consignees / ØªÙ…Ø§Ù… Ú¯ÛŒØ±Ù†Ø¯Ù‡â€ŒÙ‡Ø§ ({allConsignees.length})</option>
+              <option value="all">📦 All Consignees / تمام گیرنده‌ها ({allConsignees.length})</option>
               {allConsignees.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
@@ -1997,7 +2142,7 @@ export function ReportsView() {
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider ${
                 isLight ? "text-slate-600" : "text-slate-400"
               }`}>
-                Container Freight Profit (Ø³ÙˆØ¯ Ú©Ø±Ø§ÛŒÙ‡â€ŒÙ‡Ø§)
+                Container Freight Profit (سود کرایه‌ها)
               </span>
               <div className={`p-1.5 sm:p-2 rounded-xl ${
                 containerMetrics.totalNetProfit >= 0 
@@ -2047,7 +2192,7 @@ export function ReportsView() {
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider ${
                 isLight ? "text-slate-600" : "text-slate-400"
               }`}>
-                Containers &amp; TEU (Ú©Ø§Ù†ØªÛŒÙ†Ø±Ù‡Ø§)
+                Containers &amp; TEU (کانتینرها)
               </span>
               <div className={`p-1.5 sm:p-2 rounded-xl ${
                 isLight ? "bg-cyan-100 text-cyan-700" : "bg-cyan-500/20 text-cyan-400"
@@ -2071,7 +2216,7 @@ export function ReportsView() {
               }`}>
                 <span>Sizes:</span>
                 <span className={isLight ? "text-slate-800 font-bold" : "text-slate-200"}>
-                  {containerMetrics.total40ft + containerMetrics.total40hq}x 40' â€¢ {containerMetrics.total20ft}x 20'
+                  {containerMetrics.total40ft + containerMetrics.total40hq}x 40' • {containerMetrics.total20ft}x 20'
                 </span>
               </div>
             </CardContent>
@@ -2087,7 +2232,7 @@ export function ReportsView() {
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider ${
                 isLight ? "text-slate-600" : "text-slate-400"
               }`}>
-                Total Export (ØµØ§Ø¯Ø±Ø§Øª Ø§ÙØºØ§Ù†Ø³ØªØ§Ù†)
+                Total Export (صادرات افغانستان)
               </span>
               <div className={`p-1.5 sm:p-2 rounded-xl ${
                 isLight ? "bg-emerald-100 text-emerald-700" : "bg-emerald-500/20 text-emerald-400"
@@ -2127,7 +2272,7 @@ export function ReportsView() {
               <span className={`text-[10px] sm:text-[11px] font-black uppercase tracking-wider ${
                 isLight ? "text-slate-600" : "text-slate-400"
               }`}>
-                Total Import (ÙˆØ§Ø±Ø¯Ø§Øª)
+                Total Import (واردات)
               </span>
               <div className={`p-1.5 sm:p-2 rounded-xl ${
                 isLight ? "bg-amber-100 text-amber-700" : "bg-amber-500/20 text-amber-400"
@@ -2205,7 +2350,7 @@ export function ReportsView() {
             }`}
           >
             <Globe2 className="w-4 h-4" />
-            <span>Export vs. Import Analysis (ØµØ§Ø¯Ø±Ø§Øª Ùˆ ÙˆØ§Ø±Ø¯Ø§Øª)</span>
+            <span>Export vs. Import Analysis (صادرات و واردات)</span>
           </button>
 
           <button
@@ -2321,7 +2466,7 @@ export function ReportsView() {
                         ? "bg-amber-100 text-amber-900 border-amber-300 text-xs font-bold"
                         : "bg-amber-950/60 text-amber-300 border-amber-700 text-xs font-bold"
                     }>
-                      â³ {containerMetrics.pendingFreightCount} Pending Freight
+                      ⏳ {containerMetrics.pendingFreightCount} Pending Freight
                     </Badge>
                   )}
                 </div>
@@ -2377,7 +2522,7 @@ export function ReportsView() {
                       </th>
                       <th className="p-3 text-right cursor-pointer select-none hover:text-amber-600" onClick={() => handleSort("driverCost")}>
                         <div className="flex items-center justify-end gap-1 text-amber-600">
-                          <span>Driver Rent (Ù…ÙˆØªØ±ÙˆØ§Ù†)</span>
+                          <span>Driver Rent (موتروان)</span>
                           {sortField === "driverCost" && (sortOrder === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
                         </div>
                       </th>
@@ -2434,7 +2579,7 @@ export function ReportsView() {
                                 ? isLight ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-amber-950/60 text-amber-300 border-amber-700"
                                 : isLight ? "bg-purple-100 text-purple-800 border-purple-300" : "bg-purple-950/60 text-purple-300 border-purple-700"
                             } font-bold text-[10px]`}>
-                              {r.direction === 'Export' ? 'â†— Export' : r.direction === 'Import' ? 'â†™ Import' : 'â†” Transit'}
+                              {r.direction === 'Export' ? '↗ Export' : r.direction === 'Import' ? '↙ Import' : '↔ Transit'}
                             </Badge>
                           </td>
                           <td className="p-3 max-w-[190px]">
@@ -2457,7 +2602,7 @@ export function ReportsView() {
                               <div>
                                 <span className="font-mono text-xs text-slate-400 font-bold">$0</span>
                                 <span className="block text-[9px] font-bold text-amber-600 dark:text-amber-400">
-                                  â³ Pending
+                                  ⏳ Pending
                                 </span>
                               </div>
                             )}
@@ -2537,7 +2682,7 @@ export function ReportsView() {
                                 ? isLight ? "bg-slate-100 text-slate-800 border-slate-300" : "bg-slate-500/20 text-slate-300 border-slate-500/30"
                                 : isLight ? "bg-rose-100 text-rose-800 border-rose-300" : "bg-rose-500/20 text-rose-300 border-rose-500/30"
                             }`}>
-                              {r.status === 'Pending Freight' ? 'â³ Pending' : r.status}
+                              {r.status === 'Pending Freight' ? '⏳ Pending' : r.status}
                             </Badge>
                           </td>
                         </tr>
@@ -2607,7 +2752,7 @@ export function ReportsView() {
                               ? isLight ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-amber-950/60 text-amber-300 border-amber-700"
                               : isLight ? "bg-purple-100 text-purple-800 border-purple-300" : "bg-purple-950/60 text-purple-300 border-purple-700"
                           } font-bold text-[9px] px-1.5 py-0`}>
-                            {r.status === 'Pending Freight' ? 'â³ Pending Freight' : r.direction === 'Export' ? 'â†— Export' : r.direction === 'Import' ? 'â†™ Import' : 'â†” Transit'}
+                            {r.status === 'Pending Freight' ? '⏳ Pending Freight' : r.direction === 'Export' ? '↗ Export' : r.direction === 'Import' ? '↙ Import' : '↔ Transit'}
                           </Badge>
                         </div>
                       </div>
@@ -2644,7 +2789,7 @@ export function ReportsView() {
                                 ? isLight ? "text-emerald-700" : "text-emerald-400"
                                 : isLight ? "text-rose-700" : "text-rose-400"
                               : "text-amber-600 dark:text-amber-400"
-                          }`}>{r.hasFreightRevenue ? formatMargin(r.profitMargin) : "â³ Pending"}</div>
+                          }`}>{r.hasFreightRevenue ? formatMargin(r.profitMargin) : "⏳ Pending"}</div>
                         </div>
                       </div>
 
@@ -2655,7 +2800,7 @@ export function ReportsView() {
                         <span className={`text-[11px] font-medium truncate max-w-[220px] ${
                           isLight ? "text-slate-600" : "text-slate-400"
                         }`}>
-                          {r.packagesCount} CTNS â€¢ {r.goodsDescription}
+                          {r.packagesCount} CTNS • {r.goodsDescription}
                         </span>
                         <button
                           onClick={() => setExpandedCardId(isExpanded ? null : r.id)}
@@ -2680,14 +2825,14 @@ export function ReportsView() {
                           </div>
                           <div className="flex justify-between">
                             <span className={isLight ? "text-slate-500" : "text-slate-400"}>Route:</span>
-                            <span className={isLight ? "text-slate-800" : "text-slate-200"}>{r.origin} â†’ {r.destination}</span>
+                            <span className={isLight ? "text-slate-800" : "text-slate-200"}>{r.origin} → {r.destination}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className={isLight ? "text-slate-500" : "text-slate-400"}>Ocean Line Cost:</span>
                             <span className={`font-mono font-bold ${isLight ? "text-indigo-700" : "text-indigo-400"}`}>{formatUSD(r.shippingCost, false, 0)}</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className={isLight ? "text-slate-500" : "text-slate-400"}>Driver Rent (Ù…ÙˆØªØ±ÙˆØ§Ù†):</span>
+                            <span className={isLight ? "text-slate-500" : "text-slate-400"}>Driver Rent (موتروان):</span>
                             <div className="text-right">
                               <span className={`font-mono font-bold ${isLight ? "text-slate-900" : "text-slate-100"}`}>
                                 {r.driverCostDisplay}
@@ -2742,7 +2887,7 @@ export function ReportsView() {
                       <ArrowUpRight className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className={`text-base font-black ${isLight ? "text-slate-900" : "text-white"}`}>AFGHAN EXPORT TRADE (ØµØ§Ø¯Ø±Ø§Øª)</h3>
+                      <h3 className={`text-base font-black ${isLight ? "text-slate-900" : "text-white"}`}>AFGHAN EXPORT TRADE (صادرات)</h3>
                       <p className={`text-xs font-semibold ${isLight ? "text-slate-500" : "text-slate-400"}`}>Dry fruits, Raisins, Figs &amp; Produce outbound to India / UAE</p>
                     </div>
                   </div>
@@ -2816,7 +2961,7 @@ export function ReportsView() {
                       <ArrowDownLeft className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className={`text-base font-black ${isLight ? "text-slate-900" : "text-white"}`}>INBOUND IMPORT TRADE (ÙˆØ§Ø±Ø¯Ø§Øª)</h3>
+                      <h3 className={`text-base font-black ${isLight ? "text-slate-900" : "text-white"}`}>INBOUND IMPORT TRADE (واردات)</h3>
                       <p className={`text-xs font-semibold ${isLight ? "text-slate-500" : "text-slate-400"}`}>Commodities, Machinery &amp; Cargo inbound to Afghanistan</p>
                     </div>
                   </div>
@@ -2895,10 +3040,10 @@ export function ReportsView() {
               }`}>
                 <div>
                   <h2 className={`text-lg sm:text-xl font-black ${isLight ? "text-slate-900" : "text-white"}`}>
-                    Executive Statement of Profit &amp; Loss (ØµÙˆØ±Øª Ø­Ø³Ø§Ø¨ Ø³ÙˆØ¯ Ùˆ Ø²ÛŒØ§Ù†)
+                    Executive Statement of Profit &amp; Loss (صورت حساب سود و زیان)
                   </h2>
                   <p className={`text-xs font-semibold mt-0.5 ${isLight ? "text-slate-500" : "text-slate-400"}`}>
-                    Sky Ariana Logistics â€¢ Exact ledger-verified revenues, shipping line freights, driver haulage &amp; direct operational costs
+                    Sky Ariana Logistics • Exact ledger-verified revenues, shipping line freights, driver haulage &amp; direct operational costs
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -3104,7 +3249,7 @@ export function ReportsView() {
                   <div className={`flex items-center justify-between text-xs font-black uppercase px-3 py-2.5 rounded-lg ${
                     isLight ? "bg-blue-100/80 text-blue-900" : "bg-blue-950/60 text-blue-300"
                   }`}>
-                    <span>1. FREIGHT &amp; OPERATING REVENUES / Ø¹ÙˆØ§ÛŒØ¯ Ø¹Ù…Ù„ÛŒØ§ØªÛŒ Ú©Ø±Ø§ÛŒÙ‡â€ŒÙ‡Ø§</span>
+                    <span>1. FREIGHT &amp; OPERATING REVENUES / عواید عملیاتی کرایه‌ها</span>
                     <span>AMOUNT (USD)</span>
                   </div>
                   <div className={`divide-y text-xs font-medium ${
@@ -3133,7 +3278,7 @@ export function ReportsView() {
                     <div className={`flex items-center justify-between py-2.5 px-3 font-black ${
                       isLight ? "bg-blue-50 text-blue-900" : "bg-blue-950/20 text-blue-300"
                     }`}>
-                      <span>TOTAL GROSS REVENUE (Ù…Ø¬Ù…ÙˆØ¹ Ø¹ÙˆØ§ÛŒØ¯ Ù†Ø§Ø®Ø§Ù„Øµ)</span>
+                      <span>TOTAL GROSS REVENUE (مجموع عواید ناخالص)</span>
                       <span className={`text-sm font-mono ${isLight ? "text-blue-800" : "text-blue-400"}`}>
                         {formatUSD(containerMetrics.totalGrossRevenue + containerMetrics.docFeeCostSum + containerMetrics.customRevenueSum, false, 2)}
                       </span>
@@ -3146,7 +3291,7 @@ export function ReportsView() {
                   <div className={`flex items-center justify-between text-xs font-black uppercase px-3 py-2.5 rounded-lg ${
                     isLight ? "bg-amber-100/80 text-amber-900" : "bg-amber-950/60 text-amber-300"
                   }`}>
-                    <span>2. DIRECT FREIGHT &amp; LOGISTICS COSTS / Ù…ØµØ§Ø±Ù Ù…Ø³ØªÙ‚ÛŒÙ… Ø®Ø·ÙˆØ· Ú©Ø´ØªÛŒØ±Ø§Ù†ÛŒØŒ Ù…ÙˆØªØ±Ù‡Ø§ Ùˆ Ø¨Ù†Ø§Ø¯Ø±</span>
+                    <span>2. DIRECT FREIGHT &amp; LOGISTICS COSTS / مصارف مستقیم خطوط کشتیرانی، موترها و بنادر</span>
                     <span>AMOUNT (USD)</span>
                   </div>
                   <div className={`divide-y text-xs font-medium ${
@@ -3156,7 +3301,7 @@ export function ReportsView() {
                       isLight ? "hover:bg-slate-50" : "hover:bg-slate-800/40"
                     }`}>
                       <span className={isLight ? "text-slate-700" : "text-slate-300"}>
-                        Ocean Shipping Line &amp; Carrier Freights (Ú©Ø±Ø§ÛŒÙ‡ Ø®Ø·ÙˆØ· Ú©Ø´ØªÛŒØ±Ø§Ù†ÛŒ)
+                        Ocean Shipping Line &amp; Carrier Freights (کرایه خطوط کشتیرانی)
                       </span>
                       <span className={`font-bold font-mono ${isLight ? "text-slate-900" : "text-slate-100"}`}>
                         {formatUSD(containerMetrics.shippingLineCostSum, false, 2)}
@@ -3166,7 +3311,7 @@ export function ReportsView() {
                       isLight ? "hover:bg-slate-50" : "hover:bg-slate-800/40"
                     }`}>
                       <span className={isLight ? "text-slate-700" : "text-slate-300"}>
-                        Truck Driver Freights &amp; Road Haulage (Ú©Ø±Ø§ÛŒÙ‡ Ù…ÙˆØªØ±Ù‡Ø§ - Normalized at {exchangeRate} AFN/USD)
+                        Truck Driver Freights &amp; Road Haulage (کرایه موترها - Normalized at {exchangeRate} AFN/USD)
                       </span>
                       <span className={`font-bold font-mono ${isLight ? "text-slate-900" : "text-slate-100"}`}>
                         {formatUSD(containerMetrics.driverFreightCostSum, false, 2)}
@@ -3187,7 +3332,7 @@ export function ReportsView() {
                         isLight ? "hover:bg-slate-50" : "hover:bg-slate-800/40"
                       }`}>
                         <span className="text-rose-600 dark:text-rose-400 font-bold">
-                          Invoiced Demurrage &amp; Container Detention Penalties (Ø­Ù‚ ØªÙˆÙ‚Ù)
+                          Invoiced Demurrage &amp; Container Detention Penalties (حق توقف)
                         </span>
                         <span className="font-bold font-mono text-rose-600 dark:text-rose-400">
                           {formatUSD(containerMetrics.demurrageCostSum, false, 2)}
@@ -3209,7 +3354,7 @@ export function ReportsView() {
                     <div className={`flex items-center justify-between py-2.5 px-3 font-black ${
                       isLight ? "bg-amber-50 text-amber-900" : "bg-amber-950/20 text-amber-300"
                     }`}>
-                      <span>TOTAL OPERATING COSTS (Ù…Ø¬Ù…ÙˆØ¹ Ù…ØµØ§Ø±Ù Ù…Ø³ØªÙ‚ÛŒÙ…)</span>
+                      <span>TOTAL OPERATING COSTS (مجموع مصارف مستقیم)</span>
                       <span className={`text-sm font-mono ${isLight ? "text-amber-800" : "text-amber-400"}`}>
                         {formatUSD(containerMetrics.totalDirectCost + containerMetrics.customExpenseSum, false, 2)}
                       </span>
@@ -3231,12 +3376,12 @@ export function ReportsView() {
                     <div className={`text-[11px] font-bold uppercase tracking-wider ${
                       isLight ? "text-slate-500" : "text-slate-400"
                     }`}>
-                      Executive Accounting Result (Ù†ØªÛŒØ¬Ù‡ Ù†Ù‡Ø§ÛŒÛŒ)
+                      Executive Accounting Result (نتیجه نهایی)
                     </div>
                     <div className="text-base sm:text-lg font-black mt-0.5">
                       {containerMetrics.finalOperatingProfit >= 0 
-                        ? "NET OPERATING PROFIT (Ø³ÙˆØ¯ Ø®Ø§Ù„Øµ Ø¹Ù…Ù„ÛŒØ§ØªÛŒ)" 
-                        : "NET OPERATING LOSS (Ø²ÛŒØ§Ù† Ø®Ø§Ù„Øµ Ø¹Ù…Ù„ÛŒØ§ØªÛŒ)"}
+                        ? "NET OPERATING PROFIT (سود خالص عملیاتی)" 
+                        : "NET OPERATING LOSS (زیان خالص عملیاتی)"}
                     </div>
                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Based on {containerMetrics.totalContainers} tracked containers &amp; verified ledger balances
@@ -3579,7 +3724,7 @@ export function ReportsView() {
                 isLight ? "text-slate-900" : "text-white"
               }`}>
                 <Receipt className="w-5 h-5 text-emerald-600" />
-                <span>Log Financial Entry / Ø«Ø¨Øª Ù‡Ø²ÛŒÙ†Ù‡ ÛŒØ§ Ø¹Ø§ÛŒØ¯</span>
+                <span>Log Financial Entry / ثبت هزینه یا عاید</span>
               </h3>
               <button
                 onClick={() => setIsAddExpenseOpen(false)}
@@ -3605,7 +3750,7 @@ export function ReportsView() {
                       : isLight ? "text-slate-600 hover:text-slate-900" : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  ðŸ“‰ Operational Expense (Ù…ØµØ±Ù)
+                  📉 Operational Expense (مصرف)
                 </button>
                 <button
                   type="button"
@@ -3616,13 +3761,13 @@ export function ReportsView() {
                       : isLight ? "text-slate-600 hover:text-slate-900" : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  ðŸ“ˆ Logistics Revenue (Ø¹Ø§ÛŒØ¯)
+                  📈 Logistics Revenue (عاید)
                 </button>
               </div>
 
               {/* Title */}
               <div className="flex flex-col gap-1">
-                <label className={`text-[11px] uppercase ${isLight ? "text-slate-600" : "text-slate-400"}`}>Title / Ø¹Ù†ÙˆØ§Ù† *</label>
+                <label className={`text-[11px] uppercase ${isLight ? "text-slate-600" : "text-slate-400"}`}>Title / عنوان *</label>
                 <Input
                   required
                   value={newExpTitle}
@@ -3639,7 +3784,7 @@ export function ReportsView() {
               {/* Category & Amount */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1">
-                  <label className={`text-[11px] uppercase ${isLight ? "text-slate-600" : "text-slate-400"}`}>Category / Ø¯Ø³ØªÙ‡â€ŒØ¨Ù†Ø¯ÛŒ</label>
+                  <label className={`text-[11px] uppercase ${isLight ? "text-slate-600" : "text-slate-400"}`}>Category / دسته‌بندی</label>
                   <select
                     value={newExpCategory}
                     onChange={(e: any) => setNewExpCategory(e.target.value)}
@@ -3775,7 +3920,7 @@ export function ReportsView() {
             {/* Scope Selection */}
             <div className="space-y-2">
               <label className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-slate-700" : "text-slate-300"}`}>
-                1. Select Report Section / Ø§Ù†ØªØ®Ø§Ø¨ Ø¨Ø®Ø´ Ú¯Ø²Ø§Ø±Ø´
+                1. Select Report Section / انتخاب بخش گزارش
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {[
@@ -3808,7 +3953,7 @@ export function ReportsView() {
             {/* Page Orientation */}
             <div className="space-y-2">
               <label className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-slate-700" : "text-slate-300"}`}>
-                2. Page Orientation / Ø¬Ù‡Øª ØµÙØ­Ù‡
+                2. Page Orientation / جهت صفحه
               </label>
               <div className="grid grid-cols-2 gap-2 text-xs font-bold">
                 <button
@@ -3823,7 +3968,7 @@ export function ReportsView() {
                   }`}
                 >
                   <div className="w-5 h-3.5 border-2 border-current rounded-sm"></div>
-                  <span>Landscape (Ø§ÙÙ‚ÛŒ - Recommended)</span>
+                  <span>Landscape (افقی - Recommended)</span>
                 </button>
                 <button
                   type="button"
@@ -3837,7 +3982,7 @@ export function ReportsView() {
                   }`}
                 >
                   <div className="w-3.5 h-5 border-2 border-current rounded-sm"></div>
-                  <span>Portrait (Ø¹Ù…ÙˆØ¯ÛŒ)</span>
+                  <span>Portrait (عمودی)</span>
                 </button>
               </div>
             </div>
@@ -3845,7 +3990,7 @@ export function ReportsView() {
             {/* Options Checkboxes */}
             <div className="space-y-2">
               <label className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-slate-700" : "text-slate-300"}`}>
-                3. Print Options / ØªÙ†Ø¸ÛŒÙ…Ø§Øª Ø§Ø¶Ø§ÙÛŒ
+                3. Print Options / تنظیمات اضافی
               </label>
               <div className="flex flex-wrap gap-4 text-xs font-semibold">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -3911,8 +4056,8 @@ export function ReportsView() {
                   const { jsPDF } = await import('jspdf')
                   const isLandscape = printOrientation === 'landscape'
                   const canvas = await toCanvas(printContainer as HTMLElement, {
-                    pixelRatio: 2,
-                    quality: 0.98,
+                    pixelRatio: 3,
+                    quality: 1.0,
                     skipFonts: true,
                     backgroundColor: '#ffffff',
                     style: {
@@ -3921,9 +4066,12 @@ export function ReportsView() {
                       boxShadow: 'none',
                       opacity: '1',
                       visibility: 'visible',
-                    },
+                      WebkitFontSmoothing: 'antialiased',
+                      MozOsxFontSmoothing: 'grayscale',
+                      textRendering: 'optimizeLegibility',
+                    } as any,
                   })
-                  const imgData = canvas.toDataURL('image/jpeg', 0.98)
+                  const imgData = canvas.toDataURL('image/jpeg', 0.99)
                   const pdf = new jsPDF({
                     orientation: isLandscape ? 'landscape' : 'portrait',
                     unit: 'mm',
@@ -3933,7 +4081,7 @@ export function ReportsView() {
                   const pdfHeight = isLandscape ? 210 : 297
                   const imgProps = pdf.getImageProperties(imgData)
                   const canvasHeightMM = (imgProps.height * pdfWidth) / imgProps.width
-                  pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, canvasHeightMM, undefined, 'FAST')
+                  pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, canvasHeightMM, undefined, 'SLOW')
                   return pdf.output('blob')
                 }}
               />
@@ -3973,15 +4121,15 @@ export function ReportsView() {
                     SKY ARIANA LOGISTICS &amp; FREIGHT FORWARDING LIMITED
                   </h1>
                   <p className="text-[10px] font-bold text-slate-700 tracking-wide mt-0.5">
-                    Ø´Ø±Ú©Øª Ø®Ø¯Ù…Ø§Øª ØªØ±Ø§Ù†Ø³Ù¾ÙˆØ±Øª Ø¨ÛŒÙ†â€ŒØ§Ù„Ù…Ù„Ù„ÛŒ Ùˆ Ø¨Ø§Ø±Ú†Ù„Ø§Ù†ÛŒ Ù‡ÙˆØ§ÛŒÛŒ Ùˆ Ø²Ù…ÛŒÙ†ÛŒ Ø§Ø³Ú©Ø§ÛŒ Ø¢Ø±ÛŒØ§Ù†Ø§
+                    شرکت خدمات ترانسپورت بین‌المللی و بارچلانی هوایی و زمینی اسکای آریانا
                   </p>
                 </div>
               </div>
               <p className="text-[9.5px] text-slate-600 font-medium pt-1">
-                Customs Clearance, Border Transit, Ocean &amp; Multimodal Freight Forwarding â€¢ Regional Logistics Hub
+                Customs Clearance, Border Transit, Ocean &amp; Multimodal Freight Forwarding • Regional Logistics Hub
               </p>
               <p className="text-[9px] text-slate-500 font-mono">
-                Kandahar / Nimroz / Kabul Afghanistan â€¢ Tel: +93 700 9393 65 / +93 711 4355 29 â€¢ Web: skyariana.com
+                Kandahar / Nimroz / Kabul Afghanistan • Tel: +93 700 9393 65 / +93 711 4355 29 • Web: skyariana.com
               </p>
             </div>
 
@@ -4085,13 +4233,13 @@ export function ReportsView() {
                       </td>
                       <td className="border border-slate-300 p-1 text-slate-800">{r.consigneeName || "N/A"}</td>
                       <td className="border border-slate-300 p-1 text-[8px] text-slate-600">
-                        {r.origin} â†’ {r.destination}
+                        {r.origin} → {r.destination}
                       </td>
                       <td className="border border-slate-300 p-1 text-right font-mono">{(r.grossWeightKg / 1000).toFixed(1)} MT</td>
                       <td className="border border-slate-300 p-1 text-right font-bold text-blue-950">{r.hasFreightRevenue ? formatUSD(r.freightRevenue, false, 0) : "$0"}</td>
-                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{r.shippingCost > 0 ? formatUSD(r.shippingCost, false, 0) : "â€”"}</td>
-                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-700 font-bold">{r.driverCost > 0 ? (r.driverCostDisplay || formatUSD(r.driverCost, false, 0)) : "â€”"}</td>
-                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{r.handlingCost > 0 ? formatUSD(r.handlingCost, false, 0) : "â€”"}</td>
+                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{r.shippingCost > 0 ? formatUSD(r.shippingCost, false, 0) : "—"}</td>
+                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-700 font-bold">{r.driverCost > 0 ? (r.driverCostDisplay || formatUSD(r.driverCost, false, 0)) : "—"}</td>
+                      <td className="border border-slate-300 p-1 text-right font-mono text-slate-600">{r.handlingCost > 0 ? formatUSD(r.handlingCost, false, 0) : "—"}</td>
                       <td className="border border-slate-300 p-1 text-right font-bold text-slate-800">{formatUSD(r.totalCost, false, 0)}</td>
                       <td className={`border border-slate-300 p-1 text-right font-black ${
                         r.netProfit >= 0 ? "text-emerald-900 bg-emerald-50/40" : "text-rose-900 bg-rose-50/40"
@@ -4147,9 +4295,9 @@ export function ReportsView() {
                   <tr className="bg-slate-200 text-slate-900 font-black uppercase">
                     <th className="border border-slate-300 p-1.5 text-left">Trade Metric</th>
                     <th className="border border-slate-300 p-1.5 text-center">Total Overview</th>
-                    <th className="border border-slate-300 p-1.5 text-center text-emerald-900">Export (ØµØ§Ø¯Ø±Ø§Øª)</th>
-                    <th className="border border-slate-300 p-1.5 text-center text-amber-900">Import (ÙˆØ§Ø±Ø¯Ø§Øª)</th>
-                    <th className="border border-slate-300 p-1.5 text-center text-purple-900">Transit (ØªØ±Ø§Ù†Ø²ÛŒØª)</th>
+                    <th className="border border-slate-300 p-1.5 text-center text-emerald-900">Export (صادرات)</th>
+                    <th className="border border-slate-300 p-1.5 text-center text-amber-900">Import (واردات)</th>
+                    <th className="border border-slate-300 p-1.5 text-center text-purple-900">Transit (ترانزیت)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -4216,7 +4364,7 @@ export function ReportsView() {
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="border border-slate-300 rounded p-2">
                   <div className="font-black text-[10px] text-emerald-900 uppercase border-b pb-1 mb-1">
-                    Top Export Cargoes (Ø§Ù‚Ù„Ø§Ù… Ø¹Ù…Ø¯Ù‡ ØµØ§Ø¯Ø±Ø§ØªÛŒ)
+                    Top Export Cargoes (اقلام عمده صادراتی)
                   </div>
                   <table className="w-full text-[8.5px]">
                     <tbody>
@@ -4233,7 +4381,7 @@ export function ReportsView() {
 
                 <div className="border border-slate-300 rounded p-2">
                   <div className="font-black text-[10px] text-amber-900 uppercase border-b pb-1 mb-1">
-                    Top Import Cargoes (Ø§Ù‚Ù„Ø§Ù… Ø¹Ù…Ø¯Ù‡ ÙˆØ§Ø±Ø¯Ø§ØªÛŒ)
+                    Top Import Cargoes (اقلام عمده وارداتی)
                   </div>
                   <table className="w-full text-[8.5px]">
                     <tbody>
@@ -4394,7 +4542,7 @@ export function ReportsView() {
                   <Coins className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black">Exchange Rate (Ù†Ø±Ø® ØªØ¨Ø§Ø¯Ù„Ù‡ Ø§Ø³Ø¹Ø§Ø±)</h3>
+                  <h3 className="text-sm font-black">Exchange Rate (نرخ تبادله اسعار)</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">AFN to USD Currency Normalization</p>
                 </div>
               </div>
@@ -4409,7 +4557,7 @@ export function ReportsView() {
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                  Afghan Afghani per 1 USD (Ø§ÙØºØ§Ù†ÛŒ Ø¯Ø± Ø¨Ø¯Ù„ ÛŒÚ© Ø¯Ø§Ù„Ø±)
+                  Afghan Afghani per 1 USD (افغانی در بدل یک دالر)
                 </label>
                 <div className="relative">
                   <Input
