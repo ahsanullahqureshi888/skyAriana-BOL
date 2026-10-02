@@ -394,6 +394,25 @@ export class BackendApiClient {
     create: (payload?: { note?: string; include_documents?: boolean }) =>
       this.request<StandardApiResponse<BackupRecord>>("/api/v1/backups/create", { method: "POST", body: payload || {} }),
   }
+
+  // Documents & PDF/Excel Generation
+  public readonly documents = {
+    generate: (type: string, data: Record<string, any>, asyncJob = false) =>
+      this.request<StandardApiResponse<any>>(`/api/v1/documents/${type}`, {
+        method: "POST",
+        body: { ...data, async_job: asyncJob },
+      }),
+    list: (params?: { q?: string; document_type?: string; bol_id?: string; page?: number; page_size?: number }) =>
+      this.request<PaginatedResult<any>>("/api/v1/documents", { params }),
+    getDownloadUrl: (category: string, filename: string) =>
+      `/api/v1/documents/${encodeURIComponent(category)}/${encodeURIComponent(filename)}`,
+  }
+
+  // Background Document Jobs
+  public readonly jobs = {
+    get: (jobId: string) =>
+      this.request<StandardApiResponse<any>>(`/api/v1/jobs/${encodeURIComponent(jobId)}`),
+  }
 }
 
 export const backendApi = BackendApiClient.getInstance()

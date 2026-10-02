@@ -112,7 +112,30 @@ export async function readJsonFile<T>(filePath: string, fallback: T): Promise<T>
         return structuredClone(cached.data) as T
       }
       const raw = await fs.promises.readFile(filePath, "utf-8")
-      const parsed = JSON.parse(raw) as T
+      if (!raw || !raw.trim()) {
+        return structuredClone(fallback)
+      }
+      let parsed: T
+      try {
+        parsed = JSON.parse(raw) as T
+      } catch (parseErr) {
+        // If main file is corrupted, check if backup .bak exists
+        const bakPath = `${filePath}.bak`
+        if (fs.existsSync(bakPath)) {
+          const bakRaw = await fs.promises.readFile(bakPath, "utf-8")
+          if (bakRaw && bakRaw.trim()) {
+            try {
+              parsed = JSON.parse(bakRaw) as T
+            } catch {
+              return structuredClone(fallback)
+            }
+          } else {
+            return structuredClone(fallback)
+          }
+        } else {
+          return structuredClone(fallback)
+        }
+      }
       fileCache.set(filePath, { mtimeMs: stat.mtimeMs, data: parsed, timestamp: Date.now() })
       return structuredClone(parsed)
     }
@@ -122,8 +145,10 @@ export async function readJsonFile<T>(filePath: string, fallback: T): Promise<T>
       const bakPath = `${filePath}.bak`
       if (fs.existsSync(bakPath)) {
         const raw = await fs.promises.readFile(bakPath, "utf-8")
-        const parsed = JSON.parse(raw) as T
-        return parsed
+        if (raw && raw.trim()) {
+          const parsed = JSON.parse(raw) as T
+          return parsed
+        }
       }
     } catch (_) {}
   }
@@ -138,9 +163,14 @@ export async function readJsonFile<T>(filePath: string, fallback: T): Promise<T>
         return structuredClone(cached.data) as T
       }
       const raw = await fs.promises.readFile(tmpPath, "utf-8")
-      const parsed = JSON.parse(raw) as T
-      fileCache.set(tmpPath, { mtimeMs: stat.mtimeMs, data: parsed, timestamp: Date.now() })
-      return structuredClone(parsed)
+      if (raw && raw.trim()) {
+        let parsed: T
+        try {
+          parsed = JSON.parse(raw) as T
+          fileCache.set(tmpPath, { mtimeMs: stat.mtimeMs, data: parsed, timestamp: Date.now() })
+          return structuredClone(parsed)
+        } catch {}
+      }
     }
   } catch (error) {
     // ignore

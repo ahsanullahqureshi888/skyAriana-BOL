@@ -16,7 +16,10 @@ import {
   parseMoney,
   normalizeDate,
   safePercentageChange,
+  extractBolRoute,
+  extractTruckNo,
 } from "./parsers"
+import { auditDataQuality } from "./data-quality"
 
 /**
  * Calculates comprehensive overview KPIs based strictly on currently filtered records.
@@ -31,6 +34,7 @@ export function calculateOverviewKpis(docs: SavedDocument[]): OverviewKpis {
   let importShipments = 0
   let reeferContainers = 0
   let dryContainers = 0
+  const packageUnitsBreakdown: Record<string, number> = {}
 
   const currencyMap = new Map<string, number>()
   const uniqueContainers = new Set<string>()
@@ -48,7 +52,8 @@ export function calculateOverviewKpis(docs: SavedDocument[]): OverviewKpis {
       uniqueConsignees.add(doc.consignee_name.trim().toLowerCase())
     }
 
-    const dest = doc.port_of_discharge || doc.place_of_delivery || doc.destination_country
+    const routeInfo = extractBolRoute(doc)
+    const dest = doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || (routeInfo.destination !== "—" ? routeInfo.destination : "")
     if (dest && dest.trim()) {
       uniqueDestinations.add(dest.trim().toLowerCase())
     }
@@ -84,7 +89,22 @@ export function calculateOverviewKpis(docs: SavedDocument[]): OverviewKpis {
     }
 
     // Packages & Weight
-    totalPkgs += parsePackages(doc.number_of_packages)
+    const pkgs = parsePackages(doc.number_of_packages)
+    totalPkgs += pkgs
+    if (pkgs > 0) {
+      const unitMatch = (doc.number_of_packages || "").match(/\b(CTNS?|CARTONS?|CNTS?|BAGS?|PKGS?|PACKAGES?|BOXES|PCS|UNITS|ROLLS|DRUMS)\b/i)
+      let unit = "CTNS"
+      if (unitMatch) {
+        const u = unitMatch[1].toUpperCase()
+        if (u.startsWith("CTN") || u.startsWith("CARTON") || u.startsWith("CNT")) unit = "CTNS"
+        else if (u.startsWith("BAG")) unit = "BAGS"
+        else if (u.startsWith("BOX")) unit = "BOXES"
+        else if (u.startsWith("PKG") || u.startsWith("PACKAGE")) unit = "PKGS"
+        else unit = u
+      }
+      packageUnitsBreakdown[unit] = (packageUnitsBreakdown[unit] || 0) + pkgs
+    }
+
     const net = parseWeight(doc.net_weight)
     totalNetWeightKg += net
     const gross = parseWeight(doc.gross_weight)
@@ -131,10 +151,13 @@ export function calculateOverviewKpis(docs: SavedDocument[]): OverviewKpis {
     .map(([currency, amount]) => ({ currency, amount }))
     .sort((a, b) => (a.currency === "USD" ? -1 : b.currency === "USD" ? 1 : b.amount - a.amount))
 
+  const qualityAudit = auditDataQuality(docs)
+
   return {
     totalBols: docs.length,
     totalShipments: uniqueBolNumbers.size > 0 ? uniqueBolNumbers.size : docs.length,
     totalPackages: totalPkgs,
+    packageUnitsBreakdown,
     totalNetWeightKg: Math.round(totalNetWeightKg * 100) / 100,
     totalGrossWeightKg: Math.round(totalGrossWeightKg * 100) / 100,
     currencyTotals,
@@ -148,6 +171,8 @@ export function calculateOverviewKpis(docs: SavedDocument[]): OverviewKpis {
     importShipments,
     reeferContainers,
     dryContainers,
+    missingDataCount: qualityAudit.attentionRecords,
+    dataQualityScore: qualityAudit.qualityScorePercent,
   }
 }
 
@@ -252,6 +277,8 @@ export function applyReportFilters(
   criteria: ReportFilterCriteria
 ): SavedDocument[] {
   return docs.filter((doc) => {
+    const routeInfo = extractBolRoute(doc)
+
     // 1. Text Search Query across all key fields
     if (criteria.searchQuery && criteria.searchQuery.trim()) {
       const q = criteria.searchQuery.trim().toLowerCase()
@@ -263,6 +290,9 @@ export function applyReportFilters(
         doc.cargo_description,
         doc.goods_description,
         doc.description_of_goods,
+        doc.cargo_route_note,
+        routeInfo.display !== "—" ? routeInfo.display : "",
+        routeInfo.borderCrossing || "",
         doc.container_numbers,
         doc.truck_number,
         doc.invoice_no,
@@ -336,7 +366,16 @@ export function applyReportFilters(
     }
     if (criteria.destination && criteria.destination.trim()) {
       const q = criteria.destination.trim().toLowerCase()
-      const dest = ((doc.port_of_discharge || "") + " " + (doc.place_of_delivery || "")).toLowerCase()
+      const dest = [
+        doc.port_of_discharge,
+        doc.place_of_delivery,
+        doc.destination_country,
+        routeInfo.destination !== "—" ? routeInfo.destination : "",
+        routeInfo.display !== "—" ? routeInfo.display : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
       if (!dest.includes(q)) return false
     }
 
@@ -347,10 +386,29 @@ export function applyReportFilters(
     }
     if (criteria.truckNumber && criteria.truckNumber.trim()) {
       const q = criteria.truckNumber.trim().toLowerCase()
-      if (!doc.truck_number || !doc.truck_number.toLowerCase().includes(q)) return false
+      const truckText = [doc.truck_number, extractTruckNo(doc)].filter(Boolean).join(" ").toLowerCase()
+      if (!truckText.includes(q)) return false
     }
 
-    // 7. Invoices & BOL
+    // 7. Routes
+    if (criteria.route && criteria.route.trim()) {
+      const q = criteria.route.trim().toLowerCase()
+      const routeText = [
+        routeInfo.display !== "—" ? routeInfo.display : "",
+        routeInfo.shortDisplay !== "—" ? routeInfo.shortDisplay : "",
+        routeInfo.origin,
+        routeInfo.destination,
+        routeInfo.via || "",
+        routeInfo.borderCrossing || "",
+        doc.cargo_route_note || "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+      if (!routeText.includes(q)) return false
+    }
+
+    // 8. Invoices & BOL
     if (criteria.bolNumber && criteria.bolNumber.trim()) {
       const q = criteria.bolNumber.trim().toLowerCase()
       if (!doc.bol_number || !doc.bol_number.toLowerCase().includes(q)) return false
@@ -361,15 +419,79 @@ export function applyReportFilters(
       if (!inv.includes(q)) return false
     }
 
-    // 8. Currency
+    // 9. Container Type
+    if (criteria.containerType && criteria.containerType !== "all") {
+      const cType = criteria.containerType.toUpperCase()
+      const rawContainers = (doc.container_numbers || "").toUpperCase()
+      const rawDesc = ((doc.cargo_description || "") + " " + (doc.goods_description || "")).toUpperCase()
+      const rawRoute = (doc.cargo_route_note || "").toUpperCase()
+      const isReefer =
+        routeInfo.hasReefer ||
+        rawContainers.includes("RF") ||
+        rawContainers.includes("REEF") ||
+        rawDesc.includes("REEFER") ||
+        rawRoute.includes("REEFER")
+      if (cType === "REEFER" && !isReefer) return false
+      if (cType === "DRY" && isReefer) return false
+      if (cType === "20 FT" && !(rawContainers.includes("20") || rawDesc.includes("20 FT") || rawDesc.includes("20FT"))) return false
+      if (cType === "40 FT" && !(rawContainers.includes("40") || rawDesc.includes("40 FT") || rawDesc.includes("40FT"))) return false
+      if (cType === "40 HC" && !(rawContainers.includes("40HC") || rawDesc.includes("HIGH CUBE"))) return false
+      if (cType === "40 RF" && !(rawContainers.includes("40RF") || (rawDesc.includes("40") && isReefer))) return false
+    }
+
+    // 10. Shipment Type (Export vs Import)
+    if (criteria.shipmentType && criteria.shipmentType !== "all") {
+      const originText = (
+        (doc.port_of_loading || "") +
+        " " +
+        (doc.origin_country || "") +
+        " " +
+        (doc.cargo_description || "")
+      ).toLowerCase()
+
+      const isAfghanOrigin =
+        originText.includes("kandahar") ||
+        originText.includes("kabul") ||
+        originText.includes("herat") ||
+        originText.includes("mazar") ||
+        originText.includes("afghan") ||
+        originText.includes("islam qala") ||
+        originText.includes("torghundi") ||
+        originText.includes("hairatan") ||
+        originText.includes("spin boldak")
+
+      if (criteria.shipmentType === "export" && !isAfghanOrigin) return false
+      if (criteria.shipmentType === "import" && isAfghanOrigin) return false
+    }
+
+    // 11. Currency
     if (criteria.currency && criteria.currency !== "all") {
       const parsed = parseMoney(doc.goods_value)
       if (parsed.currency.toUpperCase() !== criteria.currency.toUpperCase()) return false
     }
 
-    // 9. PDF status
+    // 12. PDF status
     if (criteria.hasPdf === "yes" && !doc.pdf_url) return false
     if (criteria.hasPdf === "no" && doc.pdf_url) return false
+
+    // 13. Missing Data drill-down
+    if (criteria.missingData && criteria.missingData !== "all") {
+      if (criteria.missingData === "container") {
+        if (doc.container_numbers && doc.container_numbers.trim()) return false
+      } else if (criteria.missingData === "invoice") {
+        if ((doc.invoice_no && doc.invoice_no.trim()) || (doc.invoice_number && doc.invoice_number.trim())) return false
+      } else if (criteria.missingData === "truck") {
+        if ((doc.truck_number && doc.truck_number.trim()) || extractTruckNo(doc)) return false
+      } else if (criteria.missingData === "driver") {
+        if (doc.driver_name && doc.driver_name.trim()) return false
+      } else if (criteria.missingData === "route") {
+        if (routeInfo.display !== "—") return false
+      } else if (criteria.missingData === "rate") {
+        if ((doc.rate_per_kg && doc.rate_per_kg.trim()) || (doc.rate_per_kgs && doc.rate_per_kgs.trim())) return false
+      } else if (criteria.missingData === "pdf") {
+        if (doc.pdf_url) return false
+      }
+    }
 
     return true
   })

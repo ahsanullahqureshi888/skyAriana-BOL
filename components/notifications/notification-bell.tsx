@@ -27,14 +27,19 @@ export function NotificationBell({ onOpenCenter, onOpenSettings }: NotificationB
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
+  const currentUserName = currentUser?.username || currentUser?.name
+  const currentUserRole = currentUser?.role
+  const currentClientId = currentUser?.clientId
+  const currentClientName = currentUser?.clientName
+
   const fetchNotifications = useCallback(async () => {
-    if (!currentUser) return
+    if (!currentUserName || !currentUserRole) return
     try {
       const q = new URLSearchParams({
-        user: currentUser.username || currentUser.name,
-        role: currentUser.role,
-        ...(currentUser.clientId ? { clientId: currentUser.clientId } : {}),
-        ...(currentUser.clientName ? { clientName: currentUser.clientName } : {}),
+        user: currentUserName,
+        role: currentUserRole,
+        ...(currentClientId ? { clientId: currentClientId } : {}),
+        ...(currentClientName ? { clientName: currentClientName } : {}),
         activeOnly: 'true',
       })
       const res = await fetch(`/api/notifications?${q.toString()}`, { cache: 'no-store' })
@@ -48,7 +53,7 @@ export function NotificationBell({ onOpenCenter, onOpenSettings }: NotificationB
     } catch {
       // Background poll failure is silent
     }
-  }, [currentUser])
+  }, [currentUserName, currentUserRole, currentClientId, currentClientName])
 
   useEffect(() => {
     fetchNotifications()
@@ -124,7 +129,7 @@ export function NotificationBell({ onOpenCenter, onOpenSettings }: NotificationB
         <button
           type="button"
           aria-label="Open notifications"
-          className="relative flex items-center justify-center h-8 w-8 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 transition-all cursor-pointer"
+          className="relative flex items-center justify-center h-7.5 w-7.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 transition-all cursor-pointer shrink-0"
         >
           <Bell className={`h-4 w-4 ${hasCritical ? 'text-rose-600 dark:text-rose-400 animate-bounce' : ''}`} />
           {unreadCount > 0 && (

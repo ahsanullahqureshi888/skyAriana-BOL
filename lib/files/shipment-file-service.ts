@@ -655,7 +655,20 @@ export async function deleteShipmentFile(
 
 export async function getMissingDocumentChecklist(bolNumber: string): Promise<BOLChecklistSummary> {
   const allBols = await getAllLocalBOLs()
-  const bol = allBols.find((b) => b.bol_number?.toLowerCase() === bolNumber.toLowerCase() || b.id === bolNumber)
+  const cleanTarget = bolNumber.trim().toUpperCase()
+  const targetDigits = (cleanTarget.match(/\d+$/) || [])[0]
+  let bol = allBols.find((b) => {
+    if (!b) return false
+    const num = (b.bol_number || "").trim().toUpperCase()
+    return num === cleanTarget || b.id === bolNumber
+  })
+  if (!bol && targetDigits) {
+    bol = allBols.find((b) => {
+      if (!b) return false
+      const num = (b.bol_number || "").trim().toUpperCase()
+      return num.endsWith(targetDigits)
+    })
+  }
 
   const activeFiles = await getFilesForBol(bolNumber, false)
   const rules = await getRequirementRules()
@@ -709,7 +722,7 @@ export async function getMissingDocumentChecklist(bolNumber: string): Promise<BO
 
   return {
     bol_id: bol?.id || bolNumber,
-    bol_number: bolNumber,
+    bol_number: bol?.bol_number || bolNumber,
     total_required: requiredCount,
     total_available: availableCount,
     completeness_ratio: `${availableCount} / ${requiredCount}`,
@@ -721,7 +734,20 @@ export async function getMissingDocumentChecklist(bolNumber: string): Promise<BO
 
 export async function getDigitalShipmentFolder(bolNumber: string): Promise<DigitalShipmentFolder> {
   const allBols = await getAllLocalBOLs()
-  const bol = allBols.find((b) => b.bol_number?.toLowerCase() === bolNumber.toLowerCase() || b.id === bolNumber)
+  const cleanTarget = bolNumber.trim().toUpperCase()
+  const targetDigits = (cleanTarget.match(/\d+$/) || [])[0]
+  let bol = allBols.find((b) => {
+    if (!b) return false
+    const num = (b.bol_number || "").trim().toUpperCase()
+    return num === cleanTarget || b.id === bolNumber
+  })
+  if (!bol && targetDigits) {
+    bol = allBols.find((b) => {
+      if (!b) return false
+      const num = (b.bol_number || "").trim().toUpperCase()
+      return num.endsWith(targetDigits)
+    })
+  }
 
   const files = await getFilesForBol(bolNumber, true)
   const categories = await getDocumentCategories()
@@ -735,12 +761,55 @@ export async function getDigitalShipmentFolder(bolNumber: string): Promise<Digit
     }
   })
 
+  let customerName =
+    bol?.consignee_name?.trim() ||
+    (bol as any)?.consigneeName?.trim() ||
+    (bol as any)?.consignee?.trim() ||
+    bol?.shipper_name?.trim() ||
+    (bol as any)?.shipperName?.trim() ||
+    (bol as any)?.shipper?.trim()
+
+  if (!customerName || customerName === "Unassigned Customer") {
+    try {
+      const { getAllShipments } = await import("@/lib/services/shipment-service")
+      const allShipments = await getAllShipments()
+      const shp = allShipments.find((s) => {
+        if (!s) return false
+        const ref = (s.referenceNumber || s.id || "").toUpperCase()
+        if (ref === cleanTarget || ref.includes(cleanTarget)) return true
+        if (targetDigits && ref.endsWith(targetDigits)) return true
+        return false
+      })
+      if (shp?.consignee?.name && shp.consignee.name !== "Unknown Consignee") {
+        customerName = shp.consignee.name.trim()
+      } else if (shp?.shipper?.name && shp.shipper.name !== "Unknown Shipper") {
+        customerName = shp.shipper.name.trim()
+      }
+    } catch {}
+  }
+
+  if (!customerName) {
+    customerName = "Unassigned Customer"
+  }
+
+  const originPort =
+    bol?.origin_country ||
+    (bol as any)?.origin ||
+    bol?.port_of_loading ||
+    "Origin Port"
+
+  const destinationPort =
+    bol?.destination_country ||
+    (bol as any)?.destination ||
+    bol?.port_of_discharge ||
+    "Destination Port"
+
   return {
     bol_id: bol?.id || bolNumber,
-    bol_number: bolNumber,
-    customer_name: bol?.consignee || bol?.shipper || "Unassigned Customer",
-    origin: bol?.origin || "Origin Port",
-    destination: bol?.destination || "Destination Port",
+    bol_number: bol?.bol_number || bolNumber,
+    customer_name: customerName,
+    origin: originPort,
+    destination: destinationPort,
     total_files: files.length,
     checklist,
     categories: categorizedList,

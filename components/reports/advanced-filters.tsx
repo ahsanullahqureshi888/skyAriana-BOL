@@ -377,6 +377,37 @@ export function AdvancedFiltersDrawer({
               </select>
             </div>
           </div>
+
+          {/* Transit Route */}
+          <div className="border-t border-slate-100 pt-3">
+            <span className="text-[10px] text-slate-400">Transit Route / Border Station</span>
+            <input
+              type="text"
+              value={form.route || ""}
+              onChange={(e) => handleChange("route", e.target.value)}
+              placeholder="E.g. Islam Qala, Bandar Abbas, Nhava Sheva"
+              className="w-full h-8 px-2.5 rounded-lg border border-slate-200 text-xs font-semibold focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          {/* Missing Data Audit Drill-down */}
+          <div className="border-t border-slate-100 pt-3">
+            <span className="text-[10px] text-slate-400">Data Completeness & Audit Flags</span>
+            <select
+              value={form.missingData || "all"}
+              onChange={(e) => handleChange("missingData", e.target.value as any)}
+              className="w-full h-8 px-2 rounded-lg border border-slate-200 text-xs font-semibold bg-white focus:outline-none focus:border-blue-500"
+            >
+              <option value="all">All Documents (No Audit Filter)</option>
+              <option value="container">Missing Container Number</option>
+              <option value="invoice">Missing Invoice Number</option>
+              <option value="truck">Missing Truck Number</option>
+              <option value="driver">Missing Driver Name</option>
+              <option value="route">Missing Route Details</option>
+              <option value="rate">Missing Rate per KG</option>
+              <option value="pdf">Missing Saved PDF File</option>
+            </select>
+          </div>
         </div>
 
         {/* Footer Actions */}

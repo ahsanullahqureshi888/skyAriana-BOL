@@ -9,7 +9,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Printer, Download, X, Building2, CheckCircle2 } from "lucide-react"
+import { Printer, Download, X, Building2, CheckCircle2, Loader2 } from "lucide-react"
+import { toast } from "sonner"
+import { requestDocumentGeneration, triggerBrowserDownload } from "@/lib/api/document-client"
 
 interface PrintableInvoiceModalProps {
   open: boolean
@@ -25,11 +27,64 @@ export function PrintableInvoiceModal({
   bolData,
 }: PrintableInvoiceModalProps) {
   const printRef = useRef<HTMLDivElement>(null)
+  const [isGeneratingPdf, setIsGeneratingPdf] = React.useState(false)
 
   if (!invoice) return null
 
   const handlePrint = () => {
     window.print()
+  }
+
+  const handleServerPdfDownload = async () => {
+    setIsGeneratingPdf(true)
+    try {
+      const itemsList = (Array.isArray(invoice.items) ? invoice.items : []).map((it: any) => ({
+        description: it.description || "Logistics Services",
+        quantity: Number(it.quantity || 1),
+        unit: it.unit || "CTNS",
+        unit_price: Number(it.rate || it.unit_price || 0),
+        amount: Number(it.amount || 0),
+      }))
+
+      if (itemsList.length === 0) {
+        itemsList.push({
+          description: invoice.notes || "Freight Forwarding Charges",
+          quantity: 1,
+          unit: "LUMP_SUM",
+          unit_price: Number(invoice.freight_charges || invoice.amount || 0),
+          amount: Number(invoice.freight_charges || invoice.amount || 0),
+        })
+      }
+
+      const res = await requestDocumentGeneration(
+        "invoice",
+        {
+          invoice_number: invoice.invoice_number,
+          invoice_date: invoice.invoice_date || new Date().toISOString().split("T")[0],
+          bol_number: invoice.bol_number || bolData?.bol_number || "",
+          currency: invoice.currency || "USD",
+          exporter_name: invoice.company_name || "SKY ARIANA LIMITED",
+          consignee_name: invoice.billed_to || invoice.customer_name || "Consignee",
+          items: itemsList,
+          discount: Number(invoice.discount || 0),
+          tax: Number(invoice.tax || 0),
+          remarks: invoice.notes || "",
+        },
+        { asyncJob: false }
+      )
+
+      if (res.success && res.downloadUrl) {
+        triggerBrowserDownload(res.downloadUrl, `${invoice.invoice_number}.pdf`)
+        toast.success("Authoritative Commercial Invoice PDF downloaded!")
+      } else {
+        window.print()
+      }
+    } catch (err: any) {
+      console.warn("Server PDF error, fallback to browser print:", err)
+      window.print()
+    } finally {
+      setIsGeneratingPdf(false)
+    }
   }
 
   const items = Array.isArray(invoice.items) ? invoice.items : []
@@ -50,6 +105,25 @@ export function PrintableInvoiceModal({
             </DialogTitle>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleServerPdfDownload}
+              disabled={isGeneratingPdf}
+              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isGeneratingPdf ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating PDF...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Fast PDF Export
+                </>
+              )}
+            </Button>
             <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2">
               <Printer className="h-4 w-4" />
               Print / Save PDF

@@ -53,12 +53,28 @@ describe("Enterprise Treasury & Cash/Bank Management Engine", () => {
     treasuryService = loadTypescript("lib/treasury/treasury-service.ts")
     periodService = loadTypescript("lib/accounting/period-closing/period-service.ts")
 
-    // Ensure 2026-10 is OPEN and 2026-09 is CLOSED
+    // Ensure 2026-10 is OPEN and 2026-05 is CLOSED
     const periods = await periodService.getPeriods()
-    let sep = periods.find((p) => p.code === "2026-09")
-    if (sep) {
-      sep.status = "CLOSED"
-      sep.closed_at = new Date().toISOString()
+    let may = periods.find((p) => p.code === "2026-05")
+    if (may) {
+      may.status = "CLOSED"
+      may.closed_at = new Date().toISOString()
+    } else {
+      periods.push({
+        id: "period-2026-05",
+        period_type: "MONTHLY",
+        year: 2026,
+        month: 5,
+        name: "May 2026",
+        code: "2026-05",
+        start_date: "2026-05-01",
+        end_date: "2026-05-31",
+        status: "CLOSED",
+        closed_at: "2026-06-01T00:00:00.000Z",
+        lock_level: "FULL",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
     }
     let oct = periods.find((p) => p.code === "2026-10")
     if (oct) {
@@ -379,15 +395,32 @@ describe("Enterprise Treasury & Cash/Bank Management Engine", () => {
     const accounts = await treasuryService.getTreasuryAccounts()
     const targetAccount = accounts.find((a) => a.currency === "USD")
 
-    // Ensure 2026-09 is closed while preserving all periods
+    // Ensure 2026-05 is closed while preserving all periods
     const periods = await periodService.getPeriods()
-    const sepPeriod = periods.find((p) => p.code === "2026-09")
-    if (sepPeriod) {
-      sepPeriod.status = "CLOSED"
-      await periodService.savePeriods(periods)
+    let mayPeriod = periods.find((p) => p.code === "2026-05")
+    if (mayPeriod) {
+      mayPeriod.status = "CLOSED"
+    } else {
+      mayPeriod = {
+        id: "period-2026-05",
+        period_type: "MONTHLY",
+        year: 2026,
+        month: 5,
+        name: "May 2026",
+        code: "2026-05",
+        start_date: "2026-05-01",
+        end_date: "2026-05-31",
+        status: "CLOSED",
+        closed_at: "2026-06-01T00:00:00.000Z",
+        lock_level: "FULL",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      periods.push(mayPeriod)
     }
+    await periodService.savePeriods(periods)
 
-    // Attempt to post customer receipt backdated into closed September 2026
+    // Attempt to post customer receipt backdated into closed May 2026
     await assert.rejects(
       async () => {
         await treasuryService.recordCustomerReceipt({
@@ -396,11 +429,11 @@ describe("Enterprise Treasury & Cash/Bank Management Engine", () => {
           currency: "USD",
           received_into_account_id: targetAccount.id,
           payment_method: "BANK_TRANSFER",
-          transaction_date: "2026-09-15", // Closed month!
+          transaction_date: "2026-05-15", // Closed month!
         })
       },
-      /Financial Period Lock Enforced: Period \[2026-09\]/,
-      "Must reject posting treasury transaction into closed September period"
+      /Financial Period Lock Enforced: Period \[2026-05\]/,
+      "Must reject posting treasury transaction into closed May period"
     )
   })
 

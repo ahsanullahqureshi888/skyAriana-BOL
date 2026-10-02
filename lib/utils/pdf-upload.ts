@@ -1,7 +1,9 @@
 "use client"
 import type { BillOfLadingFormData } from "@/lib/types/bill-of-lading"
-import { COMPANY_STAMP_SIGNATURE_DATA_URL } from "@/lib/company-stamp-data"
+import { COMPANY_STAMP_SIGNATURE_DATA_URL, getCompanyStampDataUrl } from "@/lib/company-stamp-fallback"
 import { isPashtoOrArabic, prepareBidiPdfText } from "@/lib/utils/pashto-bidi"
+import { extractInvoiceNumber } from "@/lib/utils/shipping-documents"
+import { isUUID } from "@/lib/utils/bol-filters"
 
 // Dynamically import PDF libraries only in browser environment
 let html2canvasLib: any = null
@@ -163,7 +165,7 @@ async function fetchImageDataURL(url?: string) {
   }
 }
 
-async function loadPDFFontAssets() {
+export async function loadPDFFontAssets() {
   if (pdfFontAssets) return pdfFontAssets
 
   const [notoSansRegular, notoSansBold, arabicRegular, arabicBold] = await Promise.all([
@@ -456,10 +458,11 @@ function drawFooter(doc: any, options: ModernBOLPDFOptions, page: number, totalP
     `${companyTitle} - ${companyTagline} | ${cleanPDFText(options.companyPhone)} | ${cleanPDFText(options.companyEmail)}${options.companyLicence ? ` | Licence: ${options.companyLicence}` : ""}`,
     PAGE_WIDTH / 2,
     y + 2.3,
-    { size: 5.6, weight: "bold", color: [255, 255, 255], align: "center", maxWidth: CONTENT_WIDTH - 6 }
+    { size: 6.8, weight: "bold", color: [255, 255, 255], align: "center", maxWidth: CONTENT_WIDTH - 6 }
   )
-  drawText(doc, cleanPDFText(options.companyAddress) || "2nd Floor, 16 No. Office, Shahidano, Chowk, Etimad Rahmi Market, Kandahar, Afghanistan", PAGE_WIDTH / 2, y + 6.1, {
-    size: 5.2,
+  drawText(doc, cleanPDFText(options.companyAddress) || "2nd Floor, 16 No. Office, Shahidano, Chowk, Etimad Rahmi Market, Kandahar, Afghanistan", PAGE_WIDTH / 2, y + 6.3, {
+    size: 6.2,
+    weight: "bold",
     color: [255, 255, 255],
     align: "center",
     maxWidth: CONTENT_WIDTH - 6,
@@ -520,24 +523,24 @@ export async function generateModernBOLPDFBlob(options: ModernBOLPDFOptions): Pr
   options.onProgress?.(32, "Drawing premium header...")
   roundedCard(doc, PAGE_MARGIN, y, CONTENT_WIDTH, 32, [255, 255, 255], BORDER_BLUE, 4)
   if (logoDataUrl) {
-    doc.addImage(logoDataUrl, "PNG", PAGE_MARGIN + 5, y + 5, 25, 20, undefined, "FAST")
+    doc.addImage(logoDataUrl, "PNG", PAGE_MARGIN + 5, y + 5, 25, 20, undefined, "SLOW")
   }
-  drawText(doc, companyTitle, PAGE_WIDTH / 2, y + 6.5, {
-    size: 16.5,
+  drawText(doc, companyTitle, PAGE_WIDTH / 2, y + 6.0, {
+    size: 19.0,
     weight: "bold",
     color: TEXT_DARK,
     align: "center",
-    maxWidth: 105,
-    lineHeight: 6.0,
+    maxWidth: 110,
+    lineHeight: 6.2,
   })
-  drawText(doc, companyTagline, PAGE_WIDTH / 2, y + 17.5, {
-    size: 8.5,
+  drawText(doc, companyTagline, PAGE_WIDTH / 2, y + 17.2, {
+    size: 9.0,
     weight: "bold",
     color: TEXT_DARK,
     align: "center",
   })
   drawText(doc, companyPersian, PAGE_WIDTH / 2, y + 22.8, {
-    size: 10.5,
+    size: 11.8,
     weight: "bold",
     color: BLUE_DARK,
     align: "center",
@@ -670,11 +673,12 @@ export async function generateModernBOLPDFBlob(options: ModernBOLPDFOptions): Pr
   ensureSpace(30)
   const sigW = (CONTENT_WIDTH - 3) / 2
   const sigX = PAGE_MARGIN + (CONTENT_WIDTH - sigW) / 2
-  roundedCard(doc, sigX, y, sigW, 24, [255, 255, 255], BORDER_BLUE, 2)
+  roundedCard(doc, sigX, y, sigW, 26, [255, 255, 255], BORDER_BLUE, 2)
   try {
-    doc.addImage(COMPANY_STAMP_SIGNATURE_DATA_URL, "PNG", sigX + sigW / 2 - 10, y + 2, 20, 20)
+    const stampData = (await getCompanyStampDataUrl()) || COMPANY_STAMP_SIGNATURE_DATA_URL
+    doc.addImage(stampData, "PNG", sigX + sigW / 2 - 12.5, y + 1, 25, 25)
   } catch {}
-  drawText(doc, "Company Stamp & Sign", sigX + sigW / 2, y + 21.5, { size: 6.5, weight: "bold", color: TEXT_DARK, align: "center" })
+  drawText(doc, "Company Stamp & Sign", sigX + sigW / 2, y + 24, { size: 6.5, weight: "bold", color: TEXT_DARK, align: "center" })
 
   const totalPages = doc.internal.getNumberOfPages()
   for (let page = 1; page <= totalPages; page += 1) {
@@ -722,24 +726,24 @@ export async function generatePremiumBOLPDFBlob(options: ModernBOLPDFOptions): P
   options.onProgress?.(24, "Drawing premium header")
   roundedCard(doc, PAGE_MARGIN, y, CONTENT_WIDTH, 28, [255, 255, 255], BORDER_BLUE, 3)
   if (logoDataUrl) {
-    doc.addImage(logoDataUrl, "PNG", PAGE_MARGIN + 3, y + 3.5, 22, 17, undefined, "FAST")
+    doc.addImage(logoDataUrl, "PNG", PAGE_MARGIN + 3, y + 3.5, 22, 17, undefined, "SLOW")
   }
-  drawText(doc, companyTitle, PAGE_WIDTH / 2, y + 5.0, {
-    size: 15.5,
+  drawText(doc, companyTitle, PAGE_WIDTH / 2, y + 4.8, {
+    size: 18.5,
     weight: "bold",
     color: TEXT_DARK,
     align: "center",
-    maxWidth: 110,
-    lineHeight: 5.5,
+    maxWidth: 115,
+    lineHeight: 5.8,
   })
   drawText(doc, companyTagline, PAGE_WIDTH / 2, y + 14.8, {
-    size: 8.0,
+    size: 8.8,
     weight: "bold",
     color: TEXT_MUTED,
     align: "center",
   })
-  drawText(doc, companyPersian, PAGE_WIDTH / 2, y + 19.8, {
-    size: 9.8,
+  drawText(doc, companyPersian, PAGE_WIDTH / 2, y + 20.0, {
+    size: 11.2,
     weight: "bold",
     color: BLUE_DARK,
     align: "center",
@@ -877,12 +881,13 @@ export async function generatePremiumBOLPDFBlob(options: ModernBOLPDFOptions): P
   options.onProgress?.(82, "Adding signature section")
   const signatureWidth = (CONTENT_WIDTH - 3) / 2
   const sigX = PAGE_MARGIN + (CONTENT_WIDTH - signatureWidth) / 2
-  const sigHeight = 22
+  const sigHeight = 25
   roundedCard(doc, sigX, y, signatureWidth, sigHeight, [255, 255, 255], BORDER_BLUE, 2)
   try {
-    doc.addImage(COMPANY_STAMP_SIGNATURE_DATA_URL, "PNG", sigX + signatureWidth / 2 - 9, y + 1.5, 18, 18)
+    const stampData = (await getCompanyStampDataUrl()) || COMPANY_STAMP_SIGNATURE_DATA_URL
+    doc.addImage(stampData, "PNG", sigX + signatureWidth / 2 - 11.5, y + 1, 23, 23)
   } catch {}
-  drawText(doc, "Company Stamp & Sign", sigX + signatureWidth / 2, y + 20, {
+  drawText(doc, "Company Stamp & Sign", sigX + signatureWidth / 2, y + 23, {
     size: 6.0,
     weight: "bold",
     color: TEXT_DARK,
@@ -918,15 +923,23 @@ export async function generateBOLPDFBlob(
       (rawDoc.bol_number || rawDoc.id || rawDoc.barnamehNo)
   )
 
+  const cleanDirectBol = (
+    (!isUUID(String(rawDoc.bol_number || "")) ? rawDoc.bol_number : "") ||
+    (!isUUID(String(rawDoc.barnamehNo || "")) ? rawDoc.barnamehNo : "") ||
+    (!isUUID(String(rawDoc.bolNo || "")) ? rawDoc.bolNo : "") ||
+    (!isUUID(String(rawDoc.id || "")) ? rawDoc.id : "") ||
+    "BOL"
+  )
+
   const options: GenerateBOLPDFBlobOptions = isDirectBol
     ? {
         fileName: buildBolSmartFileName(
           rawDoc,
-          rawDoc.bol_number || rawDoc.id,
+          cleanDirectBol,
           ".pdf"
         ),
         modern: {
-          bolNumber: rawDoc.bol_number || rawDoc.id || "BOL",
+          bolNumber: cleanDirectBol,
           issueDate: rawDoc.issue_date || "",
           persianDateNumeric: "",
           formData: rawDoc as BillOfLadingFormData,
@@ -946,8 +959,8 @@ export async function generateBOLPDFBlob(
   const previewElement =
     options?.previewElement ||
     (typeof document !== "undefined"
-      ? (document.querySelector('[data-bol-a4="true"]') as HTMLElement | null) ||
-        (document.querySelector('[data-pdf-export="true"]') as HTMLElement | null)
+      ? (document.querySelector('[data-pdf-export="true"]') as HTMLElement | null) ||
+        (document.querySelector('[data-bol-a4="true"]') as HTMLElement | null)
       : null)
 
   if (previewElement) {
@@ -1314,35 +1327,17 @@ export async function generatePDFBlob(
     console.warn("Could not pre-bundle fonts for PDF capture:", fontErr)
   }
 
+  // Target all pages if multi-page BOL, otherwise target the single A4 page
+  const pageNodes = Array.from(
+    a4Element.querySelectorAll('[data-bol-page="true"]')
+  ) as HTMLElement[]
+  const pagesToRender = pageNodes.length > 0 ? pageNodes : [a4Element]
+
   // 3. Primary capture: High-resolution native SVG foreignObject rasterization via html-to-image
   try {
     const { toCanvas } = await import("html-to-image")
 
     // Cooperative yield to keep UI responsive and spinners rendering
-    await new Promise((resolve) => setTimeout(resolve, 0))
-
-    const canvas = await toCanvas(a4Element, {
-      pixelRatio: 2.2, // ~210 DPI publication-grade sharpness with 70% lower memory than 4x
-      quality: 0.98,
-      cacheBust: false,
-      skipFonts: true, // Embedded via fontEmbedCSS to avoid stylesheet CORS/SecurityError crashes
-      fontEmbedCSS: fontCSS,
-      backgroundColor: "#ffffff",
-      style: {
-        transform: "none",
-        margin: "0",
-        opacity: "1",
-        visibility: "visible",
-        boxShadow: "none",
-        outline: "none",
-      },
-      filter: (node: HTMLElement) => {
-        if (node.getAttribute?.("data-print-ignore") === "true") return false
-        return true
-      },
-    })
-
-    // Cooperative yield between canvas rasterization and PDF encoding
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     const pdf = new jsPDF({
@@ -1356,13 +1351,49 @@ export async function generatePDFBlob(
     const cleanTitle = (fileName || "BOL").replace(/\.pdf$/i, "")
     pdf.setProperties({
       title: cleanTitle,
-      subject: cleanTitle,
-      author: "SKY ARIANA LIMITED",
-      creator: "Sky Ariana BOL PDF Export",
+      subject: "Official Bill of Lading",
+      author: "AQ COMPANIES / SKY ARIANA LIMITED",
+      creator: "Sky Ariana BOL PDF Engine",
     })
 
-    const imageData = canvas.toDataURL("image/jpeg", 0.96)
-    pdf.addImage(imageData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST")
+    for (let pIdx = 0; pIdx < pagesToRender.length; pIdx++) {
+      if (pIdx > 0) {
+        pdf.addPage("a4", "portrait")
+      }
+      const pageEl = pagesToRender[pIdx]
+      const canvas = await toCanvas(pageEl, {
+        pixelRatio: 3.125, // True 300 DPI print-grade ultra-sharp resolution (300 / 96 = 3.125)
+        quality: 1.0,
+        cacheBust: false,
+        skipFonts: true, // Embedded via fontEmbedCSS to avoid stylesheet CORS/SecurityError crashes
+        fontEmbedCSS: fontCSS,
+        backgroundColor: "#ffffff",
+        style: {
+          transform: "none",
+          margin: "0",
+          opacity: "1",
+          visibility: "visible",
+          boxShadow: "none",
+          outline: "none",
+          WebkitFontSmoothing: "antialiased",
+          MozOsxFontSmoothing: "grayscale",
+          textRendering: "optimizeLegibility",
+        } as any,
+        filter: (node: HTMLElement) => {
+          if (!node) return true
+          if (node.getAttribute?.("data-print-ignore") === "true") return false
+          if (node.getAttribute?.("data-pdf-ignore") === "true") return false
+          if (node.getAttribute?.("data-html2canvas-ignore") === "true") return false
+          if (typeof node.className === "string" && (node.className.includes("no-print") || node.className.includes("print:hidden"))) return false
+          if (node.classList?.contains?.("no-print")) return false
+          if (node.tagName === "BUTTON") return false
+          return true
+        },
+      })
+
+      const imageData = canvas.toDataURL("image/jpeg", 0.94)
+      pdf.addImage(imageData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST")
+    }
 
     const blob = pdf.output("blob") as Blob
     return await normalizePDFBlob(blob)
@@ -1376,111 +1407,8 @@ export async function generatePDFBlob(
   try {
     const { html2canvas } = await loadPDFLibraries()
 
-    // Clone element to avoid modifying the original
-    const clonedElement = a4Element.cloneNode(true) as HTMLElement
-
-    // Remove data attributes
-    clonedElement.removeAttribute("data-pdf-export")
-    clonedElement.setAttribute("data-pdf-export-fixed", "true")
-
-    // Clean fixed dimensions matching standard A4
-    clonedElement.style.width = "210mm"
-    clonedElement.style.height = "297mm"
-    clonedElement.style.maxHeight = "297mm"
-    clonedElement.style.maxWidth = "210mm"
-    clonedElement.style.minHeight = "297mm"
-    clonedElement.style.overflow = "hidden"
-    clonedElement.style.background = "white"
-    clonedElement.style.boxShadow = "none"
-    clonedElement.style.margin = "0"
-    clonedElement.style.backdropFilter = "none"
-    sanitizeElementForPDF(a4Element, clonedElement)
-
     const pixelWidth = Math.round((210 * 96) / 25.4)
     const pixelHeight = Math.round((297 * 96) / 25.4)
-
-    wrapper = document.createElement("div")
-    wrapper.style.position = "fixed"
-    wrapper.style.left = "-10000px"
-    wrapper.style.top = "0"
-    wrapper.style.width = "210mm"
-    wrapper.style.height = "297mm"
-    wrapper.style.background = "#ffffff"
-    wrapper.style.overflow = "hidden"
-    wrapper.style.opacity = "1"
-    wrapper.style.pointerEvents = "none"
-    wrapper.style.zIndex = "-1"
-    wrapper.appendChild(clonedElement)
-    document.body.appendChild(wrapper)
-
-    // Cooperative yield before fallback canvas creation
-    await new Promise((resolve) => setTimeout(resolve, 0))
-
-    const canvas = await html2canvas(clonedElement, {
-      scale: 2.2, // ~210 DPI sharpness without 14MP memory freeze
-      useCORS: true,
-      logging: false,
-      backgroundColor: "#ffffff",
-      allowTaint: true,
-      imageTimeout: 8000,
-      width: pixelWidth,
-      height: pixelHeight,
-      windowWidth: pixelWidth,
-      windowHeight: pixelHeight,
-      ignoreElements: (el: Element) => {
-        const tag = el.tagName?.toUpperCase()
-        if (tag === "FILTER" || tag === "DEFS") return true
-        if (el instanceof HTMLCanvasElement && (el.width === 0 || el.height === 0)) return true
-        if (el instanceof HTMLImageElement && (el.naturalWidth === 0 || el.naturalHeight === 0)) return true
-        return false
-      },
-      onclone: (clonedDocument: Document) => {
-        const style = clonedDocument.createElement("style")
-        style.textContent = `
-              :root, html, body {
-                --background: #ffffff !important;
-                --foreground: #0f172a !important;
-                --card: #ffffff !important;
-                --card-foreground: #0f172a !important;
-                --popover: #ffffff !important;
-                --popover-foreground: #0f172a !important;
-                --primary: #1d4ed8 !important;
-                --primary-foreground: #ffffff !important;
-                --secondary: #f8fafc !important;
-                --secondary-foreground: #0f172a !important;
-                --muted: #f8fafc !important;
-                --muted-foreground: #475569 !important;
-                --accent: #dbeafe !important;
-                --accent-foreground: #0f172a !important;
-                --destructive: #dc2626 !important;
-                --destructive-foreground: #ffffff !important;
-                --border: #cbd5e1 !important;
-                --input: #cbd5e1 !important;
-                --ring: #2563eb !important;
-              }
-
-              *, *::before, *::after {
-                text-shadow: none !important;
-                backdrop-filter: none !important;
-                -webkit-backdrop-filter: none !important;
-              }
-
-              [data-pdf-export-fixed="true"] {
-                width: 210mm !important;
-                height: 297mm !important;
-                max-height: 297mm !important;
-                min-height: 297mm !important;
-                overflow: hidden !important;
-                box-shadow: none !important;
-                margin: 0 !important;
-              }
-            `
-        clonedDocument.head.appendChild(style)
-      },
-    })
-
-    // Cooperative yield before PDF compilation
-    await new Promise((resolve) => setTimeout(resolve, 0))
 
     const pdf = new jsPDF({
       orientation: "portrait",
@@ -1492,13 +1420,132 @@ export async function generatePDFBlob(
     const cleanTitle = (fileName || "BOL").replace(/\.pdf$/i, "")
     pdf.setProperties({
       title: cleanTitle,
-      subject: cleanTitle,
-      author: "SKY ARIANA LIMITED",
-      creator: "Sky Ariana BOL PDF Export",
+      subject: "Official Bill of Lading",
+      author: "AQ COMPANIES / SKY ARIANA LIMITED",
+      creator: "Sky Ariana BOL PDF Engine",
     })
 
-    const imageData = canvas.toDataURL("image/jpeg", 0.96)
-    pdf.addImage(imageData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST")
+    for (let pIdx = 0; pIdx < pagesToRender.length; pIdx++) {
+      if (pIdx > 0) {
+        pdf.addPage("a4", "portrait")
+      }
+      const pageToRender = pagesToRender[pIdx]
+      const clonedElement = pageToRender.cloneNode(true) as HTMLElement
+
+      // Remove data attributes
+      clonedElement.removeAttribute("data-pdf-export")
+      clonedElement.setAttribute("data-pdf-export-fixed", "true")
+
+      // Clean fixed dimensions matching standard A4
+      clonedElement.style.width = "210mm"
+      clonedElement.style.height = "297mm"
+      clonedElement.style.maxHeight = "297mm"
+      clonedElement.style.maxWidth = "210mm"
+      clonedElement.style.minHeight = "297mm"
+      clonedElement.style.overflow = "hidden"
+      clonedElement.style.background = "white"
+      clonedElement.style.boxShadow = "none"
+      clonedElement.style.margin = "0"
+      clonedElement.style.backdropFilter = "none"
+      sanitizeElementForPDF(pageToRender, clonedElement)
+
+      wrapper = document.createElement("div")
+      wrapper.style.position = "fixed"
+      wrapper.style.left = "-10000px"
+      wrapper.style.top = "0"
+      wrapper.style.width = "210mm"
+      wrapper.style.height = "297mm"
+      wrapper.style.background = "#ffffff"
+      wrapper.style.overflow = "hidden"
+      wrapper.style.opacity = "1"
+      wrapper.style.pointerEvents = "none"
+      wrapper.style.zIndex = "-1"
+      wrapper.appendChild(clonedElement)
+      document.body.appendChild(wrapper)
+
+      // Cooperative yield before fallback canvas creation
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      const canvas = await html2canvas(clonedElement, {
+        scale: 3.125, // True 300 DPI print-grade resolution (300 / 96 = 3.125)
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        allowTaint: true,
+        imageTimeout: 8000,
+        width: pixelWidth,
+        height: pixelHeight,
+        windowWidth: pixelWidth,
+        windowHeight: pixelHeight,
+        ignoreElements: (el: Element) => {
+          const tag = el.tagName?.toUpperCase()
+          if (tag === "FILTER" || tag === "DEFS" || tag === "BUTTON") return true
+          if (el instanceof HTMLCanvasElement && (el.width === 0 || el.height === 0)) return true
+          if (el instanceof HTMLImageElement && (el.naturalWidth === 0 || el.naturalHeight === 0)) return true
+          if (el.getAttribute?.("data-print-ignore") === "true") return true
+          if (el.getAttribute?.("data-pdf-ignore") === "true") return true
+          if (el.getAttribute?.("data-html2canvas-ignore") === "true") return true
+          if (el.classList?.contains("no-print") || el.classList?.contains("print:hidden")) return true
+          return false
+        },
+        onclone: (clonedDocument: Document) => {
+          const style = clonedDocument.createElement("style")
+          style.textContent = `
+                :root, html, body {
+                  --background: #ffffff !important;
+                  --foreground: #0f172a !important;
+                  --card: #ffffff !important;
+                  --card-foreground: #0f172a !important;
+                  --popover: #ffffff !important;
+                  --popover-foreground: #0f172a !important;
+                  --primary: #1d4ed8 !important;
+                  --primary-foreground: #ffffff !important;
+                  --secondary: #f8fafc !important;
+                  --secondary-foreground: #0f172a !important;
+                  --muted: #f8fafc !important;
+                  --muted-foreground: #475569 !important;
+                  --accent: #dbeafe !important;
+                  --accent-foreground: #0f172a !important;
+                  --destructive: #dc2626 !important;
+                  --destructive-foreground: #ffffff !important;
+                  --border: #cbd5e1 !important;
+                  --input: #cbd5e1 !important;
+                  --ring: #2563eb !important;
+                  -webkit-font-smoothing: antialiased !important;
+                  -moz-osx-font-smoothing: grayscale !important;
+                  text-rendering: optimizeLegibility !important;
+                }
+
+                *, *::before, *::after {
+                  text-shadow: none !important;
+                  backdrop-filter: none !important;
+                  -webkit-backdrop-filter: none !important;
+                }
+
+                .no-print, [data-print-ignore="true"], [data-pdf-ignore="true"], [data-html2canvas-ignore="true"], button {
+                  display: none !important;
+                }
+
+                [data-pdf-export-fixed="true"] {
+                  width: 210mm !important;
+                  height: 297mm !important;
+                  max-height: 297mm !important;
+                  min-height: 297mm !important;
+                  overflow: hidden !important;
+                  box-shadow: none !important;
+                  margin: 0 !important;
+                }
+              `
+          clonedDocument.head.appendChild(style)
+        },
+      })
+
+      const imageData = canvas.toDataURL("image/jpeg", 0.94)
+      pdf.addImage(imageData, "JPEG", 0, 0, pageWidth, pageHeight, undefined, "FAST")
+
+      wrapper.remove()
+      wrapper = null
+    }
 
     const blob = pdf.output("blob") as Blob
     return normalizePDFBlob(blob)
@@ -1596,7 +1643,7 @@ export async function downloadPDFFromServer(
 
 /**
  * Automatically builds a rich document and file name from the BOL data following the user's specification:
- * [Invoice No]-[Consignee Name]-[Quantity]-[Product Name]-[Shipper Name] (e.g. INV-033-VEER ENTERPRISES-1350-CTNS-BLACK RAISINS-NAJIB AHMAD LTD.pdf)
+ * [Invoice No]-[Consignee Name]-[Quantity]-[Product Name]-[Shipper Name]-BOL (e.g. INV-168-MANIK TRADERS-1506-CTNS-BLACK-RAISNIS-NAJEB AMIN LTD-BOL.pdf)
  */
 export function buildBolSmartFileName(
   docOrFormData: any,
@@ -1604,84 +1651,190 @@ export function buildBolSmartFileName(
   extension: string = ".pdf"
 ): string {
   if (!docOrFormData) {
-    const cleanFallback = (fallbackBolNumber || "BOL").trim()
-    return extension ? (cleanFallback.endsWith(extension) ? cleanFallback : `${cleanFallback}${extension}`) : cleanFallback
+    const cleanFallback = (fallbackBolNumber || "BOL").trim().replace(/[/\\:*?"<>|]/g, "_")
+    const base = cleanFallback.toUpperCase().endsWith("BOL") ? cleanFallback : `${cleanFallback}-BOL`
+    return extension ? (base.endsWith(extension) ? base : `${base}${extension}`) : base
   }
 
-  // 1. Extract Invoice Number
-  let invNo = (docOrFormData.invoiceNo || docOrFormData.invoice_number || docOrFormData.invoice_no || docOrFormData.invoiceNumber || "").trim()
+  // 1. Extract Invoice Number (FIRST SHOULD COME INVOICE NO: e.g. INV-096)
+  let invNo = extractInvoiceNumber(docOrFormData)
   if (!invNo) {
-    const combinedNotes = `${docOrFormData.cargo_description || ""} ${docOrFormData.notes_1 || ""} ${docOrFormData.notes_2 || ""} ${docOrFormData.notes_3 || ""}`
-    const match = combinedNotes.match(/(?:Invoice\s*No|Invoice\s*#|INV\s*NO|IN\s*NO|Invoice|INV)\s*[:#-]?\s*([A-Z0-9/_-]+)/i)
-    if (match && match[1]) {
-      const parsed = match[1].trim()
-      if (parsed.length < 25) {
-        invNo = /^INV|^IN/i.test(parsed) ? parsed.toUpperCase() : `INV-${parsed.toUpperCase()}`
+    invNo = "INV-001"
+  }
+  invNo = invNo
+    .replace(/[/\\:*?"<>|]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-.,\s]+|[-.,\s]+$/g, "")
+
+  // 2. Extract Consignee Name (Take first line before newline, pipe or comma)
+  const rawConsignee = (
+    docOrFormData.consignee_name ||
+    docOrFormData.consignee ||
+    docOrFormData.consigneeName ||
+    ""
+  ).trim()
+  let consignee = rawConsignee.split(/[\r\n,│|]+/)[0].trim()
+  consignee = consignee
+    .replace(/[/\\:*?"<>|]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/^[-.,\s]+|[-.,\s]+$/g, "")
+    .trim()
+    .toUpperCase()
+  if (!consignee) consignee = "CONSIGNEE"
+
+  // 3. Extract Quantity and candidate commodity from packages field (e.g. 1430-CTNS)
+  const rawQty = String(docOrFormData.number_of_packages || docOrFormData.packages || "").trim()
+  let quantity = ""
+  let candidateCommodityFromQty = ""
+
+  if (rawQty) {
+    // Check if multi-item package string, e.g. '305 CTNS GREEN RAISNIS - 603 CTNS BLACK RAISNIS - 546 CTNS GOLDEN RAISNIS'
+    const parts = rawQty.split(/[\r\n|;]+|\s+[-–—]\s+/).map((s) => s.trim()).filter(Boolean)
+    if (parts.length > 1) {
+      let sum = 0
+      let allHave = true
+      let unit = "CTNS"
+      for (const p of parts) {
+        const m = p.match(/^\s*([0-9,]+)/)
+        if (m) {
+          const val = parseFloat(m[1].replace(/,/g, ""))
+          if (!isNaN(val) && val > 0) sum += val
+          else allHave = false
+        } else {
+          allHave = false
+        }
+        const u = p.match(/\b(CTNS?|CARTONS?|CNTS?|BAGS?|PKGS?|BOXES?|PCS)\b/i)
+        if (u) {
+          unit = /^CARTONS?|^CTNS?|^CNTS?/i.test(u[1]) ? "CTNS" : u[1].toUpperCase()
+        }
+      }
+      if (allHave && sum > 0) {
+        quantity = `${sum}-${unit}`
       }
     }
-  } else if (!/^INV|^IN/i.test(invNo)) {
-    invNo = `INV-${invNo.toUpperCase()}`
-  } else {
-    invNo = invNo.toUpperCase()
-  }
-  invNo = invNo.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^[-.,\s]+|[-.,\s]+$/g, "")
 
-  // 2. Extract Consignee Name (Take first line if multiline address)
-  const rawConsignee = (docOrFormData.consignee_name || docOrFormData.consignee || docOrFormData.consigneeName || "").trim()
-  let consignee = rawConsignee.split(/[\r\n]+/)[0].trim()
-  consignee = consignee.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, " ").replace(/^[-.,\s]+|[-.,\s]+$/g, "").trim().toUpperCase()
-
-  // 3. Extract Quantity (e.g. 1350-CTNS or 1407-CNTS)
-  const rawQty = String(docOrFormData.number_of_packages || "").trim()
-  let quantity = ""
-  if (rawQty) {
-    if (/^\d+$/.test(rawQty.replace(/\s+/g, ""))) {
-      const rawType = (docOrFormData.package_type || docOrFormData.packageType || "Cartons").trim().toUpperCase()
-      const typeAbbr = /^CARTONS?|^CTNS?/i.test(rawType) ? "CTNS" : /^BAGS?/i.test(rawType) ? "BAGS" : /^BOXES?|^BOX/i.test(rawType) ? "BOXES" : "CTNS"
-      quantity = `${rawQty.replace(/\s+/g, "")}-${typeAbbr}`
-    } else {
-      quantity = rawQty.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, "-").toUpperCase()
+    if (!quantity) {
+      const qtyMatch = rawQty.match(/^(\d[\d,\s]*)\s*([a-zA-Z]+)?(?:\s+(.*))?$/)
+      if (qtyMatch) {
+        const num = qtyMatch[1].replace(/[\s,]/g, "")
+        const rawUnit = (
+          qtyMatch[2] ||
+          docOrFormData.package_type ||
+          docOrFormData.packageType ||
+          "CTNS"
+        ).trim().toUpperCase()
+        const typeAbbr = /^CARTONS?|^CTNS?|^CNTS?/i.test(rawUnit)
+          ? "CTNS"
+          : /^BAGS?/i.test(rawUnit)
+          ? "BAGS"
+          : /^BOXES?|^BOX/i.test(rawUnit)
+          ? "BOXES"
+          : /^PACKAGES?|^PKGS?/i.test(rawUnit)
+          ? "PKGS"
+          : /^UNITS?/i.test(rawUnit)
+          ? "UNITS"
+          : rawUnit
+        quantity = `${num}-${typeAbbr}`
+        if (qtyMatch[3]) {
+          candidateCommodityFromQty = qtyMatch[3].trim()
+        }
+      } else {
+        quantity = rawQty.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, "-").toUpperCase()
+      }
     }
   }
   quantity = quantity.replace(/[/\\:*?"<>|]/g, "").replace(/-+/g, "-").replace(/^[-.,\s]+|[-.,\s]+$/g, "")
 
-  // 4. Extract Product Name
-  let rawProduct = (docOrFormData.commodity || "").trim()
+  // 4. Extract Product Name / Commodity / Particulars
+  let rawProduct = (docOrFormData.commodity || candidateCommodityFromQty || "").trim()
   if (!rawProduct) {
     const rawCargo = (docOrFormData.cargo_description || "").trim()
-    const cleaned = rawCargo
-      .replace(/^\d[\d,.\s-]*(?:ctns?|cartons?|bags?|packages?|units?)\s*[-:]?\s*/i, "")
-      .split(/[\r\n│|]/)[0]
-      .trim()
-    if (cleaned && !/^(?:CONTAINER|NET|GROSS|TOTAL|INVOICE|DATE)/i.test(cleaned)) {
-      rawProduct = cleaned
+    const lines = rawCargo.split(/[\r\n]+/)
+    for (const line of lines) {
+      const cleaned = line
+        .replace(/^[\s\u2022\u25CF\u25AA\u25AB\u2023\u2043\-\*📦🚚⚓🚢✈️📄📝]+/g, "")
+        .replace(/^(?:Description(?:\s+of\s+goods)?|Commodity|Cargo|Product|Goods|Particulars(?:\s+of\s+goods)?)\s*[:#-]?\s*/i, "")
+        .trim()
+      if (!cleaned) continue
+
+      const partMatch = cleaned.match(/^(?:PARTICULARS\s*(?:OF\s*GOODS)?)\s*[:#-]+\s*(.*)$/i)
+      if (partMatch) {
+        rawProduct = partMatch[1].trim() || "PARTICULARS"
+        break
+      }
+
+      if (/^(?:CONTAINER|CARGO|TRANSIT|INVOICE|INV|PACKING|DATE|SEAL|TRUCK|DRIVER|NET|GROSS|TOTAL|ROUTE|REMARKS|BORDER)/i.test(cleaned)) {
+        continue
+      }
+      let prod = cleaned
+        .replace(/\b\d+[\d,\s-]*(?:ctns?|cartons?|bags?|boxes?|pkgs?|packages?|units?)\b/gi, "")
+        .replace(/\b\d+[\d,.\s-]*(?:kgs?|kg|tons?|mt|metric\s*tons?)\b/gi, "")
+        .replace(/@.*$/g, "")
+        .replace(/[$€£¥]\s*[\d,.]+|[\d,.]+\s*(?:usd|afn|pkr|eur|inr)/gi, "")
+        .replace(/^[-:,\s]+|[-:,\s]+$/g, "")
+        .trim()
+      if (prod.length >= 2) {
+        rawProduct = prod
+        break
+      }
     }
   }
-  let product = rawProduct.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, " ").replace(/^[-.,\s]+|[-.,\s]+$/g, "").trim().toUpperCase()
-
-  // 5. Extract Shipper Name (Take first line if multiline)
-  const rawShipper = (docOrFormData.shipper_name || docOrFormData.shipperDescription || docOrFormData.shipper || docOrFormData.shipperName || "").trim()
-  let shipper = rawShipper.split(/[\r\n]+/)[0].trim()
-  shipper = shipper.replace(/[/\\:*?"<>|]/g, "").replace(/\s+/g, " ").replace(/^[-.,\s]+|[-.,\s]+$/g, "").trim().toUpperCase()
-
-  // 6. BOL Number fallback
-  const bolNumber = (docOrFormData.bol_number || docOrFormData.barnamehNo || docOrFormData.bolNo || fallbackBolNumber || "").trim()
-
-  // Construct components in exact order: Invoice -> Consignee -> Quantity -> Product -> Shipper
-  const parts: string[] = []
-  if (invNo) parts.push(invNo)
-  if (consignee) parts.push(consignee)
-  if (quantity) parts.push(quantity)
-  if (product) parts.push(product)
-  if (shipper) parts.push(shipper)
-
-  if (parts.length === 0) {
-    const cleanFallback = (bolNumber || fallbackBolNumber || "BOL").trim().replace(/[/\\:*?"<>|]/g, "_")
-    return extension ? (cleanFallback.endsWith(extension) ? cleanFallback : `${cleanFallback}${extension}`) : cleanFallback
+  if (!rawProduct) {
+    rawProduct = "PARTICULARS"
   }
+  let product = rawProduct
+    .replace(/[/\\:*?"<>|]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-.,\s]+|[-.,\s]+$/g, "")
+    .trim()
+    .toUpperCase()
+
+  // 5. Extract Shipper Name (Take first line)
+  const rawShipper = (
+    docOrFormData.shipper_name ||
+    docOrFormData.shipperDescription ||
+    docOrFormData.shipper ||
+    docOrFormData.shipperName ||
+    ""
+  ).trim()
+  let shipper = rawShipper.split(/[\r\n,│|]+/)[0].trim()
+  shipper = shipper
+    .replace(/[/\\:*?"<>|]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/^[-.,\s]+|[-.,\s]+$/g, "")
+    .trim()
+    .toUpperCase()
+  if (!shipper) shipper = "SHIPPER"
+
+  // 6. BOL Number
+  let rawCandidate = (
+    docOrFormData.bol_number ||
+    docOrFormData.barnamehNo ||
+    docOrFormData.bolNo ||
+    fallbackBolNumber ||
+    ""
+  ).trim()
+  if (isUUID(rawCandidate)) {
+    rawCandidate = (!isUUID(String(fallbackBolNumber || "")) ? fallbackBolNumber : "") || "BOL"
+  }
+  let bolNumber = rawCandidate
+  bolNumber = bolNumber
+    .replace(/[/\\:*?"<>|]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^[-.,\s]+|[-.,\s]+$/g, "")
+    .trim()
+    .toUpperCase()
+  if (!bolNumber) bolNumber = "BOL"
+
+  // Construct components in exact order requested by user:
+  // [Invoice No]-[Consignee Name]-[Quantity]-[Product/Particulars]-[Shipper Name]-[BOL Number]
+  const parts: string[] = [invNo, consignee, quantity, product, shipper, bolNumber].filter(Boolean)
 
   // Join parts with hyphen, ensuring clean file name
-  const rawFileName = parts.join("-").replace(/[/\\:*?"<>|]/g, "_").replace(/-+/g, "-").replace(/\s+/g, " ").trim()
+  const rawFileName = parts.join("-").replace(/[/\\:*?"<>|]/g, "_").replace(/-+/g, "-").trim()
   return extension ? (rawFileName.endsWith(extension) ? rawFileName : `${rawFileName}${extension}`) : rawFileName
 }
 

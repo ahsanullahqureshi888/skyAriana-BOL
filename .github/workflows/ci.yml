@@ -1,0 +1,88 @@
+name: AQ Companies — Production CI & Release Gates
+
+on:
+  push:
+    branches:
+      - main
+      - 'jules/**'
+      - 'release/**'
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-and-test:
+    name: Typecheck, Lint, Tests & Data Integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline
+
+      - name: 1. Strict TypeScript Validation
+        run: npm run typecheck
+
+      - name: 2. ESLint Static Analysis
+        run: npm run lint
+
+      - name: 3. Pre-Merge Data Integrity Audit
+        run: node scripts/verify-data-integrity.cjs
+
+      - name: 4. Core Automated Test Suite (479 Tests)
+        run: node --test --test-concurrency=1 tests/*.test.cjs
+
+      - name: 5. A4 Preview & Responsive Regression Tests
+        run: |
+          node --test tests/a4-preview-signature-block.test.cjs
+          node --test tests/responsive-layout-system.test.cjs
+          node --test tests/mojibake-regression.test.cjs
+          node --test tests/watermark-library.test.cjs
+
+  production-build:
+    name: Production Build Verification
+    needs: validate-and-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci --prefer-offline
+
+      - name: Next.js Optimized Production Build
+        run: npm run build
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: Upload Build Artifact Diagnostics on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-failure-diagnostics
+          path: |
+            .next/diagnostics
+            test-results/
+          retention-days: 7

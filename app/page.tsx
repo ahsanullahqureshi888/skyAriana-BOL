@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import { safeLazy, createSafeModule } from '@/lib/safe-lazy'
 import { AppProvider, useApp } from '@/lib/app-context'
 import { Header } from '@/components/header'
+import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import { LoginScreen } from '@/components/login-screen'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { ModuleErrorBoundary } from '@/components/system/module-error-boundary'
@@ -14,6 +15,8 @@ import { scheduleIdlePreloads } from '@/lib/startup/module-preloader'
 import { ModuleLoadingSkeleton } from '@/components/system/module-loading-skeleton'
 import { toast } from 'sonner'
 import { smartMergeLedgerRecords } from '@/lib/services/ledger-sync-utils'
+import { UiOverflowDetector } from '@/components/system/ui-overflow-detector'
+import { AppShell, MainWorkspace } from '@/components/layout'
 
 const BOLEditor = createSafeModule('Bill of Lading', () => import('@/components/bill-of-lading/bol-editor').then(m => m.BOLEditor))
 const AccountsView = createSafeModule('Customer Accounts', () => import('@/components/accounts-view').then(m => m.AccountsView))
@@ -73,17 +76,6 @@ function MainContent() {
 
   useEffect(() => {
     StartupMachine.getInstance().transition("READY")
-    if (process.env.NODE_ENV === 'production') {
-      scheduleIdlePreloads([
-        { key: 'bol', importer: () => import('@/components/bill-of-lading/bol-editor') },
-        { key: 'shipments', importer: () => import('@/components/control-tower/control-tower-view') },
-        { key: 'ledger', importer: () => import('@/components/ledger-view') },
-        { key: 'invoice', importer: () => import('@/components/invoice-view') },
-        { key: 'reports', importer: () => import('@/components/reports-view') },
-        { key: 'files', importer: () => import('@/components/files/file-center-workspace') },
-        { key: 'workflow', importer: () => import('@/components/workflow/workflow-workspace') },
-      ])
-    }
   }, [])
 
   useEffect(() => {
@@ -291,9 +283,14 @@ function MainContent() {
   const isBolView = !isShipper && (view === 'bol' || view === 'accounts' || view === 'companies' || view === 'ledger')
 
   return (
-    <div className="liquid-workspace min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-1 min-w-0">
+    <AppShell
+      header={<Header />}
+      footer={<MobileBottomNav />}
+    >
+      <MainWorkspace
+        fluid={isBolView || isShipper}
+        noPadding={isBolView}
+      >
         {isShipper ? (
           <div key="shipper-portal" className="animate-page-crossfade">
             <ModuleErrorBoundary moduleName="Shipper Portal">
@@ -303,7 +300,7 @@ function MainContent() {
         ) : (
           <>
             {isBolView && (
-              <div key="bol-editor" className="animate-page-crossfade">
+              <div key="bol-editor" className="animate-page-crossfade flex-1 flex flex-col min-h-0 h-full">
                 <ModuleErrorBoundary moduleName="Bill of Lading Workspace">
                   <BOLEditor accountLedgerPanel={ledgerPanel} />
                 </ModuleErrorBoundary>
@@ -406,7 +403,7 @@ function MainContent() {
               </div>
             )}
             {view === 'accounting' && (
-              <div key="accounting" className="animate-page-crossfade">
+              <div key="accounting" className="animate-page-crossfade w-full flex-1 flex flex-col min-h-0">
                 <ModuleErrorBoundary moduleName="Accounting Workspace">
                   <AccountingWorkspace />
                 </ModuleErrorBoundary>
@@ -581,8 +578,9 @@ function MainContent() {
             )}
           </>
         )}
-      </main>
-    </div>
+      </MainWorkspace>
+      <UiOverflowDetector />
+    </AppShell>
   )
 }
 

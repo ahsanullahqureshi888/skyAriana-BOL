@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import * as localStorage from "@/lib/services/local-storage-service"
 import { advanceBolSequenceIfHigher } from "@/lib/services/bol-sequence"
+import { getFastApiBaseUrl, isFastApiHealthy } from "@/lib/api/backend-url"
 
 const isUUID = (str?: string | null): boolean => {
   if (!str) return false
@@ -31,17 +32,50 @@ export async function GET(
 
   const { id } = await params
   
-  // 1. Ultra-fast FastAPI SQLite backend details lookup (<10ms)
+  // 1. Authoritative Full-Fidelity Local Storage Document Lookup
+  // .local-bols.json contains all 40+ form fields, notes, contacts, bilingual labels, and route stops
   try {
-    const fastUrl = `http://127.0.0.1:8000/api/v1/bols/${encodeURIComponent(id)}/details`
-    const fastRes = await fetch(fastUrl, {
-      signal: AbortSignal.timeout(600),
-      headers: { Accept: "application/json" },
-    })
-    if (fastRes.ok) {
-      const fastResult = await fastRes.json()
-      if (fastResult && fastResult.data) {
-        return NextResponse.json({ data: fastResult.data, source: "fastapi-sqlite" })
+    const localBol = await localStorage.getLocalBOL(id)
+    if (localBol && (localBol.bol_number || localBol.id)) {
+      // Background-enrich from FastAPI if healthy, but NEVER allow FastAPI's minimal schema to strip rich document fields
+      try {
+        if (await isFastApiHealthy()) {
+          const fastUrl = `${getFastApiBaseUrl()}/api/v1/bols/${encodeURIComponent(id)}/details`
+          const fastRes = await fetch(fastUrl, {
+            signal: AbortSignal.timeout(300),
+            headers: { Accept: "application/json" },
+          })
+          if (fastRes.ok) {
+            const fastResult = await fastRes.json()
+            if (fastResult?.data) {
+              const enriched = { ...localBol }
+              if (fastResult.data.revision) enriched.revision = fastResult.data.revision
+              if (fastResult.data.status) enriched.status = fastResult.data.status
+              return NextResponse.json({ data: enriched, source: "local-storage" })
+            }
+          }
+        }
+      } catch {}
+
+      return NextResponse.json({ data: localBol, source: "local-storage" })
+    }
+  } catch (err) {
+    console.warn("[bol/[id] API] Error reading localBol:", err)
+  }
+
+  // 2. Fallback: Ultra-fast FastAPI SQLite backend details lookup (<10ms)
+  try {
+    if (await isFastApiHealthy()) {
+      const fastUrl = `${getFastApiBaseUrl()}/api/v1/bols/${encodeURIComponent(id)}/details`
+      const fastRes = await fetch(fastUrl, {
+        signal: AbortSignal.timeout(600),
+        headers: { Accept: "application/json" },
+      })
+      if (fastRes.ok) {
+        const fastResult = await fastRes.json()
+        if (fastResult && fastResult.data) {
+          return NextResponse.json({ data: fastResult.data, source: "fastapi-sqlite" })
+        }
       }
     }
   } catch {
@@ -142,38 +176,53 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const targetBolNumber = body.bol_number || id
+    let targetBolNumber = (!isUUID(body.bol_number) ? body.bol_number : "") || (!isUUID(id) ? id : "")
+    if (!targetBolNumber) {
+      // Look up existing BOL to preserve its legitimate bol_number
+      const existing = await localStorage.getLocalBOL(id)
+      if (existing?.bol_number && !isUUID(existing.bol_number)) {
+        targetBolNumber = existing.bol_number
+      } else {
+        const { getNextAtomicBolNumber } = await import("@/lib/services/bol-sequence")
+        targetBolNumber = await getNextAtomicBolNumber()
+      }
+    }
 
     // Forward partial update with optimistic concurrency to FastAPI SQLite backend
     try {
-      const fastUrl = `http://127.0.0.1:8000/api/v1/bols/${encodeURIComponent(id)}`
-      const fastRes = await fetch(fastUrl, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          revision: body.revision || 1,
-          ...body,
-        }),
-        signal: AbortSignal.timeout(1200),
-      })
+      if (await isFastApiHealthy()) {
+        const fastUrl = `${getFastApiBaseUrl()}/api/v1/bols/${encodeURIComponent(id)}`
+        const fastRes = await fetch(fastUrl, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            revision: body.revision || 1,
+            ...body,
+            bol_number: targetBolNumber,
+          }),
+          signal: AbortSignal.timeout(1200),
+        })
 
-      if (fastRes.status === 409) {
-        const errJson = await fastRes.json().catch(() => ({}))
-        return NextResponse.json(
-          { error: errJson.detail || "This BOL was updated elsewhere. Refresh before saving." },
-          { status: 409 }
-        )
+        if (fastRes.status === 409) {
+          const errJson = await fastRes.json().catch(() => ({}))
+          return NextResponse.json(
+            { error: errJson.detail || "This BOL was updated elsewhere. Refresh before saving." },
+            { status: 409 }
+          )
+        }
       }
     } catch {
       // Fallback
     }
     
     // Always update local storage first
-    await localStorage.updateLocalBOL(id, body)
+    await localStorage.updateLocalBOL(id, { ...body, bol_number: targetBolNumber })
     if (targetBolNumber !== id) {
-      await localStorage.updateLocalBOL(targetBolNumber, body)
+      await localStorage.updateLocalBOL(targetBolNumber, { ...body, bol_number: targetBolNumber })
     }
-    await advanceBolSequenceIfHigher(targetBolNumber)
+    if (!isUUID(targetBolNumber)) {
+      await advanceBolSequenceIfHigher(targetBolNumber)
+    }
 
     let savedData = {
       id,
@@ -319,10 +368,12 @@ export async function DELETE(
 
     // Forward delete to FastAPI SQLite backend
     try {
-      await fetch(`http://127.0.0.1:8000/api/v1/bols/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        signal: AbortSignal.timeout(600),
-      })
+      if (await isFastApiHealthy()) {
+        await fetch(`${getFastApiBaseUrl()}/api/v1/bols/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          signal: AbortSignal.timeout(600),
+        })
+      }
     } catch {}
 
     // Also delete from local storage

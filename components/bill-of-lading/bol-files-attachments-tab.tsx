@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import {
   Folder,
   FolderOpen,
@@ -30,6 +30,7 @@ import type {
 } from "@/lib/types/shipment-file"
 import { FilePreviewModal } from "@/components/files/file-preview-modal"
 import { FileUploadModal } from "@/components/files/file-upload-modal"
+import { ShipmentFilesSkeleton } from "./shipment-files-skeleton"
 import { toast } from "sonner"
 
 interface BolFilesAttachmentsTabProps {
@@ -47,6 +48,7 @@ export function BolFilesAttachmentsTab({
 }: BolFilesAttachmentsTabProps) {
   const [folder, setFolder] = useState<DigitalShipmentFolder | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
+  const [isPreparingZip, setIsPreparingZip] = useState<boolean>(false)
   const [selectedFileForPreview, setSelectedFileForPreview] = useState<ShipmentFileRecord | null>(null)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false)
   const [selectedCategoryForUpload, setSelectedCategoryForUpload] = useState<DocumentCategoryCode>("SHIPPING")
@@ -69,6 +71,12 @@ export function BolFilesAttachmentsTab({
       const data = await res.json()
       if (data.success && data.folder) {
         setFolder(data.folder)
+        // Auto-collapse empty folders by default
+        const initialCollapseState: Record<string, boolean> = {}
+        data.folder.categories?.forEach((cat: { category_code: string; files: any[] }) => {
+          initialCollapseState[cat.category_code] = cat.files && cat.files.length > 0
+        })
+        setExpandedCategories(initialCollapseState)
       }
     } catch (err: any) {
       console.error("Failed to load shipment folder:", err)
@@ -85,18 +93,45 @@ export function BolFilesAttachmentsTab({
     setExpandedCategories((prev) => ({ ...prev, [code]: !prev[code] }))
   }
 
+  const existingFileNames = useMemo(() => {
+    if (!folder?.categories) return []
+    const names: string[] = []
+    folder.categories.forEach((cat) => {
+      cat.files.forEach((f) => {
+        if (f.file_name) names.push(f.file_name)
+        if (f.original_file_name) names.push(f.original_file_name)
+      })
+    })
+    return names
+  }, [folder])
+
   const handleDownloadZip = () => {
-    if (!bolNumber) return
-    window.open(`/api/files/package/${encodeURIComponent(bolNumber)}/zip?scope=all`, "_blank")
+    if (!bolNumber || isPreparingZip) return
+    setIsPreparingZip(true)
+    toast.info(`Preparing ZIP archive for ${bolNumber}...`, {
+      description: "Packaging shipment documents in the background.",
+      duration: 3500,
+    })
+    try {
+      const downloadUrl = `/api/files/package/${encodeURIComponent(bolNumber)}/zip?scope=all`
+      const a = document.createElement("a")
+      a.href = downloadUrl
+      a.download = `${bolNumber}_Documents.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => {
+        setIsPreparingZip(false)
+        toast.success("ZIP download initiated")
+      }, 1200)
+    } catch (e) {
+      setIsPreparingZip(false)
+      toast.error("Failed to start ZIP download")
+    }
   }
 
   if (loading && !folder) {
-    return (
-      <div className="py-12 flex flex-col items-center justify-center space-y-3">
-        <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
-        <p className="text-xs text-slate-500 font-bold">Opening digital shipment folder for {bolNumber}...</p>
-      </div>
-    )
+    return <ShipmentFilesSkeleton bolNumber={bolNumber} />
   }
 
   const checklist = folder?.checklist
@@ -141,8 +176,13 @@ export function BolFilesAttachmentsTab({
               )}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Consignee: <strong className="text-slate-700 dark:text-slate-300">{folder?.customer_name}</strong> • Total Attachments:{" "}
-              <strong>{folder?.total_files || 0}</strong>
+              Consignee:{" "}
+              <strong className="text-slate-700 dark:text-slate-300">
+                {(folder?.customer_name && folder.customer_name !== "Unassigned Customer")
+                  ? folder.customer_name
+                  : (consigneeName || folder?.customer_name || "Unassigned Customer")}
+              </strong>{" "}
+              • Total Attachments: <strong>{folder?.total_files || 0}</strong>
             </p>
           </div>
         </div>
@@ -152,11 +192,20 @@ export function BolFilesAttachmentsTab({
             size="sm"
             variant="outline"
             onClick={handleDownloadZip}
-            disabled={!folder || folder.total_files === 0}
+            disabled={!folder || folder.total_files === 0 || isPreparingZip}
             className="h-9 px-3.5 text-xs font-bold rounded-xl border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 cursor-pointer shadow-2xs gap-1.5"
           >
-            <Download className="h-3.5 w-3.5 text-blue-600" />
-            <span>Download All (ZIP)</span>
+            {isPreparingZip ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 text-blue-600 animate-spin" />
+                <span>Preparing ZIP...</span>
+              </>
+            ) : (
+              <>
+                <Download className="h-3.5 w-3.5 text-blue-600" />
+                <span>Download All (ZIP)</span>
+              </>
+            )}
           </Button>
 
           <Button
@@ -308,9 +357,14 @@ export function BolFilesAttachmentsTab({
                                   <p className="text-xs font-black text-slate-900 dark:text-slate-100 truncate group-hover:text-blue-600 transition-colors">
                                     {file.file_name}
                                   </p>
-                                  <span className="text-[10px] text-slate-400 font-mono">
-                                    v{file.version} • {Math.round(file.file_size / 1024)} KB
-                                  </span>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className="text-[9.5px] font-mono font-black px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                                      v{file.version || 1}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 font-mono">
+                                      {Math.round(file.file_size / 1024)} KB
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
 
@@ -369,6 +423,7 @@ export function BolFilesAttachmentsTab({
         defaultBolNumber={bolNumber}
         defaultContainerNumber={containerNumber}
         defaultCategory={selectedCategoryForUpload}
+        existingFileNames={existingFileNames}
         onUploadSuccess={loadFolder}
       />
     </div>

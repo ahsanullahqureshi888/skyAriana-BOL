@@ -149,7 +149,7 @@ class ShipmentCreate(ShipmentBase):
 class ShipmentResponse(ShipmentBase):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: str | int
     created_at: str
     updated_at: str
 

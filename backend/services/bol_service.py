@@ -6,9 +6,9 @@ from decimal import Decimal
 import re
 from typing import Any, List, Optional, Tuple
 from fastapi import HTTPException, status
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
 from backend.models.base import generate_uuid
 from backend.models.logistics import (
@@ -28,10 +28,12 @@ from backend.schemas.bol import (
     BOLListItem,
     BOLPatchRequest,
     BOLSaveResponse,
+    BOLSummary,
     ContainerSchema,
     DocumentMetadataSchema,
 )
 from backend.schemas.placeholders import BOLResponse
+from backend.services.cache_service import bol_sequence_cache, invalidate_bol_caches
 from backend.services.party_service import invalidate_recent_party_cache
 
 # Regex patterns for fast search routing
@@ -75,6 +77,11 @@ async def list_bols_paged(
     offset = (page - 1) * page_size
 
     clean_q = (q or "").strip()
+    cache_key = f"bol_paged:{page}:{page_size}:{clean_q}:{company_id}:{status_filter}:{date_from}:{date_to}:{shipper}:{consignee}:{notify_party}"
+    cached = bol_sequence_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
     filters = []
 
     # Apply indexed filters
@@ -154,7 +161,11 @@ async def list_bols_paged(
             BOLModel.revision,
             BOLModel.updated_at,
             BOLModel.company_id,
+            BOLModel.driver_rent,
+            BOLModel.cargo_description,
+            TruckModel.truck_number,
         )
+        .outerjoin(TruckModel, BOLModel.truck_id == TruckModel.id)
         .where(where_clause)
         .order_by(BOLModel.created_at.desc(), BOLModel.id.desc())
         .offset(offset)
@@ -186,138 +197,220 @@ async def list_bols_paged(
                 currency=r.currency or "USD",
                 updated_at=r.updated_at.isoformat() if r.updated_at else None,
                 revision=r.revision or 1,
+                truck_number=r.truck_number,
+                cargo_description=r.cargo_description,
                 number_of_packages=str(r.carton_count or 0),
                 gross_weight=str(r.gross_weight_kg or 0),
                 net_weight=str(r.net_weight_kg or 0),
-                driver_rent=str(r.freight_fee or 0),
+                driver_rent=str(r.driver_rent or 0),
             )
         )
 
     pages = (total + page_size - 1) // page_size if total > 0 else 1
-    return items, total, pages
+    result = (items, total, pages)
+    bol_sequence_cache.set(cache_key, result, ttl=15)
+    return result
+
+
+async def get_bol_summary(db: AsyncSession) -> BOLSummary:
+    """Aggregate KPI metrics (total BOLs, cartons, weight, goods value) computed at database level."""
+    cache_key = "bol_summary_kpis"
+    cached = bol_sequence_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    stmt = select(
+        func.count(BOLModel.id),
+        func.coalesce(func.sum(BOLModel.carton_count), 0),
+        func.coalesce(func.sum(BOLModel.gross_weight_kg), 0),
+        func.coalesce(func.sum(BOLModel.freight_fee), 0),
+    ).where(BOLModel.status != "deleted")
+
+    res = await db.execute(stmt)
+    row = res.fetchone()
+    total_bols = int(row[0] or 0) if row else 0
+    total_pkgs = int(row[1] or 0) if row else 0
+    total_wt = float(row[2] or 0.0) if row else 0.0
+    total_val = float(row[3] or 0.0) if row else 0.0
+
+    summary = BOLSummary(
+        total_bols=total_bols,
+        total_packages=total_pkgs,
+        total_weight=total_wt,
+        total_goods_value=total_val,
+    )
+    bol_sequence_cache.set(cache_key, summary, ttl=10)
+    return summary
+
+
+async def get_recent_bols(db: AsyncSession, limit: int = 6) -> List[BOLListItem]:
+    """Retrieve top recent lightweight BOLs without loading heavy notes or binaries."""
+    limit = max(1, min(limit, 20))
+    cache_key = f"bol_recent_{limit}"
+    cached = bol_sequence_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    items, _, _ = await list_bols_paged(db, page=1, page_size=limit)
+    bol_sequence_cache.set(cache_key, items, ttl=10)
+    return items
 
 
 async def get_bol_detail(db: AsyncSession, bol_id_or_number: str) -> BOLDetail:
     """Retrieve full detail for a single BOL (including cargo items, containers, linked docs metadata)."""
     clean_id = bol_id_or_number.strip()
-    stmt = (
-        select(BOLModel)
-        .where(or_(BOLModel.id == clean_id, BOLModel.bol_number == clean_id))
-        .options(
-            selectinload(BOLModel.items),
-            selectinload(BOLModel.containers),
-            selectinload(BOLModel.company),
-            selectinload(BOLModel.shipper),
-            selectinload(BOLModel.consignee),
-            selectinload(BOLModel.notify_party),
-            selectinload(BOLModel.driver),
-            selectinload(BOLModel.truck),
-            selectinload(BOLModel.documents),
-        )
-    )
-    res = await db.execute(stmt)
-    bol = res.scalar_one_or_none()
-    if not bol:
+    cached = bol_sequence_cache.get(f"bol_detail:{clean_id}")
+    if cached:
+        return cached
+
+    bol_sql = """
+        SELECT b.id, b.bol_number, b.issue_date, b.origin, b.destination, b.border_station,
+               b.driver_name, b.father_name, b.driver_rent, b.carton_count, b.gross_weight_kg,
+               b.net_weight_kg, b.cargo_description, b.status, b.freight_fee, b.demurrage_fee,
+               b.documentation_fee, b.currency, b.exchange_rate, b.company_id, b.shipper_id,
+               b.consignee_id, b.notify_party_id, b.driver_id, b.truck_id, b.revision,
+               b.created_at, b.updated_at,
+               c.company_name,
+               s.name as shipper_name,
+               cn.name as consignee_name,
+               np.name as notify_party_name,
+               d.phone as driver_phone,
+               tr.truck_number
+        FROM bol_records b
+        LEFT JOIN companies c ON b.company_id = c.id
+        LEFT JOIN shippers s ON b.shipper_id = s.id
+        LEFT JOIN consignees cn ON b.consignee_id = cn.id
+        LEFT JOIN notify_parties np ON b.notify_party_id = np.id
+        LEFT JOIN drivers d ON b.driver_id = d.id
+        LEFT JOIN trucks tr ON b.truck_id = tr.id
+        WHERE b.bol_number = :clean_id OR b.id = :clean_id
+        LIMIT 1;
+    """
+    bol_res = await db.execute(text(bol_sql), {"clean_id": clean_id})
+    row = bol_res.fetchone()
+    if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"BOL '{clean_id}' not found",
         )
 
-    # Cargo Items
+    bol_id = row[0]
+
+    # Sub items (items, containers, document metadata without heavy text blob)
+    items_sql = """
+        SELECT id, item_description, carton_count, gross_weight_kg, net_weight_kg, volume_cbm, package_type, commodity_id
+        FROM bol_items WHERE bol_id = :bid
+    """
+    cont_sql = """
+        SELECT id, container_number, container_type, seal_number, tare_weight_kg, max_payload_kg, status
+        FROM containers WHERE bol_id = :bid
+    """
+    docs_sql = """
+        SELECT id, title, document_type, file_size, mime_type, created_at
+        FROM documents WHERE bol_id = :bid
+    """
+    items_rows = (await db.execute(text(items_sql), {"bid": bol_id})).fetchall()
+    cont_rows = (await db.execute(text(cont_sql), {"bid": bol_id})).fetchall()
+    docs_rows = (await db.execute(text(docs_sql), {"bid": bol_id})).fetchall()
+
     items_list = [
         BOLItemSchema(
-            id=item.id,
-            item_description=item.item_description,
-            carton_count=item.carton_count,
-            gross_weight_kg=float(item.gross_weight_kg or 0),
-            net_weight_kg=float(item.net_weight_kg or 0),
-            volume_cbm=float(item.volume_cbm or 0),
-            package_type=item.package_type,
-            commodity_id=item.commodity_id,
+            id=ir[0],
+            item_description=ir[1] or "",
+            carton_count=ir[2] or 0,
+            gross_weight_kg=float(ir[3] or 0),
+            net_weight_kg=float(ir[4] or 0),
+            volume_cbm=float(ir[5] or 0),
+            package_type=ir[6] or "cartons",
+            commodity_id=ir[7],
         )
-        for item in bol.items
+        for ir in items_rows
     ]
 
-    # Containers
     containers_list = [
         ContainerSchema(
-            id=c.id,
-            container_number=c.container_number,
-            container_type=c.container_type,
-            seal_number=c.seal_number,
-            tare_weight_kg=float(c.tare_weight_kg or 0),
-            max_payload_kg=float(c.max_payload_kg or 0),
-            status=c.status,
+            id=cr[0],
+            container_number=cr[1] or "",
+            container_type=cr[2] or "40HC",
+            seal_number=cr[3],
+            tare_weight_kg=float(cr[4] or 0),
+            max_payload_kg=float(cr[5] or 0),
+            status=cr[6] or "active",
         )
-        for c in bol.containers
+        for cr in cont_rows
     ]
 
-    # Document Metadata only (no PDF blobs, Section 31)
     docs_metadata = [
         DocumentMetadataSchema(
-            id=doc.id,
-            title=doc.title,
-            document_type=doc.document_type,
-            file_size_bytes=getattr(doc, "file_size", getattr(doc, "file_size_bytes", 0)) or 0,
-            mime_type=doc.mime_type,
-            created_at=doc.created_at.isoformat() if doc.created_at else None,
+            id=dr[0],
+            title=dr[1],
+            document_type=dr[2],
+            file_size_bytes=dr[3] or 0,
+            mime_type=dr[4] or "application/pdf",
+            created_at=str(dr[5]) if dr[5] else None,
         )
-        for doc in bol.documents
+        for dr in docs_rows
     ]
 
-    container_nums = ", ".join(c.container_number for c in bol.containers if c.container_number) if bol.containers else None
-    seal_nums = ", ".join(c.seal_number for c in bol.containers if c.seal_number) if bol.containers else None
+    container_nums = ", ".join(c.container_number for c in containers_list if c.container_number) if containers_list else None
+    seal_nums = ", ".join(c.seal_number for c in containers_list if c.seal_number) if containers_list else None
     routes_list = [
-        {"from": bol.origin or "Origin", "to": bol.border_station or "Border", "mode": "road", "status": "completed"},
-        {"from": bol.border_station or "Border", "to": bol.destination or "Destination", "mode": "road", "status": "pending"},
-    ] if (bol.origin or bol.border_station or bol.destination) else []
+        {"from": row[3] or "Origin", "to": row[5] or "Border", "mode": "road", "status": "completed"},
+        {"from": row[5] or "Border", "to": row[4] or "Destination", "mode": "road", "status": "pending"},
+    ] if (row[3] or row[5] or row[4]) else []
 
-    return BOLDetail(
-        id=bol.id,
-        bol_number=bol.bol_number,
-        issue_date=bol.issue_date.isoformat() if bol.issue_date else None,
-        origin=bol.origin,
-        destination=bol.destination,
-        border_station=bol.border_station,
-        driver_name=bol.driver_name,
-        father_name=bol.father_name,
-        driver_rent=float(bol.driver_rent or 0),
-        carton_count=bol.carton_count or 0,
-        gross_weight_kg=float(bol.gross_weight_kg or 0),
-        net_weight_kg=float(bol.net_weight_kg or 0),
-        cargo_description=bol.cargo_description,
-        status=bol.status,
-        freight_fee=float(bol.freight_fee or 0),
-        demurrage_fee=float(bol.demurrage_fee or 0),
-        documentation_fee=float(bol.documentation_fee or 0),
-        currency=bol.currency or "USD",
-        exchange_rate=float(bol.exchange_rate or 1.0),
-        company_id=bol.company_id,
-        company_name=bol.company.company_name if bol.company else None,
-        shipper_id=bol.shipper_id,
-        shipper_name=bol.shipper_name or (bol.shipper.name if bol.shipper else None),
-        consignee_id=bol.consignee_id,
-        consignee_name=bol.consignee_name or (bol.consignee.name if bol.consignee else None),
-        notify_party_id=bol.notify_party_id,
-        notify_party_name=bol.notify_party_name or (bol.notify_party.name if bol.notify_party else None),
-        truck_number=bol.truck.truck_number if bol.truck else None,
-        driver_phone=bol.driver.phone if bol.driver else None,
-        number_of_packages=str(bol.carton_count or 0),
-        gross_weight=str(bol.gross_weight_kg or 0),
-        net_weight=str(bol.net_weight_kg or 0),
-        driver_father_name=bol.father_name,
-        notify_party=bol.notify_party_name or (bol.notify_party.name if bol.notify_party else None),
-        driver_contact=bol.driver.phone if bol.driver else None,
+    detail = BOLDetail(
+        id=row[0],
+        bol_number=row[1],
+        issue_date=str(row[2])[:10] if row[2] else None,
+        origin=row[3] or "",
+        destination=row[4] or "",
+        border_station=row[5] or "",
+        driver_name=row[6] or "",
+        father_name=row[7],
+        driver_rent=float(row[8] or 0),
+        carton_count=row[9] or 0,
+        gross_weight_kg=float(row[10] or 0),
+        net_weight_kg=float(row[11] or 0),
+        cargo_description=row[12],
+        status=row[13] or "draft",
+        freight_fee=float(row[14] or 0),
+        demurrage_fee=float(row[15] or 0),
+        documentation_fee=float(row[16] or 0),
+        currency=row[17] or "USD",
+        exchange_rate=float(row[18] or 1.0),
+        company_id=row[19],
+        company_name=row[28],
+        shipper_id=row[20],
+        shipper_name=row[29],
+        consignee_id=row[21],
+        consignee_name=row[30],
+        notify_party_id=row[22],
+        notify_party_name=row[31],
+        truck_number=row[33],
+        driver_phone=row[32],
+        number_of_packages=str(row[9] or 0),
+        gross_weight=str(row[10] or 0),
+        net_weight=str(row[11] or 0),
+        driver_father_name=row[7],
+        notify_party=row[31],
+        driver_contact=row[32],
         container_numbers=container_nums,
         seal_numbers=seal_nums,
         routes=routes_list,
         items=items_list,
         containers=containers_list,
         linked_documents=docs_metadata,
-        revision=bol.revision or 1,
-        created_at=bol.created_at.isoformat() if bol.created_at else None,
-        updated_at=bol.updated_at.isoformat() if bol.updated_at else None,
+        revision=row[25] or 1,
+        created_at=str(row[26]) if row[26] else None,
+        updated_at=str(row[27]) if row[27] else None,
     )
+    bol_sequence_cache.set(f"bol_detail:{clean_id}", detail, ttl=60)
+    if detail.id:
+        bol_sequence_cache.set(f"bol_detail:{detail.id}", detail, ttl=60)
+    if detail.bol_number:
+        bol_sequence_cache.set(f"bol_detail:{detail.bol_number}", detail, ttl=60)
+    return detail
 
 
 async def patch_bol(
@@ -381,6 +474,8 @@ async def patch_bol(
             )
 
     await db.commit()
+    invalidate_bol_caches(bol.bol_number)
+    invalidate_bol_caches(bol.id)
     await db.refresh(bol)
 
     return BOLSaveResponse(
@@ -461,6 +556,8 @@ async def duplicate_bol(
         )
 
     await db.commit()
+    invalidate_bol_caches(new_bol_number.strip())
+    invalidate_bol_caches(new_id)
     invalidate_recent_party_cache()
 
     return BOLSaveResponse(
@@ -489,15 +586,42 @@ async def create_bol_atomic(
     new_id = generate_uuid()
 
     try:
+        parsed_issue_date = None
+        if payload.issue_date:
+            try:
+                parsed_issue_date = datetime.datetime.fromisoformat(payload.issue_date.replace("Z", "+00:00"))
+            except Exception:
+                try:
+                    parsed_issue_date = datetime.datetime.strptime(payload.issue_date[:10], "%Y-%m-%d")
+                except Exception:
+                    pass
+
+        truck_id = None
+        if payload.truck_number and payload.truck_number.strip():
+            clean_truck = payload.truck_number.strip()
+            truck_stmt = select(TruckModel).where(TruckModel.truck_number == clean_truck)
+            truck_obj = (await db.execute(truck_stmt)).scalar_one_or_none()
+            if not truck_obj:
+                truck_obj = TruckModel(
+                    id=generate_uuid(),
+                    truck_number=clean_truck,
+                    driver_name=payload.driver_name,
+                )
+                db.add(truck_obj)
+                await db.flush()
+            truck_id = truck_obj.id
+
         new_bol = BOLModel(
             id=new_id,
             bol_number=clean_num,
+            issue_date=parsed_issue_date or now,
             origin=payload.origin,
             destination=payload.destination,
             border_station=payload.border_station,
             driver_name=payload.driver_name,
             father_name=payload.father_name,
             driver_rent=Decimal(str(payload.driver_rent)),
+            truck_id=truck_id,
             carton_count=payload.carton_count,
             gross_weight_kg=Decimal(str(payload.gross_weight_kg)),
             net_weight_kg=Decimal(str(payload.net_weight_kg)),
@@ -548,6 +672,8 @@ async def create_bol_atomic(
             )
 
         await db.commit()
+        invalidate_bol_caches(new_bol.bol_number)
+        invalidate_bol_caches(new_bol.id)
         await db.refresh(new_bol)
         invalidate_recent_party_cache()
     except Exception as exc:

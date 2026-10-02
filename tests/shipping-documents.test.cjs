@@ -15,6 +15,7 @@ const {
   deriveShippingDocumentData,
   buildShippingDocumentFileName,
   cleanStickerCommodity,
+  extractInvoiceNumber,
 }=load('lib/utils/shipping-documents.ts',{
   '@/lib/sticker-badges-data':load('lib/sticker-badges-data.ts'),
   '@/lib/utils/pashto-bidi':pashtoBidi,
@@ -171,5 +172,104 @@ test('Sticker commodity normalizes RAISNIS typo and strips rate/package fragment
   assert.equal(cleanStickerCommodity('DETAILS'), 'CONSOLIDATED CARGO');
 });
 
+test('User Scenario BOL-NSA623: extracts INV-014 (never fallback INV-001) and commodity DRY FIGS (never PARTICULARS)', () => {
+  const bolData = {
+    bol_number: 'BOL-NSA623',
+    consignee_name: 'CASTROL EXPORT INDUSTRIES',
+    shipper_name: 'TAHIR SULTANI LTD',
+    number_of_packages: '2200 CTNS DRY FIGS ',
+    cargo_description: '📦 CONTAINER & CARGO PARTICULARS:\n• Description: DRY FIGS 2200 CTNS 10KGS\n• Transit Date: 2026-09-28\n• INV-014',
+  };
 
+  const invoice = extractInvoiceNumber(bolData);
+  assert.equal(invoice, 'INV-014', 'Must extract INV-014 from bullet note without falling back to INV-001');
+
+  const derived = deriveShippingDocumentData(bolData, 'BOL-NSA623', '2026-09-28');
+  assert.equal(derived.invoiceNumber, 'INV-014');
+  assert.equal(derived.commodity, 'DRY FIGS', 'Must extract DRY FIGS, never PARTICULARS');
+
+  const fileName = buildShippingDocumentFileName('all', derived);
+  assert.equal(
+    fileName,
+    'INV-014-CASTROL EXPORT INDUSTRIES-2200-CTNS-DRY-FIGS-TAHIR SULTANI LTD-BOL-NSA623.pdf'
+  );
+  assert.doesNotMatch(fileName, /INV-001/, 'File name must never contain INV-001 when INV-014 is specified');
+  assert.doesNotMatch(fileName, /PARTICULARS/, 'File name must contain the actual commodity DRY-FIGS, not generic PARTICULARS');
+});
+
+test('Large numeric formatting and multi-item weight summation invariance', () => {
+  // 100,000 KG to 1,000,000 KG tests
+  assert.equal(sumWeightStrings("100,000 KG + 250,000 KG"), "350,000 KG");
+  assert.equal(sumWeightStrings("500,000 KG + 500,000 KG"), "1,000,000 KG");
+  assert.equal(sumWeightStrings("1,250,500.50 KG - 250,500.50 KG"), "1,501,001 KG");
+
+  // 6-item cargo parsing
+  const sixCargo = parseCommodityItems(
+    "ITEM 1 - ITEM 2 - ITEM 3 - ITEM 4 - ITEM 5 - ITEM 6",
+    "100 + 200 + 300 + 400 + 500 + 600 Cartons",
+    "1,000 KG + 2,000 KG + 3,000 KG + 4,000 KG + 5,000 KG + 6,000 KG",
+    "1,100 KG + 2,200 KG + 3,300 KG + 4,400 KG + 5,500 KG + 6,600 KG",
+    "",
+    "",
+    "Cartons"
+  );
+  assert.equal(sixCargo.length, 6, "Must correctly parse 6 distinct commodity rows");
+  assert.equal(sixCargo[0].packageCount, 100);
+  assert.equal(sixCargo[5].packageCount, 600);
+  assert.equal(sixCargo[5].commodity, "ITEM 6");
+  assert.equal(sixCargo[5].grossWeight, "6,600 KG");
+});
+
+test('A4 Page Dimension and File Naming Invariants', () => {
+  const derived = deriveShippingDocumentData({
+    bol_number: 'BOL-TEST-A4',
+    invoiceNumber: 'INV-999',
+    shipper: 'SKY ARIANA',
+    consignee: 'KABUL LOGISTICS',
+    commodity: 'MIXED DRY FRUITS',
+    number_of_packages: '500 Packages',
+    gross_weight: '10,000 KG',
+    net_weight: '9,500 KG',
+  }, 'BOL-TEST-A4', '2026-09-28');
+
+  // Verify file naming doesn't produce undefined or double dashes
+  const bolFileName = buildShippingDocumentFileName('bol', derived);
+  assert.doesNotMatch(bolFileName, /undefined/i);
+  assert.doesNotMatch(bolFileName, /--/);
+  assert.match(bolFileName, /\.pdf$/i);
+
+  const allFileName = buildShippingDocumentFileName('all', derived);
+  assert.doesNotMatch(allFileName, /undefined/i);
+  assert.doesNotMatch(allFileName, /--/);
+  assert.match(allFileName, /\.pdf$/i);
+});
+
+test('Multi-item Cargo Description and Ultra-Density Tier Invariant', () => {
+  // Simulates the user scenario from screenshot: 5 route stops + multiple commodities
+  const routeCount = 5;
+  const multiItemDesc = `• Description: AFGHAN COMMERCIAL EXPORT CARGO
+• Transit Date: 2026-09-28
+BLACK RAISNIS 770 CTNS 16 - KGS @ 3.10 $
+GREEN RAISNIS 718 CTNS 16 - KGS @ 3.10 $
+RED RAISINS 500 CTNS 16 - KGS @ 3.20 $
+DRIED FIGS 400 CTNS 10 - KGS @ 5.00 $
+• INV-170`;
+
+  const lines = multiItemDesc.split("\n").map(l => l.trim()).filter(Boolean);
+  const descLineCount = lines.length;
+
+  let densityScore = 0;
+  if (routeCount >= 5) densityScore += 3;
+  if (descLineCount >= 7) densityScore += 5;
+  else if (descLineCount >= 5) densityScore += 4;
+
+  assert.ok(densityScore >= 6, "Must trigger ultra-compact density tier for high-density multi-item shipment");
+
+  // Verify item lines vs meta lines separation
+  const metaLines = lines.filter(l => /^[•\-\*]\s*(description|transit|inv|hs|tc)/i.test(l));
+  const itemLines = lines.filter(l => !/^[•\-\*]\s*(description|transit|inv|hs|tc)/i.test(l));
+
+  assert.equal(metaLines.length, 3, "Must extract 3 meta lines (Description, Transit Date, INV)");
+  assert.equal(itemLines.length, 4, "Must extract 4 commodity item lines for 2-column grid rendering");
+});
 

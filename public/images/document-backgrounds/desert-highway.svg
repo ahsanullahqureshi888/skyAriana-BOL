@@ -6,83 +6,156 @@
       <feGaussianBlur stdDeviation="1.5" result="blur" />
       <feComposite in="SourceGraphic" in2="blur" operator="over" />
     </filter>
+    <linearGradient id="primary-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b45309" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#d97706" stop-opacity="0.5" />
+    </linearGradient>
+    <linearGradient id="fade-down" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#b45309" stop-opacity="0.7" />
+      <stop offset="100%" stop-color="#d97706" stop-opacity="0.1" />
+    </linearGradient>
   </defs>
-  <!-- Transparent Base: Preserves Pristine Document Paper Legibility -->
-  <g transform="translate(80,80)"><circle cx="0" cy="0" r="40" fill="none" stroke="#92400e" stroke-width="0.8" opacity="0.45" /><circle cx="20.0" cy="0.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="0.0" cy="20.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-20.0" cy="0.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="-10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="-17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-0.0" cy="-20.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="-17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="-10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /></g><g transform="translate(820,80)"><circle cx="0" cy="0" r="40" fill="none" stroke="#92400e" stroke-width="0.8" opacity="0.45" /><circle cx="20.0" cy="0.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="0.0" cy="20.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-20.0" cy="0.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="-10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="-17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-0.0" cy="-20.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="-17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="-10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /></g><g transform="translate(80,1320)"><circle cx="0" cy="0" r="40" fill="none" stroke="#92400e" stroke-width="0.8" opacity="0.45" /><circle cx="20.0" cy="0.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="0.0" cy="20.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-20.0" cy="0.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="-10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="-17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-0.0" cy="-20.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="-17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="-10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /></g><g transform="translate(820,1320)"><circle cx="0" cy="0" r="40" fill="none" stroke="#92400e" stroke-width="0.8" opacity="0.45" /><circle cx="20.0" cy="0.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="0.0" cy="20.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-20.0" cy="0.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="-10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="-17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="-0.0" cy="-20.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="-17.3" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="-10.0" r="20.0" fill="none" stroke="#92400e" stroke-width="0.6" opacity="0.32" /></g>
-    <g fill="none" stroke="#92400e" opacity="0.45">
-      <rect x="25" y="25" width="850" height="1350" rx="6" stroke-width="1.2" />
-      <rect x="33" y="33" width="834" height="1334" rx="4" stroke-width="0.6" stroke-dasharray="4 3" />
-      <!-- Corner Tick Brackets -->
-      <path d="M20,50 L20,20 L50,20" stroke-width="1.5" />
-      <path d="M880,50 L880,20 L850,20" stroke-width="1.5" />
-      <path d="M20,1350 L20,1380 L50,1380" stroke-width="1.5" />
-      <path d="M880,1350 L880,1380 L850,1380" stroke-width="1.5" />
-      <!-- Micro-line Security Text -->
-      <text x="450" y="21" font-family="Arial, sans-serif" font-size="7" font-weight="bold" letter-spacing="3" text-anchor="middle" fill="#92400e" opacity="0.6">★ SKY ARIANA LOGISTICS · OFFICIAL MULTI-MODAL BILL OF LADING SECURITY SYSTEM ★</text>
-      <text x="450" y="1390" font-family="Arial, sans-serif" font-size="7" font-weight="bold" letter-spacing="3" text-anchor="middle" fill="#92400e" opacity="0.6">★ INTERNATIONAL LOGISTICS SECURITY WATERMARK · VERIFIED CARGO NETWORK ★</text>
+  
+  <!-- Security Document Outer Border & Fine Calibrated Grid -->
+  <g fill="none" stroke="#b45309">
+    <!-- Primary Outer Frame -->
+    <rect x="24" y="24" width="852" height="1352" rx="4" stroke-width="1.5" opacity="0.65" />
+    <rect x="32" y="32" width="836" height="1336" rx="2" stroke-width="0.7" stroke-dasharray="5 3" opacity="0.5" />
+    <rect x="42" y="42" width="816" height="1316" stroke-width="0.5" opacity="0.3" />
+
+    <!-- Corner Alignment Crosshairs -->
+    <path d="M16,40 L16,16 L40,16" stroke-width="2" opacity="0.8" />
+    <path d="M884,40 L884,16 L860,16" stroke-width="2" opacity="0.8" />
+    <path d="M16,1360 L16,1384 L40,1384" stroke-width="2" opacity="0.8" />
+    <path d="M884,1360 L884,1384 L860,1384" stroke-width="2" opacity="0.8" />
+
+    <!-- Top & Bottom Micro-Text Security Banners -->
+    <text x="450" y="20" font-family="Arial, sans-serif" font-size="7.5" font-weight="bold" letter-spacing="4" text-anchor="middle" fill="#b45309" opacity="0.75">★ SKY ARIANA LOGISTICS · OFFICIAL MULTI-MODAL BILL OF LADING SECURITY SYSTEM ★</text>
+    <text x="450" y="1390" font-family="Arial, sans-serif" font-size="7.5" font-weight="bold" letter-spacing="4" text-anchor="middle" fill="#b45309" opacity="0.75">★ AUTHENTIC SECURE CARGO WAYBILL · VERIFIED INTERNATIONAL TRANSIT NETWORK ★</text>
+
+    <!-- Side Margin Degree & Metric Ticks -->
+    <g opacity="0.4" stroke-width="0.6">
+      <line x1="20" y1="350" x2="28" y2="350" /><line x1="20" y1="700" x2="30" y2="700" stroke-width="1.2" /><line x1="20" y1="1050" x2="28" y2="1050" />
+      <line x1="872" y1="350" x2="880" y2="350" /><line x1="870" y1="700" x2="880" y2="700" stroke-width="1.2" /><line x1="872" y1="1050" x2="880" y2="1050" />
+      <line x1="225" y1="20" x2="225" y2="28" /><line x1="450" y1="18" x2="450" y2="30" stroke-width="1.2" /><line x1="675" y1="20" x2="675" y2="28" />
+      <line x1="225" y1="1372" x2="225" y2="1380" /><line x1="450" y1="1370" x2="450" y2="1382" stroke-width="1.2" /><line x1="675" y1="1372" x2="675" y2="1380" />
     </g>
-  <g fill="none" stroke="#92400e" stroke-linecap="round"><path d="M -60,627.9611725790168 Q -17.5,508.5 25.0,533.5 Q 67.5,649.8 110.0,624.8 Q 152.5,685.5 195.0,710.5 Q 237.5,795.9 280.0,770.9 Q 322.5,767.5 365.0,792.5 Q 407.5,796.0 450.0,771.0 Q 492.5,687.1 535.0,712.1 Q 577.5,655.2 620.0,630.2 Q 662.5,519.8 705.0,544.8 Q 747.5,500.7 790.0,475.7 Q 832.5,413.0 875.0,438.0 Q 917.5,464.2 960.0,439.2" stroke-width="1.4" opacity="0.6" stroke-dasharray="none" /><rect x="676" y="582" width="58" height="14" fill="#ffffff" opacity="0.8" rx="2" /><text x="680" y="593" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#92400e" opacity="0.8">4,450 M</text><path d="M -60,707.9611725790168 Q -17.5,444.1 25.0,469.1 Q 67.5,535.2 110.0,510.2 Q 152.5,553.3 195.0,578.3 Q 237.5,687.7 280.0,662.7 Q 322.5,724.9 365.0,749.9 Q 407.5,850.8 450.0,825.8 Q 492.5,853.5 535.0,878.5 Q 577.5,924.8 620.0,899.8 Q 662.5,861.5 705.0,886.5 Q 747.5,866.5 790.0,841.5 Q 832.5,747.4 875.0,772.4 Q 917.5,716.0 960.0,691.0" stroke-width="0.7" opacity="0.35" stroke-dasharray="none" /><path d="M -60,787.9611725790168 Q -17.5,758.2 25.0,783.2 Q 67.5,907.3 110.0,882.3 Q 152.5,923.8 195.0,948.8 Q 237.5,990.1 280.0,965.1 Q 322.5,902.9 365.0,927.9 Q 407.5,873.4 450.0,848.4 Q 492.5,723.9 535.0,748.9 Q 577.5,681.8 620.0,656.8 Q 662.5,571.6 705.0,596.6 Q 747.5,608.1 790.0,583.1 Q 832.5,592.3 875.0,617.3 Q 917.5,712.2 960.0,687.2" stroke-width="1.4" opacity="0.6" stroke-dasharray="none" /><rect x="496" y="742" width="58" height="14" fill="#ffffff" opacity="0.8" rx="2" /><text x="500" y="753" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#92400e" opacity="0.8">3,200 M</text><path d="M -60,867.9611725790168 Q -17.5,644.4 25.0,669.4 Q 67.5,779.1 110.0,754.1 Q 152.5,830.3 195.0,855.3 Q 237.5,978.6 280.0,953.6 Q 322.5,1005.0 365.0,1030.0 Q 407.5,1094.9 450.0,1069.9 Q 492.5,1041.1 535.0,1066.1 Q 577.5,1045.1 620.0,1020.1 Q 662.5,916.6 705.0,941.6 Q 747.5,871.5 790.0,846.5 Q 832.5,728.8 875.0,753.8 Q 917.5,706.4 960.0,681.4" stroke-width="0.7" opacity="0.35" stroke-dasharray="none" /><path d="M -60,947.9611725790168 Q -17.5,828.5 25.0,853.5 Q 67.5,969.8 110.0,944.8 Q 152.5,1005.5 195.0,1030.5 Q 237.5,1115.9 280.0,1090.9 Q 322.5,1087.5 365.0,1112.5 Q 407.5,1116.0 450.0,1091.0 Q 492.5,1007.1 535.0,1032.1 Q 577.5,975.2 620.0,950.2 Q 662.5,839.8 705.0,864.8 Q 747.5,820.7 790.0,795.7 Q 832.5,733.0 875.0,758.0 Q 917.5,784.2 960.0,759.2" stroke-width="1.4" opacity="0.6" stroke-dasharray="none" /><rect x="316" y="902" width="58" height="14" fill="#ffffff" opacity="0.8" rx="2" /><text x="320" y="913" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#92400e" opacity="0.8">2,100 M</text><path d="M -60,1027.9611725790169 Q -17.5,1072.7 25.0,1097.7 Q 67.5,1187.4 110.0,1162.4 Q 152.5,1152.3 195.0,1177.3 Q 237.5,1163.8 280.0,1138.8 Q 322.5,1035.1 365.0,1060.1 Q 407.5,991.7 450.0,966.7 Q 492.5,863.1 535.0,888.1 Q 577.5,873.1 620.0,848.1 Q 662.5,831.9 705.0,856.9 Q 747.5,934.0 790.0,909.0 Q 832.5,959.9 875.0,984.9 Q 917.5,1083.4 960.0,1058.4" stroke-width="0.7" opacity="0.35" stroke-dasharray="none" /><path d="M -60,1107.9611725790169 Q -17.5,896.8 25.0,921.8 Q 67.5,977.7 110.0,952.7 Q 152.5,978.8 195.0,1003.8 Q 237.5,1092.0 280.0,1067.0 Q 322.5,1107.4 365.0,1132.4 Q 407.5,1214.4 450.0,1189.4 Q 492.5,1203.9 535.0,1228.9 Q 577.5,1269.8 620.0,1244.8 Q 662.5,1209.9 705.0,1234.9 Q 747.5,1226.1 790.0,1201.1 Q 832.5,1124.3 875.0,1149.3 Q 917.5,1113.3 960.0,1088.3" stroke-width="1.4" opacity="0.6" stroke-dasharray="none" /><rect x="636" y="1062" width="58" height="14" fill="#ffffff" opacity="0.8" rx="2" /><text x="640" y="1073" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#92400e" opacity="0.8">1,200 M</text><path d="M -60,1187.9611725790169 Q -17.5,1082.7 25.0,1107.7 Q 67.5,1204.5 110.0,1179.5 Q 152.5,1221.8 195.0,1246.8 Q 237.5,1319.3 280.0,1294.3 Q 322.5,1286.3 365.0,1311.3 Q 407.5,1319.3 450.0,1294.3 Q 492.5,1223.0 535.0,1248.0 Q 577.5,1208.7 620.0,1183.7 Q 662.5,1091.6 705.0,1116.6 Q 747.5,1087.3 790.0,1062.3 Q 832.5,1007.7 875.0,1032.7 Q 917.5,1058.7 960.0,1033.7" stroke-width="0.7" opacity="0.35" stroke-dasharray="none" />
-      <g transform="translate(344,520)" opacity="0.75">
-        <polygon points="0,-16 -12,8 12,8" fill="none" stroke="#92400e" stroke-width="1.2" />
-        <circle cx="0" cy="0" r="2.5" fill="#92400e" />
-        <text x="0" y="24" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#92400e" text-anchor="middle">MT. PAMIR 4,450 M</text>
-      </g>
-    
-      <g transform="translate(596,480)" opacity="0.75">
-        <polygon points="0,-16 -12,8 12,8" fill="none" stroke="#92400e" stroke-width="1.2" />
-        <circle cx="0" cy="0" r="2.5" fill="#92400e" />
-        <text x="0" y="24" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#92400e" text-anchor="middle">HINDU KUSH 5,120 M</text>
-      </g>
-    </g><g stroke="#92400e"><path d="M-40,1150 Q274,850 474,650 T940,320" fill="none" stroke-width="4" stroke-opacity="0.15" /><path d="M-40,1150 Q274,850 474,650 T940,320" fill="none" stroke-width="1.6" stroke-dasharray="10 8" stroke-opacity="0.75" /><path d="M-40,1220 Q224,920 514,730 T940,420" fill="none" stroke-width="1" stroke-dasharray="3 4" stroke-opacity="0.5" />
-      <g transform="translate(144,1040)">
-        <circle cx="0" cy="0" r="14" fill="none" stroke-width="0.8" stroke-dasharray="3 3" opacity="0.5" />
-        <circle cx="0" cy="0" r="6" fill="#92400e" fill-opacity="0.2" stroke-width="1.2" opacity="0.8" />
-        <circle cx="0" cy="0" r="2.5" fill="#92400e" opacity="0.9" />
-        <rect x="18" y="-14" width="165" height="26" fill="#ffffff" fill-opacity="0.8" rx="3" stroke="#92400e" stroke-width="0.6" opacity="0.6" />
-        <text x="24" y="-2" font-family="Arial, sans-serif" font-size="8.5" font-weight="bold" fill="#92400e" opacity="0.9">TORGHUNDI BORDER STATION</text>
-        <text x="24" y="9" font-family="Arial, sans-serif" font-size="7.5" font-weight="bold" fill="#92400e" opacity="0.6">TRG-01 · INTERMODAL ROUTE</text>
-      </g>
-    
-      <g transform="translate(334,840)">
-        <circle cx="0" cy="0" r="14" fill="none" stroke-width="0.8" stroke-dasharray="3 3" opacity="0.5" />
-        <circle cx="0" cy="0" r="6" fill="#92400e" fill-opacity="0.2" stroke-width="1.2" opacity="0.8" />
-        <circle cx="0" cy="0" r="2.5" fill="#92400e" opacity="0.9" />
-        <rect x="18" y="-14" width="165" height="26" fill="#ffffff" fill-opacity="0.8" rx="3" stroke="#92400e" stroke-width="0.6" opacity="0.6" />
-        <text x="24" y="-2" font-family="Arial, sans-serif" font-size="8.5" font-weight="bold" fill="#92400e" opacity="0.9">ISLAM QALA CUSTOMS TERMINAL</text>
-        <text x="24" y="9" font-family="Arial, sans-serif" font-size="7.5" font-weight="bold" fill="#92400e" opacity="0.6">ISQ-02 · INTERMODAL ROUTE</text>
-      </g>
-    
-      <g transform="translate(544,640)">
-        <circle cx="0" cy="0" r="14" fill="none" stroke-width="0.8" stroke-dasharray="3 3" opacity="0.5" />
-        <circle cx="0" cy="0" r="6" fill="#92400e" fill-opacity="0.2" stroke-width="1.2" opacity="0.8" />
-        <circle cx="0" cy="0" r="2.5" fill="#92400e" opacity="0.9" />
-        <rect x="18" y="-14" width="165" height="26" fill="#ffffff" fill-opacity="0.8" rx="3" stroke="#92400e" stroke-width="0.6" opacity="0.6" />
-        <text x="24" y="-2" font-family="Arial, sans-serif" font-size="8.5" font-weight="bold" fill="#92400e" opacity="0.9">SALANG HIGHWAY CORRIDOR</text>
-        <text x="24" y="9" font-family="Arial, sans-serif" font-size="7.5" font-weight="bold" fill="#92400e" opacity="0.6">SLG-03 · INTERMODAL ROUTE</text>
-      </g>
-    
-      <g transform="translate(764,460)">
-        <circle cx="0" cy="0" r="14" fill="none" stroke-width="0.8" stroke-dasharray="3 3" opacity="0.5" />
-        <circle cx="0" cy="0" r="6" fill="#92400e" fill-opacity="0.2" stroke-width="1.2" opacity="0.8" />
-        <circle cx="0" cy="0" r="2.5" fill="#92400e" opacity="0.9" />
-        <rect x="18" y="-14" width="165" height="26" fill="#ffffff" fill-opacity="0.8" rx="3" stroke="#92400e" stroke-width="0.6" opacity="0.6" />
-        <text x="24" y="-2" font-family="Arial, sans-serif" font-size="8.5" font-weight="bold" fill="#92400e" opacity="0.9">HAIRATAN DRY PORT HUB</text>
-        <text x="24" y="9" font-family="Arial, sans-serif" font-size="7.5" font-weight="bold" fill="#92400e" opacity="0.6">HRT-04 · INTERMODAL ROUTE</text>
-      </g>
-    
-    <g transform="translate(184,1200)" fill="#92400e" stroke="none" opacity="0.7">
-      <!-- Tractor Cab -->
-      <rect x="0" y="-38" width="55" height="38" rx="3" fill-opacity="0.3" />
-      <path d="M35,-38 L55,-22 L55,0 L35,0 Z" fill-opacity="0.4" />
-      <rect x="36" y="-34" width="14" height="12" rx="1" fill="#ffffff" fill-opacity="0.8" />
-      <!-- Cargo Trailer -->
-      <rect x="-180" y="-50" width="170" height="50" rx="3" fill-opacity="0.2" stroke="#92400e" stroke-width="1" />
-      <!-- Wheels -->
-      <circle cx="-160" cy="4" r="10" fill="#92400e" fill-opacity="0.8" />
-      <circle cx="-135" cy="4" r="10" fill="#92400e" fill-opacity="0.8" />
-      <circle cx="-35" cy="4" r="10" fill="#92400e" fill-opacity="0.8" />
-      <circle cx="-10" cy="4" r="10" fill="#92400e" fill-opacity="0.8" />
-      <circle cx="40" cy="4" r="10" fill="#92400e" fill-opacity="0.8" />
+  </g>
+  <g transform="translate(75,75)">
+      <circle cx="0" cy="0" r="32" fill="none" stroke="#b45309" stroke-width="1.2" opacity="0.6" />
+      <circle cx="0" cy="0" r="28" fill="none" stroke="#d97706" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5" />
+      <circle cx="0" cy="0" r="16" fill="none" stroke="#b45309" stroke-width="0.9" opacity="0.6" />
+      <circle cx="0" cy="0" r="4" fill="#b45309" opacity="0.75" />
+      <path d="M-36,0 L36,0 M0,-36 L0,36" stroke="#b45309" stroke-width="0.6" opacity="0.4" />
+      <path d="M-24,-24 L24,24 M-24,24 L24,-24" stroke="#d97706" stroke-width="0.6" opacity="0.4" />
+    </g><g transform="translate(825,75)">
+      <circle cx="0" cy="0" r="32" fill="none" stroke="#b45309" stroke-width="1.2" opacity="0.6" />
+      <circle cx="0" cy="0" r="28" fill="none" stroke="#d97706" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5" />
+      <circle cx="0" cy="0" r="16" fill="none" stroke="#b45309" stroke-width="0.9" opacity="0.6" />
+      <circle cx="0" cy="0" r="4" fill="#b45309" opacity="0.75" />
+      <path d="M-36,0 L36,0 M0,-36 L0,36" stroke="#b45309" stroke-width="0.6" opacity="0.4" />
+      <path d="M-24,-24 L24,24 M-24,24 L24,-24" stroke="#d97706" stroke-width="0.6" opacity="0.4" />
+    </g><g transform="translate(75,1325)">
+      <circle cx="0" cy="0" r="32" fill="none" stroke="#b45309" stroke-width="1.2" opacity="0.6" />
+      <circle cx="0" cy="0" r="28" fill="none" stroke="#d97706" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5" />
+      <circle cx="0" cy="0" r="16" fill="none" stroke="#b45309" stroke-width="0.9" opacity="0.6" />
+      <circle cx="0" cy="0" r="4" fill="#b45309" opacity="0.75" />
+      <path d="M-36,0 L36,0 M0,-36 L0,36" stroke="#b45309" stroke-width="0.6" opacity="0.4" />
+      <path d="M-24,-24 L24,24 M-24,24 L24,-24" stroke="#d97706" stroke-width="0.6" opacity="0.4" />
+    </g><g transform="translate(825,1325)">
+      <circle cx="0" cy="0" r="32" fill="none" stroke="#b45309" stroke-width="1.2" opacity="0.6" />
+      <circle cx="0" cy="0" r="28" fill="none" stroke="#d97706" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5" />
+      <circle cx="0" cy="0" r="16" fill="none" stroke="#b45309" stroke-width="0.9" opacity="0.6" />
+      <circle cx="0" cy="0" r="4" fill="#b45309" opacity="0.75" />
+      <path d="M-36,0 L36,0 M0,-36 L0,36" stroke="#b45309" stroke-width="0.6" opacity="0.4" />
+      <path d="M-24,-24 L24,24 M-24,24 L24,-24" stroke="#d97706" stroke-width="0.6" opacity="0.4" />
+    </g>
+
+
+  <!-- Endless Desert Highway Perspective & Rolling Sand Dunes -->
+  <g fill="none" stroke="#b45309">
+    <!-- Blazing Desert Sun on Horizon (450, 520) -->
+    <g transform="translate(450, 520)">
+      <circle cx="0" cy="0" r="65" fill="#ffffff" fill-opacity="0.9" stroke="#d97706" stroke-width="2" />
+      <circle cx="0" cy="0" r="45" fill="#d97706" fill-opacity="0.2" stroke="#d97706" stroke-width="1" />
+      <line x1="70.0" y1="0.0" x2="140.0" y2="0.0" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="66.6" y1="21.6" x2="133.1" y2="43.3" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="56.6" y1="41.1" x2="113.3" y2="82.3" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="41.1" y1="56.6" x2="82.3" y2="113.3" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="21.6" y1="66.6" x2="43.3" y2="133.1" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="0.0" y1="70.0" x2="0.0" y2="140.0" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="-21.6" y1="66.6" x2="-43.3" y2="133.1" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="-41.1" y1="56.6" x2="-82.3" y2="113.3" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="-56.6" y1="41.1" x2="-113.3" y2="82.3" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="-66.6" y1="21.6" x2="-133.1" y2="43.3" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="-70.0" y1="0.0" x2="-140.0" y2="0.0" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="-66.6" y1="-21.6" x2="-133.1" y2="-43.3" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="-56.6" y1="-41.1" x2="-113.3" y2="-82.3" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="-41.1" y1="-56.6" x2="-82.3" y2="-113.3" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="-21.6" y1="-66.6" x2="-43.3" y2="-133.1" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="-0.0" y1="-70.0" x2="-0.0" y2="-140.0" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="21.6" y1="-66.6" x2="43.3" y2="-133.1" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="41.1" y1="-56.6" x2="82.3" y2="-113.3" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="56.6" y1="-41.1" x2="113.3" y2="-82.3" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+<line x1="66.6" y1="-21.6" x2="133.1" y2="-43.3" stroke="#d97706" stroke-width="1.2" opacity="0.4" />
+    </g>
+
+    <!-- Rolling Desert Sand Dunes on Flanks -->
+    <path d="M 60,620 Q 220,540 380,590 T 720,540 T 840,600" stroke="#d97706" stroke-width="2" />
+    <path d="M 60,700 Q 200,620 360,670 T 700,610 T 840,680" stroke="#b45309" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.6" />
+
+    <!-- Desert Highway in Sharp Perspective Receding to Vanishing Point (450, 520) -->
+    <g opacity="0.85">
+      <!-- Outer Road Edges -->
+      <line x1="450" y1="520" x2="160" y2="1320" stroke="#b45309" stroke-width="3" />
+      <line x1="450" y1="520" x2="740" y2="1320" stroke="#b45309" stroke-width="3" />
+      <!-- Road Shoulders -->
+      <line x1="450" y1="520" x2="110" y2="1320" stroke="#d97706" stroke-width="1" stroke-dasharray="8 6" />
+      <line x1="450" y1="520" x2="790" y2="1320" stroke="#d97706" stroke-width="1" stroke-dasharray="8 6" />
+
+      <!-- Centerline White Dashes Receding -->
+      <line x1="450" y1="520" x2="450" y2="1320" stroke="#d97706" stroke-width="3" stroke-dasharray="18 14" />
+
+      <!-- Heat Shimmer Distortion Lines Across Highway -->
+      
+        <path d="M 425,620 Q 450,612 475,620" stroke="#d97706" stroke-width="1" opacity="0.6" />
+      
+
+        <path d="M 400,720 Q 450,712 500,720" stroke="#d97706" stroke-width="1" opacity="0.6" />
+      
+
+        <path d="M 370,840 Q 450,832 530,840" stroke="#d97706" stroke-width="1" opacity="0.6" />
+      
+
+        <path d="M 335,980 Q 450,972 565,980" stroke="#d97706" stroke-width="1" opacity="0.6" />
+      
+
+        <path d="M 295,1140 Q 450,1132 605,1140" stroke="#d97706" stroke-width="1" opacity="0.6" />
+      
+    </g>
+
+    <!-- Long-Haul Freight Truck Approaching in Perspective (x = 450, y = 780) -->
+    <g transform="translate(450, 780) scale(1.1)" fill="#b45309">
+      <rect x="-35" y="-55" width="70" height="50" rx="3" fill="#ffffff" stroke="#b45309" stroke-width="2.5" />
+      <rect x="-30" y="-50" width="60" height="24" fill="#b45309" fill-opacity="0.3" stroke="#b45309" stroke-width="1.2" />
+      <!-- Windshield -->
+      <rect x="-26" y="-46" width="52" height="14" fill="#ffffff" stroke="#b45309" stroke-width="1" />
+      <!-- Headlights -->
+      <circle cx="-24" cy="-14" r="5" fill="#d97706" />
+      <circle cx="24" cy="-14" r="5" fill="#d97706" />
+      <!-- Chrome Grille -->
+      <line x1="-16" y1="-20" x2="16" y2="-20" stroke="#b45309" stroke-width="1.5" />
+      <line x1="-16" y1="-14" x2="16" y2="-14" stroke="#b45309" stroke-width="1.5" />
+      <line x1="-16" y1="-8" x2="16" y2="-8" stroke="#b45309" stroke-width="1.5" />
+      <!-- Tires -->
+      <rect x="-42" y="-20" width="8" height="25" rx="2" fill="#b45309" />
+      <rect x="34" y="-20" width="8" height="25" rx="2" fill="#b45309" />
+    </g>
+
+    <!-- Trans-Desert Route Seal at Bottom -->
+    <g transform="translate(450, 1260)">
+      <rect x="-160" y="-16" width="320" height="32" fill="#ffffff" fill-opacity="0.9" rx="3" stroke="#b45309" stroke-width="1.5" />
+      <text x="0" y="5" font-family="Arial, sans-serif" font-size="9" font-weight="900" letter-spacing="2" fill="#b45309" text-anchor="middle">TRANS-DESERT ARTERIAL CORRIDOR · CONTINUOUS TRANSIT</text>
     </g>
   </g>
 </svg>

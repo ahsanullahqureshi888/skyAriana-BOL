@@ -415,7 +415,7 @@ export function FinanceInvoicesTab({ invoices, onRefresh }: FinanceInvoicesTabPr
                   BOL Numbers (comma-separated)
                 </label>
                 <Input
-                  placeholder="e.g. BOL-NSA583, BOL-NSA584"
+                  placeholder="e.g. BOL-2026-NSA626, BOL-2026-NSA627"
                   value={bolNumbersInput}
                   onChange={(e) => setBolNumbersInput(e.target.value)}
                   className="mt-1 h-8 text-xs"

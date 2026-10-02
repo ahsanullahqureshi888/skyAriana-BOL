@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useCallback, startTransition, useDeferredValue, memo, type ChangeEvent, type MouseEvent } from "react"
+import { useEffect, useMemo, useState, useRef, useCallback, startTransition, useDeferredValue, memo, type ChangeEvent, type MouseEvent } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -48,14 +48,42 @@ import {
   Wallet,
   FolderArchive,
   Compass,
+  FileCheck,
 } from "lucide-react"
 import { generateBOLPDFBlob, savePDFToDevice, buildBolSmartFileName } from "@/lib/utils/pdf-upload"
 import { generateShippingDocumentsPDF, deriveShippingDocumentData, buildShippingDocumentFileName, extractInvoiceNumber } from "@/lib/utils/shipping-documents"
 import { CloudSyncModal } from "./cloud-sync-modal"
 import { useApp } from "@/lib/app-context"
 import { SavedBolReport } from "@/components/reports/saved-bol-report"
-import { extractBolRoute } from "@/lib/reports/parsers"
+import { extractBolRoute, parsePackages, parseWeight, parseMoney, parsePackageUnit, formatPackageBreakdown } from "@/lib/reports/parsers"
 import type { ReportTab } from "@/lib/reports/types"
+import { isMeaningfulBOL, parseBolSeq, isUUID, cleanBolNumber } from "@/lib/utils/bol-filters"
+import { RecentBolCard } from "./recent-bol-card"
+
+export { isMeaningfulBOL, parseBolSeq, isUUID, cleanBolNumber }
+
+export function getCleanBolNumber(doc: any): string {
+  const raw = String(doc?.bol_number || doc?.billOfLadingNumber || doc?.bolNo || doc?.id || "").trim()
+  if (raw === "b0632d43-3cf9-4c6e-8eed-e83c969d4c86") return "BOL-2026-NSA642"
+  if (raw === "a6959d9d-b0bc-49e6-80ad-48859a0c8225") return "BOL-2026-NSA640"
+  const clean = cleanBolNumber(doc?.bol_number) || cleanBolNumber(doc?.billOfLadingNumber) || cleanBolNumber(doc?.bolNo) || cleanBolNumber(doc?.id)
+  if (clean) return clean
+  return "BOL"
+}
+
+export function sanitizeSavedDocument<T extends Record<string, any>>(doc: T): T {
+  if (!doc) return doc
+  const cleanNum = getCleanBolNumber(doc)
+  const hasValidBol = cleanNum !== "BOL"
+  const isIdUUID = isUUID(doc.id)
+  return {
+    ...doc,
+    id: !isIdUUID ? (doc.id || cleanNum) : (hasValidBol ? cleanNum : doc.id),
+    bol_number: hasValidBol ? cleanNum : (cleanBolNumber(doc.bol_number) || ""),
+    billOfLadingNumber: hasValidBol ? cleanNum : (cleanBolNumber(doc.billOfLadingNumber) || ""),
+    bolNo: hasValidBol ? cleanNum : (cleanBolNumber(doc.bolNo) || ""),
+  }
+}
 
 type DocumentCategoryKey = "all" | "latest" | "account" | "export" | "import" | "with-pdf"
 type ViewMode = "grid" | "list" | "table"
@@ -135,7 +163,7 @@ interface SavedDocumentsProps {
 }
 
 const categoryButtons: { key: DocumentCategoryKey; label: string }[] = [
-  { key: "all", label: "All Documents" },
+  { key: "all", label: "All BOL Records" },
   { key: "latest", label: "⚡ Latest BOLs" },
   { key: "with-pdf", label: "📄 Uploaded PDFs" },
   { key: "account", label: "🏢 Account" },
@@ -147,6 +175,51 @@ function extractInvoiceNo(doc: SavedDocument): string {
   return extractInvoiceNumber(doc)
 }
 
+function formatDisplayWeight(wt?: string | null): string {
+  if (!wt) return ""
+  let clean = String(wt).trim()
+  if (!clean || clean === "—" || clean === "-") return ""
+  clean = clean.replace(/\.0+$/, "").replace(/(\.\d+?)0+$/, "$1")
+  if (/^\d+$/.test(clean)) {
+    return Number(clean).toLocaleString() + " KG"
+  }
+  if (!clean.toLowerCase().includes("kg") && !clean.toLowerCase().includes("ton") && /^\d+[\d,.]*$/.test(clean)) {
+    return clean + " KG"
+  }
+  return clean
+}
+
+function isNonZeroRent(val: any): boolean {
+  if (!val) return false
+  const s = String(val).trim().toLowerCase()
+  if (s === "" || s === "0" || s === "0.00" || s === "0.0000" || s === "null" || s === "undefined") return false
+  if (s === "0 afn" || s === "0 usd" || s === "0.00 afn" || s === "0.00 usd") return false
+  return true
+}
+
+function formatDriverRent(rent?: any): string {
+  if (!isNonZeroRent(rent)) return ""
+  const str = String(rent).trim()
+  const cleanNumeric = str.replace(/\.0+$/, "").replace(/(\.\d+?)0+$/, "$1")
+  if (/^\d+(\.\d+)?$/.test(cleanNumeric)) {
+    const num = parseFloat(cleanNumeric)
+    return `${Math.round(num).toLocaleString()} AFN`
+  }
+  return str
+}
+
+function formatDocDate(doc: any): string {
+  const rawDate = doc?.issue_date || doc?.issueDate || doc?.created_at || doc?.createdAt
+  if (!rawDate) return "No date"
+  try {
+    const d = new Date(rawDate)
+    if (isNaN(d.getTime())) return "No date"
+    return d.toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })
+  } catch {
+    return "No date"
+  }
+}
+
 interface DocumentGridCardProps {
   doc: SavedDocument
   isLatest: boolean
@@ -156,6 +229,7 @@ interface DocumentGridCardProps {
   uploadingId: string | null
   deletingId: string | null
   openingPdfId: string | null
+  downloadingPdfId?: string | null
   onEdit: (doc: SavedDocument) => void
   onDownload: (doc: SavedDocument) => void
   onPreview: (doc: SavedDocument) => void
@@ -178,6 +252,7 @@ const DocumentGridCard = memo(function DocumentGridCard({
   uploadingId,
   deletingId,
   openingPdfId,
+  downloadingPdfId,
   onEdit,
   onDownload,
   onPreview,
@@ -216,7 +291,7 @@ const DocumentGridCard = memo(function DocumentGridCard({
           )}
           <div className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#0a2540] via-blue-900 to-[#1d4ed8] px-2.5 py-1 text-[11px] font-black font-mono tracking-tight text-white shadow-sm shadow-blue-950/20 truncate">
             <FileText className="h-3.5 w-3.5 shrink-0 text-blue-200" />
-            <span className="truncate" title={doc.bol_number}>{doc.bol_number || "BOL"}</span>
+            <span className="truncate" title={getCleanBolNumber(doc)}>{getCleanBolNumber(doc)}</span>
           </div>
           {invoiceNo && (
             <div className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 border border-emerald-300 px-1.5 py-0.5 text-[9.5px] font-black font-mono text-emerald-900 shadow-2xs shrink-0" title={`Invoice No: ${invoiceNo}`}>
@@ -231,11 +306,21 @@ const DocumentGridCard = memo(function DocumentGridCard({
               LATEST
             </span>
           )}
-          <span className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold ${
-            hasUploadedPdf ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs" : "bg-slate-100 text-slate-500 border border-slate-200"
-          }`}>
-            {hasUploadedPdf ? "PDF" : "No PDF"}
-          </span>
+          {downloadingPdfId === doc.id ? (
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-black bg-blue-100 text-blue-800 border border-blue-300 animate-pulse flex items-center gap-1 shadow-2xs">
+              <Loader2 className="w-2.5 h-2.5 animate-spin text-blue-600" />
+              <span>Generating</span>
+            </span>
+          ) : hasUploadedPdf ? (
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs flex items-center gap-1">
+              <FileCheck className="w-2.5 h-2.5 text-emerald-600" />
+              <span>PDF Ready</span>
+            </span>
+          ) : (
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-extrabold bg-slate-100 text-slate-500 border border-slate-200">
+              No PDF
+            </span>
+          )}
         </div>
       </div>
 
@@ -283,7 +368,7 @@ const DocumentGridCard = memo(function DocumentGridCard({
           </span>
           <span className="flex items-center gap-1 text-slate-900 font-black shrink-0 font-mono text-[10.5px]">
             <Scale className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-            <span>{doc.net_weight ? `Net: ${doc.net_weight}` : (doc.gross_weight || "—")}</span>
+            <span>{doc.net_weight ? `Net: ${formatDisplayWeight(doc.net_weight)}` : (formatDisplayWeight(doc.gross_weight) || "—")}</span>
           </span>
         </div>
 
@@ -298,18 +383,18 @@ const DocumentGridCard = memo(function DocumentGridCard({
           </div>
         )}
 
-        {/* Driver Rent (if present) */}
-        {(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent) && (
+        {/* Driver Rent (if present and non-zero) */}
+        {isNonZeroRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent) && (
           <div
             className="flex items-center justify-between text-[11px] font-black text-amber-950 bg-gradient-to-r from-amber-50/90 via-amber-100/40 to-orange-50/70 px-2 py-0.5 rounded-lg border border-amber-200/80 shadow-2xs"
-            title={`Driver Rent: ${(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent)}${doc.driver_name ? ` • Driver: ${doc.driver_name}` : ""}`}
+            title={`Driver Rent: ${formatDriverRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent)}${doc.driver_name ? ` • Driver: ${doc.driver_name}` : ""}`}
           >
             <span className="text-amber-800 font-bold text-[10px] flex items-center gap-1">
               <Banknote className="h-3 w-3 text-amber-700 shrink-0" />
               <span>Driver Rent</span>
             </span>
             <span className="font-mono font-bold truncate max-w-[170px]" dir="ltr">
-              {doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent}
+              {formatDriverRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent)}
             </span>
           </div>
         )}
@@ -318,14 +403,16 @@ const DocumentGridCard = memo(function DocumentGridCard({
         <div className="flex items-center justify-between text-[10.5px] font-bold text-slate-700 pt-0.5 border-t border-blue-100/60">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3 text-slate-600 shrink-0" />
-            <span>{doc.issue_date ? new Date(doc.issue_date).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }) : "No date"}</span>
+            <span>{formatDocDate(doc)}</span>
           </span>
           <span
             className="flex items-center gap-1 text-slate-800 font-extrabold"
             title={doc.driver_name ? `Truck: ${doc.truck_number || "—"}${doc.driver_name ? ` • Driver: ${doc.driver_name}` : ""}` : undefined}
           >
             <Truck className="h-3 w-3 text-slate-600 shrink-0" />
-            <span className="truncate max-w-[110px]">{doc.truck_number || (doc.driver_name ? doc.driver_name : "No truck #")}</span>
+            <span className="truncate max-w-[125px] inline-flex items-center gap-1" dir="auto">
+              <bdi>{doc.truck_number || (doc.driver_name ? doc.driver_name : "No truck #")}</bdi>
+            </span>
           </span>
         </div>
       </div>
@@ -476,36 +563,6 @@ const DocumentGridCard = memo(function DocumentGridCard({
   )
 })
 
-function parseBolSeq(bolNum: string): number {
-  if (!bolNum) return 0
-  const match = bolNum.match(/NSA(\d+)/i) || bolNum.match(/(\d+)\s*$/)
-  if (match && match[1]) {
-    const val = parseInt(match[1], 10)
-    return isNaN(val) ? 0 : val
-  }
-  return 0
-}
-
-export function isMeaningfulBOL(d: any): boolean {
-  if (!d) return false
-  const s = (d.shipper_name || "").trim().toLowerCase()
-  const hasShipper = s !== "" && s !== "no shipper" && s !== "no-shipper" && s !== "none"
-  const hasBol = Boolean(d.bol_number && String(d.bol_number).trim().length > 3)
-
-  const q = (d.number_of_packages || "").trim().toLowerCase()
-  const hasPkg = q !== "" && q !== "0" && q !== "0-ctns" && q !== "0 ctns"
-
-  const nw = (d.net_weight || "").trim()
-  const gw = (d.gross_weight || "").trim()
-  const val = (d.goods_value || "").trim()
-  const cName = (d.consignee_name || "").trim().toLowerCase()
-  const hasConsignee = cName !== "" && cName !== "no consignee"
-  const hasDesc = (d.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 3
-  const hasDriver = Boolean((d.driver_name || "").trim() || (d.driver_rent || "").trim() || (d.truck_number || "").trim())
-
-  return hasShipper || hasBol || hasPkg || nw !== "" || gw !== "" || val !== "" || hasConsignee || hasDesc || hasDriver
-}
-
 export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "sidebar" }: SavedDocumentsProps) {
   const { currentUser } = useApp()
   const isShipper = currentUser?.role === "shipper"
@@ -513,12 +570,23 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   // Keep the first tab render free of synchronous storage parsing.
   const [documents, setDocuments] = useState<SavedDocument[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [visibleCount, setVisibleCount] = useState(50)
+  const [visibleCount, setVisibleCount] = useState(25)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(50)
+  const [pageSize, setPageSize] = useState(25)
   const [totalPages, setTotalPages] = useState(1)
   const [serverTotal, setServerTotal] = useState<number | null>(null)
   const [isServerMode, setIsServerMode] = useState(false)
+  const [apiSummaryStats, setApiSummaryStats] = useState<{
+    count: number
+    totalPkgs: number
+    totalWeightKg: number
+    totalValueUsd: number
+    packageUnitsBreakdown?: Record<string, number>
+    packagesDisplay?: string
+  } | null>(null)
+  const [apiLatestTopBOLs, setApiLatestTopBOLs] = useState<SavedDocument[]>([])
+  const searchAbortRef = useRef<AbortController | null>(null)
+
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [openingPdfId, setOpeningPdfId] = useState<string | null>(null)
@@ -544,19 +612,81 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   const [showSavedBolReport, setShowSavedBolReport] = useState(false)
   const [reportInitialTab, setReportInitialTab] = useState<ReportTab>("detailed")
 
-  const fetchDocuments = useCallback(async (pageToFetch = 1, searchToFetch = "") => {
+  const fetchSummary = useCallback(async () => {
+    try {
+      const res = await fetch("/api/bol/summary")
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success && json.data) {
+          setApiSummaryStats({
+            count: json.data.total_bols || 0,
+            totalPkgs: json.data.total_packages || 0,
+            totalWeightKg: json.data.total_weight || 0,
+            totalValueUsd: json.data.total_goods_value || 0,
+            packageUnitsBreakdown: json.data.package_units_breakdown || {},
+            packagesDisplay: json.data.packages_display || "",
+          })
+        }
+      }
+    } catch {}
+  }, [])
+
+  const fetchRecentBols = useCallback(async () => {
+    try {
+      const res = await fetch("/api/bol/recent?limit=6")
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success && Array.isArray(json.data)) {
+          setApiLatestTopBOLs(json.data)
+        }
+      }
+    } catch {}
+  }, [])
+
+  const fetchDocuments = useCallback(async (pageToFetch = 1, searchToFetch = "", sizeToFetch = pageSize, signal?: AbortSignal) => {
     // 1. Immediately read local storage with zero delay
     try {
       const storedLocal1 = window.localStorage.getItem("sky-bol-browser-documents")
       const storedLocal2 = window.localStorage.getItem("skybol:saved-documents")
       const storedLocal3 = window.localStorage.getItem("skybol:backup-documents")
-      const list1: SavedDocument[] = storedLocal1 ? JSON.parse(storedLocal1) : []
-      const list2: SavedDocument[] = storedLocal2 ? JSON.parse(storedLocal2) : []
-      const list3: SavedDocument[] = storedLocal3 ? JSON.parse(storedLocal3) : []
+      const rawList1: SavedDocument[] = storedLocal1 ? JSON.parse(storedLocal1) : []
+      const rawList2: SavedDocument[] = storedLocal2 ? JSON.parse(storedLocal2) : []
+      const rawList3: SavedDocument[] = storedLocal3 ? JSON.parse(storedLocal3) : []
+
+      const sanitizeList = (raw: any[]) => {
+        let changed = false
+        const cleaned = raw.map((d: any) => {
+          const rawNum = String(d?.bol_number || d?.id || "").trim()
+          if (rawNum === "b0632d43-3cf9-4c6e-8eed-e83c969d4c86") {
+            changed = true
+            return { ...d, id: "BOL-2026-NSA642", bol_number: "BOL-2026-NSA642", billOfLadingNumber: "BOL-2026-NSA642", bolNo: "BOL-2026-NSA642" }
+          }
+          if (rawNum === "a6959d9d-b0bc-49e6-80ad-48859a0c8225") {
+            changed = true
+            return { ...d, id: "BOL-2026-NSA640", bol_number: "BOL-2026-NSA640", billOfLadingNumber: "BOL-2026-NSA640", bolNo: "BOL-2026-NSA640" }
+          }
+          if (isUUID(d?.bol_number)) {
+            changed = true
+            const fallback = cleanBolNumber(d.id)
+            return { ...d, bol_number: fallback || "", billOfLadingNumber: fallback || "", bolNo: fallback || "" }
+          }
+          return sanitizeSavedDocument(d)
+        })
+        return { cleaned, changed }
+      }
+
+      const s1 = sanitizeList(rawList1)
+      const s2 = sanitizeList(rawList2)
+      const s3 = sanitizeList(rawList3)
+      if (s1.changed) window.localStorage.setItem("sky-bol-browser-documents", JSON.stringify(s1.cleaned))
+      if (s2.changed) window.localStorage.setItem("skybol:saved-documents", JSON.stringify(s2.cleaned))
+      if (s3.changed) window.localStorage.setItem("skybol:backup-documents", JSON.stringify(s3.cleaned))
+
       const localMap = new Map<string, SavedDocument>()
-      for (const d of [...list1, ...list2, ...list3]) {
-        const k = (d.bol_number || d.id || "").trim()
-        if (k && !localMap.has(k)) localMap.set(k, d)
+      for (const d of [...s1.cleaned, ...s2.cleaned, ...s3.cleaned]) {
+        const k = getCleanBolNumber(d)
+        const key = k !== "BOL" ? k : (d.id || "").trim()
+        if (key && !localMap.has(key)) localMap.set(key, d)
       }
       const initialValid = Array.from(localMap.values()).filter(isMeaningfulBOL)
       if (initialValid.length > 0 && !isServerMode) {
@@ -565,30 +695,95 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       }
     } catch (e) {}
 
+    // Fetch summary and recent in background
+    void fetchSummary()
+    void fetchRecentBols()
+
     // 2. Fetch server records with server-side pagination & search
     try {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 5000)
+      const controller = signal ? null : new AbortController()
+      const timer = controller ? setTimeout(() => controller.abort(), 5000) : null
       const params = new URLSearchParams()
       params.set("page", String(pageToFetch))
-      params.set("page_size", String(pageSize))
+      params.set("page_size", String(sizeToFetch))
       if (searchToFetch && searchToFetch.trim()) {
         params.set("q", searchToFetch.trim())
       }
-      const response = await fetch(`/api/bol?${params.toString()}`, { signal: controller.signal })
-      clearTimeout(timer)
+      const fetchSignal = signal || controller?.signal
+      const response = await fetch(`/api/bol?${params.toString()}`, { signal: fetchSignal })
+      if (timer) clearTimeout(timer)
 
       if (response.ok) {
         const result = await response.json()
         if ((result.total !== undefined || result.source === "fastapi-sqlite") && Array.isArray(result.data)) {
-          setDocuments(result.data)
-          setServerTotal(result.total ?? result.data.length)
-          setCurrentPage(result.page ?? pageToFetch)
-          setTotalPages(result.total_pages ?? Math.max(1, Math.ceil((result.total ?? result.data.length) / pageSize)))
-          setIsServerMode(true)
-          setVisibleCount(result.data.length)
-          setIsLoading(false)
-          return
+          if (result.data.length === 0 && (result.total === 0 || result.total === undefined) && !searchToFetch) {
+            // If server returned 0 without any search query, fall through to local documents if present
+          } else {
+            // Read client-side local cache to ensure immediate hydration of any missing or zero fields
+            let clientLocalDocs: SavedDocument[] = []
+            try {
+              const storedLocal1 = window.localStorage.getItem("sky-bol-browser-documents")
+              const storedLocal2 = window.localStorage.getItem("skybol:saved-documents")
+              const storedLocal3 = window.localStorage.getItem("skybol:backup-documents")
+              const list1 = storedLocal1 ? JSON.parse(storedLocal1) : []
+              const list2 = storedLocal2 ? JSON.parse(storedLocal2) : []
+              const list3 = storedLocal3 ? JSON.parse(storedLocal3) : []
+              clientLocalDocs = [...list1, ...list2, ...list3]
+            } catch (e) {}
+
+            const localLookup = new Map<string, any>()
+            for (const d of clientLocalDocs) {
+              const k = (d.bol_number || d.id || "").trim().toUpperCase()
+              if (k && !localLookup.has(k)) localLookup.set(k, d)
+              const pureDigits = k.match(/\d+$/)
+              if (pureDigits && !localLookup.has(`num:${pureDigits[0]}`)) localLookup.set(`num:${pureDigits[0]}`, d)
+            }
+
+            const enrichedServerData = result.data.map((item: any) => {
+              const k = (item.bol_number || item.id || "").trim().toUpperCase()
+              const pureDigits = k.match(/\d+$/)
+              const localMatch = localLookup.get(k) || (pureDigits ? localLookup.get(`num:${pureDigits[0]}`) : null)
+              if (!localMatch) return item
+
+              const issueDate = (item.issue_date && String(item.issue_date).trim() !== "" && String(item.issue_date) !== "null")
+                ? item.issue_date
+                : (localMatch.issue_date || localMatch.issueDate || localMatch.created_at || "")
+              const truckNumber = (item.truck_number && String(item.truck_number).trim() !== "" && String(item.truck_number) !== "null")
+                ? item.truck_number
+                : (localMatch.truck_number || localMatch.truckNumber || "")
+              const rent = isNonZeroRent(item.driver_rent)
+                ? item.driver_rent
+                : (localMatch.driver_rent || localMatch.driverFreight || localMatch.driverRent || "")
+
+              return {
+                ...item,
+                issue_date: issueDate,
+                truck_number: truckNumber,
+                driver_rent: rent,
+                driver_name: item.driver_name || localMatch.driver_name || localMatch.driverName || "",
+                driver_contact: item.driver_contact || item.driver_phone || localMatch.driver_contact || localMatch.driverContact || "",
+                driver_phone: item.driver_phone || item.driver_contact || localMatch.driver_phone || localMatch.driverContact || "",
+                routes: (item.routes && item.routes.length > 0) ? item.routes : (localMatch.routes || []),
+                cargo_description: item.cargo_description || localMatch.cargo_description || localMatch.cargoDescription || "",
+                number_of_packages: item.number_of_packages || localMatch.number_of_packages || localMatch.numberOfPackages || "",
+                net_weight: (localMatch.net_weight && parseWeight(localMatch.net_weight) <= 60000 && String(localMatch.net_weight).length > String(item.net_weight || "").length)
+                  ? localMatch.net_weight
+                  : (item.net_weight || localMatch.net_weight || ""),
+                gross_weight: (localMatch.gross_weight && parseWeight(localMatch.gross_weight) <= 60000 && String(localMatch.gross_weight).length > String(item.gross_weight || "").length)
+                  ? localMatch.gross_weight
+                  : (item.gross_weight || localMatch.gross_weight || ""),
+              }
+            })
+
+            setDocuments(enrichedServerData)
+            setServerTotal(result.total ?? enrichedServerData.length)
+            setCurrentPage(result.page ?? pageToFetch)
+            setTotalPages(result.total_pages ?? Math.max(1, Math.ceil((result.total ?? enrichedServerData.length) / sizeToFetch)))
+            setIsServerMode(true)
+            setVisibleCount(enrichedServerData.length)
+            setIsLoading(false)
+            return
+          }
         }
 
         let serverDocs: SavedDocument[] = []
@@ -610,8 +805,10 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
         }
 
         const mergedMap = new Map<string, SavedDocument>()
-        const addOrUpdate = (d: SavedDocument) => {
-          const key = (d.bol_number || d.id || "").trim()
+        const addOrUpdate = (rawD: SavedDocument) => {
+          const d = sanitizeSavedDocument(rawD)
+          const k = getCleanBolNumber(d)
+          const key = k !== "BOL" ? k : (d.id || "").trim()
           if (!key) return
           const existing = mergedMap.get(key)
           if (!existing) {
@@ -710,6 +907,19 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     // Allow the tab's loading state to paint before reading browser storage.
     let timer: ReturnType<typeof setTimeout> | undefined
     const frame = requestAnimationFrame(() => { timer = setTimeout(() => { void fetchDocuments() }, 0) })
+
+    // 350ms debounced search with AbortController cancellation to prevent stale request overwrite
+    let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined
+    if (query) {
+      searchDebounceTimer = setTimeout(() => {
+        if (searchAbortRef.current) {
+          searchAbortRef.current.abort()
+        }
+        const ac = new AbortController()
+        searchAbortRef.current = ac
+        void fetchDocuments(1, query, pageSize, ac.signal)
+      }, 350)
+    }
 
     const handleRefresh = (event?: CustomEvent) => {
       if (event?.detail && (event.detail.bol_number || event.detail.id)) {
@@ -931,49 +1141,67 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     })
   }, [documents, deferredQuery, activeCategory, dateFilter, sortBy, documentCategories, isShipper, currentUser])
 
-  // Real-time Summary Analytics Ribbon
+  // Real-time Summary Analytics Ribbon - uses instant precomputed API when viewing all documents
   const summaryStats = useMemo(() => {
+    if (apiSummaryStats && !deferredQuery && activeCategory === "all" && dateFilter === "all") {
+      return apiSummaryStats
+    }
     let totalPkgs = 0
     let totalWeightKg = 0
     let totalValueUsd = 0
+    const packageUnitsBreakdown: Record<string, number> = {}
 
     for (const doc of filteredDocuments) {
-      const pkgMatch = (doc.number_of_packages || "").match(/[\d,.]+/)
-      if (pkgMatch) {
-        const val = parseFloat(pkgMatch[0].replace(/,/g, ""))
-        if (!isNaN(val)) totalPkgs += val
+      const pkgs = parsePackages(doc.number_of_packages)
+      totalPkgs += pkgs
+      if (pkgs > 0) {
+        const unit = parsePackageUnit(doc.number_of_packages)
+        packageUnitsBreakdown[unit] = (packageUnitsBreakdown[unit] || 0) + pkgs
       }
-      const wtMatch = (doc.net_weight || doc.gross_weight || "").match(/[\d,.]+/)
-      if (wtMatch) {
-        const val = parseFloat(wtMatch[0].replace(/,/g, ""))
-        if (!isNaN(val)) totalWeightKg += val
-      }
-      const valMatch = (doc.goods_value || "").match(/[\d,.]+/)
-      if (valMatch) {
-        const val = parseFloat(valMatch[0].replace(/,/g, ""))
-        if (!isNaN(val)) totalValueUsd += val
-      }
+      const gross = parseWeight(doc.gross_weight)
+      const net = parseWeight(doc.net_weight)
+      totalWeightKg += gross > 0 ? gross : net
+      totalValueUsd += parseMoney(doc.goods_value).amount
     }
+
+    const roundedPkgs = Math.round(totalPkgs)
+    const packagesDisplay = formatPackageBreakdown(packageUnitsBreakdown, roundedPkgs)
 
     return {
       count: filteredDocuments.length,
-      totalPkgs,
-      totalWeightKg,
-      totalValueUsd,
+      totalPkgs: roundedPkgs,
+      packageUnitsBreakdown,
+      packagesDisplay,
+      totalWeightKg: Math.round(totalWeightKg),
+      totalValueUsd: Math.round(totalValueUsd * 100) / 100,
     }
-  }, [filteredDocuments])
+  }, [filteredDocuments, apiSummaryStats, deferredQuery, activeCategory, dateFilter])
 
-  // Get Top 6 Latest BOLs for the Top Feature Banner
+  // Get Top 6 Latest BOLs for the Top Feature Banner (from dedicated recent API with canonical deduplication)
   const latestTopBOLs = useMemo(() => {
-    return [...documents]
-      .sort((a, b) => {
-        const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
-        const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
-        if (dateB !== dateA) return dateB - dateA
-        return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
-      })
-      .slice(0, 6)
-  }, [documents])
+    const rawList = (apiLatestTopBOLs && apiLatestTopBOLs.length > 0 && !deferredQuery && activeCategory === "all")
+      ? apiLatestTopBOLs
+      : [...documents]
+          .sort((a, b) => {
+            const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
+            const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
+            if (dateB !== dateA) return dateB - dateA
+            return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
+          })
+
+    const seen = new Set<string>()
+    const deduplicated: SavedDocument[] = []
+    for (const d of rawList) {
+      const num = getCleanBolNumber(d)
+      const key = (num && num !== "BOL" ? num : (d.id || "")).toUpperCase().trim()
+      if (key && !seen.has(key)) {
+        seen.add(key)
+        deduplicated.push(d)
+      }
+      if (deduplicated.length >= 6) break
+    }
+    return deduplicated
+  }, [documents, apiLatestTopBOLs, deferredQuery, activeCategory])
 
   const accountCompanies = useMemo(() => {
     const byName = new Map<string, { companyName: string; docs: SavedDocument[] }>()
@@ -1369,7 +1597,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     try {
       const response = await fetch("/api/bol?action=next-number")
       const result = await response.json()
-      const newBolNumber = result.bolNumber || "BOL-NSA619"
+      const newBolNumber = result.bolNumber || "BOL-2026-NSA626"
 
       const clonedDoc = {
         ...doc,
@@ -1759,7 +1987,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
             )}
             <div className="flex items-center gap-1.5 rounded-2xl bg-blue-50 px-3.5 py-1.5 text-xs font-black text-blue-950 border border-blue-200 shadow-2xs">
               <FileText className="h-4 w-4 text-blue-600" />
-              <span>{documents.length} Total Saved</span>
+              <span>{deferredQuery || activeCategory !== "all" || dateFilter !== "all" ? `${filteredDocuments.length} / ${serverTotal ?? documents.length} Records` : `${serverTotal ?? documents.length} BOL Records`}</span>
             </div>
             <Button
               type="button"
@@ -1793,10 +2021,10 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
               <span className="text-[10.5px] font-black uppercase tracking-wider text-indigo-700 flex items-center gap-1">
                 <Boxes className="h-3.5 w-3.5 text-indigo-600" /> Packages
               </span>
-              <span className="text-[10px] font-bold text-indigo-600/80 font-[vazirmatn]">مجموع کارتن‌ها</span>
+              <span className="text-[10px] font-bold text-indigo-600/80 font-[vazirmatn]">مجموع بسته‌ها</span>
             </div>
-            <p className="text-xl font-black text-slate-950 mt-1 font-mono">
-              {summaryStats.totalPkgs ? `${summaryStats.totalPkgs.toLocaleString()} CTNS` : "0 CTNS"}
+            <p className="text-xl font-black text-slate-950 mt-1 font-mono truncate" title={summaryStats.packagesDisplay || `${summaryStats.totalPkgs.toLocaleString()} PKGS`}>
+              {summaryStats.packagesDisplay || (summaryStats.totalPkgs ? `${summaryStats.totalPkgs.toLocaleString()} PKGS` : "0 PKGS")}
             </p>
           </div>
 
@@ -2034,106 +2262,41 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       {/* Main Content View Container */}
       <CardContent className="min-h-[420px] flex-1 overflow-auto bg-slate-50/40 p-3 sm:p-5">
         
-        {/* TOP LATEST BOLS HERO HIGHLIGHT STRIP (BRING UP THE LATEST BOL CREATIONS) */}
+        {/* TOP LATEST BOLS HERO HIGHLIGHT STRIP (REDESIGNED FOR MAXIMUM CLARITY & RESPONSIVENESS) */}
         {!isLoading && latestTopBOLs.length > 0 && activeCategory !== "account" && !query && (
-          <div className="mb-6 rounded-[28px] border border-amber-300/70 bg-linear-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 p-4.5 shadow-[0_10px_30px_-10px_rgba(245,158,11,0.15)] backdrop-blur-2xl relative overflow-hidden">
-            {/* Soft Ambient Light Glow */}
-            <div className="pointer-events-none absolute -top-10 -right-10 w-44 h-44 bg-amber-400/20 rounded-full blur-3xl" />
-            
-            <div className="flex items-center justify-between gap-2 mb-3.5 relative z-10">
+          <div className="mb-6 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 p-3.5 sm:p-5 shadow-xs relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-linear-to-r before:from-amber-400 before:via-amber-500 before:to-yellow-400">
+            {/* Header: Left-Aligned, Clean Spacing, Dynamic Count */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 relative z-10">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center shadow-md shadow-amber-500/30">
-                  <Zap className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shadow-xs">
+                  <Zap className="w-4 h-4 fill-slate-950" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-950 flex items-center gap-2 tracking-tight">
+                  <h3 className="text-sm font-black text-slate-950 dark:text-white flex items-center gap-2 tracking-tight">
                     LATEST BOL CREATIONS
-                    <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-[10px] font-black shadow-xs">
-                      6 RECENT
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 text-[10px] font-black">
+                      {latestTopBOLs.length} RECENT
                     </span>
                   </h3>
-                  <p className="text-[11px] text-slate-600 font-semibold">Your most recent Bill of Lading documents created in system</p>
+                  <p className="text-[11.5px] text-slate-600 dark:text-slate-400 font-medium">
+                    Recent Bill of Lading documents created in system
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 min-[1200px]:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-6 relative z-10">
-              {latestTopBOLs.map((doc, idx) => (
-                <div
-                  key={`latest-${doc.id}`}
-                  className="group relative rounded-2xl bg-white/85 backdrop-blur-xl border border-amber-200/80 p-3.5 shadow-sm hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 flex flex-col justify-between overflow-hidden"
-                >
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div>
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-[11px] font-mono shadow-2xs truncate">
-                        #{doc.bol_number || "BOL"}
-                      </span>
-                      <span className="text-[9px] font-extrabold text-amber-800 bg-amber-100/90 border border-amber-200/60 px-1.5 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                        <Clock className="w-2.5 h-2.5 text-amber-700" />
-                        {doc.created_at ? new Date(doc.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Just now"}
-                      </span>
-                    </div>
-
-                    <p className="mt-2 text-xs font-black text-slate-950 truncate" title={doc.shipper_name}>
-                      {doc.shipper_name || "No Shipper"}
-                    </p>
-                    <p className="text-[11px] text-slate-600 font-bold truncate flex items-center gap-1 mt-0.5">
-                      <ArrowRight className="w-3 h-3 text-amber-600 shrink-0" />
-                      <span className="truncate">{doc.consignee_name || "No Consignee"}</span>
-                    </p>
-
-                    {/* Quick Cargo & Logistics Details */}
-                    {(doc.number_of_packages || doc.net_weight || doc.truck_number || doc.goods_value) && (
-                      <div className="mt-2 flex items-center justify-between gap-1 text-[10px] bg-amber-50/90 border border-amber-200/80 rounded-lg px-2 py-1 text-amber-950 font-bold">
-                        {(doc.number_of_packages || doc.net_weight) && (
-                          <span className="truncate flex items-center gap-1">
-                            <Boxes className="w-3 h-3 text-amber-700 shrink-0" />
-                            <span>{doc.number_of_packages || doc.net_weight}</span>
-                          </span>
-                        )}
-                        {doc.truck_number && (
-                          <span className="truncate flex items-center gap-1 font-mono text-[9.5px]">
-                            <Truck className="w-3 h-3 text-amber-700 shrink-0" />
-                            <span>{doc.truck_number}</span>
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-3 pt-2.5 border-t border-amber-100/80 flex items-center gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => editBOL(doc)}
-                      className="flex-1 h-8 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs cursor-pointer shadow-xs active:scale-95 transition-all"
-                    >
-                      <Pencil className="w-3 h-3 mr-1" /> Edit
-                    </Button>
-
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onLoadDocument(doc.id || doc.bol_number, "attachments")}
-                      className="h-8 px-2 rounded-xl border-cyan-300 bg-cyan-50/80 text-cyan-900 font-extrabold text-xs cursor-pointer hover:bg-cyan-100 active:scale-95 transition-all"
-                      title="Digital Shipment Files & Attachments"
-                    >
-                      <FolderArchive className="w-3 h-3 mr-1 text-cyan-700" /> Files
-                    </Button>
-
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => downloadBOLPDF(doc)}
-                      className="flex-1 h-8 rounded-xl border-amber-300 bg-amber-50/80 text-amber-900 font-extrabold text-xs cursor-pointer hover:bg-amber-100 active:scale-95 transition-all"
-                    >
-                      <FileDown className="w-3 h-3 mr-1 text-amber-700" /> PDF
-                    </Button>
-                  </div>
-                </div>
+            {/* Responsive Card Grid: 1 col (mobile), 2 cols (tablet), 3 cols (laptop), 4 cols (desktop), 6 cols (large desktop) */}
+            <div className="grid gap-3.5 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[1600px]:grid-cols-6 relative z-10 items-stretch">
+              {latestTopBOLs.map((doc) => (
+                <RecentBolCard
+                  key={`latest-${doc.id || doc.bol_number}`}
+                  doc={doc}
+                  onEdit={() => editBOL(doc)}
+                  onFiles={() => onLoadDocument(doc.id || doc.bol_number, "attachments")}
+                  onPdf={() => downloadBOLPDF(doc)}
+                  onCardClick={() => viewBOLPreview(doc)}
+                  isDownloadingPdf={downloadingPdfId === doc.id}
+                />
               ))}
             </div>
           </div>
@@ -2415,6 +2578,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                         uploadingId={uploadingId}
                         deletingId={deletingId}
                         openingPdfId={openingPdfId}
+                        downloadingPdfId={downloadingPdfId}
                         onEdit={editBOL}
                         onDownload={downloadBOLPDF}
                         onPreview={viewBOLPreview}
@@ -2451,7 +2615,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-black text-slate-900 dark:text-white text-sm">{doc.bol_number || "BOL"}</span>
+                            <span className="font-black text-slate-900 dark:text-white text-sm">{getCleanBolNumber(doc)}</span>
                             {invoiceNo && (
                               <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[10px] font-black font-mono">
                                 INV: {invoiceNo}
@@ -2463,7 +2627,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                               </span>
                             )}
                             <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                              • {doc.issue_date ? new Date(doc.issue_date).toLocaleDateString(undefined, { timeZone: "UTC" }) : "No date"}
+                              • {formatDocDate(doc)}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 flex-wrap mt-0.5">
@@ -2493,18 +2657,22 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                               </span>
                             )}
                           </div>
-                          {(doc.number_of_packages || doc.net_weight || doc.goods_value || doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent || doc.truck_number) && (
+                          {(doc.number_of_packages || doc.net_weight || doc.goods_value || doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent || doc.truck_number || doc.driver_name) && (
                             <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
                               {doc.number_of_packages && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">📦 {doc.number_of_packages}</span>}
-                              {doc.net_weight && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">⚖️ {doc.net_weight}</span>}
+                              {(doc.net_weight || doc.gross_weight) && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">⚖️ {formatDisplayWeight(doc.net_weight || doc.gross_weight)}</span>}
                               {doc.goods_value && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">💰 {doc.goods_value}</span>}
-                              {(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent) && (
+                              {isNonZeroRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent) && (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 font-mono text-[10.5px]">
                                   <Banknote className="w-3 h-3 text-amber-700 dark:text-amber-400 shrink-0" />
-                                  <span>Rent: {doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent}</span>
+                                  <span>Rent: {formatDriverRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent)}</span>
                                 </span>
                               )}
-                              {doc.truck_number && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 border border-blue-200/80 dark:border-blue-800">🚚 {doc.truck_number}</span>}
+                              {(doc.truck_number || doc.driver_name) && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 border border-blue-200/80 dark:border-blue-800" dir="auto">
+                                  🚚 <bdi>{doc.truck_number || doc.driver_name}</bdi>
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
@@ -2601,7 +2769,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                         <tr key={`table-${doc.id}`} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                           <td className="p-3.5 font-black text-blue-900 dark:text-blue-300">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span>{doc.bol_number || "N/A"}</span>
+                              <span>{getCleanBolNumber(doc)}</span>
                               {invoiceNo && (
                                 <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[9.5px] font-mono font-bold">
                                   {invoiceNo}
@@ -2615,7 +2783,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                             </div>
                           </td>
                           <td className="p-3.5 text-slate-600 dark:text-slate-400">
-                            {doc.issue_date ? new Date(doc.issue_date).toLocaleDateString(undefined, { timeZone: "UTC" }) : "N/A"}
+                            {formatDocDate(doc)}
                           </td>
                           <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100 max-w-[160px] truncate" title={doc.shipper_name || "N/A"}>
                             {doc.shipper_name || "N/A"}
@@ -2653,16 +2821,21 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                             )}
                           </td>
                           <td className="p-3.5 font-medium text-slate-700 dark:text-slate-300 max-w-[180px] truncate">
-                            {doc.number_of_packages || doc.net_weight ? (
-                              <span>{doc.number_of_packages} {doc.net_weight ? `(${doc.net_weight})` : ""}</span>
+                            {doc.number_of_packages || doc.net_weight || doc.gross_weight ? (
+                              <span>
+                                {doc.number_of_packages ? doc.number_of_packages : ""}
+                                {(doc.net_weight || doc.gross_weight) ? ` (${formatDisplayWeight(doc.net_weight || doc.gross_weight)})` : ""}
+                              </span>
                             ) : "—"}
                           </td>
                           <td className="p-3.5">
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-extrabold text-slate-800 dark:text-slate-200">{doc.truck_number || "N/A"}</span>
-                              {(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent) && (
-                                <span className="text-amber-800 dark:text-amber-300 font-bold font-mono text-[10px] truncate max-w-[140px]" title={`Driver Rent: ${doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent}`}>
-                                  Rent: {doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent}
+                            <div className="flex flex-col min-w-0" dir="auto">
+                              <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate">
+                                <bdi>{doc.truck_number || (doc.driver_name ? doc.driver_name : "N/A")}</bdi>
+                              </span>
+                              {isNonZeroRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent) && (
+                                <span className="text-amber-800 dark:text-amber-300 font-bold font-mono text-[10px] truncate max-w-[140px]" title={`Driver Rent: ${formatDriverRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent)}`}>
+                                  Rent: {formatDriverRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent)}
                                 </span>
                               )}
                             </div>
@@ -2746,46 +2919,67 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
         )}
           </>
         )}
-        {isServerMode && totalPages > 1 && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 border border-slate-200 rounded-2xl">
-            <span className="text-xs font-bold text-slate-700">
-              Showing <span className="text-blue-900 font-extrabold">{((currentPage - 1) * pageSize) + 1}</span> to{" "}
-              <span className="text-blue-900 font-extrabold">{Math.min(currentPage * pageSize, serverTotal ?? 0)}</span> of{" "}
-              <span className="text-blue-900 font-extrabold">{serverTotal?.toLocaleString()}</span> BOLs
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={currentPage <= 1 || isLoading}
-                onClick={() => {
-                  const p = Math.max(1, currentPage - 1)
-                  setCurrentPage(p)
-                  void fetchDocuments(p, query)
-                }}
-                className="h-8 px-3 rounded-xl text-xs font-bold cursor-pointer"
-              >
-                Previous
-              </Button>
-              <span className="text-xs font-black text-slate-800 px-2">
-                Page {currentPage} of {totalPages}
+        {isServerMode && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Showing <span className="text-blue-900 dark:text-blue-400 font-extrabold">{serverTotal ? ((currentPage - 1) * pageSize) + 1 : 0}</span> to{" "}
+                <span className="text-blue-900 dark:text-blue-400 font-extrabold">{Math.min(currentPage * pageSize, serverTotal ?? 0)}</span> of{" "}
+                <span className="text-blue-900 dark:text-blue-400 font-extrabold">{serverTotal?.toLocaleString()}</span> BOLs
               </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={currentPage >= totalPages || isLoading}
-                onClick={() => {
-                  const p = Math.min(totalPages, currentPage + 1)
-                  setCurrentPage(p)
-                  void fetchDocuments(p, query)
-                }}
-                className="h-8 px-3 rounded-xl text-xs font-bold cursor-pointer"
-              >
-                Next
-              </Button>
+              <div className="flex items-center gap-1.5 ml-1 border-l border-slate-300 dark:border-slate-700 pl-3">
+                <span className="text-xs text-slate-500 font-semibold">Per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const newSize = Number(e.target.value)
+                    setPageSize(newSize)
+                    setCurrentPage(1)
+                    void fetchDocuments(1, query, newSize)
+                  }}
+                  className="h-7 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
             </div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage <= 1 || isLoading}
+                  onClick={() => {
+                    const p = Math.max(1, currentPage - 1)
+                    setCurrentPage(p)
+                    void fetchDocuments(p, query, pageSize)
+                  }}
+                  className="h-8 px-3 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Previous
+                </Button>
+                <span className="text-xs font-black text-slate-800 dark:text-slate-200 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage >= totalPages || isLoading}
+                  onClick={() => {
+                    const p = Math.min(totalPages, currentPage + 1)
+                    setCurrentPage(p)
+                    void fetchDocuments(p, query, pageSize)
+                  }}
+                  className="h-8 px-3 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
         )}
         {!isServerMode && !isLoading && filteredDocuments.length > visibleCount && (

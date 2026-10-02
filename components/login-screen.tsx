@@ -20,35 +20,72 @@ import {
   ExternalLink,
   Plane,
   Ship,
+  Train,
+  Warehouse,
+  ChevronLeft,
+  ChevronRight,
   Layers
 } from "lucide-react"
 
 const bgImages = [
   {
+    url: '/images/container_terminal_sunset.jpg',
+    title: 'Maritime Deepwater Terminal',
+    location: 'Deepwater Container Terminals & Sea Port Logistics',
+    tag: 'Ocean Freight',
+    icon: Ship,
+  },
+  {
     url: '/images/sky_freight_cargo_plane.jpg',
     title: 'Sky Ariana Air Freight',
     location: 'Boeing 777F Sky Cargo · Global Logistics Network',
     tag: 'Air Cargo Express',
+    icon: Plane,
+  },
+  {
+    url: '/images/intermodal_freight_train.jpg',
+    title: 'Trans-Eurasian Rail Corridor',
+    location: 'Intermodal Double-Stack Rail & Mountain Pass Transit',
+    tag: 'Rail Freight',
+    icon: Train,
+  },
+  {
+    url: '/images/modern_cargo_convoy.jpg',
+    title: 'Trans-Continental Mountain Fleet',
+    location: 'Heavy-Duty Articulated Convoy · Alpine Highway',
+    tag: 'Overland Transit',
+    icon: Truck,
+  },
+  {
+    url: '/images/cargo_aircraft_night.jpg',
+    title: 'Air Cargo Apron & Night Operations',
+    location: 'High-Loader Air Freight Loading & Ramp Logistics',
+    tag: 'Tarmac Operations',
+    icon: Plane,
   },
   {
     url: '/images/maritime_port_cargo_ship.jpg',
-    title: 'Maritime Deepwater Terminal',
-    location: 'Deepwater Container Terminals & Sea Port Logistics',
-    tag: 'Ocean Freight',
+    title: 'Container Port Vessel Berth',
+    location: 'Intermodal Sea Freight & Quay Gantry Operations',
+    tag: 'Container Shipping',
+    icon: Ship,
   },
   {
-    url: '/images/mountain_logistics_bg.jpg',
-    title: 'Trans-Continental Mountain Corridor',
-    location: 'Heavy-Duty Highway Convoy · Central Asian Trade Route',
-    tag: 'Overland Transit',
+    url: '/images/mountain_transit_highway_bg.jpg',
+    title: 'Mountain Pass Transit Corridor',
+    location: 'Hindu Kush & Central Asian Overland Trade Pass',
+    tag: 'Highway Logistics',
+    icon: Truck,
   },
   {
-    url: '/images/afghan_cargo_fleet_pass.jpg',
+    url: '/images/border_dry_port.jpg',
     title: 'Multimodal Dry Port & Border Logistics',
-    location: 'Intermodal Rail & Inland Terminal Logistics Hub',
-    tag: 'Multimodal Hub',
+    location: 'Customs Clearance Station & Inland Freight Hub',
+    tag: 'Customs Terminal',
+    icon: Warehouse,
   }
 ]
+
 
 export interface LoginScreenProps {
   onLogin?: () => void
@@ -76,17 +113,6 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
     return () => clearInterval(timer)
   }, [])
 
-  const handleQuickFill = (u: string, p: string) => {
-    setUsername(u)
-    setPassword(p)
-    setError(null)
-    const success = login(u, p, rememberMe)
-    if (!success) {
-      setError("Invalid username or password. Please try again.")
-    } else {
-      onLogin?.()
-    }
-  }
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) {
@@ -119,7 +145,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
       
       {/* Full-bleed Dynamic Background Image Layers (Zero clipping / Zero lines) */}
       <div className="fixed inset-0 w-full h-full z-0 overflow-hidden pointer-events-none">
-        {bgImages.map((bg, index) => (
+        {isReady && bgImages.map((bg, index) => (
           <div 
             key={bg.url}
             className={`absolute inset-0 bg-cover bg-center transition-all duration-[2000ms] ease-out ${
@@ -134,12 +160,14 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
       </div>
 
       {/* Floating Top Left Brand Pill */}
-      <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-slate-950/40 backdrop-blur-md border border-white/15 text-white/90 shadow-lg">
-        <div className="h-6 w-6 rounded-lg bg-white/15 flex items-center justify-center">
-          <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-        </div>
+      <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-slate-950/50 backdrop-blur-md border border-white/20 text-white/90 shadow-xl">
+        <img 
+          src="/images/aq-companies-logo.png" 
+          alt="AQ Companies" 
+          className="h-6 w-6 object-contain rounded-md shadow-xs" 
+        />
         <div className="text-[11px] font-black tracking-wider uppercase">
-          AQ COMPANIES <span className="text-amber-400 font-bold ml-1 text-[9px]">v5.1pro</span>
+          AQ COMPANIES <span className="text-amber-400 font-bold ml-1 text-[9px] px-1.5 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/30">v5.1pro</span>
         </div>
       </div>
 
@@ -156,35 +184,26 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
       </div>
 
       {/* Centered Main Login Card - Compact & Elegant */}
-      <main className="relative z-20 w-full max-w-[390px] my-auto">
+      <main className="relative z-20 w-full max-w-[400px] my-auto">
         <div className="relative group">
           {/* Subtle Ambient Glow */}
           <div className="absolute -inset-1 bg-gradient-to-r from-blue-600/30 via-indigo-500/20 to-amber-500/30 rounded-[28px] blur-md opacity-60 pointer-events-none" />
 
           <div className="relative bg-white/95 backdrop-blur-2xl rounded-[24px] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.6)] border border-white p-5 sm:p-6 flex flex-col items-center">
             
-            {/* Header / Logo */}
+            {/* Header / Official AQ COMPANIES Logo Lockup */}
             <div className="w-full flex flex-col items-center mb-3">
-              <div className="relative mb-2.5">
-                <div className="absolute -inset-1.5 bg-gradient-to-tr from-blue-600/30 to-amber-400/20 rounded-full blur-md" />
-                <div className="relative p-1 bg-white rounded-full shadow-[0_8px_20px_-4px_rgba(10,37,64,0.15)] border border-slate-100">
-                  <img 
-                    src="/logo.png" 
-                    alt="AQ COMPANIES" 
-                    className="h-20 sm:h-22 w-auto object-contain transition-transform hover:scale-105 duration-300"
-                  />
-                </div>
+              <div className="relative w-full flex flex-col items-center justify-center group/logo py-0.5">
+                <div className="absolute -inset-1 bg-gradient-to-b from-blue-500/10 via-amber-500/5 to-transparent rounded-2xl blur-lg pointer-events-none" />
+                <img 
+                  src="/images/aq-companies-login-logo.png" 
+                  alt="AQ COMPANIES - Global Logistics - Sky Ariana" 
+                  className="h-28 sm:h-32 w-auto max-w-[300px] object-contain drop-shadow-xs transition-transform duration-300 group-hover/logo:scale-[1.02] select-none"
+                />
               </div>
-              
-              <h1 className="text-lg font-black tracking-tight text-[#0a2540] uppercase text-center leading-tight">
-                AQ COMPANIES
-              </h1>
-              <p className="text-[9px] font-extrabold tracking-[0.2em] text-slate-500 uppercase mt-0.5" dir="rtl">
-                سکای آریانا لمیتد • Global Logistics
-              </p>
 
-              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-300/80 text-[9px] uppercase tracking-wider text-amber-900 font-extrabold shadow-2xs">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200/80 text-[9px] uppercase tracking-wider text-slate-700 font-extrabold shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Secure Access Gateway</span>
               </div>
             </div>
@@ -221,9 +240,9 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="admin or admin@skyariana.com"
                     disabled={isLoading || !isReady}
-                    className="w-full h-9.5 pl-3 pr-9 text-xs bg-white border border-slate-200 shadow-inner rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-bold text-slate-900 placeholder:text-slate-400"
+                    className="w-full h-10 pl-3 pr-9 text-xs bg-white border border-slate-200 shadow-inner rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all font-bold text-slate-900 placeholder:text-slate-400"
                   />
-                  <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none" />
+                  <Mail className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-600 transition-colors pointer-events-none" />
                 </div>
               </div>
 
@@ -231,18 +250,11 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
               <div className="space-y-1">
                 <label 
                   htmlFor="login-password"
-                  className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider ml-1 flex items-center justify-between"
+                  className="text-[10px] font-extrabold text-slate-700 uppercase tracking-wider ml-1 block"
                 >
-                  <span>Password</span>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill("admin", "admin")}
-                    disabled={!isReady || isLoading}
-                    className="text-[9px] font-black text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200/80 transition-colors uppercase tracking-tight cursor-pointer"
-                  >
-                    1-Click Login (admin)
-                  </button>
+                  Password
                 </label>
+
                 <div className="relative group">
                   <input
                     id="login-password"
@@ -254,7 +266,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter password (e.g. admin)"
                     disabled={isLoading || !isReady}
-                    className="w-full h-9.5 pl-3 pr-9 text-xs bg-white border border-slate-200 shadow-inner rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-black text-slate-900 placeholder:text-slate-400 tracking-wider"
+                    className="w-full h-10 pl-3 pr-9 text-xs bg-white border border-slate-200 shadow-inner rounded-xl focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all font-black text-slate-900 placeholder:text-slate-400 tracking-wider"
                   />
                   <button
                     type="button"
@@ -263,9 +275,9 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
                     title={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
-                      <EyeOff className="w-3.5 h-3.5" />
+                      <EyeOff className="w-4 h-4" />
                     ) : (
-                      <Eye className="w-3.5 h-3.5" />
+                      <Eye className="w-4 h-4" />
                     )}
                   </button>
                 </div>
@@ -303,7 +315,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
                   handleSubmit(e)
                 }}
                 disabled={isLoading || !isReady}
-                className="group relative w-full h-10 mt-1 bg-gradient-to-r from-[#0a2540] via-[#1d4ed8] to-[#0a2540] bg-[length:200%_auto] hover:bg-right transition-[background-position] duration-500 text-white font-black uppercase tracking-wider text-xs rounded-lg shadow-md shadow-blue-900/25 flex items-center justify-center gap-2 overflow-hidden cursor-pointer active:scale-[0.99]"
+                className="group relative w-full h-10.5 mt-1 bg-gradient-to-r from-[#0a2540] via-[#1d4ed8] to-[#0a2540] bg-[length:200%_auto] hover:bg-right transition-[background-position] duration-500 text-white font-black uppercase tracking-wider text-xs rounded-xl shadow-md shadow-blue-900/25 flex items-center justify-center gap-2 overflow-hidden cursor-pointer active:scale-[0.99]"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
@@ -320,7 +332,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
             </form>
 
             {/* Footer Links */}
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-center gap-2.5 text-[10px] font-bold text-slate-500">
+            <div className="mt-4 pt-3 border-t border-slate-100 w-full flex items-center justify-center gap-2.5 text-[10px] font-bold text-slate-500">
               <button 
                 type="button"
                 onClick={() => setShowHelpModal(true)} 
@@ -346,6 +358,12 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
               </button>
             </div>
 
+            {/* Enterprise Security Badge */}
+            <div className="mt-2.5 pt-2 border-t border-slate-100/80 w-full flex items-center justify-center gap-1.5 text-[9.5px] font-bold text-slate-400 select-none">
+              <ShieldCheck className="w-3 h-3 text-emerald-500" />
+              <span>256-Bit SSL Workstation Authentication</span>
+            </div>
+
           </div>
         </div>
       </main>
@@ -353,10 +371,10 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
       {/* Floating Bottom Left Corridor Showcase Badge */}
       <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-20 hidden md:flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-slate-950/60 backdrop-blur-md border border-white/15 text-white shadow-xl max-w-sm transition-all duration-300">
         <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center shrink-0 text-amber-300">
-          {currentBg === 0 && <Plane className="w-4 h-4" />}
-          {currentBg === 1 && <Ship className="w-4 h-4" />}
-          {currentBg === 2 && <Truck className="w-4 h-4" />}
-          {currentBg === 3 && <Layers className="w-4 h-4" />}
+          {(() => {
+            const Icon = bgImages[currentBg]?.icon || Layers
+            return <Icon className="w-4 h-4" />
+          })()}
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -374,29 +392,55 @@ export function LoginScreen({ onLogin }: LoginScreenProps = {}) {
         </div>
       </div>
 
-      {/* Floating Bottom Center Status & Carousel Dots */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 hidden sm:flex items-center gap-3 px-3.5 py-2 rounded-full bg-slate-950/60 backdrop-blur-md border border-white/15 text-white/80 text-[10px] shadow-lg">
+      {/* Floating Bottom Center Status & Carousel Controls */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-slate-950/60 backdrop-blur-md border border-white/15 text-white/80 text-[10px] shadow-lg">
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)] animate-pulse" />
           <span className="font-semibold text-white/90">System Online · SSL Encrypted</span>
         </div>
         <span className="w-1 h-1 rounded-full bg-white/30" />
-        <div className="flex items-center gap-1.5">
-          {bgImages.map((img, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setCurrentBg(i)}
-              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
-                i === currentBg 
-                  ? "w-6 bg-gradient-to-r from-amber-400 to-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.6)]" 
-                  : "w-2 bg-white/40 hover:bg-white/80"
-              }`}
-              title={img.title}
-            />
-          ))}
+        
+        {/* Navigation Chevrons & Carousel Dots */}
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setCurrentBg((prev) => (prev - 1 + bgImages.length) % bgImages.length)}
+            className="p-1 rounded-full hover:bg-white/20 text-white/70 hover:text-white transition-colors cursor-pointer"
+            title="Previous Background Image"
+            aria-label="Previous Background Image"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+          </button>
+
+          <div className="flex items-center gap-1.5 px-1">
+            {bgImages.map((img, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setCurrentBg(i)}
+                className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                  i === currentBg 
+                    ? "w-6 bg-gradient-to-r from-amber-400 to-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.6)]" 
+                    : "w-2 bg-white/40 hover:bg-white/80"
+                }`}
+                title={`${img.title} (${img.tag})`}
+                aria-label={`Switch to ${img.title}`}
+              />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setCurrentBg((prev) => (prev + 1) % bgImages.length)}
+            className="p-1 rounded-full hover:bg-white/20 text-white/70 hover:text-white transition-colors cursor-pointer"
+            title="Next Background Image"
+            aria-label="Next Background Image"
+          >
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
+
 
       {/* Support & Account Recovery Modal */}
       {showHelpModal && (

@@ -278,7 +278,7 @@ export function ControlTowerView({
     const attention = data.kpis.needsAttentionCount
 
     if (dailyStatusLang === "ps") {
-      return `📢 د سکای آریانا لمیټډ د عملیاتو ورځنی راپور
+      return `📢 د ای کیو کمپنیز لمټیډ (AQ COMPANIES) د عملیاتو ورځنی راپور
 نیټه: ${todayStr}
 
 📦 ټول فعال بارونه: ${active}
@@ -290,11 +290,11 @@ export function ControlTowerView({
 ⚠️ پاملرنې ته اړتیا: ${attention}
 
 ټولې لارې د څارنې لاندې دي. د لا زیاتو معلوماتو لپاره اړیکه ونیسئ.
-- Sky Ariana Logistics Control Tower`
+- AQ COMPANIES Logistics Control Tower`
     }
 
     if (dailyStatusLang === "fa") {
-      return `📢 گزارش روزانه عملیات لجستیک اسکای آریانا لیمیتد
+      return `📢 گزارش روزانه عملیات لجستیک شرکت‌های ای‌کیو (AQ COMPANIES)
 تاریخ: ${todayStr}
 
 📦 محموله‌های فعال: ${active}
@@ -306,11 +306,11 @@ export function ControlTowerView({
 ⚠️ موارد نیازمند اقدام فوری: ${attention}
 
 تمام راهروهای ترانزیتی فعال و تحت کنترل هستند.
-- برج مراقبت عملیات اسکای آریانا`
+- برج مراقبت عملیات شرکت‌های ای‌کیو (AQ COMPANIES)`
     }
 
     if (dailyStatusLang === "ur") {
-      return `📢 اسکائی آریانا لمٹیڈ یومیہ لاجسٹکس آپریشنز رپورٹ
+      return `📢 اے کیو کمپنیز لمٹیڈ یومیہ لاجسٹکس آپریشنز رپورٹ
 تاریخ: ${todayStr}
 
 📦 کل فعال ترسیلات: ${active}
@@ -322,11 +322,11 @@ export function ControlTowerView({
 ⚠️ فوری توجہ طلب معاملات: ${attention}
 
 تمام کارگو کی بحفاظت ترسیل جاری ہے۔
-- Sky Ariana Logistics Control Tower`
+- AQ COMPANIES Logistics Control Tower`
     }
 
     // Default English
-    return `📢 SKY ARIANA LIMITED — DAILY LOGISTICS OPERATIONS REPORT
+    return `📢 AQ COMPANIES LIMITED — DAILY LOGISTICS OPERATIONS REPORT
 Date: ${todayStr}
 
 📦 Total Active Shipments: ${active}
@@ -338,7 +338,7 @@ Date: ${todayStr}
 ⚠️ Critical Attention Items: ${attention}
 
 Transit corridors (Kandahar / Dogharoon / Bandar Abbas / Nhava Sheva) are operating under active monitoring.
-- Sky Ariana Logistics Control Tower`
+- AQ COMPANIES Logistics Control Tower`
   }
 
   const copyDailyStatusToClipboard = () => {
@@ -359,7 +359,7 @@ Transit corridors (Kandahar / Dogharoon / Bandar Abbas / Nhava Sheva) are operat
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-xl md:text-2xl font-black tracking-tight uppercase text-foreground">
-              Sky Ariana Logistics Control Tower
+              AQ COMPANIES — Logistics Control Tower
             </h1>
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />

@@ -184,6 +184,41 @@ export function deleteReportPreset(id: string): void {
   } catch {}
 }
 
+const DEFAULT_PRESET_ID_KEY = "sky_report_default_preset_id_v1"
+
+export function getDefaultReportPreset(): SavedReportPreset | null {
+  if (typeof window === "undefined") return null
+  try {
+    const defaultId = window.localStorage.getItem(DEFAULT_PRESET_ID_KEY)
+    const presets = getSavedReportPresets()
+    if (defaultId) {
+      const found = presets.find((p) => p.id === defaultId)
+      if (found) return found
+    }
+    const explicitlyMarked = presets.find((p) => p.isDefault)
+    if (explicitlyMarked) return explicitlyMarked
+    return null
+  } catch {
+    return null
+  }
+}
+
+export function setDefaultReportPreset(id: string | null): void {
+  if (typeof window === "undefined") return
+  try {
+    if (!id) {
+      window.localStorage.removeItem(DEFAULT_PRESET_ID_KEY)
+      return
+    }
+    window.localStorage.setItem(DEFAULT_PRESET_ID_KEY, id)
+    const presets = getSavedReportPresets().map((p) => ({
+      ...p,
+      isDefault: p.id === id,
+    }))
+    window.localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets))
+  } catch {}
+}
+
 // ============================================
 // REPORT EXPORT HISTORY
 // ============================================

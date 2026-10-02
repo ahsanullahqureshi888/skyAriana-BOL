@@ -140,7 +140,7 @@ export function HeaderCloudSyncButton({ onOpenSettings }: HeaderCloudSyncButtonP
         variant="outline"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className={`h-8 px-2.5 rounded-lg font-bold text-xs gap-1.5 transition-all duration-150 active:scale-95 cursor-pointer ${
+        className={`h-7.5 px-2 rounded-lg font-bold text-xs gap-1 transition-all duration-150 active:scale-95 cursor-pointer shrink-0 ${
           conflictsCount > 0
             ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
             : isSyncing

@@ -39,7 +39,7 @@ engine = create_async_engine(
 if is_sqlite:
     @event.listens_for(engine.sync_engine, "connect")
     def configure_sqlite_pragmas(dbapi_connection, connection_record):
-        """Enable SQLite WAL mode, foreign key constraints, synchronous NORMAL, and 10s busy timeout."""
+        """Enable SQLite WAL mode, foreign keys, synchronous NORMAL, 64MB cache, and 256MB MMAP."""
         if hasattr(dbapi_connection, "execute"):
             cursor = dbapi_connection.cursor()
             try:
@@ -48,8 +48,42 @@ if is_sqlite:
                 cursor.execute("PRAGMA foreign_keys = ON;")
                 cursor.execute("PRAGMA busy_timeout = 10000;")
                 cursor.execute("PRAGMA temp_store = MEMORY;")
+                cursor.execute("PRAGMA cache_size = -64000;")       # 64 MB page cache
+                cursor.execute("PRAGMA mmap_size = 268435456;")     # 256 MB memory-mapped I/O
             finally:
                 cursor.close()
+
+import time
+from backend.middleware.timing import record_query_metric
+
+@event.listens_for(engine.sync_engine, "before_cursor_execute")
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    context._query_start_time = time.perf_counter()
+
+@event.listens_for(engine.sync_engine, "after_cursor_execute")
+def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    start = getattr(context, "_query_start_time", None)
+    if start is not None:
+        dur_ms = (time.perf_counter() - start) * 1000.0
+        record_query_metric(statement, dur_ms)
+
+
+class TimedAsyncSession(AsyncSession):
+    """AsyncSession with query duration measurement on the active asyncio task."""
+
+    async def execute(self, statement, params=None, execution_options=None, bind_arguments=None, **kw):
+        t0 = time.perf_counter()
+        try:
+            return await super().execute(
+                statement,
+                params=params,
+                execution_options=execution_options,
+                bind_arguments=bind_arguments,
+                **kw,
+            )
+        finally:
+            dur_ms = (time.perf_counter() - t0) * 1000.0
+            record_query_metric(str(statement), dur_ms)
 
 
 SessionLocal = async_sessionmaker(
@@ -58,7 +92,7 @@ SessionLocal = async_sessionmaker(
     autocommit=False,
     expire_on_commit=False,
     future=True,
-    class_=AsyncSession,
+    class_=TimedAsyncSession,
 )
 
 
@@ -89,13 +123,30 @@ async def ensure_performance_indexes(conn) -> None:
     indexes = [
         # BOL indexes
         "CREATE INDEX IF NOT EXISTS ix_bol_records_status_date ON bol_records(status, issue_date);",
+        "CREATE INDEX IF NOT EXISTS ix_bol_records_status_created ON bol_records(status, created_at DESC);",
         "CREATE INDEX IF NOT EXISTS ix_bol_records_company_date ON bol_records(company_id, issue_date);",
+        "CREATE INDEX IF NOT EXISTS ix_bol_records_company_created ON bol_records(company_id, created_at DESC);",
         "CREATE INDEX IF NOT EXISTS ix_bol_records_shipper_date ON bol_records(shipper_id, issue_date);",
         "CREATE INDEX IF NOT EXISTS ix_bol_records_consignee_date ON bol_records(consignee_id, issue_date);",
         "CREATE INDEX IF NOT EXISTS ix_bol_records_created_id ON bol_records(created_at, id);",
-        # Container indexes
+        "CREATE INDEX IF NOT EXISTS ix_bol_records_created_id_desc ON bol_records(created_at DESC, id DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_bol_records_bol_num_nocase ON bol_records(bol_number COLLATE NOCASE);",
+        # BOL Items & Containers
+        "CREATE INDEX IF NOT EXISTS ix_bol_items_bol_commodity ON bol_items(bol_id, commodity_id);",
         "CREATE INDEX IF NOT EXISTS ix_containers_number ON containers(container_number);",
+        "CREATE INDEX IF NOT EXISTS ix_containers_number_nocase ON containers(container_number COLLATE NOCASE);",
         "CREATE INDEX IF NOT EXISTS ix_containers_bol_id ON containers(bol_id);",
+        # Trucks & Shipments
+        "CREATE INDEX IF NOT EXISTS ix_trucks_number_nocase ON trucks(truck_number COLLATE NOCASE);",
+        "CREATE INDEX IF NOT EXISTS ix_shipments_status_created ON shipments(status, created_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_shipments_bol_status ON shipments(bol_id, status);",
+        # Invoices
+        "CREATE INDEX IF NOT EXISTS ix_invoices_status_created ON invoices(status, created_at DESC);",
+        "CREATE INDEX IF NOT EXISTS ix_invoices_cust_date ON invoices(customer_id, issue_date);",
+        "CREATE INDEX IF NOT EXISTS ix_invoice_items_inv_amount ON invoice_items(invoice_id, amount);",
+        # Documents
+        "CREATE INDEX IF NOT EXISTS ix_documents_bol_type ON documents(bol_id, document_type);",
+        "CREATE INDEX IF NOT EXISTS ix_documents_type_created ON documents(document_type, created_at DESC);",
         # Ledger indexes
         "CREATE INDEX IF NOT EXISTS ix_ledger_records_acc_date_id ON ledger_records(account_id, transaction_date, id);",
         "CREATE INDEX IF NOT EXISTS ix_ledger_records_acc_date_covering ON ledger_records(account_id, transaction_date, debit, credit);",
@@ -103,6 +154,7 @@ async def ensure_performance_indexes(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_ledger_records_curr_date_id ON ledger_records(currency, transaction_date, id);",
         "CREATE INDEX IF NOT EXISTS ix_ledger_records_curr_acc_date_id ON ledger_records(currency, account_id, transaction_date, id);",
         "CREATE INDEX IF NOT EXISTS ix_ledger_records_curr_acc_date_cov ON ledger_records(currency, account_id, transaction_date, debit, credit);",
+        "CREATE INDEX IF NOT EXISTS ix_ledger_records_curr_acc_date_cov_full ON ledger_records(currency, account_id, transaction_date ASC, id ASC, debit, credit);",
     ]
     for idx_sql in indexes:
         try:

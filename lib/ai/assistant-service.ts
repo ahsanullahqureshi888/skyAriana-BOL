@@ -307,6 +307,7 @@ export async function processUserQuery(
     const aiWording = await generateAICompletion(
       `User question: "${text}"\n\nVerified Database Facts (STRICT: Do NOT add external facts, do NOT hallucinate):\n${grounded.content}`,
       {
+        userId: user.userId,
         systemPrompt:
           'You are SKY AI, the logistics operations assistant for Sky Ariana Limited. Explain the verified database facts concisely, respectfully, and clearly. Keep all BOL numbers, container numbers, and currency distinctions intact.',
       }

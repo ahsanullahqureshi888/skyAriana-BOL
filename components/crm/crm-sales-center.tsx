@@ -57,16 +57,16 @@ import { SalesPipelinePdf } from './documents/sales-pipeline-pdf'
 import { CustomerAccountSummaryPdf } from './documents/customer-account-summary-pdf'
 
 const STAGES: { id: OpportunityStage; label: string; color: string }[] = [
-  { id: 'NEW_INQUIRY', label: 'New Inquiry', color: 'border-slate-500 text-slate-300' },
-  { id: 'QUALIFIED', label: 'Qualified', color: 'border-blue-500 text-blue-300' },
-  { id: 'RATE_REQUESTED', label: 'Rate Requested', color: 'border-cyan-500 text-cyan-300' },
-  { id: 'QUOTATION_PREPARED', label: 'Quote Ready', color: 'border-indigo-500 text-indigo-300' },
-  { id: 'QUOTATION_SENT', label: 'Quote Sent', color: 'border-purple-500 text-purple-300' },
-  { id: 'FOLLOW_UP', label: 'Follow Up', color: 'border-amber-500 text-amber-300' },
-  { id: 'NEGOTIATION', label: 'Negotiation', color: 'border-orange-500 text-orange-300' },
-  { id: 'CUSTOMER_CONFIRMATION', label: 'Confirmation', color: 'border-teal-500 text-teal-300' },
-  { id: 'WON', label: 'Won Deal', color: 'border-emerald-500 text-emerald-300' },
-  { id: 'LOST', label: 'Lost / Closed', color: 'border-rose-500 text-rose-300' },
+  { id: 'NEW_INQUIRY', label: 'New Inquiry', color: 'border-slate-400 dark:border-slate-500 text-slate-700 dark:text-slate-300' },
+  { id: 'QUALIFIED', label: 'Qualified', color: 'border-blue-500 text-blue-700 dark:text-blue-300' },
+  { id: 'RATE_REQUESTED', label: 'Rate Requested', color: 'border-cyan-500 text-cyan-700 dark:text-cyan-300' },
+  { id: 'QUOTATION_PREPARED', label: 'Quote Ready', color: 'border-indigo-500 text-indigo-700 dark:text-indigo-300' },
+  { id: 'QUOTATION_SENT', label: 'Quote Sent', color: 'border-purple-500 text-purple-700 dark:text-purple-300' },
+  { id: 'FOLLOW_UP', label: 'Follow Up', color: 'border-amber-500 text-amber-700 dark:text-amber-300' },
+  { id: 'NEGOTIATION', label: 'Negotiation', color: 'border-orange-500 text-orange-700 dark:text-orange-300' },
+  { id: 'CUSTOMER_CONFIRMATION', label: 'Confirmation', color: 'border-teal-500 text-teal-700 dark:text-teal-300' },
+  { id: 'WON', label: 'Won Deal', color: 'border-emerald-500 text-emerald-700 dark:text-emerald-300' },
+  { id: 'LOST', label: 'Lost / Closed', color: 'border-rose-500 text-rose-700 dark:text-rose-300' },
 ]
 
 export function CrmSalesCenter() {
@@ -365,26 +365,26 @@ export function CrmSalesCenter() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       
       {/* Top Header */}
-      <div className="bg-slate-900 border-b border-slate-800 p-5 px-6">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200/80 dark:border-slate-800 p-5 px-6 shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-inner">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-2xs">
               <Users className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-xl font-bold tracking-tight text-white uppercase">
+                <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white uppercase">
                   CRM, SALES & CUSTOMER SERVICE
                 </h1>
-                <span className="px-2 py-0.5 text-[11px] font-semibold rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="px-2 py-0.5 text-[11px] font-semibold rounded bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                   Live Sync
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5 font-medium">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
                 Leads • Opportunities • Quotations • Follow-Up • Customers
               </p>
             </div>
@@ -398,9 +398,9 @@ export function CrmSalesCenter() {
                 setSelectedLead(null)
                 setIsLeadModalOpen(true)
               }}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 transition-colors shadow-2xs"
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
               Quick Lead
             </button>
 
@@ -410,9 +410,9 @@ export function CrmSalesCenter() {
                 setSelectedInquiry(null)
                 setIsInquiryModalOpen(true)
               }}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 transition-colors shadow-2xs"
             >
-              <FileText className="w-3.5 h-3.5 text-blue-400" />
+              <FileText className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
               New Inquiry
             </button>
 
@@ -422,7 +422,7 @@ export function CrmSalesCenter() {
                 setSelectedOppForEdit(null)
                 setIsOppModalOpen(true)
               }}
-              className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1.5 transition-colors shadow"
+              className="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center gap-1.5 transition-colors shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               New Opportunity
@@ -434,7 +434,7 @@ export function CrmSalesCenter() {
                 setSelectedSr(null)
                 setIsSrModalOpen(true)
               }}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30 flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-purple-50 dark:bg-purple-600/20 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30 hover:bg-purple-100 dark:hover:bg-purple-600/30 flex items-center gap-1.5 transition-colors shadow-2xs"
             >
               <HelpCircle className="w-3.5 h-3.5" />
               Log Ticket
@@ -443,10 +443,10 @@ export function CrmSalesCenter() {
             <button
               type="button"
               onClick={() => setIsPipelinePdfOpen(true)}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 transition-colors shadow-2xs"
               title="Print Sales Pipeline Management PDF"
             >
-              <Printer className="w-3.5 h-3.5 text-slate-400" />
+              <Printer className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
               Pipeline PDF
             </button>
           </div>
@@ -454,100 +454,100 @@ export function CrmSalesCenter() {
 
         {/* Operational KPI Ribbon (11 Explicit Dashboard Cards) */}
         {kpis && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-11 gap-2.5 mt-5 pt-5 border-t border-slate-800">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-11 gap-2.5 mt-5 pt-5 border-t border-slate-200/80 dark:border-slate-800">
             {/* Card 1: NEW LEADS */}
-            <div className="p-2.5 rounded-xl bg-slate-850 border border-slate-750 hover:border-slate-600 transition-colors">
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">New Leads</div>
-              <div className="text-lg font-bold text-white mt-1">{kpis.newLeads}</div>
-              <div className="text-[9px] text-amber-400 font-medium truncate mt-0.5">Commercial Intake</div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/90 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-600 shadow-2xs transition-colors" title="New Leads Intake">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">New Leads</div>
+              <div className="text-lg font-bold text-slate-900 dark:text-white mt-1">{kpis.newLeads}</div>
+              <div className="text-[9px] text-amber-600 dark:text-amber-400 font-medium truncate mt-0.5">Commercial Intake</div>
             </div>
 
             {/* Card 2: OPEN INQUIRIES */}
-            <div className="p-2.5 rounded-xl bg-slate-850 border border-slate-750 hover:border-slate-600 transition-colors">
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Open Inquiries</div>
-              <div className="text-lg font-bold text-white mt-1">{kpis.openInquiries}</div>
-              <div className="text-[9px] text-blue-400 font-medium truncate mt-0.5">Rates Pending</div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/90 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-600 shadow-2xs transition-colors" title="Open Inquiries">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">Inquiries</div>
+              <div className="text-lg font-bold text-slate-900 dark:text-white mt-1">{kpis.openInquiries}</div>
+              <div className="text-[9px] text-blue-600 dark:text-blue-400 font-medium truncate mt-0.5">Rates Pending</div>
             </div>
 
             {/* Card 3: ACTIVE OPPORTUNITIES */}
-            <div className="p-2.5 rounded-xl bg-slate-850 border border-slate-750 hover:border-slate-600 transition-colors">
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Active Opportunities</div>
-              <div className="text-lg font-bold text-amber-400 mt-1">{kpis.activeOpportunities}</div>
-              <div className="text-[9px] text-slate-400 font-medium truncate mt-0.5">Pipeline Deals</div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/90 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-600 shadow-2xs transition-colors" title="Active Opportunities">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">Active Opps</div>
+              <div className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-1">{kpis.activeOpportunities}</div>
+              <div className="text-[9px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">Pipeline Deals</div>
             </div>
 
             {/* Card 4: QUOTES PENDING */}
-            <div className="p-2.5 rounded-xl bg-slate-850 border border-slate-750 hover:border-slate-600 transition-colors">
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Quotes Pending</div>
-              <div className="text-lg font-bold text-slate-200 mt-1">{kpis.quotesPending}</div>
-              <div className="text-[9px] text-cyan-400 font-medium truncate mt-0.5">Draft / Pricing</div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/90 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-600 shadow-2xs transition-colors" title="Quotes Pending Preparation">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">Quotes Pending</div>
+              <div className="text-lg font-bold text-slate-800 dark:text-slate-200 mt-1">{kpis.quotesPending}</div>
+              <div className="text-[9px] text-cyan-600 dark:text-cyan-400 font-medium truncate mt-0.5">Draft / Pricing</div>
             </div>
 
             {/* Card 5: QUOTES SENT */}
-            <div className="p-2.5 rounded-xl bg-slate-850 border border-slate-750 hover:border-slate-600 transition-colors">
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Quotes Sent</div>
-              <div className="text-lg font-bold text-purple-400 mt-1">{kpis.quotesSent}</div>
-              <div className="text-[9px] text-purple-400 font-medium truncate mt-0.5">Client Review</div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/90 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-600 shadow-2xs transition-colors" title="Quotes Sent to Client">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">Quotes Sent</div>
+              <div className="text-lg font-bold text-purple-600 dark:text-purple-400 mt-1">{kpis.quotesSent}</div>
+              <div className="text-[9px] text-purple-600 dark:text-purple-400 font-medium truncate mt-0.5">Client Review</div>
             </div>
 
             {/* Card 6: FOLLOW-UPS TODAY */}
-            <div className="p-2.5 rounded-xl bg-slate-850 border border-slate-750 hover:border-slate-600 transition-colors">
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Follow-Ups Today</div>
-              <div className="text-lg font-bold text-emerald-400 mt-1">{kpis.followUpsToday}</div>
-              <div className="text-[9px] text-emerald-400 font-medium truncate mt-0.5">Due Scheduled</div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/90 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-600 shadow-2xs transition-colors" title="Follow-Ups Due Today">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">Due Today</div>
+              <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1">{kpis.followUpsToday}</div>
+              <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium truncate mt-0.5">Scheduled</div>
             </div>
 
             {/* Card 7: FOLLOW-UPS OVERDUE */}
-            <div className="p-2.5 rounded-xl bg-slate-850 border border-slate-750 hover:border-slate-600 transition-colors">
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Follow-Ups Overdue</div>
-              <div className="text-lg font-bold text-rose-400 mt-1">{kpis.followUpsOverdue}</div>
-              <div className="text-[9px] text-rose-400 font-medium truncate mt-0.5">Needs Action</div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/90 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-600 shadow-2xs transition-colors" title="Follow-Ups Overdue">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">Overdue Tasks</div>
+              <div className="text-lg font-bold text-rose-600 dark:text-rose-400 mt-1">{kpis.followUpsOverdue}</div>
+              <div className="text-[9px] text-rose-600 dark:text-rose-400 font-medium truncate mt-0.5">Needs Action</div>
             </div>
 
             {/* Card 8: WON THIS MONTH */}
-            <div className="p-2.5 rounded-xl bg-slate-850 border border-slate-750 hover:border-slate-600 transition-colors">
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Won This Month</div>
-              <div className="text-lg font-bold text-emerald-400 mt-1">{kpis.wonThisMonth}</div>
-              <div className="text-[9px] text-emerald-400 font-medium truncate mt-0.5">Won Deals</div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/90 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-600 shadow-2xs transition-colors" title="Won Deals This Month">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">Won (Month)</div>
+              <div className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1">{kpis.wonThisMonth}</div>
+              <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium truncate mt-0.5">Won Deals</div>
             </div>
 
             {/* Card 9: LOST THIS MONTH */}
-            <div className="p-2.5 rounded-xl bg-slate-850 border border-slate-750 hover:border-slate-600 transition-colors">
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Lost This Month</div>
-              <div className="text-lg font-bold text-rose-400 mt-1">{kpis.lostThisMonth}</div>
-              <div className="text-[9px] text-slate-400 font-medium truncate mt-0.5">Closed Out</div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/90 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-600 shadow-2xs transition-colors" title="Lost Deals This Month">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">Lost (Month)</div>
+              <div className="text-lg font-bold text-rose-600 dark:text-rose-400 mt-1">{kpis.lostThisMonth}</div>
+              <div className="text-[9px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">Closed Out</div>
             </div>
 
             {/* Card 10: ACTIVE CUSTOMERS */}
-            <div className="p-2.5 rounded-xl bg-slate-850 border border-slate-750 hover:border-slate-600 transition-colors">
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Active Customers</div>
-              <div className="text-lg font-bold text-sky-400 mt-1">{kpis.activeCustomers}</div>
-              <div className="text-[9px] text-sky-400 font-medium truncate mt-0.5">Company Master</div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/90 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-600 shadow-2xs transition-colors" title="Active Commercial Customers">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">Active Clients</div>
+              <div className="text-lg font-bold text-sky-600 dark:text-sky-400 mt-1">{kpis.activeCustomers}</div>
+              <div className="text-[9px] text-sky-600 dark:text-sky-400 font-medium truncate mt-0.5">Company Master</div>
             </div>
 
             {/* Card 11: CUSTOMER SERVICE OPEN */}
-            <div className="p-2.5 rounded-xl bg-slate-850 border border-slate-750 hover:border-slate-600 transition-colors">
-              <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">Customer Service Open</div>
-              <div className="text-lg font-bold text-amber-300 mt-1">{kpis.customerServiceOpen}</div>
-              <div className="text-[9px] text-amber-400 font-medium truncate mt-0.5">Open Tickets</div>
+            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/90 dark:border-slate-750 hover:border-slate-300 dark:hover:border-slate-600 shadow-2xs transition-colors" title="Open Customer Service Tickets">
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate">Open Tickets</div>
+              <div className="text-lg font-bold text-amber-600 dark:text-amber-300 mt-1">{kpis.customerServiceOpen}</div>
+              <div className="text-[9px] text-amber-600 dark:text-amber-400 font-medium truncate mt-0.5">Support Desk</div>
             </div>
           </div>
         )}
 
         {/* Segregated Multi-Currency Pipeline Value Strip */}
         {kpis && (
-          <div className="mt-3 py-2 px-3 rounded-lg bg-slate-950/80 border border-slate-800/80 flex items-center justify-between text-xs flex-wrap gap-2">
-            <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+          <div className="mt-3.5 py-2.5 px-3.5 rounded-xl bg-slate-100/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800/80 flex items-center justify-between text-xs flex-wrap gap-2 shadow-2xs">
+            <span className="font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider text-[10px]">
               Segregated Active Pipeline Value (Freight Service Revenue Only):
             </span>
-            <div className="flex items-center gap-4">
-              <span className="font-mono text-amber-400 font-bold">
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-amber-700 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/50">
                 USD ${kpis.pipelineUsd.toLocaleString()}
               </span>
-              <span className="font-mono text-cyan-400 font-bold">
+              <span className="font-mono text-cyan-700 dark:text-cyan-400 font-bold bg-cyan-50 dark:bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-200 dark:border-cyan-900/50">
                 AED {kpis.pipelineAed.toLocaleString()}
               </span>
-              <span className="font-mono text-purple-400 font-bold">
+              <span className="font-mono text-purple-700 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40 px-2 py-0.5 rounded border border-purple-200 dark:border-purple-900/50">
                 EUR €{kpis.pipelineEur.toLocaleString()}
               </span>
             </div>
@@ -556,7 +556,7 @@ export function CrmSalesCenter() {
       </div>
 
       {/* Main Filter & Navigation Tabs Bar */}
-      <div className="bg-slate-900 border-b border-slate-800 px-6 py-2.5 flex items-center justify-between flex-wrap gap-3">
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200/90 dark:border-slate-800 px-6 py-2.5 flex items-center justify-between flex-wrap gap-3">
         {/* Navigation Tabs */}
         <div className="flex items-center gap-1 overflow-x-auto">
           {[
@@ -575,8 +575,8 @@ export function CrmSalesCenter() {
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`flex items-center gap-2 py-2 px-3 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
                   isActive
-                    ? 'bg-amber-500 text-slate-950 shadow-sm'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-2xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -589,13 +589,13 @@ export function CrmSalesCenter() {
         {/* Universal Search & Quick Filters */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative w-56 sm:w-64">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-500" />
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" />
             <input
               type="text"
               placeholder="Search deals, clients, lanes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:border-amber-500"
+              className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-hidden focus:border-amber-500 focus:bg-white dark:focus:bg-slate-800"
             />
           </div>
 
@@ -604,7 +604,7 @@ export function CrmSalesCenter() {
               <select
                 value={selectedOwner}
                 onChange={(e) => setSelectedOwner(e.target.value)}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300"
+                className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300"
               >
                 <option value="ALL">All Owners</option>
                 {owners.map((o) => (
@@ -617,7 +617,7 @@ export function CrmSalesCenter() {
               <select
                 value={selectedCorridor}
                 onChange={(e) => setSelectedCorridor(e.target.value)}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-slate-300 max-w-[150px] truncate"
+                className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 max-w-[150px] truncate"
               >
                 <option value="ALL">All Corridors</option>
                 {corridors.map((c) => (
@@ -628,12 +628,12 @@ export function CrmSalesCenter() {
               </select>
 
               {/* Kanban vs Table View Toggle */}
-              <div className="flex items-center rounded-lg bg-slate-800 border border-slate-700 p-0.5">
+              <div className="flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-0.5">
                 <button
                   type="button"
                   onClick={() => setPipelineViewMode('kanban')}
                   className={`p-1 rounded text-xs ${
-                    pipelineViewMode === 'kanban' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400'
+                    pipelineViewMode === 'kanban' ? 'bg-white dark:bg-amber-500 text-slate-900 dark:text-slate-950 font-bold shadow-2xs' : 'text-slate-500 dark:text-slate-400'
                   }`}
                   title="Kanban Board View"
                 >
@@ -643,7 +643,7 @@ export function CrmSalesCenter() {
                   type="button"
                   onClick={() => setPipelineViewMode('table')}
                   className={`p-1 rounded text-xs ${
-                    pipelineViewMode === 'table' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400'
+                    pipelineViewMode === 'table' ? 'bg-white dark:bg-amber-500 text-slate-900 dark:text-slate-950 font-bold shadow-2xs' : 'text-slate-500 dark:text-slate-400'
                   }`}
                   title="Table Grid View"
                 >
@@ -676,17 +676,17 @@ export function CrmSalesCenter() {
                   return (
                     <div
                       key={stg.id}
-                      className="w-72 shrink-0 flex flex-col rounded-2xl bg-slate-900 border border-slate-800 max-h-[78vh]"
+                      className="w-72 shrink-0 flex flex-col rounded-2xl bg-slate-100/70 dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 max-h-[78vh] shadow-2xs"
                     >
                       {/* Column Header */}
-                      <div className={`p-3 border-b border-slate-800 ${stg.color} flex items-center justify-between`}>
+                      <div className={`p-3 border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 rounded-t-2xl ${stg.color} flex items-center justify-between`}>
                         <div>
                           <div className="font-bold text-xs uppercase tracking-wider">{stg.label}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                             ${stageUsd.toLocaleString()} USD ({stageOpps.length})
                           </div>
                         </div>
-                        <span className="w-5 h-5 rounded-full bg-slate-800 text-[10px] flex items-center justify-center font-bold text-slate-300">
+                        <span className="w-5 h-5 rounded-full bg-slate-200/80 dark:bg-slate-800 text-[10px] flex items-center justify-center font-bold text-slate-700 dark:text-slate-300">
                           {stageOpps.length}
                         </span>
                       </div>
@@ -694,7 +694,7 @@ export function CrmSalesCenter() {
                       {/* Cards Container */}
                       <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
                         {stageOpps.length === 0 ? (
-                          <div className="p-4 text-center text-[11px] text-slate-600 border border-dashed border-slate-800 rounded-xl">
+                          <div className="p-4 text-center text-[11px] text-slate-400 dark:text-slate-500 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-white/40 dark:bg-slate-900/40">
                             Empty stage
                           </div>
                         ) : (
@@ -702,38 +702,39 @@ export function CrmSalesCenter() {
                             <div
                               key={opp.id}
                               onClick={() => handleOpenOppDetail(opp)}
-                              className="p-3 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-700/60 hover:border-amber-500/50 cursor-pointer transition-all space-y-2 group shadow-sm"
+                              className="p-3 rounded-xl bg-white hover:bg-slate-50/90 dark:bg-slate-850 dark:hover:bg-slate-800 border border-slate-200/90 hover:border-amber-400 dark:border-slate-700/60 dark:hover:border-amber-500/50 cursor-pointer transition-all space-y-2 group shadow-2xs hover:shadow-xs"
                             >
-                              <div className="flex items-start justify-between">
-                                <div className="font-semibold text-xs text-white group-hover:text-amber-400 transition-colors">
+                              {/* Title and Opportunity Number Badge with Anti-Collision Layout */}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors line-clamp-2 flex-1 min-w-0 pr-1">
                                   {opp.title}
                                 </div>
-                                <span className="text-[10px] font-mono text-slate-500">
+                                <span className="text-[10px] font-mono font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded shrink-0 border border-slate-200 dark:border-slate-700">
                                   {opp.opportunityNumber}
                                 </span>
                               </div>
 
-                              <div className="text-[11px] text-slate-300 flex items-center gap-1">
-                                <Building2 className="w-3 h-3 text-slate-500" />
+                              <div className="text-[11px] text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                <Building2 className="w-3 h-3 text-slate-400 dark:text-slate-500 shrink-0" />
                                 <span className="font-medium truncate">{opp.customerName}</span>
                               </div>
 
-                              <div className="text-[10px] text-slate-400 truncate">
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                                 Corridor: {opp.tradeLane}
                               </div>
 
                               {/* Value & Win Probability */}
-                              <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-xs">
-                                <span className="font-bold text-amber-400 font-mono">
+                              <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
+                                <span className="font-bold text-amber-600 dark:text-amber-400 font-mono">
                                   {opp.currency} {opp.expectedRevenue.toLocaleString()}
                                 </span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                                   {opp.probability}% win est.
                                 </span>
                               </div>
 
                               {/* Quick Advance Stage buttons */}
-                              <div className="pt-2 flex items-center justify-between text-[10px] text-slate-400" onClick={(e) => e.stopPropagation()}>
+                              <div className="pt-1.5 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400" onClick={(e) => e.stopPropagation()}>
                                 <span className="truncate">{opp.owner}</span>
                                 <div className="flex items-center gap-1">
                                   {stg.id !== 'WON' && stg.id !== 'LOST' && (
@@ -745,7 +746,7 @@ export function CrmSalesCenter() {
                                           handleQuickAdvanceStage(opp, STAGES[idx + 1].id)
                                         }
                                       }}
-                                      className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 text-[10px] flex items-center gap-0.5"
+                                      className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-amber-700 dark:text-amber-300 border border-slate-200 dark:border-slate-700 text-[10px] flex items-center gap-0.5 font-medium transition-colors"
                                       title="Advance to Next Stage"
                                     >
                                       Next <ArrowRight className="w-2.5 h-2.5" />
@@ -763,9 +764,9 @@ export function CrmSalesCenter() {
               </div>
             ) : (
               /* Table View */
-              <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
                 <table className="w-full text-xs text-left">
-                  <thead className="text-[11px] uppercase tracking-wider text-slate-400 bg-slate-850 border-b border-slate-800">
+                  <thead className="text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800">
                     <tr>
                       <th className="py-3 px-4 font-semibold">Opp # & Title</th>
                       <th className="py-3 px-3 font-semibold">Customer</th>
@@ -779,36 +780,36 @@ export function CrmSalesCenter() {
                       <th className="py-3 px-3 font-semibold text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800 text-slate-300">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                     {filteredOpportunities.map((opp) => (
                       <tr
                         key={opp.id}
-                        className="hover:bg-slate-800/60 cursor-pointer transition-colors"
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/60 cursor-pointer transition-colors"
                         onClick={() => handleOpenOppDetail(opp)}
                       >
                         <td className="py-3 px-4">
-                          <div className="font-semibold text-white">{opp.title}</div>
-                          <div className="text-[10px] text-slate-500 font-mono">{opp.opportunityNumber}</div>
+                          <div className="font-semibold text-slate-900 dark:text-white">{opp.title}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{opp.opportunityNumber}</div>
                         </td>
-                        <td className="py-3 px-3 font-medium text-slate-200">{opp.customerName}</td>
+                        <td className="py-3 px-3 font-medium text-slate-900 dark:text-slate-200">{opp.customerName}</td>
                         <td className="py-3 px-3">{opp.tradeLane}</td>
                         <td className="py-3 px-3">{opp.equipment}</td>
-                        <td className="py-3 px-3 font-bold text-amber-400 font-mono">
+                        <td className="py-3 px-3 font-bold text-amber-600 dark:text-amber-400 font-mono">
                           {opp.currency} {opp.expectedRevenue.toLocaleString()}
                         </td>
                         <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
                             {opp.stage.replace(/_/g, ' ')}
                           </span>
                         </td>
                         <td className="py-3 px-3">{opp.probability}%</td>
                         <td className="py-3 px-3">{opp.owner}</td>
-                        <td className="py-3 px-3 text-slate-400">{opp.expectedCloseDate}</td>
+                        <td className="py-3 px-3 text-slate-500 dark:text-slate-400">{opp.expectedCloseDate}</td>
                         <td className="py-3 px-3 text-right" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={() => handleOpenOppDetail(opp)}
-                            className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px]"
+                            className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-medium transition-colors"
                           >
                             Inspect
                           </button>
@@ -828,13 +829,15 @@ export function CrmSalesCenter() {
         {activeTab === 'leads' && (
           <div className="space-y-4">
             {/* Sub-tabs header */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setLeadsSubTab('leads')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                    leadsSubTab === 'leads' ? 'bg-amber-500 text-slate-950' : 'bg-slate-850 text-slate-400 hover:text-white'
+                    leadsSubTab === 'leads'
+                      ? 'bg-amber-500 text-slate-950 font-bold shadow-2xs'
+                      : 'bg-slate-100 dark:bg-slate-850 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
                   }`}
                 >
                   Commercial Leads ({leads.length})
@@ -843,7 +846,9 @@ export function CrmSalesCenter() {
                   type="button"
                   onClick={() => setLeadsSubTab('inquiries')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                    leadsSubTab === 'inquiries' ? 'bg-blue-600 text-white' : 'bg-slate-850 text-slate-400 hover:text-white'
+                    leadsSubTab === 'inquiries'
+                      ? 'bg-blue-600 text-white font-bold shadow-2xs'
+                      : 'bg-slate-100 dark:bg-slate-850 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
                   }`}
                 >
                   Sales Inquiries ({inquiries.length})
@@ -857,7 +862,7 @@ export function CrmSalesCenter() {
                     setSelectedLead(null)
                     setIsLeadModalOpen(true)
                   }}
-                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-lg text-xs flex items-center gap-1.5"
+                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Register Lead
@@ -869,7 +874,7 @@ export function CrmSalesCenter() {
                     setSelectedInquiry(null)
                     setIsInquiryModalOpen(true)
                   }}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5"
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   New Inquiry
@@ -879,9 +884,9 @@ export function CrmSalesCenter() {
 
             {leadsSubTab === 'leads' ? (
               /* Leads Table */
-              <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
                 <table className="w-full text-xs text-left">
-                  <thead className="text-[11px] uppercase tracking-wider text-slate-400 bg-slate-850 border-b border-slate-800">
+                  <thead className="text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800">
                     <tr>
                       <th className="py-3 px-4 font-semibold">Lead # & Company</th>
                       <th className="py-3 px-3 font-semibold">Contact Person</th>
@@ -894,31 +899,31 @@ export function CrmSalesCenter() {
                       <th className="py-3 px-3 font-semibold text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800 text-slate-300">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                     {filteredLeads.map((lead) => (
-                      <tr key={lead.id} className="hover:bg-slate-800/50 transition-colors">
+                      <tr key={lead.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="py-3 px-4">
-                          <div className="font-semibold text-white">{lead.companyName}</div>
-                          <div className="text-[10px] text-slate-500 font-mono">{lead.leadNumber}</div>
+                          <div className="font-semibold text-slate-900 dark:text-white">{lead.companyName}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{lead.leadNumber}</div>
                         </td>
                         <td className="py-3 px-3">{lead.contactPerson}</td>
                         <td className="py-3 px-3 font-mono">{lead.phone}</td>
                         <td className="py-3 px-3">{[lead.city, lead.country].filter(Boolean).join(', ')}</td>
                         <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700">
+                          <span className="px-2 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                             {lead.interestedService}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-slate-400">{lead.source}</td>
+                        <td className="py-3 px-3 text-slate-500 dark:text-slate-400">{lead.source}</td>
                         <td className="py-3 px-3">{lead.owner}</td>
                         <td className="py-3 px-3">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                               lead.status === 'CONVERTED'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
                                 : lead.status === 'QUALIFIED'
-                                ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                                : 'bg-slate-800 text-slate-400 border border-slate-700'
+                                ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
                             }`}
                           >
                             {lead.status}
@@ -930,7 +935,7 @@ export function CrmSalesCenter() {
                               <button
                                 type="button"
                                 onClick={() => handleOpenConvert(lead)}
-                                className="px-2.5 py-1 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 text-[11px] font-semibold"
+                                className="px-2.5 py-1 rounded bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-600/20 dark:hover:bg-emerald-600/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-[11px] font-semibold transition-colors"
                               >
                                 Convert
                               </button>
@@ -941,7 +946,7 @@ export function CrmSalesCenter() {
                                 setSelectedLead(lead)
                                 setIsLeadModalOpen(true)
                               }}
-                              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px]"
+                              className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-medium transition-colors"
                             >
                               Edit
                             </button>
@@ -954,9 +959,9 @@ export function CrmSalesCenter() {
               </div>
             ) : (
               /* Inquiries Table */
-              <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
                 <table className="w-full text-xs text-left">
-                  <thead className="text-[11px] uppercase tracking-wider text-slate-400 bg-slate-850 border-b border-slate-800">
+                  <thead className="text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800">
                     <tr>
                       <th className="py-3 px-4 font-semibold">Inquiry # & Customer</th>
                       <th className="py-3 px-3 font-semibold">Corridor (Origin → Dest)</th>
@@ -968,12 +973,12 @@ export function CrmSalesCenter() {
                       <th className="py-3 px-3 font-semibold text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800 text-slate-300">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                     {filteredInquiries.map((inq) => (
-                      <tr key={inq.id} className="hover:bg-slate-800/50 transition-colors">
+                      <tr key={inq.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="py-3 px-4">
-                          <div className="font-semibold text-white">{inq.customerName}</div>
-                          <div className="text-[10px] text-slate-500 font-mono">{inq.inquiryNumber}</div>
+                          <div className="font-semibold text-slate-900 dark:text-white">{inq.customerName}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{inq.inquiryNumber}</div>
                         </td>
                         <td className="py-3 px-3 font-medium">
                           {inq.origin} → {inq.destination}
@@ -983,19 +988,19 @@ export function CrmSalesCenter() {
                         </td>
                         <td className="py-3 px-3">{inq.commodity}</td>
                         <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700">
+                          <span className="px-2 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                             {inq.serviceMode}
                           </span>
                         </td>
-                        <td className="py-3 px-3 font-mono text-amber-400">
+                        <td className="py-3 px-3 font-mono text-amber-600 dark:text-amber-400 font-medium">
                           {inq.quotationId || 'Pending'}
                         </td>
                         <td className="py-3 px-3">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                               inq.status === 'QUOTED'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+                                : 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20'
                             }`}
                           >
                             {inq.status}
@@ -1007,7 +1012,7 @@ export function CrmSalesCenter() {
                               <button
                                 type="button"
                                 onClick={() => handleGenerateQuoteFromInquiry(inq)}
-                                className="px-2.5 py-1 rounded bg-blue-600/20 text-blue-300 border border-blue-500/30 hover:bg-blue-600/30 text-[11px] font-semibold"
+                                className="px-2.5 py-1 rounded bg-blue-50 hover:bg-blue-100 dark:bg-blue-600/20 dark:hover:bg-blue-600/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 text-[11px] font-semibold transition-colors"
                               >
                                 Generate Quote
                               </button>
@@ -1018,7 +1023,7 @@ export function CrmSalesCenter() {
                                 setSelectedInquiry(inq)
                                 setIsInquiryModalOpen(true)
                               }}
-                              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px]"
+                              className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-medium transition-colors"
                             >
                               Edit
                             </button>
@@ -1040,16 +1045,16 @@ export function CrmSalesCenter() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-white">Customer 360 Directory</h3>
-                <p className="text-xs text-slate-400">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Customer 360 Directory</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Master Entity accounts with full commercial history, linked shipments, quotes, activities, and permissions.
                 </p>
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
               <table className="w-full text-xs text-left">
-                <thead className="text-[11px] uppercase tracking-wider text-slate-400 bg-slate-850 border-b border-slate-800">
+                <thead className="text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="py-3 px-4 font-semibold">Customer Name & ID</th>
                     <th className="py-3 px-3 font-semibold">Master Types</th>
@@ -1061,28 +1066,28 @@ export function CrmSalesCenter() {
                     <th className="py-3 px-3 font-semibold text-right">Profile</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800 text-slate-300">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                   {filteredCustomers.map((cust) => {
                     const ext = crmSalesService.getCustomerExtension(cust.id)
                     return (
                       <tr
                         key={cust.id}
                         onClick={() => handleOpenCustomer360(cust)}
-                        className="hover:bg-slate-800/50 cursor-pointer transition-colors"
+                        className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
                       >
                         <td className="py-3 px-4">
-                          <div className="font-semibold text-white flex items-center gap-1.5">
-                            <Building2 className="w-3.5 h-3.5 text-amber-400" />
+                          <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <Building2 className="w-3.5 h-3.5 text-amber-500" />
                             {cust.name}
                           </div>
-                          <div className="text-[10px] text-slate-500 font-mono">{cust.id}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{cust.id}</div>
                         </td>
                         <td className="py-3 px-3">
                           <div className="flex flex-wrap gap-1">
                             {cust.type.map((t) => (
                               <span
                                 key={t}
-                                className="px-1.5 py-0.2 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700"
+                                className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                               >
                                 {t}
                               </span>
@@ -1091,13 +1096,13 @@ export function CrmSalesCenter() {
                         </td>
                         <td className="py-3 px-3">{cust.contactPerson || 'N/A'}</td>
                         <td className="py-3 px-3">
-                          <div className="text-slate-200">{cust.phone || 'N/A'}</div>
-                          <div className="text-[10px] text-slate-500">{cust.email}</div>
+                          <div className="text-slate-800 dark:text-slate-200">{cust.phone || 'N/A'}</div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400">{cust.email}</div>
                         </td>
                         <td className="py-3 px-3">{[cust.city, cust.country].filter(Boolean).join(', ') || 'N/A'}</td>
-                        <td className="py-3 px-3 text-slate-300">{ext?.accountManager || 'Unassigned'}</td>
+                        <td className="py-3 px-3 text-slate-600 dark:text-slate-300">{ext?.accountManager || 'Unassigned'}</td>
                         <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
                             {ext?.segment || 'ACTIVE'}
                           </span>
                         </td>
@@ -1105,7 +1110,7 @@ export function CrmSalesCenter() {
                           <button
                             type="button"
                             onClick={() => handleOpenCustomer360(cust)}
-                            className="px-3 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-semibold"
+                            className="px-3 py-1 rounded bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 text-[11px] font-semibold transition-colors"
                           >
                             Open 360
                           </button>
@@ -1124,7 +1129,7 @@ export function CrmSalesCenter() {
         {/* ========================================================================= */}
         {activeTab === 'tasks' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 {[
                   { id: 'ALL', label: 'All Tasks' },
@@ -1137,7 +1142,9 @@ export function CrmSalesCenter() {
                     type="button"
                     onClick={() => setTasksFilter(f.id as any)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      tasksFilter === f.id ? 'bg-amber-500 text-slate-950' : 'bg-slate-850 text-slate-400 hover:text-white'
+                      tasksFilter === f.id
+                        ? 'bg-amber-500 text-slate-950 font-bold shadow-2xs'
+                        : 'bg-slate-100 dark:bg-slate-850 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700'
                     }`}
                   >
                     {f.label}
@@ -1146,9 +1153,9 @@ export function CrmSalesCenter() {
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
               <table className="w-full text-xs text-left">
-                <thead className="text-[11px] uppercase tracking-wider text-slate-400 bg-slate-850 border-b border-slate-800">
+                <thead className="text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="py-3 px-4 font-semibold">Customer</th>
                     <th className="py-3 px-3 font-semibold">Follow-Up Type</th>
@@ -1160,12 +1167,12 @@ export function CrmSalesCenter() {
                     <th className="py-3 px-3 font-semibold text-right">Complete</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800 text-slate-300">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                   {filteredTasks.map((t) => (
-                    <tr key={t.id} className="hover:bg-slate-800/50 transition-colors">
-                      <td className="py-3 px-4 font-semibold text-white">{t.customerName}</td>
+                    <tr key={t.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">{t.customerName}</td>
                       <td className="py-3 px-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-amber-300 border border-slate-700 font-semibold">
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-amber-50 dark:bg-slate-800 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-slate-700 font-semibold">
                           {t.type}
                         </span>
                       </td>
@@ -1173,24 +1180,24 @@ export function CrmSalesCenter() {
                         <span
                           className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                             t.priority === 'URGENT'
-                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20'
                               : t.priority === 'HIGH'
-                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                              : 'bg-slate-800 text-slate-400'
+                              ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
                           }`}
                         >
                           {t.priority}
                         </span>
                       </td>
-                      <td className="py-3 px-3 font-mono text-slate-300">{t.dueDate}</td>
-                      <td className="py-3 px-4 text-slate-300">{t.notes}</td>
+                      <td className="py-3 px-3 font-mono text-slate-600 dark:text-slate-300">{t.dueDate}</td>
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300">{t.notes}</td>
                       <td className="py-3 px-3">{t.assignedUser}</td>
                       <td className="py-3 px-3">
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                             t.status === 'COMPLETED'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+                              : 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20'
                           }`}
                         >
                           {t.status}
@@ -1204,7 +1211,7 @@ export function CrmSalesCenter() {
                               crmSalesService.completeFollowUp(t.id)
                               refreshData()
                             }}
-                            className="px-2.5 py-1 rounded bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30 text-[11px] font-semibold"
+                            className="px-2.5 py-1 rounded bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-600/20 dark:hover:bg-emerald-600/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-[11px] font-semibold transition-colors"
                           >
                             Mark Done
                           </button>
@@ -1225,8 +1232,8 @@ export function CrmSalesCenter() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-white">Customer Service Desk</h3>
-                <p className="text-xs text-slate-400">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Customer Service Desk</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Track customer inquiries, document requests, tracking questions, and escalated claims.
                 </p>
               </div>
@@ -1236,16 +1243,16 @@ export function CrmSalesCenter() {
                   setSelectedSr(null)
                   setIsSrModalOpen(true)
                 }}
-                className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg text-xs flex items-center gap-1.5 shadow"
+                className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Log Ticket
               </button>
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
               <table className="w-full text-xs text-left">
-                <thead className="text-[11px] uppercase tracking-wider text-slate-400 bg-slate-850 border-b border-slate-800">
+                <thead className="text-[11px] uppercase tracking-wider text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-850 border-b border-slate-200 dark:border-slate-800">
                   <tr>
                     <th className="py-3 px-4 font-semibold">Ticket # & Subject</th>
                     <th className="py-3 px-3 font-semibold">Customer</th>
@@ -1257,7 +1264,7 @@ export function CrmSalesCenter() {
                     <th className="py-3 px-3 font-semibold text-right">Inspect</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800 text-slate-300">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                   {filteredServiceRequests.map((sr) => (
                     <tr
                       key={sr.id}
@@ -1265,29 +1272,29 @@ export function CrmSalesCenter() {
                         setSelectedSr(sr)
                         setIsSrModalOpen(true)
                       }}
-                      className="hover:bg-slate-800/50 cursor-pointer transition-colors"
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
                     >
                       <td className="py-3 px-4">
-                        <div className="font-semibold text-white">{sr.subject}</div>
-                        <div className="text-[10px] text-slate-500 font-mono">{sr.requestNumber}</div>
+                        <div className="font-semibold text-slate-900 dark:text-white">{sr.subject}</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{sr.requestNumber}</div>
                       </td>
-                      <td className="py-3 px-3 font-medium text-slate-200">{sr.customerName}</td>
+                      <td className="py-3 px-3 font-medium text-slate-900 dark:text-slate-200">{sr.customerName}</td>
                       <td className="py-3 px-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700">
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                           {sr.category}
                         </span>
                       </td>
-                      <td className="py-3 px-3 font-mono text-slate-300">
+                      <td className="py-3 px-3 font-mono text-slate-600 dark:text-slate-300">
                         {sr.bolNumber || sr.containerNumber || 'None'}
                       </td>
                       <td className="py-3 px-3">
                         <span
                           className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                             sr.priority === 'URGENT'
-                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20'
                               : sr.priority === 'HIGH'
-                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                              : 'bg-slate-800 text-slate-400'
+                              ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
                           }`}
                         >
                           {sr.priority}
@@ -1298,8 +1305,8 @@ export function CrmSalesCenter() {
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                             sr.status === 'RESOLVED' || sr.status === 'CLOSED'
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                              ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+                              : 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20'
                           }`}
                         >
                           {sr.status}
@@ -1312,7 +1319,7 @@ export function CrmSalesCenter() {
                             setSelectedSr(sr)
                             setIsSrModalOpen(true)
                           }}
-                          className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-[11px]"
+                          className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-medium transition-colors"
                         >
                           View / Reply
                         </button>
@@ -1332,15 +1339,15 @@ export function CrmSalesCenter() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-semibold text-white">Commercial Performance Analytics</h3>
-                <p className="text-xs text-slate-400">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Commercial Performance Analytics</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Win / Loss distribution, corridor conversion rates, and sales leaderboard.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsPipelinePdfOpen(true)}
-                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow"
+                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition-colors"
               >
                 <Printer className="w-3.5 h-3.5" />
                 Generate Executive Report PDF
@@ -1349,9 +1356,9 @@ export function CrmSalesCenter() {
 
             {/* Performance Metric Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-                <div className="text-xs font-semibold text-slate-400">Commercial Win Rate</div>
-                <div className="text-3xl font-black text-emerald-400">
+              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-2 shadow-2xs">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Commercial Win Rate</div>
+                <div className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
                   {opportunities.length > 0
                     ? `${Math.round(
                         (opportunities.filter((o) => o.status === 'WON').length /
@@ -1360,14 +1367,14 @@ export function CrmSalesCenter() {
                       )}%`
                     : '0%'}
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Calculated against closed commercial files (excluding active pipeline)
                 </p>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-                <div className="text-xs font-semibold text-slate-400">Average Won Deal Value</div>
-                <div className="text-3xl font-black text-amber-400 font-mono">
+              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-2 shadow-2xs">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Average Won Deal Value</div>
+                <div className="text-3xl font-black text-amber-600 dark:text-amber-400 font-mono">
                   $
                   {Math.round(
                     opportunities.filter((o) => o.status === 'WON' && o.currency === 'USD').length > 0
@@ -1378,19 +1385,19 @@ export function CrmSalesCenter() {
                       : 0
                   ).toLocaleString()}
                 </div>
-                <p className="text-[11px] text-slate-400">USD freight service revenue per deal</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">USD freight service revenue per deal</p>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-                <div className="text-xs font-semibold text-slate-400">Quotation Turnaround</div>
-                <div className="text-3xl font-black text-blue-400">3.8 Hours</div>
-                <p className="text-[11px] text-slate-400">From customer inquiry to issued quotation</p>
+              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-2 shadow-2xs">
+                <div className="text-xs font-semibold text-slate-600 dark:text-slate-400">Quotation Turnaround</div>
+                <div className="text-3xl font-black text-blue-600 dark:text-blue-400">3.8 Hours</div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">From customer inquiry to issued quotation</p>
               </div>
             </div>
 
             {/* Lost Deals Reason Analysis */}
-            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 space-y-4 shadow-2xs">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                 Lost Opportunities Disposition Analysis
               </h4>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -1398,9 +1405,9 @@ export function CrmSalesCenter() {
                   (reason) => {
                     const count = opportunities.filter((o) => o.lostReason === reason).length
                     return (
-                      <div key={reason} className="p-3 rounded-xl bg-slate-850 border border-slate-800">
-                        <div className="text-[10px] text-slate-400 font-semibold">{reason.replace(/_/g, ' ')}</div>
-                        <div className="text-lg font-bold text-rose-400 mt-1">{count} Deals</div>
+                      <div key={reason} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">{reason.replace(/_/g, ' ')}</div>
+                        <div className="text-lg font-bold text-rose-600 dark:text-rose-400 mt-1">{count} Deals</div>
                       </div>
                     )
                   }

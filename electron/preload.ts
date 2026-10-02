@@ -19,3 +19,20 @@ contextBridge.exposeInMainWorld("skyDesktop", {
   testServerConnection: (url: string) => ipcRenderer.invoke("network:test-connection", url),
   switchNetworkMode: (mode: "local" | "server", serverConfig?: any) => ipcRenderer.invoke("network:switch-mode", { mode, serverConfig }),
 })
+
+// Native Desktop Menu Event Bridge
+ipcRenderer.on("menu:new", () => {
+  window.dispatchEvent(new CustomEvent("skybol:navigate-view", { detail: { view: "bol" } }))
+  window.dispatchEvent(new CustomEvent("skybol:create-new-bol"))
+})
+ipcRenderer.on("menu:open", () => {
+  window.dispatchEvent(new CustomEvent("skybol:navigate-view", { detail: { view: "bol" } }))
+  window.dispatchEvent(new CustomEvent("skybol:editor-action", { detail: { action: "saved-documents", tab: "saved-documents" } }))
+})
+ipcRenderer.on("menu:save", () => {
+  window.dispatchEvent(new CustomEvent("skybol:editor-action", { detail: { action: "save" } }))
+})
+ipcRenderer.on("menu:export-pdf", () => {
+  window.dispatchEvent(new CustomEvent("skybol:editor-action", { detail: { action: "download" } }))
+})
+

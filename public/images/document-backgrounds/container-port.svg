@@ -6,47 +6,330 @@
       <feGaussianBlur stdDeviation="1.5" result="blur" />
       <feComposite in="SourceGraphic" in2="blur" operator="over" />
     </filter>
+    <linearGradient id="primary-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" stop-opacity="0.85" />
+      <stop offset="100%" stop-color="#0e7490" stop-opacity="0.5" />
+    </linearGradient>
+    <linearGradient id="fade-down" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" stop-opacity="0.7" />
+      <stop offset="100%" stop-color="#0e7490" stop-opacity="0.1" />
+    </linearGradient>
   </defs>
-  <!-- Transparent Base: Preserves Pristine Document Paper Legibility -->
-  <g transform="translate(80,80)"><circle cx="0" cy="0" r="40" fill="none" stroke="#0284c7" stroke-width="0.8" opacity="0.45" /><circle cx="20.0" cy="0.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="0.0" cy="20.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-20.0" cy="0.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="-10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="-17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-0.0" cy="-20.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="-17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="-10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /></g><g transform="translate(820,80)"><circle cx="0" cy="0" r="40" fill="none" stroke="#0284c7" stroke-width="0.8" opacity="0.45" /><circle cx="20.0" cy="0.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="0.0" cy="20.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-20.0" cy="0.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="-10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="-17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-0.0" cy="-20.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="-17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="-10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /></g><g transform="translate(80,1320)"><circle cx="0" cy="0" r="40" fill="none" stroke="#0284c7" stroke-width="0.8" opacity="0.45" /><circle cx="20.0" cy="0.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="0.0" cy="20.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-20.0" cy="0.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="-10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="-17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-0.0" cy="-20.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="-17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="-10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /></g><g transform="translate(820,1320)"><circle cx="0" cy="0" r="40" fill="none" stroke="#0284c7" stroke-width="0.8" opacity="0.45" /><circle cx="20.0" cy="0.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="0.0" cy="20.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-20.0" cy="0.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-17.3" cy="-10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-10.0" cy="-17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="-0.0" cy="-20.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="10.0" cy="-17.3" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /><circle cx="17.3" cy="-10.0" r="20.0" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.32" /></g>
-    <g fill="none" stroke="#0284c7" opacity="0.45">
-      <rect x="25" y="25" width="850" height="1350" rx="6" stroke-width="1.2" />
-      <rect x="33" y="33" width="834" height="1334" rx="4" stroke-width="0.6" stroke-dasharray="4 3" />
-      <!-- Corner Tick Brackets -->
-      <path d="M20,50 L20,20 L50,20" stroke-width="1.5" />
-      <path d="M880,50 L880,20 L850,20" stroke-width="1.5" />
-      <path d="M20,1350 L20,1380 L50,1380" stroke-width="1.5" />
-      <path d="M880,1350 L880,1380 L850,1380" stroke-width="1.5" />
-      <!-- Micro-line Security Text -->
-      <text x="450" y="21" font-family="Arial, sans-serif" font-size="7" font-weight="bold" letter-spacing="3" text-anchor="middle" fill="#0284c7" opacity="0.6">★ SKY ARIANA LOGISTICS · OFFICIAL MULTI-MODAL BILL OF LADING SECURITY SYSTEM ★</text>
-      <text x="450" y="1390" font-family="Arial, sans-serif" font-size="7" font-weight="bold" letter-spacing="3" text-anchor="middle" fill="#0284c7" opacity="0.6">★ INTERNATIONAL LOGISTICS SECURITY WATERMARK · VERIFIED CARGO NETWORK ★</text>
+  
+  <!-- Security Document Outer Border & Fine Calibrated Grid -->
+  <g fill="none" stroke="#0f172a">
+    <!-- Primary Outer Frame -->
+    <rect x="24" y="24" width="852" height="1352" rx="4" stroke-width="1.5" opacity="0.65" />
+    <rect x="32" y="32" width="836" height="1336" rx="2" stroke-width="0.7" stroke-dasharray="5 3" opacity="0.5" />
+    <rect x="42" y="42" width="816" height="1316" stroke-width="0.5" opacity="0.3" />
+
+    <!-- Corner Alignment Crosshairs -->
+    <path d="M16,40 L16,16 L40,16" stroke-width="2" opacity="0.8" />
+    <path d="M884,40 L884,16 L860,16" stroke-width="2" opacity="0.8" />
+    <path d="M16,1360 L16,1384 L40,1384" stroke-width="2" opacity="0.8" />
+    <path d="M884,1360 L884,1384 L860,1384" stroke-width="2" opacity="0.8" />
+
+    <!-- Top & Bottom Micro-Text Security Banners -->
+    <text x="450" y="20" font-family="Arial, sans-serif" font-size="7.5" font-weight="bold" letter-spacing="4" text-anchor="middle" fill="#0f172a" opacity="0.75">★ SKY ARIANA LOGISTICS · OFFICIAL MULTI-MODAL BILL OF LADING SECURITY SYSTEM ★</text>
+    <text x="450" y="1390" font-family="Arial, sans-serif" font-size="7.5" font-weight="bold" letter-spacing="4" text-anchor="middle" fill="#0f172a" opacity="0.75">★ AUTHENTIC SECURE CARGO WAYBILL · VERIFIED INTERNATIONAL TRANSIT NETWORK ★</text>
+
+    <!-- Side Margin Degree & Metric Ticks -->
+    <g opacity="0.4" stroke-width="0.6">
+      <line x1="20" y1="350" x2="28" y2="350" /><line x1="20" y1="700" x2="30" y2="700" stroke-width="1.2" /><line x1="20" y1="1050" x2="28" y2="1050" />
+      <line x1="872" y1="350" x2="880" y2="350" /><line x1="870" y1="700" x2="880" y2="700" stroke-width="1.2" /><line x1="872" y1="1050" x2="880" y2="1050" />
+      <line x1="225" y1="20" x2="225" y2="28" /><line x1="450" y1="18" x2="450" y2="30" stroke-width="1.2" /><line x1="675" y1="20" x2="675" y2="28" />
+      <line x1="225" y1="1372" x2="225" y2="1380" /><line x1="450" y1="1370" x2="450" y2="1382" stroke-width="1.2" /><line x1="675" y1="1372" x2="675" y2="1380" />
     </g>
-  <g transform="translate(450,660)"><circle cx="0" cy="0" r="183.75" fill="none" stroke="#0284c7" stroke-width="1.2" opacity="0.6" /><circle cx="0" cy="0" r="171.5" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.4" stroke-dasharray="3 3" /><circle cx="0" cy="0" r="105" fill="none" stroke="#0284c7" stroke-width="0.8" opacity="0.5" /><circle cx="0" cy="0" r="43.75" fill="none" stroke="#0284c7" stroke-width="0.8" opacity="0.6" /><line x1="183.8" y1="0.0" x2="171.8" y2="0.0" stroke="#0284c7" stroke-width="1" opacity="0.6" /><line x1="181.0" y1="31.9" x2="175.0" y2="30.9" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="172.7" y1="62.8" x2="167.0" y2="60.8" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="159.1" y1="91.9" x2="148.7" y2="85.9" stroke="#0284c7" stroke-width="1" opacity="0.6" /><line x1="140.8" y1="118.1" x2="136.2" y2="114.3" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="118.1" y1="140.8" x2="114.3" y2="136.2" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="91.9" y1="159.1" x2="85.9" y2="148.7" stroke="#0284c7" stroke-width="1" opacity="0.6" /><line x1="62.8" y1="172.7" x2="60.8" y2="167.0" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="31.9" y1="181.0" x2="30.9" y2="175.0" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="0.0" y1="183.8" x2="0.0" y2="171.8" stroke="#0284c7" stroke-width="1" opacity="0.6" /><line x1="-31.9" y1="181.0" x2="-30.9" y2="175.0" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="-62.8" y1="172.7" x2="-60.8" y2="167.0" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="-91.9" y1="159.1" x2="-85.9" y2="148.7" stroke="#0284c7" stroke-width="1" opacity="0.6" /><line x1="-118.1" y1="140.8" x2="-114.3" y2="136.2" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="-140.8" y1="118.1" x2="-136.2" y2="114.3" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="-159.1" y1="91.9" x2="-148.7" y2="85.9" stroke="#0284c7" stroke-width="1" opacity="0.6" /><line x1="-172.7" y1="62.8" x2="-167.0" y2="60.8" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="-181.0" y1="31.9" x2="-175.0" y2="30.9" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="-183.8" y1="0.0" x2="-171.8" y2="0.0" stroke="#0284c7" stroke-width="1" opacity="0.6" /><line x1="-181.0" y1="-31.9" x2="-175.0" y2="-30.9" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="-172.7" y1="-62.8" x2="-167.0" y2="-60.8" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="-159.1" y1="-91.9" x2="-148.7" y2="-85.9" stroke="#0284c7" stroke-width="1" opacity="0.6" /><line x1="-140.8" y1="-118.1" x2="-136.2" y2="-114.3" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="-118.1" y1="-140.8" x2="-114.3" y2="-136.2" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="-91.9" y1="-159.1" x2="-85.9" y2="-148.7" stroke="#0284c7" stroke-width="1" opacity="0.6" /><line x1="-62.8" y1="-172.7" x2="-60.8" y2="-167.0" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="-31.9" y1="-181.0" x2="-30.9" y2="-175.0" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="-0.0" y1="-183.8" x2="-0.0" y2="-171.8" stroke="#0284c7" stroke-width="1" opacity="0.6" /><line x1="31.9" y1="-181.0" x2="30.9" y2="-175.0" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="62.8" y1="-172.7" x2="60.8" y2="-167.0" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="91.9" y1="-159.1" x2="85.9" y2="-148.7" stroke="#0284c7" stroke-width="1" opacity="0.6" /><line x1="118.1" y1="-140.8" x2="114.3" y2="-136.2" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="140.8" y1="-118.1" x2="136.2" y2="-114.3" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="159.1" y1="-91.9" x2="148.7" y2="-85.9" stroke="#0284c7" stroke-width="1" opacity="0.6" /><line x1="172.7" y1="-62.8" x2="167.0" y2="-60.8" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><line x1="181.0" y1="-31.9" x2="175.0" y2="-30.9" stroke="#0284c7" stroke-width="0.6" opacity="0.6" /><polygon points="0,0 -7.0,-0.0 0.0,-166.3" fill="#0284c7" opacity="0.45" /><polygon points="0,0 7.0,0.0 0.0,-166.3" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 -3.9,-3.9 92.8,-92.8" fill="#0284c7" opacity="0.45" /><polygon points="0,0 3.9,3.9 92.8,-92.8" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 0.0,-7.0 166.3,0.0" fill="#0284c7" opacity="0.45" /><polygon points="0,0 0.0,7.0 166.3,0.0" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 3.9,-3.9 92.8,92.8" fill="#0284c7" opacity="0.45" /><polygon points="0,0 -3.9,3.9 92.8,92.8" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 7.0,0.0 0.0,166.3" fill="#0284c7" opacity="0.45" /><polygon points="0,0 -7.0,0.0 0.0,166.3" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 3.9,3.9 -92.8,92.8" fill="#0284c7" opacity="0.45" /><polygon points="0,0 -3.9,-3.9 -92.8,92.8" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 0.0,7.0 -166.3,0.0" fill="#0284c7" opacity="0.45" /><polygon points="0,0 -0.0,-7.0 -166.3,0.0" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 -3.9,3.9 -92.8,-92.8" fill="#0284c7" opacity="0.45" /><polygon points="0,0 3.9,-3.9 -92.8,-92.8" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 -3.2,-1.3 36.8,-88.9" fill="#0284c7" opacity="0.45" /><polygon points="0,0 3.2,1.3 36.8,-88.9" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 -1.3,-3.2 88.9,-36.8" fill="#0284c7" opacity="0.45" /><polygon points="0,0 1.3,3.2 88.9,-36.8" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 1.3,-3.2 88.9,36.8" fill="#0284c7" opacity="0.45" /><polygon points="0,0 -1.3,3.2 88.9,36.8" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 3.2,-1.3 36.8,88.9" fill="#0284c7" opacity="0.45" /><polygon points="0,0 -3.2,1.3 36.8,88.9" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 3.2,1.3 -36.8,88.9" fill="#0284c7" opacity="0.45" /><polygon points="0,0 -3.2,-1.3 -36.8,88.9" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 1.3,3.2 -88.9,36.8" fill="#0284c7" opacity="0.45" /><polygon points="0,0 -1.3,-3.2 -88.9,36.8" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 -1.3,3.2 -88.9,-36.8" fill="#0284c7" opacity="0.45" /><polygon points="0,0 1.3,-3.2 -88.9,-36.8" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><polygon points="0,0 -3.2,1.3 -36.8,-88.9" fill="#0284c7" opacity="0.45" /><polygon points="0,0 3.2,-1.3 -36.8,-88.9" fill="none" stroke="#0284c7" stroke-width="0.7" opacity="0.6" /><text x="0.0" y="-196.0" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#0284c7" opacity="0.8" text-anchor="middle" dominant-baseline="middle">N</text><text x="196.0" y="4.0" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#0284c7" opacity="0.8" text-anchor="middle" dominant-baseline="middle">E</text><text x="0.0" y="203.0" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#0284c7" opacity="0.8" text-anchor="middle" dominant-baseline="middle">S</text><text x="-196.0" y="4.0" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="bold" fill="#0284c7" opacity="0.8" text-anchor="middle" dominant-baseline="middle">W</text><line x1="0" y1="0" x2="650.0" y2="0.0" stroke="#0284c7" stroke-width="0.6" stroke-dasharray="8 12" opacity="0.3" /><line x1="0" y1="0" x2="459.6" y2="459.6" stroke="#0284c7" stroke-width="0.6" stroke-dasharray="8 12" opacity="0.3" /><line x1="0" y1="0" x2="0.0" y2="650.0" stroke="#0284c7" stroke-width="0.6" stroke-dasharray="8 12" opacity="0.3" /><line x1="0" y1="0" x2="-459.6" y2="459.6" stroke="#0284c7" stroke-width="0.6" stroke-dasharray="8 12" opacity="0.3" /><line x1="0" y1="0" x2="-650.0" y2="0.0" stroke="#0284c7" stroke-width="0.6" stroke-dasharray="8 12" opacity="0.3" /><line x1="0" y1="0" x2="-459.6" y2="-459.6" stroke="#0284c7" stroke-width="0.6" stroke-dasharray="8 12" opacity="0.3" /><line x1="0" y1="0" x2="-0.0" y2="-650.0" stroke="#0284c7" stroke-width="0.6" stroke-dasharray="8 12" opacity="0.3" /><line x1="0" y1="0" x2="459.6" y2="-459.6" stroke="#0284c7" stroke-width="0.6" stroke-dasharray="8 12" opacity="0.3" /><circle cx="0" cy="0" r="5" fill="#0284c7" opacity="0.8" /><circle cx="0" cy="0" r="2" fill="#ffffff" /></g>
-    <g transform="translate(450,1080) scale(0.85)" fill="none" stroke="#0284c7" stroke-width="1.2" opacity="0.75">
-      <!-- Waterline & Bulbous Bow -->
-      <path d="M-220,50 L200,50 L250,50 C270,50 285,42 290,30 L270,10 L-220,10 Z" fill="#0284c7" fill-opacity="0.15" />
-      <path d="M-220,50 C-230,50 -240,40 -245,20 L-235,10" />
-      <line x1="-250" y1="52" x2="310" y2="52" stroke="#0284c7" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.5" />
-      <!-- Container Stacks Tier 1 to 4 -->
-      <g fill="#0284c7" fill-opacity="0.22" stroke="#0284c7" stroke-width="0.8">
-        <rect x="-180" y="-18" width="34" height="28" rx="1" /><rect x="-180" y="-44" width="34" height="26" rx="1" /><line x1="-163" y1="-44" x2="-163" y2="10" stroke-width="0.5" stroke-dasharray="2 2" /><rect x="-142" y="-18" width="34" height="28" rx="1" /><rect x="-142" y="-32" width="34" height="14" rx="1" /><line x1="-125" y1="-32" x2="-125" y2="10" stroke-width="0.5" stroke-dasharray="2 2" /><rect x="-104" y="-18" width="34" height="28" rx="1" /><rect x="-104" y="-44" width="34" height="26" rx="1" /><line x1="-87" y1="-44" x2="-87" y2="10" stroke-width="0.5" stroke-dasharray="2 2" /><rect x="-66" y="-18" width="34" height="28" rx="1" /><rect x="-66" y="-32" width="34" height="14" rx="1" /><line x1="-49" y1="-32" x2="-49" y2="10" stroke-width="0.5" stroke-dasharray="2 2" /><rect x="-28" y="-18" width="34" height="28" rx="1" /><rect x="-28" y="-44" width="34" height="26" rx="1" /><line x1="-11" y1="-44" x2="-11" y2="10" stroke-width="0.5" stroke-dasharray="2 2" /><rect x="10" y="-18" width="34" height="28" rx="1" /><rect x="10" y="-32" width="34" height="14" rx="1" /><line x1="27" y1="-32" x2="27" y2="10" stroke-width="0.5" stroke-dasharray="2 2" /><rect x="48" y="-18" width="34" height="28" rx="1" /><rect x="48" y="-44" width="34" height="26" rx="1" /><line x1="65" y1="-44" x2="65" y2="10" stroke-width="0.5" stroke-dasharray="2 2" /><rect x="86" y="-18" width="34" height="28" rx="1" /><rect x="86" y="-32" width="34" height="14" rx="1" /><line x1="103" y1="-32" x2="103" y2="10" stroke-width="0.5" stroke-dasharray="2 2" /><rect x="124" y="-18" width="34" height="28" rx="1" /><rect x="124" y="-44" width="34" height="26" rx="1" /><line x1="141" y1="-44" x2="141" y2="10" stroke-width="0.5" stroke-dasharray="2 2" />
-      </g>
-      <!-- Bridge & Superstructure -->
-      <g fill="#0284c7" fill-opacity="0.25">
-        <rect x="170" y="-55" width="45" height="65" rx="2" />
-        <rect x="165" y="-68" width="55" height="13" rx="1" />
-        <rect x="175" y="-95" width="22" height="27" rx="1" />
-        <!-- Radar Mast -->
-        <line x1="186" y1="-95" x2="186" y2="-125" stroke-width="1.5" />
-        <line x1="176" y1="-115" x2="196" y2="-115" stroke-width="1.2" />
-        <line x1="180" y1="-122" x2="192" y2="-122" stroke-width="1" />
-        <circle cx="186" cy="-127" r="2.5" fill="#0284c7" />
-        <!-- Exhaust Funnel -->
-        <path d="M198,-90 L212,-90 L210,-60 L198,-60 Z" />
-      </g>
-      <!-- Cranes & Gantry Line Art -->
-      <path d="M-80,-20 L-60,-55 L-40,-20" stroke-width="0.8" />
-      <path d="M80,-20 L100,-55 L120,-20" stroke-width="0.8" />
+  </g>
+  <g transform="translate(75,75)">
+      <circle cx="0" cy="0" r="32" fill="none" stroke="#0f172a" stroke-width="1.2" opacity="0.6" />
+      <circle cx="0" cy="0" r="28" fill="none" stroke="#0e7490" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5" />
+      <circle cx="0" cy="0" r="16" fill="none" stroke="#0f172a" stroke-width="0.9" opacity="0.6" />
+      <circle cx="0" cy="0" r="4" fill="#0f172a" opacity="0.75" />
+      <path d="M-36,0 L36,0 M0,-36 L0,36" stroke="#0f172a" stroke-width="0.6" opacity="0.4" />
+      <path d="M-24,-24 L24,24 M-24,24 L24,-24" stroke="#0e7490" stroke-width="0.6" opacity="0.4" />
+    </g><g transform="translate(825,75)">
+      <circle cx="0" cy="0" r="32" fill="none" stroke="#0f172a" stroke-width="1.2" opacity="0.6" />
+      <circle cx="0" cy="0" r="28" fill="none" stroke="#0e7490" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5" />
+      <circle cx="0" cy="0" r="16" fill="none" stroke="#0f172a" stroke-width="0.9" opacity="0.6" />
+      <circle cx="0" cy="0" r="4" fill="#0f172a" opacity="0.75" />
+      <path d="M-36,0 L36,0 M0,-36 L0,36" stroke="#0f172a" stroke-width="0.6" opacity="0.4" />
+      <path d="M-24,-24 L24,24 M-24,24 L24,-24" stroke="#0e7490" stroke-width="0.6" opacity="0.4" />
+    </g><g transform="translate(75,1325)">
+      <circle cx="0" cy="0" r="32" fill="none" stroke="#0f172a" stroke-width="1.2" opacity="0.6" />
+      <circle cx="0" cy="0" r="28" fill="none" stroke="#0e7490" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5" />
+      <circle cx="0" cy="0" r="16" fill="none" stroke="#0f172a" stroke-width="0.9" opacity="0.6" />
+      <circle cx="0" cy="0" r="4" fill="#0f172a" opacity="0.75" />
+      <path d="M-36,0 L36,0 M0,-36 L0,36" stroke="#0f172a" stroke-width="0.6" opacity="0.4" />
+      <path d="M-24,-24 L24,24 M-24,24 L24,-24" stroke="#0e7490" stroke-width="0.6" opacity="0.4" />
+    </g><g transform="translate(825,1325)">
+      <circle cx="0" cy="0" r="32" fill="none" stroke="#0f172a" stroke-width="1.2" opacity="0.6" />
+      <circle cx="0" cy="0" r="28" fill="none" stroke="#0e7490" stroke-width="0.8" stroke-dasharray="2 3" opacity="0.5" />
+      <circle cx="0" cy="0" r="16" fill="none" stroke="#0f172a" stroke-width="0.9" opacity="0.6" />
+      <circle cx="0" cy="0" r="4" fill="#0f172a" opacity="0.75" />
+      <path d="M-36,0 L36,0 M0,-36 L0,36" stroke="#0f172a" stroke-width="0.6" opacity="0.4" />
+      <path d="M-24,-24 L24,24 M-24,24 L24,-24" stroke="#0e7490" stroke-width="0.6" opacity="0.4" />
     </g>
-  <path d="M-40,1180 Q292,1160 522,1180 T940,1180" fill="none" stroke="#0284c7" stroke-width="1.2" opacity="0.5" /><path d="M-40,1215 Q292,1195 522,1215 T940,1215" fill="none" stroke="#0284c7" stroke-width="1.05" opacity="0.44" /><path d="M-40,1250 Q292,1230 522,1250 T940,1250" fill="none" stroke="#0284c7" stroke-width="0.8999999999999999" opacity="0.38" /><path d="M-40,1285 Q292,1265 522,1285 T940,1285" fill="none" stroke="#0284c7" stroke-width="0.75" opacity="0.32" /><path d="M-40,1320 Q292,1300 522,1320 T940,1320" fill="none" stroke="#0284c7" stroke-width="0.6" opacity="0.26" />
+
+
+  <!-- Intermodal Deep-Water Container Terminal Artwork -->
+  <g fill="none" stroke="#0f172a">
+    <!-- Quay Wall & Port Basin Waterline (y: 1040) -->
+    <line x1="60" y1="1040" x2="840" y2="1040" stroke="#0f172a" stroke-width="3" />
+    <line x1="60" y1="1046" x2="840" y2="1046" stroke="#0e7490" stroke-width="1.2" stroke-dasharray="8 6" />
+
+    <!-- Quayside Bollards Along Quay -->
+    
+      <g transform="translate(120, 1040)">
+        <rect x="-6" y="-12" width="12" height="12" fill="#0f172a" rx="2" />
+        <ellipse cx="0" cy="-12" rx="9" ry="3" fill="#0f172a" />
+      </g>
+    
+
+      <g transform="translate(260, 1040)">
+        <rect x="-6" y="-12" width="12" height="12" fill="#0f172a" rx="2" />
+        <ellipse cx="0" cy="-12" rx="9" ry="3" fill="#0f172a" />
+      </g>
+    
+
+      <g transform="translate(400, 1040)">
+        <rect x="-6" y="-12" width="12" height="12" fill="#0f172a" rx="2" />
+        <ellipse cx="0" cy="-12" rx="9" ry="3" fill="#0f172a" />
+      </g>
+    
+
+      <g transform="translate(540, 1040)">
+        <rect x="-6" y="-12" width="12" height="12" fill="#0f172a" rx="2" />
+        <ellipse cx="0" cy="-12" rx="9" ry="3" fill="#0f172a" />
+      </g>
+    
+
+      <g transform="translate(680, 1040)">
+        <rect x="-6" y="-12" width="12" height="12" fill="#0f172a" rx="2" />
+        <ellipse cx="0" cy="-12" rx="9" ry="3" fill="#0f172a" />
+      </g>
+    
+
+      <g transform="translate(800, 1040)">
+        <rect x="-6" y="-12" width="12" height="12" fill="#0f172a" rx="2" />
+        <ellipse cx="0" cy="-12" rx="9" ry="3" fill="#0f172a" />
+      </g>
+    
+
+    <!-- Water Surface Wave Ripples in Lower Basin -->
+    <g opacity="0.6">
+      
+        <path d="M 60,1070 Q 200,1060 350,1070 T 650,1070 T 840,1070" stroke="#0e7490" stroke-width="1.6" />
+      
+
+        <path d="M 60,1110 Q 200,1100 350,1110 T 650,1110 T 840,1110" stroke="#0e7490" stroke-width="1.4000000000000001" />
+      
+
+        <path d="M 60,1160 Q 200,1150 350,1160 T 650,1160 T 840,1160" stroke="#0e7490" stroke-width="1.2000000000000002" />
+      
+
+        <path d="M 60,1220 Q 200,1210 350,1220 T 650,1220 T 840,1220" stroke="#0e7490" stroke-width="1" />
+      
+
+        <path d="M 60,1280 Q 200,1270 350,1280 T 650,1280 T 840,1280" stroke="#0e7490" stroke-width="0.8" />
+      
+    </g>
+
+    <!-- Two Massive Ship-to-Shore (STS) Container Gantry Cranes -->
+    <!-- Crane 1 (Left: x = 240) -->
+    <g transform="translate(240, 720)">
+      <!-- Crane Legs (A-frame Portal) -->
+      <line x1="-55" y1="320" x2="-25" y2="0" stroke="#0e7490" stroke-width="2.5" />
+      <line x1="55" y1="320" x2="25" y2="0" stroke="#0e7490" stroke-width="2.5" />
+      <!-- Cross Lattice Bracing -->
+      <line x1="-50" y1="260" x2="45" y2="180" stroke="#0e7490" stroke-width="1.2" opacity="0.7" />
+      <line x1="45" y1="260" x2="-50" y2="180" stroke="#0e7490" stroke-width="1.2" opacity="0.7" />
+      <line x1="-40" y1="180" x2="35" y2="100" stroke="#0e7490" stroke-width="1.2" opacity="0.7" />
+      <line x1="35" y1="180" x2="-40" y2="100" stroke="#0e7490" stroke-width="1.2" opacity="0.7" />
+      <!-- Upper Machinery House & Tower -->
+      <rect x="-28" y="-55" width="56" height="55" fill="#ffffff" stroke="#0e7490" stroke-width="2" />
+      <!-- Massive Horizontal Boom Over the Water -->
+      <line x1="-120" y1="-25" x2="220" y2="-25" stroke="#0e7490" stroke-width="3.5" />
+      <line x1="-110" y1="-45" x2="210" y2="-25" stroke="#0e7490" stroke-width="1.2" stroke-dasharray="4 3" />
+      <!-- Trolley & Spreader Holding Container -->
+      <rect x="80" y="-22" width="16" height="10" fill="#0f172a" />
+      <line x1="88" y1="-12" x2="88" y2="60" stroke="#0f172a" stroke-width="1.2" />
+      <!-- Suspended 40ft ISO Container -->
+      <rect x="65" y="60" width="46" height="24" fill="#d97706" fill-opacity="0.85" stroke="#0f172a" stroke-width="1.2" rx="1" />
+      <line x1="88" y1="60" x2="88" y2="84" stroke="#0f172a" stroke-width="0.8" />
+    </g>
+
+    <!-- Crane 2 (Right: x = 580) -->
+    <g transform="translate(580, 720)">
+      <line x1="-55" y1="320" x2="-25" y2="0" stroke="#0e7490" stroke-width="2.5" />
+      <line x1="55" y1="320" x2="25" y2="0" stroke="#0e7490" stroke-width="2.5" />
+      <line x1="-50" y1="260" x2="45" y2="180" stroke="#0e7490" stroke-width="1.2" opacity="0.7" />
+      <line x1="45" y1="260" x2="-50" y2="180" stroke="#0e7490" stroke-width="1.2" opacity="0.7" />
+      <line x1="-40" y1="180" x2="35" y2="100" stroke="#0e7490" stroke-width="1.2" opacity="0.7" />
+      <line x1="35" y1="180" x2="-40" y2="100" stroke="#0e7490" stroke-width="1.2" opacity="0.7" />
+      <rect x="-28" y="-55" width="56" height="55" fill="#ffffff" stroke="#0e7490" stroke-width="2" />
+      <line x1="-120" y1="-25" x2="220" y2="-25" stroke="#0e7490" stroke-width="3.5" />
+      <line x1="-110" y1="-45" x2="210" y2="-25" stroke="#0e7490" stroke-width="1.2" stroke-dasharray="4 3" />
+      <!-- Trolley & Spreader -->
+      <rect x="120" y="-22" width="16" height="10" fill="#0f172a" />
+      <line x1="128" y1="-12" x2="128" y2="40" stroke="#0f172a" stroke-width="1.2" />
+      <rect x="105" y="40" width="46" height="24" fill="#0e7490" fill-opacity="0.85" stroke="#0f172a" stroke-width="1.2" rx="1" />
+    </g>
+
+    <!-- Container Vessel Berthed at Quay (Hull + Stacks) -->
+    <g transform="translate(420, 1040)">
+      <!-- Vessel Hull Silhouette in Water -->
+      <path d="M -300,-10 L 260,-10 L 320,-10 C 350,-10 380,15 390,40 L 360,65 L -310,65 C -330,40 -325,10 -300,-10 Z" fill="#0f172a" fill-opacity="0.25" stroke="#0f172a" stroke-width="2" />
+      <!-- Bulbous Bow Curve & Draft Marks -->
+      <text x="360" y="30" font-family="monospace" font-size="7" font-weight="bold" fill="#0e7490">14.2M</text>
+      <text x="360" y="48" font-family="monospace" font-size="7" font-weight="bold" fill="#0e7490">12.0M</text>
+
+      <!-- Multi-Tier Stacks of Shipping Containers On Board -->
+      <g stroke="#0f172a" stroke-width="0.9">
+        
+              <rect x="-280" y="-32" width="48" height="20" fill="#d97706" fill-opacity="0.4" rx="1" />
+              <line x1="-256" y1="-32" x2="-256" y2="-12" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-280" y="-54" width="48" height="20" fill="#0e7490" fill-opacity="0.4" rx="1" />
+              <line x1="-256" y1="-54" x2="-256" y2="-34" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-280" y="-76" width="48" height="20" fill="#0f172a" fill-opacity="0.4" rx="1" />
+              <line x1="-256" y1="-76" x2="-256" y2="-56" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-225" y="-32" width="48" height="20" fill="#0e7490" fill-opacity="0.4" rx="1" />
+              <line x1="-201" y1="-32" x2="-201" y2="-12" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-225" y="-54" width="48" height="20" fill="#0f172a" fill-opacity="0.4" rx="1" />
+              <line x1="-201" y1="-54" x2="-201" y2="-34" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-225" y="-76" width="48" height="20" fill="#d97706" fill-opacity="0.4" rx="1" />
+              <line x1="-201" y1="-76" x2="-201" y2="-56" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-225" y="-98" width="48" height="20" fill="#0e7490" fill-opacity="0.4" rx="1" />
+              <line x1="-201" y1="-98" x2="-201" y2="-78" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-170" y="-32" width="48" height="20" fill="#0f172a" fill-opacity="0.4" rx="1" />
+              <line x1="-146" y1="-32" x2="-146" y2="-12" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-170" y="-54" width="48" height="20" fill="#d97706" fill-opacity="0.4" rx="1" />
+              <line x1="-146" y1="-54" x2="-146" y2="-34" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-170" y="-76" width="48" height="20" fill="#0e7490" fill-opacity="0.4" rx="1" />
+              <line x1="-146" y1="-76" x2="-146" y2="-56" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-115" y="-32" width="48" height="20" fill="#d97706" fill-opacity="0.4" rx="1" />
+              <line x1="-91" y1="-32" x2="-91" y2="-12" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-115" y="-54" width="48" height="20" fill="#0e7490" fill-opacity="0.4" rx="1" />
+              <line x1="-91" y1="-54" x2="-91" y2="-34" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-115" y="-76" width="48" height="20" fill="#0f172a" fill-opacity="0.4" rx="1" />
+              <line x1="-91" y1="-76" x2="-91" y2="-56" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-115" y="-98" width="48" height="20" fill="#d97706" fill-opacity="0.4" rx="1" />
+              <line x1="-91" y1="-98" x2="-91" y2="-78" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-60" y="-32" width="48" height="20" fill="#0e7490" fill-opacity="0.4" rx="1" />
+              <line x1="-36" y1="-32" x2="-36" y2="-12" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-60" y="-54" width="48" height="20" fill="#0f172a" fill-opacity="0.4" rx="1" />
+              <line x1="-36" y1="-54" x2="-36" y2="-34" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-60" y="-76" width="48" height="20" fill="#d97706" fill-opacity="0.4" rx="1" />
+              <line x1="-36" y1="-76" x2="-36" y2="-56" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-5" y="-32" width="48" height="20" fill="#0f172a" fill-opacity="0.4" rx="1" />
+              <line x1="19" y1="-32" x2="19" y2="-12" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-5" y="-54" width="48" height="20" fill="#d97706" fill-opacity="0.4" rx="1" />
+              <line x1="19" y1="-54" x2="19" y2="-34" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-5" y="-76" width="48" height="20" fill="#0e7490" fill-opacity="0.4" rx="1" />
+              <line x1="19" y1="-76" x2="19" y2="-56" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="-5" y="-98" width="48" height="20" fill="#0f172a" fill-opacity="0.4" rx="1" />
+              <line x1="19" y1="-98" x2="19" y2="-78" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="50" y="-32" width="48" height="20" fill="#d97706" fill-opacity="0.4" rx="1" />
+              <line x1="74" y1="-32" x2="74" y2="-12" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="50" y="-54" width="48" height="20" fill="#0e7490" fill-opacity="0.4" rx="1" />
+              <line x1="74" y1="-54" x2="74" y2="-34" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="50" y="-76" width="48" height="20" fill="#0f172a" fill-opacity="0.4" rx="1" />
+              <line x1="74" y1="-76" x2="74" y2="-56" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="105" y="-32" width="48" height="20" fill="#0e7490" fill-opacity="0.4" rx="1" />
+              <line x1="129" y1="-32" x2="129" y2="-12" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="105" y="-54" width="48" height="20" fill="#0f172a" fill-opacity="0.4" rx="1" />
+              <line x1="129" y1="-54" x2="129" y2="-34" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="105" y="-76" width="48" height="20" fill="#d97706" fill-opacity="0.4" rx="1" />
+              <line x1="129" y1="-76" x2="129" y2="-56" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="105" y="-98" width="48" height="20" fill="#0e7490" fill-opacity="0.4" rx="1" />
+              <line x1="129" y1="-98" x2="129" y2="-78" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="160" y="-32" width="48" height="20" fill="#0f172a" fill-opacity="0.4" rx="1" />
+              <line x1="184" y1="-32" x2="184" y2="-12" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="160" y="-54" width="48" height="20" fill="#d97706" fill-opacity="0.4" rx="1" />
+              <line x1="184" y1="-54" x2="184" y2="-34" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+
+              <rect x="160" y="-76" width="48" height="20" fill="#0e7490" fill-opacity="0.4" rx="1" />
+              <line x1="184" y1="-76" x2="184" y2="-56" stroke-width="0.6" stroke-dasharray="2 2" />
+            
+      </g>
+
+      <!-- Vessel Bridge & Radar Mast Structure at Stern -->
+      <g transform="translate(230, -10)">
+        <rect x="0" y="-110" width="55" height="110" fill="#ffffff" stroke="#0f172a" stroke-width="1.8" />
+        <rect x="-5" y="-125" width="65" height="15" fill="#0f172a" rx="1" />
+        <line x1="28" y1="-125" x2="28" y2="-170" stroke="#0f172a" stroke-width="2" />
+        <line x1="14" y1="-155" x2="42" y2="-155" stroke="#0e7490" stroke-width="1.5" />
+        <circle cx="28" cy="-172" r="3" fill="#d97706" />
+      </g>
+    </g>
+
+    <!-- Port Facility Technical Seal & Coordinates in Upper Center -->
+    <g transform="translate(450, 320)">
+      <circle cx="0" cy="0" r="95" stroke="#0f172a" stroke-width="1.5" />
+      <circle cx="0" cy="0" r="85" stroke="#0e7490" stroke-width="0.8" stroke-dasharray="4 3" />
+      <circle cx="0" cy="0" r="45" fill="#0e7490" fill-opacity="0.08" stroke="#0f172a" stroke-width="1.2" />
+      <text x="0" y="-15" font-family="Arial, sans-serif" font-size="9" font-weight="900" letter-spacing="2" fill="#0f172a" text-anchor="middle">DEEP-WATER PORT TERMINAL</text>
+      <text x="0" y="5" font-family="Arial, sans-serif" font-size="12" font-weight="900" fill="#0e7490" text-anchor="middle">INTERMODAL MARITIME</text>
+      <text x="0" y="22" font-family="Courier, monospace" font-size="7.5" font-weight="bold" fill="#d97706" text-anchor="middle">BERTH 04 · GANTRY STS 1 & 2</text>
+    </g>
+  </g>
 </svg>

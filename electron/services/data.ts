@@ -9,14 +9,54 @@ export async function initializeDataDirectory(dataDirectory: string, seedDirecto
   const seeds = await readdir(seedDirectory).catch(() => [])
   await Promise.all(
     seeds.filter((name) => DATA_FILE_PATTERN.test(name)).map(async (name) => {
+      const src = path.join(seedDirectory, name)
       const destination = path.join(dataDirectory, name)
       try {
-        await stat(destination)
+        const destStat = await stat(destination)
+        // If destination is an empty placeholder (< 50 bytes) but seed is populated (> 500 bytes), copy seed
+        if (destStat.size < 50) {
+          const srcStat = await stat(src).catch(() => null)
+          if (srcStat && srcStat.size > 500) {
+            await copyFile(src, destination)
+          }
+        }
       } catch {
-        await copyFile(path.join(seedDirectory, name), destination)
+        await copyFile(src, destination)
       }
     }),
   )
+
+  // Synchronize SQLite database app.db if missing or unpopulated
+  const destDb = path.join(dataDirectory, "app.db")
+  const candidateSeeds = [
+    path.join(seedDirectory, "data", "app.db"),
+    path.join(seedDirectory, "app.db"),
+    path.join(process.resourcesPath || "", "seed-data", "data", "app.db"),
+    path.join(process.resourcesPath || "", "seed-data", "app.db"),
+    path.join(process.resourcesPath || "", "data", "app.db"),
+  ]
+
+  for (const src of candidateSeeds) {
+    try {
+      const srcStat = await stat(src)
+      if (srcStat.size > 100_000) {
+        let needCopy = false
+        try {
+          const destStat = await stat(destDb)
+          // If destination is empty skeleton (< 2MB) while source is populated (> 2MB)
+          if (destStat.size < 2_000_000 && srcStat.size > 2_000_000) {
+            needCopy = true
+          }
+        } catch {
+          needCopy = true
+        }
+        if (needCopy) {
+          await copyFile(src, destDb)
+          break
+        }
+      }
+    } catch {}
+  }
 }
 
 export async function createDataBackup(dataDirectory: string): Promise<string> {

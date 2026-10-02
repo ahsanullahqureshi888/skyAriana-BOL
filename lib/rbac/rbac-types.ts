@@ -53,6 +53,7 @@ export type PermissionCategory =
   | "SETTINGS"
   | "MANAGEMENT_REPORTS"
   | "COMMUNICATIONS"
+  | "ANALYTICS"
 
 export interface PermissionItem {
   id: string

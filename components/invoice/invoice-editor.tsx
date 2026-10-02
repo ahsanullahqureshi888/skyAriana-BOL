@@ -503,7 +503,7 @@ async function invoicePdfBlob(invoiceInput: InvoiceForm) {
 
     if (logoSource) {
       try {
-        doc.addImage(logoSource, "PNG", 14, 15, 32, 20, undefined, "FAST")
+        doc.addImage(logoSource, "PNG", 14, 15, 32, 20, undefined, "SLOW")
       } catch {
         // Logo fallback
       }

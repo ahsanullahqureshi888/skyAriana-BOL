@@ -68,7 +68,11 @@ export function ServerModeCard() {
 
   const loadDevices = async () => {
     try {
-      const res = await fetch("/api/server/devices")
+      const activeToken = typeof window !== "undefined" ? localStorage.getItem("sky_server_token") : null
+      if (!activeToken) return
+      const res = await fetch("/api/server/devices", {
+        headers: { Authorization: `Bearer ${activeToken}` }
+      })
       const data = await res.json()
       if (data.success) setDevices(data.devices || [])
     } catch {}
@@ -76,7 +80,11 @@ export function ServerModeCard() {
 
   const loadBackups = async () => {
     try {
-      const res = await fetch("/api/server/backups")
+      const activeToken = typeof window !== "undefined" ? localStorage.getItem("sky_server_token") : null
+      if (!activeToken) return
+      const res = await fetch("/api/server/backups", {
+        headers: { Authorization: `Bearer ${activeToken}` }
+      })
       const data = await res.json()
       if (data.success) setBackups(data.backups || [])
     } catch {}

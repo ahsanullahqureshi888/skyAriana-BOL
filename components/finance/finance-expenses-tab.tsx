@@ -290,7 +290,7 @@ export function FinanceExpensesTab({ expenses, onRefresh }: FinanceExpensesTabPr
               <div>
                 <label className="font-semibold text-slate-700 dark:text-slate-300">Related BOL (Optional)</label>
                 <Input
-                  placeholder="e.g. BOL-NSA583"
+                  placeholder="e.g. BOL-2026-NSA626"
                   value={bolNumber}
                   onChange={(e) => setBolNumber(e.target.value)}
                   className="mt-1 h-8 text-xs"

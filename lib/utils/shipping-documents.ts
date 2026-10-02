@@ -12,6 +12,7 @@ import {
   registerPDFFontsSync,
   hasRegisteredPDFFonts,
   setSmartPDFFont,
+  loadPDFFontAssets,
 } from "@/lib/utils/pdf-fonts"
 
 export type ShippingDocumentKind = "bol" | "packing-list" | "stickers" | "bol-packing" | "all"
@@ -148,7 +149,11 @@ export const clean = (value?: string | null): string => {
 export function taggedValue(source: string, labels: string[]): string {
   if (!source) return ""
   for (const label of labels) {
-    const expression = new RegExp(`${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*[:#-]?\\s*([^|│\\n]+)`, "gi")
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const expression = new RegExp(
+      `(?:^|[\\r\\n•│|*>;,]\\s*|[\\p{Extended_Pictographic}]\\s*)(?:${escaped})\\s*[:#-]+\\s*([^|│\\r\\n]+)`,
+      "gui"
+    )
     const values = Array.from(source.matchAll(expression), (match) => clean(match[1])).filter(Boolean)
     if (values.length) return values.at(-1) || ""
   }
@@ -160,7 +165,7 @@ export function taggedValue(source: string, labels: string[]): string {
  */
 export function isBannerOrMetadataLine(line?: string | null): boolean {
   if (!line) return true
-  const stripped = line.replace(/\p{Extended_Pictographic}/gu, "").trim()
+  const stripped = line.replace(/[\p{Extended_Pictographic}\s•*>-]/gu, " ").trim()
   if (!stripped) return true
 
   // Decorative section header banners
@@ -169,17 +174,77 @@ export function isBannerOrMetadataLine(line?: string | null): boolean {
   }
 
   // Pure metadata tags without cargo description
-  if (/^(?:Transit\s*Date|Invoice\s*NO|Invoice\s*Number|Inv\s*No|Afghan\s*TC\s*No|HS\s*CODE|Lot\s*No|Batch\s*No|Container\s*No|Seal\s*No|Storage\s*Temp|Customs\s*Seal|Invoice\s*&\s*Packing|Freight\s*Payable|Booking\s*No|Booking\s*Number)\s*[:#-]?\s*$/i.test(stripped)) {
+  if (/^(?:Transit\s*Date|Invoice\s*NO|Invoice\s*Number|Inv\s*No|INV[-#:]?|Afghan\s*TC\s*No|HS\s*CODE|Lot\s*No|Batch\s*No|Container\s*No|Seal\s*No|Storage\s*Temp|Customs\s*Seal|Invoice\s*&\s*Packing|Freight\s*Payable|Booking\s*No|Booking\s*Number)\s*[:#-]?/i.test(stripped)) {
     return true
   }
 
   // Pure metadata line where every part is a metadata tag (e.g. "📅 Transit Date: 2026-08-23 | 📄 Afghan TC No: 1234")
   const parts = stripped.split(/[|│]+/).map((p) => p.trim()).filter(Boolean)
-  if (parts.length > 0 && parts.every((p) => /^(?:Transit\s*Date|Invoice\s*NO|Invoice\s*Number|Inv\s*No|Afghan\s*TC\s*No|HS\s*CODE|Lot\s*No|Batch\s*No|Container\s*No|Seal\s*No|Storage\s*Temp|Customs\s*Seal|Freight|Booking)/i.test(p))) {
+  if (parts.length > 0 && parts.every((p) => /^(?:Transit\s*Date|Invoice\s*NO|Invoice\s*Number|Inv\s*No|INV[-#:]?|Afghan\s*TC\s*No|HS\s*CODE|Lot\s*No|Batch\s*No|Container\s*No|Seal\s*No|Storage\s*Temp|Customs\s*Seal|Freight|Booking)/i.test(p))) {
     return true
   }
 
   return false
+}
+
+/**
+ * Extracts and normalizes the canonical invoice number (e.g. INV-014, INV-127).
+ * Checks explicit model fields first, then inspects bullets like "• INV-014",
+ * labels like "Invoice NO: INV-127", or notes text.
+ */
+export function extractInvoiceNumber(docOrFormData?: any, cargoText?: string): string {
+  if (!docOrFormData) return ""
+  const explicit = clean(
+    docOrFormData.invoiceNo ||
+    docOrFormData.invoice_number ||
+    docOrFormData.invoice_no ||
+    docOrFormData.invoiceNumber ||
+    docOrFormData.afghanistan_document_details?.commercial_invoice?.document_number
+  )
+  if (explicit) {
+    const cleanInv = explicit.replace(/^INV[-_\s:]*/i, "").trim().toUpperCase()
+    return cleanInv ? `INV-${cleanInv}` : "INV"
+  }
+
+  const textSources = [
+    cargoText,
+    docOrFormData.cargo_description,
+    docOrFormData.cargoDescription,
+    docOrFormData.goods_description,
+    docOrFormData.description_of_goods,
+    docOrFormData.remarks,
+    docOrFormData.notes_1,
+    docOrFormData.notes_2,
+    docOrFormData.notes_3,
+  ]
+    .filter(Boolean)
+    .join("\n")
+
+  if (!textSources) return ""
+
+  // Priority 1: Match bullets or lines with INV prefix: "• INV-014", "INV-014", "INV: 014", "INV #014", "INV_014", "INV 014"
+  const invMatch = textSources.match(/(?:^|[\r\n•│|*>;,\s\p{Extended_Pictographic}])\bINV\b\s*[-_#:]*\s*([A-Z0-9/_-]+)/iu)
+  if (invMatch && invMatch[1]) {
+    const val = invMatch[1].trim()
+    if (!/^(?:packing|list|date|no|oice|as|per|ctns?|cartons?|kgs?|bags?|none|null|undefined)$/i.test(val)) {
+      const cleanVal = val.replace(/^INV[-_\s:]*/i, "").trim().toUpperCase()
+      return cleanVal ? `INV-${cleanVal}` : "INV"
+    }
+  }
+
+  // Priority 2: Match "Invoice No: ...", "Invoice Number: ...", "Invoice #...", "فاکتور: ..."
+  const wordsMatch = textSources.match(
+    /(?:Invoice(?:\s*\/\s*Packing\s*List)?|Inv|Fakt[ou]r|فاکتور)\s*(?:No|Number|#)?\s*[:#-]?\s*(?:INV[-#:]?\s*)?([A-Z0-9/_-]+)/iu
+  )
+  if (wordsMatch && wordsMatch[1]) {
+    const val = wordsMatch[1].trim()
+    if (!/^(?:packing|list|date|no|oice|as|per|ctns?|cartons?|kgs?|bags?|none|null|undefined)$/i.test(val)) {
+      const cleanVal = val.replace(/^INV[-_\s:]*/i, "").trim().toUpperCase()
+      return cleanVal ? `INV-${cleanVal}` : "INV"
+    }
+  }
+
+  return ""
 }
 
 /**
@@ -208,8 +273,8 @@ export function cleanCommodity(value: string): string {
   // Strip emojis, leading bullets, decorative dashes
   text = text.replace(/^[\p{Extended_Pictographic}\s•*>-]+/gu, "").trim()
 
-  // Strip leading "Cargo:", "Commodity:", "Description of Goods:", "Goods:"
-  text = text.replace(/^(?:cargo|commodity|description\s+of\s+goods|goods)\s*[:#-]?\s*/i, "").trim()
+  // Strip leading "Cargo:", "Commodity:", "Description of Goods:", "Description:", "Goods:", "Product:"
+  text = text.replace(/^(?:cargo|commodity|description(?:\s+of\s+goods)?|goods|product|particulars(?:\s+of\s+goods)?)\s*[:#-]?\s*/i, "").trim()
 
   // If text contains pipe-separated segments, filter out metadata parts (like invoice no, transit date)
   if (text.includes("|") || text.includes("│")) {
@@ -305,13 +370,17 @@ export function parsePackagesNumbers(str: string): number[] {
     .replace(/@\s*[\d,.]+\s*(?:\$|usd|afn)?/gi, "")
     .replace(/\bRATE\s*[:#-]?\s*[\d,.]+/gi, "")
 
-  const segments = cleaned.split(/\s*[\+;/]\s*|\s+[-–—]\s+|\s*,\s*|\r?\n/)
+  const segments = cleaned.split(
+    /\s*[\+;/]\s*|\s+[-–—]\s+|\s*,\s*|\r?\n|(?<=[A-Za-z)\]"'])\s+(?=\d+\s*(?:CTNS?|CARTONS?|CNTS?|BAGS?|PKGS?|BOXES|PCS|UNITS|ROLLS|DRUMS)\b)/i
+  )
   const numbers: number[] = []
   for (const seg of segments) {
-    const match = seg.match(/\b\d+\b/)
-    if (match) {
-      const num = parseInt(match[0], 10)
-      if (!isNaN(num) && num > 0) numbers.push(num)
+    const matches = seg.match(/\b\d+\b/g)
+    if (matches) {
+      for (const m of matches) {
+        const num = parseInt(m, 10)
+        if (!isNaN(num) && num > 0) numbers.push(num)
+      }
     }
   }
   return numbers
@@ -326,7 +395,8 @@ function positiveInteger(value: string): number {
   if (numbers.length === 1 && numbers[0] > 0) {
     return numbers[0]
   }
-  const parsed = Number.parseInt(String(value).replace(/[^0-9]/g, ""), 10)
+  const match = String(value).match(/\b\d+\b/)
+  const parsed = match ? Number.parseInt(match[0], 10) : 1
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
 }
 
@@ -671,9 +741,9 @@ export function parseCommodityItems(
   const extractedPkgCommodity = cleanCommodity(totalPackagesStr)
   const masterCommodity =
     cargoCommodities[0] ||
-    cleanCommodity(taggedValue(cargoText, ["Commodity", "Cargo", "Description of Goods"])) ||
-    cleanCommodity(cargoText) ||
+    cleanCommodity(taggedValue(cargoText, ["Description", "Description of Goods", "Commodity", "Cargo"])) ||
     extractedPkgCommodity ||
+    cleanCommodity(cargoText) ||
     "CONSOLIDATED CARGO"
 
   if (multiCount > 1) {
@@ -753,7 +823,7 @@ export function parseCommodityItems(
   return [
     {
       itemNo: 1,
-      commodity: cleanCommodity(taggedValue(cargoText, ["Commodity", "Cargo", "Description of Goods"])) || masterCommodity,
+      commodity: cleanCommodity(taggedValue(cargoText, ["Description", "Description of Goods", "Commodity", "Cargo"])) || masterCommodity,
       packageCount: masterCount,
       packageCountText: clean(totalPackagesStr) ? String(masterCount) : "",
       packageType: basePkgType,
@@ -796,7 +866,7 @@ export function deriveShippingDocumentData(
   const containers = parseContainers(containerNumbers, sealNumbers)
 
   const dateValue = clean(issueDate || formData.issue_date) || new Date().toISOString().slice(0, 10)
-  const invoiceNum = clean(extended.invoice_number) || taggedValue(cargo, ["Invoice Number", "Invoice No", "Invoice", "Inv No"])
+  const invoiceNum = extractInvoiceNumber(formData, cargo)
   const invoiceDateValue = clean(extended.invoice_date) || taggedValue(cargo, ["Invoice Date", "Inv Date"]) || dateValue
 
   const shipperAddr = clean(formData.shipper_address)
@@ -970,13 +1040,13 @@ export function mapBolToShippingDocuments(
 }
 
 export function buildShippingDocumentFileName(kind: ShippingDocumentKind, data: ShippingDocumentData): string {
-  // 1. INVOICE
-  let rawInv = clean(data.invoiceNumber)
+  // 1. INVOICE (First should come invoice no: e.g. INV-096)
+  let rawInv = clean(data.invoiceNumber) || extractInvoiceNumber(data as any)
   if (!rawInv) {
-    const fallbackInv = clean(data.bolNumber)
-    rawInv = fallbackInv ? (fallbackInv.toUpperCase().startsWith("BOL") ? fallbackInv : `INV-${fallbackInv}`) : "INV-001"
-  } else if (!/^INV|^IN/i.test(rawInv)) {
-    rawInv = `INV-${rawInv}`
+    rawInv = "INV-001"
+  } else if (!/^INV/i.test(rawInv)) {
+    const cleanInv = rawInv.replace(/^INVOICE\s*[:#-]?\s*/i, "").trim()
+    rawInv = cleanInv ? `INV-${cleanInv}` : "INV"
   }
   const cleanInvoice = rawInv
     .toUpperCase()
@@ -986,14 +1056,14 @@ export function buildShippingDocumentFileName(kind: ShippingDocumentKind, data: 
     .replace(/^[-.,\s]+|[-.,\s]+$/g, "")
 
   // 2. CONSIGNEE (Take first line of company name before newline)
-  const rawConsignee = clean(String(data.consignee || "").split(/[\r\n]+/)[0])
+  const rawConsignee = clean(String(data.consignee || "").split(/[\r\n,│|]+/)[0])
   const cleanConsignee = (rawConsignee || "CONSIGNEE")
     .toUpperCase()
     .replace(/[/\\:*?"<>|]/g, "")
     .replace(/\s+/g, " ")
     .replace(/^[-.,\s]+|[-.,\s]+$/g, "")
 
-  // 3. QUANTITY (e.g. 1400-CTNS or 520-CTNS)
+  // 3. QUANTITY (e.g. 1430-CTNS)
   const rawQty = clean(data.packageCountText)
   let cleanQuantity = ""
   if (rawQty) {
@@ -1017,41 +1087,50 @@ export function buildShippingDocumentFileName(kind: ShippingDocumentKind, data: 
   }
   cleanQuantity = cleanQuantity.replace(/[/\\:*?"<>|]/g, "").replace(/-+/g, "-").replace(/^[-.,\s]+|[-.,\s]+$/g, "")
 
-  // 4. PRODUCT NAME
+  // 4. PRODUCT NAME / PARTICULARS
   let rawProduct = cleanCommodity(String(data.commodity || "").split(/[\r\n]+/)[0])
   if (!rawProduct && data.commodities && data.commodities.length > 0) {
     rawProduct = data.commodities.map((c) => c.commodity).filter(Boolean).join(" & ")
   }
-  const cleanProduct = (rawProduct || "CARGO")
+  if (!rawProduct) {
+    rawProduct = "PARTICULARS"
+  }
+  const cleanProduct = (rawProduct || "PARTICULARS")
     .toUpperCase()
     .replace(/[/\\:*?"<>|]/g, "")
-    .replace(/\s+/g, " ")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
     .replace(/^[-.,\s]+|[-.,\s]+$/g, "")
 
   // 5. SHIPPER NAME (Take first line of shipper name before newline)
-  const rawShipper = clean(String(data.shipper || "").split(/[\r\n]+/)[0])
+  const rawShipper = clean(String(data.shipper || "").split(/[\r\n,│|]+/)[0])
   const cleanShipper = (rawShipper || "SHIPPER")
     .toUpperCase()
     .replace(/[/\\:*?"<>|]/g, "")
     .replace(/\s+/g, " ")
     .replace(/^[-.,\s]+|[-.,\s]+$/g, "")
 
-  // Combine elements strictly in requested order: INVOICE-CONSIGNEE-QUANTITY-PRODUCT NAME-SHIPPER NAME-
-  const basePrefix = `${cleanInvoice}-${cleanConsignee}-${cleanQuantity}-${cleanProduct}-${cleanShipper}`
-    .replace(/[/\\:*?"<>|]/g, "_")
+  // 6. BOL NUMBER (e.g. NSA622)
+  const rawBolNumber = clean(data.bolNumber) || "BOL"
+  const cleanBolNumber = rawBolNumber
+    .toUpperCase()
+    .replace(/[/\\:*?"<>|]/g, "")
+    .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/^[-.,\s]+|[-.,\s]+$/g, "")
 
-  const docSuffixMap: Record<ShippingDocumentKind, string> = {
-    bol: "BOL",
-    "packing-list": "PACKING-LIST",
-    stickers: "STICKER",
-    all: "COMPLETE",
-    "bol-packing": "BOL-PACKING-LIST",
+  // Combine elements strictly in requested order:
+  // [Invoice No]-[Consignee Name]-[Quantity]-[Product/Particulars]-[Shipper Name]-[BOL Number]
+  const parts: string[] = [cleanInvoice, cleanConsignee, cleanQuantity, cleanProduct, cleanShipper, cleanBolNumber].filter(Boolean)
+
+  if (kind === "packing-list") {
+    parts.push("PACKING-LIST")
+  } else if (kind === "stickers") {
+    parts.push("STICKER")
   }
 
-  const suffix = docSuffixMap[kind] || "DOC"
-  return `${basePrefix}-${suffix}.pdf`
+  const rawFileName = parts.join("-").replace(/[/\\:*?"<>|]/g, "_").replace(/-+/g, "-").replace(/^-+|-+$/g, "").trim()
+  return `${rawFileName}.pdf`
 }
 
 function addPageIfNeeded(pdf: jsPDF, pageHasContent: boolean): boolean {
@@ -1077,7 +1156,7 @@ function drawDocumentHeader(
 
   if (logoDataUrl) {
     try {
-      pdf.addImage(logoDataUrl, "PNG", 12, 11, 22, 20, undefined, "FAST")
+      pdf.addImage(logoDataUrl, "PNG", 12, 11, 22, 20, undefined, "SLOW")
     } catch {
       // Fallback
     }
@@ -1707,7 +1786,7 @@ export function drawStickerPage(
       badge1W,
       badge1H,
       undefined,
-      "FAST"
+      "SLOW"
     )
   } catch {
     // fallback
@@ -1724,7 +1803,7 @@ export function drawStickerPage(
       badge2W,
       badge2H,
       undefined,
-      "FAST"
+      "SLOW"
     )
   } catch {
     // fallback
@@ -1892,12 +1971,12 @@ function drawCompactSticker(
   // Badges on right side
   const badgeRightX = x + width - 20
   try {
-    pdf.addImage(STICKER_FSSAI_VEG_DATA_URL, "PNG", badgeRightX, bottomY - 1, 16, 14, undefined, "FAST")
+    pdf.addImage(STICKER_FSSAI_VEG_DATA_URL, "PNG", badgeRightX, bottomY - 1, 16, 14, undefined, "SLOW")
   } catch {
     // fallback
   }
   try {
-    pdf.addImage(STICKER_AFGHANISTAN_LOGO_DATA_URL, "PNG", badgeRightX + 2, bottomY + 13.5, 12, 11, undefined, "FAST")
+    pdf.addImage(STICKER_AFGHANISTAN_LOGO_DATA_URL, "PNG", badgeRightX + 2, bottomY + 13.5, 12, 11, undefined, "SLOW")
   } catch {
     // fallback
   }
@@ -1956,18 +2035,69 @@ export async function drawBolPage(pdf: jsPDF, element: HTMLElement): Promise<voi
     } catch {}
   }
 
+  // Pre-bundle embedded font CSS so html-to-image renders fonts with 100% fidelity without CORS issues
+  let fontCSS = ""
+  try {
+    const fonts = await loadPDFFontAssets()
+    if (fonts) {
+      fontCSS = `
+        @font-face {
+          font-family: 'NotoSans';
+          font-weight: 400;
+          font-style: normal;
+          src: url(data:font/truetype;charset=utf-8;base64,${fonts.notoSansRegular}) format('truetype');
+        }
+        @font-face {
+          font-family: 'NotoSans';
+          font-weight: 700;
+          font-style: normal;
+          src: url(data:font/truetype;charset=utf-8;base64,${fonts.notoSansBold}) format('truetype');
+        }
+        @font-face {
+          font-family: 'NotoNaskhArabic';
+          font-weight: 400;
+          font-style: normal;
+          src: url(data:font/truetype;charset=utf-8;base64,${fonts.arabicRegular}) format('truetype');
+        }
+        @font-face {
+          font-family: 'NotoNaskhArabic';
+          font-weight: 700;
+          font-style: normal;
+          src: url(data:font/truetype;charset=utf-8;base64,${fonts.arabicBold}) format('truetype');
+        }
+      `
+    }
+  } catch {}
+
   // Cooperative yield so the browser can paint progress indicators
   await new Promise((resolve) => setTimeout(resolve, 0))
 
   const { toCanvas } = await import("html-to-image")
   const canvas = await toCanvas(element, {
-    pixelRatio: 2.2, // ~210 DPI crisp sharpness without main-thread memory locks
-    quality: 0.98,
+    pixelRatio: 3.125, // True 300 DPI print-grade ultra-sharp resolution (300 / 96 = 3.125)
+    quality: 1.0,
     cacheBust: false,
+    skipFonts: Boolean(fontCSS),
+    fontEmbedCSS: fontCSS || undefined,
     backgroundColor: "#ffffff",
-    style: { transform: "none", margin: "0", boxShadow: "none", opacity: "1", visibility: "visible" },
+    style: {
+      transform: "none",
+      margin: "0",
+      boxShadow: "none",
+      opacity: "1",
+      visibility: "visible",
+      WebkitFontSmoothing: "antialiased",
+      MozOsxFontSmoothing: "grayscale",
+      textRendering: "optimizeLegibility",
+    } as any,
     filter: (node: HTMLElement) => {
+      if (!node) return true
       if (node.getAttribute?.("data-print-ignore") === "true") return false
+      if (node.getAttribute?.("data-pdf-ignore") === "true") return false
+      if (node.getAttribute?.("data-html2canvas-ignore") === "true") return false
+      if (typeof node.className === "string" && (node.className.includes("no-print") || node.className.includes("print:hidden"))) return false
+      if (node.classList?.contains?.("no-print")) return false
+      if (node.tagName === "BUTTON") return false
       return true
     },
   })
@@ -1975,7 +2105,7 @@ export async function drawBolPage(pdf: jsPDF, element: HTMLElement): Promise<voi
   // Cooperative yield between rasterization and PDF embedding
   await new Promise((resolve) => setTimeout(resolve, 0))
 
-  const imageData = canvas.toDataURL("image/jpeg", 0.96)
+  const imageData = canvas.toDataURL("image/jpeg", 0.98)
   pdf.addImage(imageData, "JPEG", 0, 0, PAGE_WIDTH, PAGE_HEIGHT, undefined, "FAST")
 }
 
@@ -2013,23 +2143,37 @@ export async function generateShippingDocumentsPDF(options: GenerateShippingDocu
   })
 
   // ----------------------------------------------------
-  // PAGE 1: BILL OF LADING
+  // BILL OF LADING (Single or Multi-Page)
   // ----------------------------------------------------
   if (includesBol) {
     options.onProgress?.(25, "Rendering Master Bill of Lading...")
     const bolElement =
       options.bolElement ||
       (typeof document !== "undefined"
-        ? (document.querySelector('[data-bol-a4="true"]') as HTMLElement | null) ||
-          (document.querySelector('[data-pdf-export="true"]') as HTMLElement | null)
+        ? (document.querySelector('[data-pdf-export="true"]') as HTMLElement | null) ||
+          (document.querySelector('[data-bol-a4="true"]') as HTMLElement | null)
         : null)
 
     if (!bolElement) {
       throw new Error("The Bill of Lading preview is not ready. Please wait for the preview to finish loading and try again.")
     }
 
-    await drawBolPage(pdf, bolElement)
-    pageHasContent = true
+    const pageNodes = Array.from(bolElement.querySelectorAll<HTMLElement>('[data-bol-page="true"]'))
+    const pagesToRender = pageNodes.length > 0 ? pageNodes : [bolElement]
+
+    for (let i = 0; i < pagesToRender.length; i++) {
+      if (pageHasContent) {
+        pdf.addPage("a4", "portrait")
+      }
+      options.onProgress?.(
+        Math.round(25 + ((i + 1) / pagesToRender.length) * 25),
+        pagesToRender.length > 1
+          ? `Rendering Bill of Lading (Page ${i + 1} of ${pagesToRender.length})...`
+          : "Rendering Master Bill of Lading..."
+      )
+      await drawBolPage(pdf, pagesToRender[i])
+      pageHasContent = true
+    }
   }
 
   // ----------------------------------------------------

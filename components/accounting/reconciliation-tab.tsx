@@ -309,20 +309,20 @@ export function ReconciliationTab() {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-360px)] min-h-[300px] scrollbar-thin [scrollbar-color:rgba(148,163,184,0.45)_transparent]">
+          <table className="w-full text-left text-xs border-collapse min-w-[840px]">
+            <thead className="bg-slate-100/95 dark:bg-slate-800/95 backdrop-blur-md text-slate-700 dark:text-slate-300 font-bold border-b sticky top-0 z-20 shadow-2xs">
               <tr>
-                <th className="p-2.5 w-10 text-center">#</th>
-                <th className="p-2.5">Account / Company</th>
-                <th className="p-2.5">Excel Sheet</th>
-                <th className="p-2.5 w-16">Currency</th>
-                <th className="p-2.5 text-right w-28">Excel Debit</th>
-                <th className="p-2.5 text-right w-28">DB Debit</th>
-                <th className="p-2.5 text-right w-28">Excel Credit</th>
-                <th className="p-2.5 text-right w-28">DB Credit</th>
-                <th className="p-2.5 text-right w-28">DB Balance</th>
-                <th className="p-2.5 text-center w-24">Status</th>
+                <th className="p-2.5 w-10 text-center sticky top-0 bg-slate-100 dark:bg-slate-800">#</th>
+                <th className="p-2.5 sticky top-0 bg-slate-100 dark:bg-slate-800">Account / Company</th>
+                <th className="p-2.5 sticky top-0 bg-slate-100 dark:bg-slate-800">Excel Sheet</th>
+                <th className="p-2.5 w-16 sticky top-0 bg-slate-100 dark:bg-slate-800">Currency</th>
+                <th className="p-2.5 text-right w-28 sticky top-0 bg-slate-100 dark:bg-slate-800">Excel Debit</th>
+                <th className="p-2.5 text-right w-28 sticky top-0 bg-slate-100 dark:bg-slate-800">DB Debit</th>
+                <th className="p-2.5 text-right w-28 sticky top-0 bg-slate-100 dark:bg-slate-800">Excel Credit</th>
+                <th className="p-2.5 text-right w-28 sticky top-0 bg-slate-100 dark:bg-slate-800">DB Credit</th>
+                <th className="p-2.5 text-right w-28 sticky top-0 bg-slate-100 dark:bg-slate-800">DB Balance</th>
+                <th className="p-2.5 text-center w-24 sticky top-0 bg-slate-100 dark:bg-slate-800">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">

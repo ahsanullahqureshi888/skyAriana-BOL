@@ -156,6 +156,71 @@ export const nimrozToBandarAbbasLegs: ExportLeg[] = [
 ]
 
 /**
+ * Route 4 Payload: Nimroz to Bandar Abbas / Dubai (Full Way Reefer & Switch B/L)
+ * Total Base Leg Cost: $2,850.00 USD
+ */
+export const nimrozFullWayReeferSwitchLegs: ExportLeg[] = [
+  {
+    id: "leg-nmz-rf-1",
+    location: "Nimroz/Milak Border",
+    locationPersian: "مرز نیمروز / میلک (پلاگین و کنترل دما)",
+    costType: "Reefer Customs & Inspection",
+    costTypePersian: "گمرک صادراتی ریفر، کنترل دما و ثبت ترانزیت",
+    cost: 500.0,
+    chargeCode: "CUSTOMS_EXIT",
+    transportMode: "customs",
+    notes: "Reefer temperature log verification, genset plugging inspection, and customs transit bond.",
+    notesPersian: "بررسی دمای کانتینر یخچالی، بازرسی ژنراتور و ثبت اسناد ترانزیت ورودی",
+    transitDays: 1,
+    country: "Afghanistan / Iran",
+    customsSealRequired: true,
+    customsSealNote: "📍 پلمپ گمرک میلک / Milak Customs Seal",
+  },
+  {
+    id: "leg-nmz-rf-2",
+    location: "Milak to Bandar Abbas",
+    locationPersian: "میلک الی بندرعباس (حمل یخچالی با ژنست)",
+    costType: "Genset Reefer Trucking",
+    costTypePersian: "کرایه لاری حمل یخچالی مجهز به ژنست برق",
+    cost: 1350.0,
+    chargeCode: "TRUCKING_IRAN",
+    transportMode: "truck",
+    notes: "Continuous genset refrigerated road freight from Milak border to Bandar Abbas terminals.",
+    notesPersian: "حمل جاده‌ای تحت کنترل دما با برق مداوم ژنراتور از مرز میلک به بندرعباس",
+    transitDays: 3,
+    country: "Iran",
+  },
+  {
+    id: "leg-nmz-rf-3",
+    location: "Bandar Abbas Port (Switch Hub)",
+    locationPersian: "بندرعباس (مرکز سوییچ بارنامه و بارگیری ریفر)",
+    costType: "Switch B/L & Port THC",
+    costTypePersian: "هزینه صدور سوییچ بی ال، مانیتورینگ ریفر و THC",
+    cost: 550.0,
+    chargeCode: "EXP_THC",
+    transportMode: "vessel",
+    notes: "Switch Bill of Lading documentation issuance, terminal reefer monitoring, and vessel loading.",
+    notesPersian: "صدور بارنامه سوییچ (Switch B/L)، مانیتورینگ برق پایانه و بارگیری بر روی کشتی",
+    transitDays: 2,
+    country: "Iran",
+  },
+  {
+    id: "leg-nmz-rf-4",
+    location: "Dubai / Jebel Ali",
+    locationPersian: "دبی / جبل علی (مقصد سوییچ)",
+    costType: "Ocean Freight & Delivery",
+    costTypePersian: "کرایه حمل دریایی ریفر به جبل علی و تحویل اسناد",
+    cost: 450.0,
+    chargeCode: "OCEAN_FREIGHT",
+    transportMode: "vessel",
+    notes: "Ocean transit to Jebel Ali Port with delivery under Switch B/L.",
+    notesPersian: "حمل دریایی کانتینر یخچالی به بندر جبل علی و ترخیص اسناد سوییچ بارنامه",
+    transitDays: 1,
+    country: "UAE",
+  },
+]
+
+/**
  * Route 3 Payload: Dogharon to Nhava Sheva via Mersin Reefer Export Routing (Refrigerated 40RF)
  * Includes Escort Service (مامور بدرقه), Plugging Charges (7 Days), Turkey Transit Trucking, Commission (CMSN), and Ocean Freight with TRF.
  * Total Transit Legs Cost: $5,350.00 USD
@@ -410,6 +475,25 @@ export const EXPORT_CORRIDOR_PRESETS: ExportCorridorPreset[] = [
     legs: nimrozToBandarAbbasLegs,
     description: "Southern export corridor connecting Nimroz/Milak border to Bandar Abbas seaport with export customs, southbound road freight, and Export THC + Gate-in charges.",
     descriptionPersian: "مسیر مستقیم صادراتی از مرز نیمروز به بندرعباس جهت حمل دریایی به مقاصد بین‌المللی همراه با ثبت ترانزیت، کرایه لاری و عوارض THC.",
+  },
+  {
+    id: "corridor-nmz-reefer-switch",
+    name: "Route 4: Nimroz to Bandar Abbas & Dubai Reefer (Full Way Reefer & Switch B/L)",
+    namePersian: "مسیر چهارم: نیمروز الی بندرعباس و دبی (تمام مسیر یخچالی با سوییچ بارنامه)",
+    routeCode: "NMZ-BND-RF-SW",
+    originBorder: "Nimroz / Milak",
+    originBorderPersian: "نیمروز / میلک",
+    destinationPort: "Dubai / Jebel Ali (via Bandar Abbas Switch Hub)",
+    destinationPortPersian: "دبی / جبل علی (از طریق هاب سوییچ بندرعباس)",
+    viaCountry: "Iran & UAE",
+    equipmentType: "40RF",
+    temperatureSetting: "-18°C Frozen / Full Way Reefer",
+    defaultRiskBuffer: 250.0,
+    defaultTargetMargin: 20.0,
+    defaultOceanFreight: 450.0,
+    legs: nimrozFullWayReeferSwitchLegs,
+    description: "Refrigerated export corridor from Nimroz to Bandar Abbas with genset trucking, Switch Bill of Lading execution, reefer terminal power plugging, and ocean connection to Dubai.",
+    descriptionPersian: "مسیر ترانزیت صادراتی تمام یخچالی با ژنست از نیمروز به بندرعباس، صدور بارنامه سوییچ (Switch B/L)، برق پایانه ریفر و حمل دریایی به دبی.",
   },
 ]
 

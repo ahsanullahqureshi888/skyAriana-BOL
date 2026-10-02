@@ -42,7 +42,7 @@ export interface CombinedShippingPdfProps {
   logoUrl?: string
   companyName?: string
   companySubtitle?: string
-  bolPreview: ReactNode
+  bolPreview?: ReactNode
   onDownload: (kind: ShippingDocumentKind, stickerQuantity?: number, stickerLayout?: StickerLayout) => Promise<void>
   onPrint: (kind: ShippingDocumentKind, stickerQuantity?: number, stickerLayout?: StickerLayout) => Promise<void>
 }

@@ -35,9 +35,51 @@ export interface SavedDocument {
   container_numbers?: string
   seal_numbers?: string
   measurement?: string
+  cargo_route_note?: string
+  routes?: Array<{
+    id?: string
+    location?: string
+    locationPersian?: string
+    stopOrder?: number
+    transportMode?: string
+    stopLabel?: string
+  }>
+  borderCrossing?: string
+  route_name?: string
+  driverFreight?: string
   created_at: string
   pdf_url?: string | null
   pdf_uploaded_at?: string | null
+  commodity?: string
+  shipper_address?: string
+  consignee_address?: string
+  notify_party_address?: string
+  shipper_phone?: string
+  consignee_phone?: string
+  shipper_email?: string
+  consignee_email?: string
+  rate_per_kg?: string
+  ocean_vessel?: string
+  voyage_no?: string
+  place_of_receipt?: string
+  first_leg_bl?: string
+  switch_bl?: string
+  booking_no?: string
+}
+
+export interface BolRouteInfo {
+  display: string
+  shortDisplay: string
+  origin: string
+  destination: string
+  via?: string
+  borderCrossing?: string
+  hasReefer?: boolean
+  isFullReefer?: boolean
+  hasSwitchBl?: boolean
+  rawNote?: string
+  isPersian: boolean
+  stopsCount?: number
 }
 
 export type ReportTab =
@@ -47,8 +89,10 @@ export type ReportTab =
   | "shippers"
   | "consignees"
   | "commodities"
+  | "routes"
   | "destinations"
   | "containers"
+  | "trucks"
   | "monthly"
   | "financial"
   | "missing_data"
@@ -70,6 +114,7 @@ export interface OverviewKpis {
   totalBols: number
   totalShipments: number
   totalPackages: number
+  packageUnitsBreakdown?: Record<string, number>
   totalNetWeightKg: number
   totalGrossWeightKg: number
   currencyTotals: CurrencyTotal[]
@@ -83,6 +128,8 @@ export interface OverviewKpis {
   importShipments: number
   reeferContainers: number
   dryContainers: number
+  missingDataCount?: number
+  dataQualityScore?: number
 }
 
 export interface MetricDelta {
@@ -112,6 +159,9 @@ export interface ShipperSummary {
   containerCount: number
   topDestination: string
   lastShipmentDate: string
+  commodities?: string[]
+  topCommodity?: string
+  topConsignee?: string
 }
 
 export interface ConsigneeSummary {
@@ -125,25 +175,69 @@ export interface ConsigneeSummary {
   containerCount: number
   topDestination: string
   lastShipmentDate: string
+  topShipper?: string
+  topCommodity?: string
+  commodities?: string[]
 }
 
 export interface CommoditySummary {
   commodityName: string
   bolCount: number
+  cargoRowCount?: number
   packages: number
+  packageUnit?: string
   netWeightKg: number
+  grossWeightKg?: number
   goodsValueByCurrency: Record<string, number>
   averageValueUsd: number
+  averageRate?: string
+  topShipper?: string
+  topConsignee?: string
+  topDestination?: string
   destinations: string[]
+}
+
+export interface RouteSummary {
+  routePath: string
+  origin: string
+  destination: string
+  via?: string
+  borderCrossing?: string
+  bolCount: number
+  packages: number
+  netWeightKg: number
+  grossWeightKg: number
+  goodsValueByCurrency: Record<string, number>
+  reeferCount: number
+  dryCount: number
+}
+
+export interface TruckSummary {
+  truckNumber: string
+  plateRegion?: string
+  bolCount: number
+  lastDriver: string
+  lastDriverPhone: string
+  lastShipmentDate: string
+  totalDriverRent: Record<string, number>
+  routesUsed: string[]
+  topRoute?: string
+  topShipper: string
 }
 
 export interface DestinationSummary {
   locationName: string
+  country?: string
   type: "POL" | "POD" | "Final Destination"
   bolCount: number
+  packages?: number
   netWeightKg: number
+  grossWeightKg?: number
   goodsValueByCurrency: Record<string, number>
   topShippers: string[]
+  topShipper?: string
+  topCommodity?: string
+  lastShipmentDate?: string
 }
 
 export interface ContainerRecord {
@@ -236,6 +330,8 @@ export interface ReportFilterCriteria {
   currency?: string
   shipmentType?: "all" | "export" | "import"
   hasPdf?: "all" | "yes" | "no"
+  route?: string
+  missingData?: "all" | "container" | "invoice" | "truck" | "driver" | "route" | "rate" | "pdf"
 }
 
 export interface SavedFilterPreset {
@@ -255,6 +351,11 @@ export interface SavedReportPreset {
   includeCharts: boolean
   includeCover: boolean
   createdAt: string
+  isDefault?: boolean
+  visibleColumns?: string[]
+  densityMode?: "compact" | "normal"
+  sortColumn?: string
+  sortDirection?: "asc" | "desc"
 }
 
 export interface ReportHistoryEntry {

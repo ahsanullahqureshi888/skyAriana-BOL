@@ -371,6 +371,7 @@ test("Excel Export: Generates professional multi-sheet workbook (.xlsx)", async 
     assert.deepEqual(exportedSheets, [
       "Summary",
       "Detailed BOLs",
+      "Cargo Items Breakdown",
       "Shippers",
       "Consignees",
       "Commodities",

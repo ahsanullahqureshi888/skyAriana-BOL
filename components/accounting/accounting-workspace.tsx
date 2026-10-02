@@ -85,7 +85,7 @@ export function AccountingWorkspace() {
   }
 
   return (
-    <div className="mx-auto max-w-[1780px] p-3 sm:p-6 space-y-6">
+    <div className="w-full flex-1 flex flex-col min-h-0 space-y-3.5">
       {/* If a single account ledger is opened */}
       {selectedAccountId ? (
         <AccountDetailView
@@ -96,16 +96,16 @@ export function AccountingWorkspace() {
           }}
         />
       ) : (
-        <div className="space-y-5">
+        <div className="w-full flex-1 flex flex-col min-h-0 space-y-3.5">
           {/* Main Top Header */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3 shrink-0">
             <div>
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-emerald-600/10 text-emerald-600 dark:text-emerald-400">
-                  <BookOpen className="h-6 w-6" />
+                  <BookOpen className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                  <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
                     ACCOUNTING / COMPANY LEDGERS
                   </h1>
                   <p className="text-xs text-slate-500 mt-0.5">
@@ -120,7 +120,7 @@ export function AccountingWorkspace() {
                 variant="outline"
                 size="sm"
                 onClick={() => setMergeDialogOpen(true)}
-                className="gap-1.5 text-xs text-purple-700 dark:text-purple-400 border-purple-300 dark:border-purple-800 hover:bg-purple-50"
+                className="gap-1.5 text-xs text-purple-700 dark:text-purple-400 border-purple-300 dark:border-purple-800 hover:bg-purple-50 shadow-2xs cursor-pointer"
               >
                 <GitMerge className="h-3.5 w-3.5" />
                 Merge Accounts
@@ -128,7 +128,7 @@ export function AccountingWorkspace() {
               <Button
                 size="sm"
                 onClick={() => setNewAccountOpen(true)}
-                className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
+                className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-2xs cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
                 New Account
@@ -137,40 +137,61 @@ export function AccountingWorkspace() {
           </div>
 
           {/* Module Navigation Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200 dark:border-slate-700 w-full justify-start overflow-x-auto">
-              <TabsTrigger value="ledgers" className="text-xs font-semibold gap-1.5 cursor-pointer">
-                <Layers className="h-3.5 w-3.5" />
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
+            <TabsList className="bg-slate-100/90 dark:bg-slate-800/80 p-1 border border-slate-200 dark:border-slate-700 w-full justify-start overflow-x-auto h-auto min-h-10 rounded-xl gap-1 shrink-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <TabsTrigger
+                value="ledgers"
+                className="text-xs font-semibold gap-1.5 cursor-pointer px-3 py-1.5 h-8 rounded-lg data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-2xs whitespace-nowrap"
+              >
+                <Layers className="h-3.5 w-3.5 text-blue-600" />
                 Company Ledgers
               </TabsTrigger>
-              <TabsTrigger value="dashboard" className="text-xs font-semibold gap-1.5 cursor-pointer">
-                <LayoutDashboard className="h-3.5 w-3.5" />
+              <TabsTrigger
+                value="dashboard"
+                className="text-xs font-semibold gap-1.5 cursor-pointer px-3 py-1.5 h-8 rounded-lg data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-2xs whitespace-nowrap"
+              >
+                <LayoutDashboard className="h-3.5 w-3.5 text-amber-600" />
                 Outstanding Dashboard
               </TabsTrigger>
-              <TabsTrigger value="aging" className="text-xs font-semibold gap-1.5 cursor-pointer">
-                <Clock className="h-3.5 w-3.5" />
+              <TabsTrigger
+                value="aging"
+                className="text-xs font-semibold gap-1.5 cursor-pointer px-3 py-1.5 h-8 rounded-lg data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-2xs whitespace-nowrap"
+              >
+                <Clock className="h-3.5 w-3.5 text-purple-600" />
                 Aging Report (AR)
               </TabsTrigger>
-              <TabsTrigger value="reconcile" className="text-xs font-semibold gap-1.5 cursor-pointer">
+              <TabsTrigger
+                value="reconcile"
+                className="text-xs font-semibold gap-1.5 cursor-pointer px-3 py-1.5 h-8 rounded-lg data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-2xs whitespace-nowrap"
+              >
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
                 Import & Reconciliation
               </TabsTrigger>
-              <TabsTrigger value="backup" className="text-xs font-semibold gap-1.5 cursor-pointer">
-                <Database className="h-3.5 w-3.5" />
+              <TabsTrigger
+                value="backup"
+                className="text-xs font-semibold gap-1.5 cursor-pointer px-3 py-1.5 h-8 rounded-lg data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-2xs whitespace-nowrap"
+              >
+                <Database className="h-3.5 w-3.5 text-slate-600" />
                 Backup & Restore
               </TabsTrigger>
-              <TabsTrigger value="period-closing" className="text-xs font-semibold gap-1.5 cursor-pointer">
+              <TabsTrigger
+                value="period-closing"
+                className="text-xs font-semibold gap-1.5 cursor-pointer px-3 py-1.5 h-8 rounded-lg data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-2xs whitespace-nowrap"
+              >
                 <Lock className="h-3.5 w-3.5 text-blue-600" />
                 Period Closing
               </TabsTrigger>
-              <TabsTrigger value="treasury" className="text-xs font-semibold gap-1.5 cursor-pointer">
+              <TabsTrigger
+                value="treasury"
+                className="text-xs font-semibold gap-1.5 cursor-pointer px-3 py-1.5 h-8 rounded-lg data-[state=active]:bg-white data-[state=active]:text-blue-700 data-[state=active]:shadow-2xs whitespace-nowrap"
+              >
                 <Landmark className="h-3.5 w-3.5 text-emerald-600" />
                 Treasury & Bank/Cash
               </TabsTrigger>
             </TabsList>
 
             {/* Submodule Contents */}
-            <TabsContent value="ledgers" className="mt-4">
+            <TabsContent value="ledgers" className="mt-3 flex-1 flex flex-col min-h-0 data-[state=inactive]:hidden">
               <AllLedgersTab
                 onSelectAccount={(id) => setSelectedAccountId(id)}
                 onNewAccountClick={() => setNewAccountOpen(true)}

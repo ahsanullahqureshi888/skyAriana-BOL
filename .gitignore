@@ -73,3 +73,9 @@ patch-*.js
 *.tsbuildinfo
 
 .next-dev/
+.asar-stage/
+.edge-profile/
+test-results/
+*.bak*
+public/uploads/shipments/2026/BOL-TEST-*/
+implementation_plan.md
