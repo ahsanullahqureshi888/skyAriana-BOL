@@ -106,7 +106,9 @@ export function normalizeToWhatsAppShipment(source: any): NormalizedWhatsAppShip
   const isShipmentMaster = Boolean(source.cargo && source.transport && source.shipper)
   const isBolFormData = Boolean(source.bol_number || source.container_numbers || source.shipper_name)
 
-  const bolNum = cleanText(source.bolNumber || source.bol_number || source.referenceNumber || source.id) || "N/A"
+  const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
+  const candidateBol = cleanText(source.bolNumber || source.bol_number || source.referenceNumber || (!isUUID(String(source.id || "")) ? source.id : ""))
+  const bolNum = (!isUUID(candidateBol) ? candidateBol : "") || "N/A"
   const invNum = cleanText(source.invoiceNumber || source.invoice_number || source.invoiceNo)
 
   // Parties

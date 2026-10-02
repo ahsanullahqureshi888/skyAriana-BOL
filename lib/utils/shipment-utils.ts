@@ -1,4 +1,5 @@
-﻿import type { ShipmentMaster, DocumentMismatchAlert } from "@/lib/types/shipment"
+import type { ShipmentMaster, DocumentMismatchAlert } from "@/lib/types/shipment"
+import { parseWeight, parsePackages } from "@/lib/reports/parsers"
 
 /**
  * Validate discrepancies across documents in a shipment
@@ -29,8 +30,8 @@ export function validateShipmentDocuments(shipment: ShipmentMaster): DocumentMis
     }
 
     // Check Gross Weight
-    const bolGw = parseFloat(String(bolDoc.gross_weight || "").replace(/[^\d.]/g, ""))
-    const invGw = parseFloat(String(invDoc.gross_weight || invDoc.grossWeight || "").replace(/[^\d.]/g, ""))
+    const bolGw = parseWeight(bolDoc.gross_weight)
+    const invGw = parseWeight(invDoc.gross_weight || invDoc.grossWeight)
     if (bolGw && invGw && Math.abs(bolGw - invGw) > 1) {
       alerts.push({
         field: "gross_weight",
@@ -44,8 +45,8 @@ export function validateShipmentDocuments(shipment: ShipmentMaster): DocumentMis
     }
 
     // Check Package Count
-    const bolPkg = parseInt(String(bolDoc.number_of_packages || "").replace(/[^\d]/g, ""), 10)
-    const invPkg = parseInt(String(invDoc.number_of_packages || invDoc.packageCount || "").replace(/[^\d]/g, ""), 10)
+    const bolPkg = parsePackages(bolDoc.number_of_packages)
+    const invPkg = parsePackages(invDoc.number_of_packages || invDoc.packageCount)
     if (bolPkg && invPkg && bolPkg !== invPkg) {
       alerts.push({
         field: "package_count",

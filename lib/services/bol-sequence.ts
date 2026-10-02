@@ -4,13 +4,26 @@ import * as localStorage from "@/lib/services/local-storage-service"
 import { createClient } from "@/lib/supabase/server"
 
 const SEQUENCE_FILE = getDataPath(".local-bol-sequence.json")
-export const START_SEQUENCE = 598
-export const DEFAULT_BOL_PREFIX = "BOL-NSA"
+export const START_SEQUENCE = 619
+export const DEFAULT_BOL_PREFIX = "BOL-2026-NSA"
+
+export function normalizeBolPrefix(prefix?: string, year: number = new Date().getFullYear()): string {
+  if (!prefix || prefix === "BOL-NSA") {
+    return `BOL-${year}-NSA`
+  }
+  return prefix
+}
+
+const isUUID = (str?: any): boolean => {
+  if (!str || typeof str !== "string") return false
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim())
+}
 
 export function extractBolNumberSuffix(bolNum: any): number {
   if (!bolNum) return 0
-  const str = String(bolNum)
-  const match = str.match(/NSA(\d+)/i) || str.match(/(\d+)\s*$/)
+  const str = String(bolNum).trim()
+  if (isUUID(str)) return 0
+  const match = str.match(/NSA[-\s]*(\d+)/i) || str.match(/(\d+)\s*$/)
   if (match && match[1]) {
     const val = parseInt(match[1], 10)
     return isNaN(val) ? 0 : val
@@ -41,7 +54,7 @@ export async function getNextAvailableBolNumber(): Promise<string> {
 
   const configuredStart = typeof state?.startSequence === "number" ? state.startSequence : START_SEQUENCE
   const currentSeq = typeof state?.sequence === "number" ? state.sequence : (configuredStart - 1)
-  const prefix = state?.prefix || DEFAULT_BOL_PREFIX
+  const prefix = normalizeBolPrefix(state?.prefix, currentYear)
   const nextSeq = Math.max(currentSeq + 1, configuredStart)
 
   return `${prefix}${nextSeq}`
@@ -62,7 +75,7 @@ export async function advanceBolSequenceIfHigher(savedBolNumber: string): Promis
     (current: BolSequenceState) => {
       const configuredStart = typeof current?.startSequence === "number" ? current.startSequence : START_SEQUENCE
       const currentSeq = typeof current?.sequence === "number" ? current.sequence : (configuredStart - 1)
-      const prefix = current?.prefix || DEFAULT_BOL_PREFIX
+      const prefix = normalizeBolPrefix(current?.prefix, currentYear)
 
       if (suffix > currentSeq) {
         updatedSequence = suffix
@@ -76,7 +89,10 @@ export async function advanceBolSequenceIfHigher(savedBolNumber: string): Promis
         }
       }
       updatedSequence = currentSeq
-      return current
+      return {
+        ...current,
+        prefix,
+      }
     }
   )
 
@@ -114,7 +130,7 @@ export async function getNextAtomicBolNumber(): Promise<string> {
     SEQUENCE_FILE,
     { year: currentYear, sequence: START_SEQUENCE - 1, startSequence: START_SEQUENCE, prefix: DEFAULT_BOL_PREFIX, updated_at: new Date().toISOString() },
     async (current: BolSequenceState) => {
-      prefix = current?.prefix || DEFAULT_BOL_PREFIX
+      prefix = normalizeBolPrefix(current?.prefix, currentYear)
       const configuredStart = typeof current?.startSequence === "number" ? current.startSequence : START_SEQUENCE
       let currentSeq = typeof current?.sequence === "number" ? current.sequence : (configuredStart - 1)
 

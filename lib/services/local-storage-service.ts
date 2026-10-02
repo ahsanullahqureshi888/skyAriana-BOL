@@ -72,11 +72,26 @@ async function updateFullSnapshot(bols: any[]): Promise<void> {
   }
 }
 
+export function isUUID(str?: any): boolean {
+  if (!str || typeof str !== "string") return false
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str.trim())
+}
+
 /**
  * Helper to harmonize BOL record properties across camelCase and snake_case
  */
 function harmonizeBolRecord(data: any, bolNumber?: string): any {
-  const num = (bolNumber || data?.bol_number || data?.billOfLadingNumber || data?.bolNo || data?.id || "").trim()
+  const validBolNumber = (
+    (!isUUID(bolNumber) ? bolNumber : "") ||
+    (!isUUID(data?.bol_number) ? data?.bol_number : "") ||
+    (!isUUID(data?.billOfLadingNumber) ? data?.billOfLadingNumber : "") ||
+    (!isUUID(data?.bolNo) ? data?.bolNo : "") ||
+    (!isUUID(data?.id) ? data?.id : "") ||
+    ""
+  ).trim()
+
+  const rawId = (data?.id || (!isUUID(bolNumber) ? bolNumber : "") || validBolNumber || "").trim()
+  const num = validBolNumber
   const issueDate = data?.issue_date || data?.issueDate || new Date().toISOString().split("T")[0]
   const shipper = data?.shipper_name || data?.shipperName || ""
   const consignee = data?.consignee_name || data?.consigneeName || ""
@@ -93,7 +108,7 @@ function harmonizeBolRecord(data: any, bolNumber?: string): any {
 
   return {
     ...data,
-    id: num,
+    id: num || rawId,
     bol_number: num,
     billOfLadingNumber: num,
     bolNo: num,
@@ -142,7 +157,7 @@ export async function storeLocalBOLsBatch(items: any[]): Promise<number> {
     }
     for (const item of items) {
       const harmonized = harmonizeBolRecord(item)
-      const k = (harmonized.bol_number || "").trim().toLowerCase()
+      const k = (harmonized.bol_number || harmonized.id || "").trim().toLowerCase()
       if (k) {
         const existing = bolMap.get(k)
         bolMap.set(k, { ...(existing || {}), ...harmonized, created_at: existing?.created_at || harmonized.created_at })
@@ -159,20 +174,32 @@ export async function storeLocalBOLsBatch(items: any[]): Promise<number> {
  * Store BOL locally with robust identifier matching
  */
 export async function storeLocalBOL(bolNumber: string, data: any): Promise<void> {
-  const target = (bolNumber || data?.bol_number || data?.billOfLadingNumber || data?.bolNo || data?.id || "").trim().toLowerCase()
+  const candidateNum = (
+    (!isUUID(bolNumber) ? bolNumber : "") ||
+    (!isUUID(data?.bol_number) ? data?.bol_number : "") ||
+    (!isUUID(data?.billOfLadingNumber) ? data?.billOfLadingNumber : "") ||
+    (!isUUID(data?.bolNo) ? data?.bolNo : "") ||
+    (!isUUID(data?.id) ? data?.id : "") ||
+    ""
+  ).trim()
+
+  const target = (candidateNum || bolNumber || data?.id || "").trim().toLowerCase()
   if (!target) throw new Error("A BOL number is required")
   await mutateAllBols((bols) => {
     const existingIndex = bols.findIndex((b) => [b.id, b.bol_number, b.billOfLadingNumber, b.bolNo]
       .some((value) => String(value || "").trim().toLowerCase() === target))
+    const existing = existingIndex >= 0 ? bols[existingIndex] : null
+    const effectiveBolNum = candidateNum || (existing && !isUUID(existing.bol_number) ? existing.bol_number : "")
+
     const newBol = harmonizeBolRecord({
       ...data,
-      created_at: data.created_at || (existingIndex >= 0 ? bols[existingIndex].created_at : new Date().toISOString()),
-    }, bolNumber)
+      created_at: data.created_at || (existing ? existing.created_at : new Date().toISOString()),
+    }, effectiveBolNum || undefined)
     if (existingIndex >= 0) bols[existingIndex] = { ...bols[existingIndex], ...newBol }
     else bols.unshift(newBol)
     return bols
   })
-  console.log(`[v0] Stored BOL locally: ${bolNumber}`)
+  console.log(`[v0] Stored BOL locally: ${candidateNum || bolNumber}`)
 }
 
 /**
@@ -181,12 +208,29 @@ export async function storeLocalBOL(bolNumber: string, data: any): Promise<void>
 export async function getLocalBOL(bolNumber: string): Promise<any | null> {
   const bols = await readAllBols()
   const target = (bolNumber || "").trim().toLowerCase()
+  if (!target) return null
+
+  const targetAlpha = target.replace(/[^a-z0-9]/g, "")
+  const targetDigits = target.match(/\d+$/)?.[0]
+
   const bol = bols.find(b => {
     const bId = (b.id ? String(b.id) : "").trim().toLowerCase()
     const bNum = (b.bol_number ? String(b.bol_number) : "").trim().toLowerCase()
     const bNum2 = (b.billOfLadingNumber ? String(b.billOfLadingNumber) : "").trim().toLowerCase()
     const bNum3 = (b.bolNo ? String(b.bolNo) : "").trim().toLowerCase()
-    return target && (bId === target || bNum === target || bNum2 === target || bNum3 === target)
+    if (bId === target || bNum === target || bNum2 === target || bNum3 === target) return true
+
+    if (targetAlpha && targetAlpha.length > 3) {
+      if (bNum.replace(/[^a-z0-9]/g, "") === targetAlpha) return true
+      if (bId.replace(/[^a-z0-9]/g, "") === targetAlpha) return true
+    }
+
+    if (targetDigits && targetDigits.length >= 3) {
+      const bDigits = bNum.match(/\d+$/)?.[0]
+      if (bDigits === targetDigits) return true
+    }
+
+    return false
   })
   if (bol) {
     console.log(`[v0] Retrieved local BOL: ${bolNumber}`)
@@ -207,19 +251,31 @@ export async function getAllLocalBOLs(): Promise<any[]> {
  * Update locally stored BOL
  */
 export async function updateLocalBOL(bolNumber: string, data: any): Promise<void> {
-  const target = (bolNumber || data?.bol_number || data?.billOfLadingNumber || data?.bolNo || data?.id || "").trim().toLowerCase()
+  const candidateNum = (
+    (!isUUID(bolNumber) ? bolNumber : "") ||
+    (!isUUID(data?.bol_number) ? data?.bol_number : "") ||
+    (!isUUID(data?.billOfLadingNumber) ? data?.billOfLadingNumber : "") ||
+    (!isUUID(data?.bolNo) ? data?.bolNo : "") ||
+    (!isUUID(data?.id) ? data?.id : "") ||
+    ""
+  ).trim()
+
+  const target = (candidateNum || bolNumber || data?.id || "").trim().toLowerCase()
   if (!target) throw new Error("A BOL number is required")
   await mutateAllBols((bols) => {
     const existingIndex = bols.findIndex((b) => [b.id, b.bol_number, b.billOfLadingNumber, b.bolNo]
       .some((value) => String(value || "").trim().toLowerCase() === target))
+    const existing = existingIndex >= 0 ? bols[existingIndex] : null
+    const effectiveBolNum = candidateNum || (existing && !isUUID(existing.bol_number) ? existing.bol_number : "")
+
     if (existingIndex >= 0) {
-      bols[existingIndex] = harmonizeBolRecord({ ...bols[existingIndex], ...data, created_at: bols[existingIndex].created_at }, bolNumber)
+      bols[existingIndex] = harmonizeBolRecord({ ...bols[existingIndex], ...data, created_at: bols[existingIndex].created_at }, effectiveBolNum || undefined)
     } else {
-      bols.unshift(harmonizeBolRecord(data, bolNumber))
+      bols.unshift(harmonizeBolRecord(data, effectiveBolNum || undefined))
     }
     return bols
   })
-  console.log(`[v0] Updated local BOL: ${bolNumber}`)
+  console.log(`[v0] Updated local BOL: ${candidateNum || bolNumber}`)
 }
 
 /**

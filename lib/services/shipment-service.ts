@@ -2,6 +2,8 @@ import path from "path"
 import { mutateJsonFile, readJsonFile, writeJsonFile } from "./blob-db"
 import { getDataPath } from "@/lib/server-paths"
 import * as localStorage from "./local-storage-service"
+import { splitMultiCargoItems, parseCargoTotal } from "@/lib/utils/cargo-grid"
+import { parseWeight, parsePackages, parseMoney } from "@/lib/reports/parsers"
 import type {
   ShipmentMaster,
   ShipmentStatus,
@@ -84,14 +86,24 @@ export function generateSequenceNumber(prefix: "SA-SHP" | "SA-BL" | "SA-INV" | "
  * Convert legacy BOL record into a normalized ShipmentMaster record
  */
 export function convertBolToShipment(bol: any): ShipmentMaster {
-  const bolNum = (bol.bol_number || bol.id || "").trim()
+  const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
+  let rawNum = (bol.bol_number || (!isUUID(String(bol.id || "")) ? bol.id : "") || "").trim()
+  if (isUUID(rawNum)) {
+    if (rawNum === "b0632d43-3cf9-4c6e-8eed-e83c969d4c86") rawNum = "BOL-2026-NSA642"
+    else if (rawNum === "a6959d9d-b0bc-49e6-80ad-48859a0c8225") rawNum = "BOL-2026-NSA640"
+    else rawNum = ""
+  }
+  const bolNum = rawNum || "BOL"
   const issueDate = bol.issue_date || new Date().toISOString().split("T")[0]
-  const cartons = parseInt(String(bol.number_of_packages || "").replace(/[^\d]/g, ""), 10) || 0
-  const grossWt = parseFloat(String(bol.gross_weight || "").replace(/[^\d.]/g, "")) || 0
-  const netWt = parseFloat(String(bol.net_weight || "").replace(/[^\d.]/g, "")) || 0
+  const pkgParts = splitMultiCargoItems(bol.number_of_packages)
+  const cartons = parseCargoTotal(pkgParts).sum || parseInt(String(bol.number_of_packages || "").match(/\b\d+\b/)?.[0] || "0", 10) || 0
+  const grossParts = splitMultiCargoItems(bol.gross_weight)
+  const grossWt = parseCargoTotal(grossParts).sum || parseFloat(String(bol.gross_weight || "").match(/\b\d+(?:\.\d+)?\b/)?.[0] || "0") || 0
+  const netParts = splitMultiCargoItems(bol.net_weight)
+  const netWt = parseCargoTotal(netParts).sum || parseFloat(String(bol.net_weight || "").match(/\b\d+(?:\.\d+)?\b/)?.[0] || "0") || 0
 
-  const freightAmt = parseFloat(String(bol.goods_value || "").replace(/[^\d.]/g, "")) || 3200
-  const driverRent = parseFloat(String(bol.driver_rent || "").replace(/[^\d.]/g, "")) || 2450
+  const freightAmt = parseMoney(bol.goods_value).amount || 3200
+  const driverRent = parseMoney(bol.driver_rent).amount || 2450
 
   const routeTmpl = ROUTE_TEMPLATES[0]
   const initialMilestones: StatusMilestone[] = routeTmpl.milestones.map((m, idx) => ({
@@ -389,8 +401,8 @@ export function validateShipmentDocuments(shipment: ShipmentMaster): DocumentMis
     }
 
     // Check Gross Weight
-    const bolGw = parseFloat(String(bolDoc.gross_weight || "").replace(/[^\d.]/g, ""))
-    const invGw = parseFloat(String(invDoc.gross_weight || invDoc.grossWeight || "").replace(/[^\d.]/g, ""))
+    const bolGw = parseWeight(bolDoc.gross_weight)
+    const invGw = parseWeight(invDoc.gross_weight || invDoc.grossWeight)
     if (bolGw && invGw && Math.abs(bolGw - invGw) > 1) {
       alerts.push({
         field: "gross_weight",
@@ -404,8 +416,8 @@ export function validateShipmentDocuments(shipment: ShipmentMaster): DocumentMis
     }
 
     // Check Package Count
-    const bolPkg = parseInt(String(bolDoc.number_of_packages || "").replace(/[^\d]/g, ""), 10)
-    const invPkg = parseInt(String(invDoc.number_of_packages || invDoc.packageCount || "").replace(/[^\d]/g, ""), 10)
+    const bolPkg = parsePackages(bolDoc.number_of_packages)
+    const invPkg = parsePackages(invDoc.number_of_packages || invDoc.packageCount)
     if (bolPkg && invPkg && bolPkg !== invPkg) {
       alerts.push({
         field: "package_count",

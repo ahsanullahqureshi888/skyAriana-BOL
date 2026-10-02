@@ -180,6 +180,20 @@ export const ALL_PERMISSIONS: PermissionItem[] = [
   { id: "p-comm-5", permission_key: "communication_bulk_generate", name: "Bulk Generate Messages", nameFa: "تولید دسته‌جمعی پیام‌ها", description: "Batch generate daily status and multi-container updates", category: "COMMUNICATIONS" },
   { id: "p-comm-6", permission_key: "payment_reminder_generate", name: "Generate Payment Reminders", nameFa: "تولید یادآوری پرداخت", description: "Generate accounting balance and invoice payment follow-ups", category: "COMMUNICATIONS" },
   { id: "p-comm-7", permission_key: "client_notice_generate", name: "Generate Client Notices", nameFa: "تولید اطلاعیه‌های اسناد مشتری", description: "Generate client-ready document notices and release alerts", category: "COMMUNICATIONS" },
+
+  // 20. EXECUTIVE BI & ANALYTICS
+  { id: "p-bi-1", permission_key: "analytics_view", name: "View Analytics & BI", nameFa: "مشاهده هوش تجاری و تحلیل‌ها", description: "Access Executive BI & Analytics Center", category: "ANALYTICS" },
+  { id: "p-bi-1a", permission_key: "view:analytics", name: "View Analytics (Standard)", nameFa: "مشاهده تحلیل‌ها", description: "Access Executive BI workspace", category: "ANALYTICS" },
+  { id: "p-bi-2", permission_key: "finance_analytics_view", name: "View Finance Analytics", nameFa: "مشاهده تحلیل‌های مالی و سود", description: "View service revenue, financial metrics, and aging receivables/payables", category: "ANALYTICS" },
+  { id: "p-bi-2a", permission_key: "view:finance_analytics", name: "View Financial Analytics (Standard)", nameFa: "مشاهده تحلیل‌های مالی", description: "View executive financial numbers and revenue", category: "ANALYTICS" },
+  { id: "p-bi-3", permission_key: "gross_margin_view", name: "View Gross Margins", nameFa: "مشاهده حاشیه سود ناخالص", description: "Inspect shipment and route gross margins and percentage rates", category: "ANALYTICS" },
+  { id: "p-bi-3a", permission_key: "view:gross_margin", name: "View Gross Margins (Standard)", nameFa: "مشاهده مارجین‌ها", description: "View gross profit margins and percentage metrics", category: "ANALYTICS" },
+  { id: "p-bi-4", permission_key: "analytics_export", name: "Export Analytics", nameFa: "خروجی اکسل/CSV تحلیل‌ها", description: "Export executive datasets to Excel and CSV", category: "ANALYTICS" },
+  { id: "p-bi-4a", permission_key: "export:analytics", name: "Export Analytics (Standard)", nameFa: "خروجی تحلیل‌ها", description: "Export analytics datasets to Excel/CSV", category: "ANALYTICS" },
+  { id: "p-bi-5", permission_key: "finance_analytics_export", name: "Export Financial Analytics", nameFa: "خروجی گزارش مالی هوش تجاری", description: "Export financial analytics sheets and executive management pack", category: "ANALYTICS" },
+  { id: "p-bi-5a", permission_key: "export:finance_analytics", name: "Export Finance Analytics (Standard)", nameFa: "خروجی گزارش مالی", description: "Export financial spreadsheets and management pack", category: "ANALYTICS" },
+  { id: "p-bi-6", permission_key: "dashboard_manage", name: "Manage Analytics & Dashboards", nameFa: "مدیریت داشبوردها و اسنپ‌شات‌ها", description: "Rebuild cache and freeze immutable cryptographic snapshots", category: "ANALYTICS" },
+  { id: "p-bi-6a", permission_key: "manage:dashboards", name: "Manage Dashboards (Standard)", nameFa: "مدیریت داشبوردها", description: "Rebuild cache and freeze historical snapshots", category: "ANALYTICS" },
 ]
 
 export const ALL_PERMISSION_KEYS = ALL_PERMISSIONS.map((p) => p.permission_key)
@@ -241,6 +255,12 @@ export const DEFAULT_SYSTEM_ROLES: RoleDefinition[] = [
       "backup_create", "backup_download",
       "user_view",
       "settings_view", "security_settings",
+      "analytics_view", "view:analytics",
+      "finance_analytics_view", "view:finance_analytics",
+      "gross_margin_view", "view:gross_margin",
+      "analytics_export", "export:analytics",
+      "finance_analytics_export", "export:finance_analytics",
+      "dashboard_manage", "manage:dashboards",
     ],
   },
   {
@@ -264,6 +284,8 @@ export const DEFAULT_SYSTEM_ROLES: RoleDefinition[] = [
       "communication_view", "communication_generate", "communication_history_view", "communication_bulk_generate", "client_notice_generate",
       "import_excel", "bulk_import", "import_preview", "import_execute",
       "settings_view",
+      "analytics_view", "view:analytics",
+      "analytics_export", "export:analytics",
     ],
   },
   {
@@ -290,6 +312,11 @@ export const DEFAULT_SYSTEM_ROLES: RoleDefinition[] = [
       "supplier_payment_view", "supplier_payment_create", "supplier_payment_post",
       "communication_view", "communication_generate", "communication_history_view", "payment_reminder_generate",
       "settings_view", "accounting_settings",
+      "analytics_view", "view:analytics",
+      "finance_analytics_view", "view:finance_analytics",
+      "gross_margin_view", "view:gross_margin",
+      "analytics_export", "export:analytics",
+      "finance_analytics_export", "export:finance_analytics",
     ],
   },
   {

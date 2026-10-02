@@ -10,8 +10,12 @@ import {
   groupCommodities,
   groupDestinations,
   groupContainers,
+  groupRoutes,
+  groupTrucks,
 } from "./grouping"
-import { formatDisplayDate } from "./parsers"
+import { formatDisplayDate, extractBolRoute, extractTruckNo, extractInvoiceNo } from "./parsers"
+import { parseSyncedCargoItems } from "@/lib/utils/cargo-grid"
+import type { BillOfLadingFormData } from "@/lib/types/bill-of-lading"
 
 /**
  * Calculates optimal column widths based on maximum string lengths in rows.
@@ -31,12 +35,14 @@ function autoFitColumns(rows: (string | number | undefined | null)[][]): { wch: 
 }
 
 /**
- * Generates and downloads a complete 6-Sheet Excel Workbook for the filtered BOL data.
+ * Generates and downloads a complete Excel Workbook for the filtered BOL data.
+ * Prioritizes the active tab when activeTab is passed.
  * Uses dynamic import and cooperative event loop yielding so large exports never lock the UI.
  */
 export async function exportReportToExcel(
   docs: SavedDocument[],
-  fileNamePrefix: string = "Sky-Ariana-Operations-Report"
+  fileNamePrefix: string = "Sky-Ariana-Operations-Report",
+  activeTab?: string
 ): Promise<void> {
   // Yield to browser event loop before heavy computation
   await new Promise((resolve) => setTimeout(resolve, 0))
@@ -106,17 +112,26 @@ export async function exportReportToExcel(
     "BOL Number",
     "Issue Date",
     "Invoice No",
+    "Truck Plate",
+    "Driver Name",
+    "Driver Phone",
+    "Driver Rent",
     "Shipper Name",
     "Consignee Name",
+    "Notify Party",
+    "Cargo Summary",
+    "Route",
     "Packages",
     "Net Weight (KG)",
     "Gross Weight (KG)",
+    "Rate / KG",
     "Goods Value",
     "Port of Loading",
     "Port of Discharge",
     "Place of Delivery",
     "Container Numbers",
-    "Truck Plate",
+    "Seal Numbers",
+    "Vessel / Voyage",
     "Has PDF",
   ]
 
@@ -126,18 +141,27 @@ export async function exportReportToExcel(
       idx + 1,
       doc.bol_number || "-",
       formatDisplayDate(doc.issue_date || doc.created_at),
-      doc.invoice_no || doc.invoice_number || "-",
+      extractInvoiceNo(doc) || doc.invoice_no || (doc as any).invoice_number || "-",
+      extractTruckNo(doc) || doc.truck_number || "-",
+      doc.driver_name || "-",
+      doc.driver_contact || "-",
+      doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent || "-",
       doc.shipper_name || "-",
       doc.consignee_name || "-",
+      doc.notify_party_name || "-",
+      doc.cargo_description || doc.commodity || doc.description_of_goods || doc.goods_description || "-",
+      extractBolRoute(doc).display,
       doc.number_of_packages || "-",
       doc.net_weight || "-",
       doc.gross_weight || "-",
+      doc.rate_per_kg || (doc as any).rate || "-",
       doc.goods_value || "-",
       doc.port_of_loading || "-",
       doc.port_of_discharge || "-",
-      doc.place_of_delivery || "-",
-      doc.container_numbers || "-",
-      doc.truck_number || "-",
+      doc.place_of_delivery || doc.destination_country || "-",
+      doc.container_numbers || (doc as any).container_number || "-",
+      doc.seal_numbers || "-",
+      [doc.ocean_vessel, doc.voyage_no].filter(Boolean).join(" / ") || "-",
       doc.pdf_url ? "YES" : "NO",
     ]),
   ]
@@ -146,6 +170,75 @@ export async function exportReportToExcel(
   wsDetailed["!cols"] = autoFitColumns(detailedRows)
   wsDetailed["!freeze"] = { xSplit: 0, ySplit: 1 }
   XLSX.utils.book_append_sheet(wb, wsDetailed, "Detailed BOLs")
+
+  // ==========================================
+  // SHEET 3: CARGO ITEMS BREAKDOWN
+  // ==========================================
+  const cargoBreakdownRows: (string | number)[][] = [
+    [
+      "#",
+      "BOL Number",
+      "Issue Date",
+      "Item #",
+      "Packages",
+      "Net / Ctn",
+      "Gross / Ctn",
+      "Total Net Weight",
+      "Total Gross Weight",
+      "Rate",
+      "Goods Value",
+      "Truck Plate",
+      "Driver",
+      "Containers",
+    ],
+  ]
+
+  let cargoItemIndex = 1
+  for (const doc of docs) {
+    const synced = parseSyncedCargoItems(doc as unknown as Partial<BillOfLadingFormData>)
+    if (synced.items.length > 0) {
+      synced.items.forEach((item, itemIdx) => {
+        cargoBreakdownRows.push([
+          cargoItemIndex++,
+          doc.bol_number || "-",
+          formatDisplayDate(doc.issue_date || doc.created_at),
+          itemIdx + 1,
+          item.packageText || "-",
+          item.netPerCarton || "-",
+          item.grossPerCarton || "-",
+          item.netWeight || "-",
+          item.grossWeight || "-",
+          item.rate || "-",
+          item.goodsValue || "-",
+          extractTruckNo(doc) || doc.truck_number || "-",
+          doc.driver_name || "-",
+          doc.container_numbers || (doc as any).container_number || "-",
+        ])
+      })
+    } else {
+      cargoBreakdownRows.push([
+        cargoItemIndex++,
+        doc.bol_number || "-",
+        formatDisplayDate(doc.issue_date || doc.created_at),
+        1,
+        doc.number_of_packages || "-",
+        "-",
+        "-",
+        doc.net_weight || "-",
+        doc.gross_weight || "-",
+        doc.rate_per_kg || (doc as any).rate || "-",
+        doc.goods_value || "-",
+        extractTruckNo(doc) || doc.truck_number || "-",
+        doc.driver_name || "-",
+        doc.container_numbers || (doc as any).container_number || "-",
+      ])
+    }
+  }
+
+  const wsCargo = XLSX.utils.aoa_to_sheet(cargoBreakdownRows)
+  wsCargo["!cols"] = autoFitColumns(cargoBreakdownRows)
+  wsCargo["!freeze"] = { xSplit: 0, ySplit: 1 }
+  XLSX.utils.book_append_sheet(wb, wsCargo, "Cargo Items Breakdown")
 
   // ==========================================
   // SHEET 3: SHIPPER SUMMARY
@@ -286,6 +379,96 @@ export async function exportReportToExcel(
   wsDestinations["!cols"] = autoFitColumns(destRows)
   wsDestinations["!freeze"] = { xSplit: 0, ySplit: 1 }
   XLSX.utils.book_append_sheet(wb, wsDestinations, "Destinations")
+
+  // Optional specialized sheets when activeTab is requested
+  if (activeTab === "routes") {
+    const routes = groupRoutes(docs)
+    const routeHeaders = [
+      "#",
+      "Transit Corridor",
+      "Origin",
+      "Destination",
+      "Border Crossing",
+      "Total BOLs",
+      "Reefer Units",
+      "Dry Units",
+      "Net Weight (KG)",
+      "Goods Value (USD)",
+    ]
+    const routeRows: (string | number)[][] = [
+      routeHeaders,
+      ...routes.map((r, idx) => [
+        idx + 1,
+        r.routePath,
+        r.origin,
+        r.destination,
+        r.borderCrossing || "-",
+        r.bolCount,
+        r.reeferCount,
+        r.dryCount,
+        r.netWeightKg,
+        r.goodsValueByCurrency["USD"] || 0,
+      ]),
+    ]
+    const wsRoutes = XLSX.utils.aoa_to_sheet(routeRows)
+    wsRoutes["!cols"] = autoFitColumns(routeRows)
+    wsRoutes["!freeze"] = { xSplit: 0, ySplit: 1 }
+    XLSX.utils.book_append_sheet(wb, wsRoutes, "Routes")
+  } else if (activeTab === "trucks") {
+    const trucks = groupTrucks(docs)
+    const truckHeaders = [
+      "#",
+      "Truck Number",
+      "Region / Plate",
+      "Shipment Count",
+      "Last Driver",
+      "Driver Phone",
+      "Driver Rent (AFN)",
+      "Top Corridor",
+      "Last Shipment Date",
+    ]
+    const truckRows: (string | number)[][] = [
+      truckHeaders,
+      ...trucks.map((t, idx) => [
+        idx + 1,
+        t.truckNumber,
+        t.plateRegion || "-",
+        t.bolCount,
+        t.lastDriver,
+        t.lastDriverPhone || "-",
+        t.totalDriverRent["AFN"] || 0,
+        t.topRoute || "-",
+        t.lastShipmentDate || "-",
+      ]),
+    ]
+    const wsTrucks = XLSX.utils.aoa_to_sheet(truckRows)
+    wsTrucks["!cols"] = autoFitColumns(truckRows)
+    wsTrucks["!freeze"] = { xSplit: 0, ySplit: 1 }
+    XLSX.utils.book_append_sheet(wb, wsTrucks, "Trucks")
+  }
+
+  // Prioritize active tab sheet if specified
+  if (activeTab) {
+    const tabToSheetMap: Record<string, string> = {
+      shippers: "Shippers",
+      consignees: "Consignees",
+      commodities: "Commodities",
+      destinations: "Destinations",
+      detailed: "Detailed BOLs",
+      routes: "Routes",
+      trucks: "Trucks",
+      monthly: "Summary",
+      financial: "Summary",
+    }
+    const targetSheetName = tabToSheetMap[activeTab.toLowerCase()]
+    if (targetSheetName && wb.SheetNames.includes(targetSheetName)) {
+      const idx = wb.SheetNames.indexOf(targetSheetName)
+      if (idx > 0) {
+        wb.SheetNames.splice(idx, 1)
+        wb.SheetNames.unshift(targetSheetName)
+      }
+    }
+  }
 
   // Export workbook
   const outFileName = `${fileNamePrefix}-${todayStr}.xlsx`

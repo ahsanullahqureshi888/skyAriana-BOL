@@ -8,6 +8,8 @@ import {
   ConsigneeSummary,
   CommoditySummary,
   DestinationSummary,
+  RouteSummary,
+  TruckSummary,
   ContainerRecord,
   ContainerSummaryStats,
   MonthlySummary,
@@ -20,7 +22,11 @@ import {
   normalizeDate,
   formatDisplayDate,
   extractCleanCommodity,
+  extractBolRoute,
+  extractTruckNo,
 } from "./parsers"
+import { parseSyncedCargoItems } from "@/lib/utils/cargo-grid"
+import type { BillOfLadingFormData } from "@/lib/types/bill-of-lading"
 
 /**
  * Groups BOL records by Shipper.
@@ -37,6 +43,8 @@ export function groupShippers(docs: SavedDocument[]): ShipperSummary[] {
       goodsValueByCurrency: Record<string, number>
       containers: Set<string>
       destinations: Map<string, number>
+      consignees: Map<string, number>
+      commodities: Map<string, number>
       lastDateMs: number
       lastDateStr: string
     }
@@ -56,6 +64,8 @@ export function groupShippers(docs: SavedDocument[]): ShipperSummary[] {
         goodsValueByCurrency: {},
         containers: new Set(),
         destinations: new Map(),
+        consignees: new Map(),
+        commodities: new Map(),
         lastDateMs: 0,
         lastDateStr: "-",
       })
@@ -79,9 +89,20 @@ export function groupShippers(docs: SavedDocument[]): ShipperSummary[] {
       cList.forEach((c) => entry.containers.add(c.toUpperCase()))
     }
 
-    const dest = (doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || "").trim()
+    const routeInfo = extractBolRoute(doc)
+    const dest = (doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || (routeInfo.destination !== "—" ? routeInfo.destination : "")).trim()
     if (dest) {
       entry.destinations.set(dest, (entry.destinations.get(dest) || 0) + 1)
+    }
+
+    if (doc.consignee_name) {
+      const c = doc.consignee_name.trim()
+      if (c) entry.consignees.set(c, (entry.consignees.get(c) || 0) + 1)
+    }
+
+    const comm = extractCleanCommodity(doc.cargo_description || doc.goods_description || doc.commodity)
+    if (comm && comm !== "General Cargo") {
+      entry.commodities.set(comm, (entry.commodities.get(comm) || 0) + 1)
     }
 
     const d = normalizeDate(doc.issue_date || doc.created_at)
@@ -102,6 +123,20 @@ export function groupShippers(docs: SavedDocument[]): ShipperSummary[] {
         }
       }
 
+      let topConsignee = "-"
+      let maxConsigneeCount = 0
+      for (const [consignee, count] of e.consignees.entries()) {
+        if (count > maxConsigneeCount) {
+          maxConsigneeCount = count
+          topConsignee = consignee
+        }
+      }
+
+      const sortedCommodities = Array.from(e.commodities.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([name]) => name)
+      const topCommodity = sortedCommodities[0] || "-"
+
       return {
         shipperName: e.shipperName,
         bolCount: e.bolCount,
@@ -112,6 +147,9 @@ export function groupShippers(docs: SavedDocument[]): ShipperSummary[] {
         containerCount: e.containers.size,
         topDestination: topDest,
         lastShipmentDate: e.lastDateStr,
+        commodities: sortedCommodities,
+        topCommodity,
+        topConsignee,
       }
     })
     .sort((a, b) => b.bolCount - a.bolCount || b.netWeightKg - a.netWeightKg)
@@ -126,7 +164,8 @@ export function groupConsignees(docs: SavedDocument[]): ConsigneeSummary[] {
     {
       consigneeName: string
       bolCount: number
-      shippers: Set<string>
+      shippers: Map<string, number>
+      commodities: Map<string, number>
       packages: number
       netWeightKg: number
       grossWeightKg: number
@@ -146,7 +185,8 @@ export function groupConsignees(docs: SavedDocument[]): ConsigneeSummary[] {
       map.set(key, {
         consigneeName: name,
         bolCount: 0,
-        shippers: new Set(),
+        shippers: new Map(),
+        commodities: new Map(),
         packages: 0,
         netWeightKg: 0,
         grossWeightKg: 0,
@@ -160,7 +200,15 @@ export function groupConsignees(docs: SavedDocument[]): ConsigneeSummary[] {
 
     const entry = map.get(key)!
     entry.bolCount++
-    if (doc.shipper_name) entry.shippers.add(doc.shipper_name.trim())
+    if (doc.shipper_name && doc.shipper_name.trim()) {
+      const s = doc.shipper_name.trim()
+      entry.shippers.set(s, (entry.shippers.get(s) || 0) + 1)
+    }
+
+    const comm = extractCleanCommodity(doc.cargo_description || doc.goods_description || doc.commodity)
+    if (comm && comm !== "General Cargo") {
+      entry.commodities.set(comm, (entry.commodities.get(comm) || 0) + 1)
+    }
 
     entry.packages += parsePackages(doc.number_of_packages)
     const net = parseWeight(doc.net_weight)
@@ -178,7 +226,8 @@ export function groupConsignees(docs: SavedDocument[]): ConsigneeSummary[] {
       cList.forEach((c) => entry.containers.add(c.toUpperCase()))
     }
 
-    const dest = (doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || "").trim()
+    const routeInfo = extractBolRoute(doc)
+    const dest = (doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || (routeInfo.destination !== "—" ? routeInfo.destination : "")).trim()
     if (dest) {
       entry.destinations.set(dest, (entry.destinations.get(dest) || 0) + 1)
     }
@@ -201,6 +250,20 @@ export function groupConsignees(docs: SavedDocument[]): ConsigneeSummary[] {
         }
       }
 
+      let topShipper = "-"
+      let maxShipperCount = 0
+      for (const [shipper, count] of e.shippers.entries()) {
+        if (count > maxShipperCount) {
+          maxShipperCount = count
+          topShipper = shipper
+        }
+      }
+
+      const sortedCommodities = Array.from(e.commodities.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([name]) => name)
+      const topCommodity = sortedCommodities[0] || "-"
+
       return {
         consigneeName: e.consigneeName,
         bolCount: e.bolCount,
@@ -212,6 +275,9 @@ export function groupConsignees(docs: SavedDocument[]): ConsigneeSummary[] {
         containerCount: e.containers.size,
         topDestination: topDest,
         lastShipmentDate: e.lastDateStr,
+        topShipper,
+        topCommodity,
+        commodities: sortedCommodities,
       }
     })
     .sort((a, b) => b.bolCount - a.bolCount || b.netWeightKg - a.netWeightKg)
@@ -219,66 +285,446 @@ export function groupConsignees(docs: SavedDocument[]): ConsigneeSummary[] {
 
 /**
  * Groups BOL records by Commodity.
+ * Multi-cargo aware: when a BOL contains multiple cargo items, weights and values
+ * are attributed accurately line-by-line using parseSyncedCargoItems instead of
+ * duplicating entire BOL weights across all items.
  */
 export function groupCommodities(docs: SavedDocument[]): CommoditySummary[] {
   const map = new Map<
     string,
     {
       commodityName: string
-      bolCount: number
+      bolSet: Set<string>
+      cargoRowCount: number
       packages: number
+      packageUnits: Map<string, number>
       netWeightKg: number
+      grossWeightKg: number
       goodsValueByCurrency: Record<string, number>
       destinations: Set<string>
+      shippers: Map<string, number>
+      consignees: Map<string, number>
+      rates: string[]
     }
   >()
 
   for (const doc of docs) {
+    const docId = doc.id || doc.bol_number || Math.random().toString()
+    const routeInfo = extractBolRoute(doc)
+    const dest = (
+      doc.port_of_discharge ||
+      doc.place_of_delivery ||
+      doc.destination_country ||
+      (routeInfo.destination !== "—" ? routeInfo.destination : "")
+    ).trim()
+    const shipper = (doc.shipper_name || "").trim()
+    const consignee = (doc.consignee_name || "").trim()
+
+    const synced = parseSyncedCargoItems(doc as unknown as Partial<BillOfLadingFormData>)
     const rawDesc = doc.cargo_description || doc.goods_description || doc.description_of_goods || ""
-    const commodity = extractCleanCommodity(rawDesc)
-    const key = commodity.toLowerCase()
+
+    // Extract commodity names from cargo lines if multi-cargo
+    const lines = rawDesc
+      .split(/[\r\n]+/)
+      .map((l) => l.trim())
+      .filter((l) => {
+        const u = l.toUpperCase()
+        if (u.includes("CONTAINER & CARGO") || u.includes("CARGO PARTICULARS")) return false
+        if (u.startsWith("TRANSIT DATE:") || u.startsWith("BORDER:") || u.startsWith("HS CODE:")) return false
+        if (u.startsWith("INVOICE NO:") || u.startsWith("INV NO:") || u.startsWith("TRUCK NO:")) return false
+        return true
+      })
+      .filter(Boolean)
+
+    const itemCommodities: string[] = []
+    for (const l of lines) {
+      if (l.includes(" - ") && /\d+\s*(?:CTNS|BAGS|PKGS|CARTONS|BOXES|PCS)/i.test(l)) {
+        const sub = l.split(/\s*-\s*/)
+        for (const s of sub) {
+          const c = extractCleanCommodity(s)
+          if (c && c !== "General Cargo") itemCommodities.push(c)
+        }
+      } else {
+        const c = extractCleanCommodity(l)
+        if (c && c !== "General Cargo") itemCommodities.push(c)
+      }
+    }
+
+    if (synced.items.length > 1) {
+      // Attribute weights and values to each cargo line item
+      synced.items.forEach((item, idx) => {
+        const commodityName = itemCommodities[idx] || itemCommodities[0] || extractCleanCommodity(rawDesc)
+        const key = commodityName.toLowerCase()
+
+        if (!map.has(key)) {
+          map.set(key, {
+            commodityName,
+            bolSet: new Set(),
+            cargoRowCount: 0,
+            packages: 0,
+            packageUnits: new Map(),
+            netWeightKg: 0,
+            grossWeightKg: 0,
+            goodsValueByCurrency: {},
+            destinations: new Set(),
+            shippers: new Map(),
+            consignees: new Map(),
+            rates: [],
+          })
+        }
+
+        const entry = map.get(key)!
+        entry.bolSet.add(docId)
+        entry.cargoRowCount++
+        entry.packages += parsePackages(item.packageText)
+
+        const unitMatch = (item.packageText || "").match(/(?:CTNS|BAGS|PKGS|CARTONS|BOXES|PCS|PALLETS|DRUMS|ROLLS|BALES)/i)
+        const unit = unitMatch ? unitMatch[0].toUpperCase() : "CTNS"
+        entry.packageUnits.set(unit, (entry.packageUnits.get(unit) || 0) + 1)
+
+        const net = parseWeight(item.netWeight)
+        entry.netWeightKg += net
+        const gross = parseWeight(item.grossWeight)
+        entry.grossWeightKg += gross > 0 ? gross : net
+
+        const { amount, currency } = parseMoney(item.goodsValue)
+        if (amount > 0) {
+          entry.goodsValueByCurrency[currency] = (entry.goodsValueByCurrency[currency] || 0) + amount
+        }
+
+        if (dest) entry.destinations.add(dest)
+        if (shipper) entry.shippers.set(shipper, (entry.shippers.get(shipper) || 0) + 1)
+        if (consignee) entry.consignees.set(consignee, (entry.consignees.get(consignee) || 0) + 1)
+        if (item.rate && item.rate.trim()) entry.rates.push(item.rate.trim())
+      })
+    } else {
+      // Single cargo item or fallback
+      const commodityName = extractCleanCommodity(rawDesc)
+      const key = commodityName.toLowerCase()
+
+      if (!map.has(key)) {
+        map.set(key, {
+          commodityName,
+          bolSet: new Set(),
+          cargoRowCount: 0,
+          packages: 0,
+          packageUnits: new Map(),
+          netWeightKg: 0,
+          grossWeightKg: 0,
+          goodsValueByCurrency: {},
+          destinations: new Set(),
+          shippers: new Map(),
+          consignees: new Map(),
+          rates: [],
+        })
+      }
+
+      const entry = map.get(key)!
+      entry.bolSet.add(docId)
+      entry.cargoRowCount++
+      entry.packages += parsePackages(doc.number_of_packages)
+
+      const unitMatch = (doc.number_of_packages || "").match(/(?:CTNS|BAGS|PKGS|CARTONS|BOXES|PCS|PALLETS|DRUMS|ROLLS|BALES)/i)
+      const unit = unitMatch ? unitMatch[0].toUpperCase() : "CTNS"
+      entry.packageUnits.set(unit, (entry.packageUnits.get(unit) || 0) + 1)
+
+      const net = parseWeight(doc.net_weight)
+      entry.netWeightKg += net
+      const gross = parseWeight(doc.gross_weight)
+      entry.grossWeightKg += gross > 0 ? gross : net
+
+      const { amount, currency } = parseMoney(doc.goods_value)
+      if (amount > 0) {
+        entry.goodsValueByCurrency[currency] = (entry.goodsValueByCurrency[currency] || 0) + amount
+      }
+
+      if (dest) entry.destinations.add(dest)
+      if (shipper) entry.shippers.set(shipper, (entry.shippers.get(shipper) || 0) + 1)
+      if (consignee) entry.consignees.set(consignee, (entry.consignees.get(consignee) || 0) + 1)
+      const r = doc.rate_per_kg || doc.rate_per_kgs
+      if (r && r.trim()) entry.rates.push(r.trim())
+    }
+  }
+
+  return Array.from(map.values())
+    .map((e) => {
+      const usdVal = e.goodsValueByCurrency["USD"] || 0
+      const bolCount = e.bolSet.size
+      const averageValueUsd = bolCount > 0 ? Math.round((usdVal / bolCount) * 100) / 100 : 0
+
+      let topShipper = "-"
+      let maxShipperCount = 0
+      for (const [sh, cnt] of e.shippers.entries()) {
+        if (cnt > maxShipperCount) {
+          maxShipperCount = cnt
+          topShipper = sh
+        }
+      }
+
+      let topConsignee = "-"
+      let maxConsigneeCount = 0
+      for (const [cons, cnt] of e.consignees.entries()) {
+        if (cnt > maxConsigneeCount) {
+          maxConsigneeCount = cnt
+          topConsignee = cons
+        }
+      }
+
+      let dominantUnit = "CTNS"
+      let maxUnitCount = 0
+      for (const [u, cnt] of e.packageUnits.entries()) {
+        if (cnt > maxUnitCount) {
+          maxUnitCount = cnt
+          dominantUnit = u
+        }
+      }
+
+      const destArr = Array.from(e.destinations)
+      const topDestination = destArr[0] || "-"
+
+      return {
+        commodityName: e.commodityName,
+        bolCount,
+        cargoRowCount: e.cargoRowCount,
+        packages: e.packages,
+        packageUnit: dominantUnit,
+        netWeightKg: Math.round(e.netWeightKg * 100) / 100,
+        grossWeightKg: Math.round(e.grossWeightKg * 100) / 100,
+        goodsValueByCurrency: e.goodsValueByCurrency,
+        averageValueUsd,
+        averageRate: e.rates[0] || undefined,
+        topShipper,
+        topConsignee,
+        topDestination,
+        destinations: destArr,
+      }
+    })
+    .sort((a, b) => b.bolCount - a.bolCount || b.netWeightKg - a.netWeightKg)
+}
+
+/**
+ * Groups BOL records by transit route.
+ */
+export function groupRoutes(docs: SavedDocument[]): RouteSummary[] {
+  const map = new Map<
+    string,
+    {
+      routePath: string
+      origin: string
+      destination: string
+      via?: string
+      borderCrossing?: string
+      bolCount: number
+      packages: number
+      netWeightKg: number
+      grossWeightKg: number
+      goodsValueByCurrency: Record<string, number>
+      reeferCount: number
+      dryCount: number
+    }
+  >()
+
+  for (const doc of docs) {
+    const routeInfo = extractBolRoute(doc)
+    const routePath =
+      routeInfo.display !== "—"
+        ? routeInfo.display
+        : routeInfo.origin && routeInfo.destination
+        ? `${routeInfo.origin} ➜ ${routeInfo.destination}`
+        : "Unspecified Route"
+    const key = routePath.toLowerCase()
 
     if (!map.has(key)) {
       map.set(key, {
-        commodityName: commodity,
+        routePath,
+        origin: routeInfo.origin || "—",
+        destination: routeInfo.destination || "—",
+        via: routeInfo.via,
+        borderCrossing: routeInfo.borderCrossing,
         bolCount: 0,
         packages: 0,
         netWeightKg: 0,
+        grossWeightKg: 0,
         goodsValueByCurrency: {},
-        destinations: new Set(),
+        reeferCount: 0,
+        dryCount: 0,
       })
     }
 
     const entry = map.get(key)!
     entry.bolCount++
     entry.packages += parsePackages(doc.number_of_packages)
-    entry.netWeightKg += parseWeight(doc.net_weight)
+    const net = parseWeight(doc.net_weight)
+    entry.netWeightKg += net
+    const gross = parseWeight(doc.gross_weight)
+    entry.grossWeightKg += gross > 0 ? gross : net
 
     const { amount, currency } = parseMoney(doc.goods_value)
     if (amount > 0) {
       entry.goodsValueByCurrency[currency] = (entry.goodsValueByCurrency[currency] || 0) + amount
     }
 
-    const dest = doc.port_of_discharge || doc.place_of_delivery || doc.destination_country
-    if (dest && dest.trim()) entry.destinations.add(dest.trim())
+    const rawContainers = (doc.container_numbers || "").toUpperCase()
+    const rawDesc = ((doc.cargo_description || "") + " " + (doc.goods_description || "")).toUpperCase()
+    const isReefer =
+      routeInfo.hasReefer ||
+      rawContainers.includes("RF") ||
+      rawContainers.includes("REEF") ||
+      rawDesc.includes("REEFER")
+    if (isReefer) {
+      entry.reeferCount++
+    } else {
+      entry.dryCount++
+    }
+  }
+
+  return Array.from(map.values())
+    .map((e) => ({
+      ...e,
+      netWeightKg: Math.round(e.netWeightKg * 100) / 100,
+      grossWeightKg: Math.round(e.grossWeightKg * 100) / 100,
+    }))
+    .sort((a, b) => b.bolCount - a.bolCount || b.netWeightKg - a.netWeightKg)
+}
+
+/**
+ * Groups BOL records by Truck License Plate.
+ */
+export function groupTrucks(docs: SavedDocument[]): TruckSummary[] {
+  const map = new Map<
+    string,
+    {
+      truckNumber: string
+      plateRegion: string
+      bolCount: number
+      lastDriver: string
+      lastDriverPhone: string
+      lastDateMs: number
+      lastShipmentDate: string
+      totalDriverRent: Record<string, number>
+      routesUsed: Set<string>
+      routesMap: Map<string, number>
+      shippers: Map<string, number>
+    }
+  >()
+
+  for (const doc of docs) {
+    const rawTruck = extractTruckNo(doc) || doc.truck_number || "Unspecified Truck"
+    const truckNumber = rawTruck.trim()
+    const key = truckNumber.toLowerCase()
+
+    if (!map.has(key)) {
+      // Deduce plate region if possible
+      let region = "AFG"
+      const upper = truckNumber.toUpperCase()
+      if (upper.includes("KBL") || upper.includes("KABUL")) region = "KBL (Kabul)"
+      else if (upper.includes("HRT") || upper.includes("HERAT")) region = "HRT (Herat)"
+      else if (upper.includes("KDR") || upper.includes("KANDAHAR")) region = "KDR (Kandahar)"
+      else if (upper.includes("BLH") || upper.includes("BALKH") || upper.includes("MAZAR")) region = "BLH (Balkh)"
+      else if (upper.includes("NGR") || upper.includes("JALALABAD")) region = "NGR (Nangarhar)"
+      else if (upper.includes("IR") || upper.includes("IRAN")) region = "IR (Iran)"
+      else if (upper.includes("PK") || upper.includes("PAK")) region = "PK (Pakistan)"
+      else if (upper.includes("UZB") || upper.includes("UZ")) region = "UZ (Uzbekistan)"
+      else if (upper.includes("TKM") || upper.includes("TM")) region = "TM (Turkmenistan)"
+      else region = "Commercial"
+
+      map.set(key, {
+        truckNumber,
+        plateRegion: region,
+        bolCount: 0,
+        lastDriver: "—",
+        lastDriverPhone: "—",
+        lastDateMs: 0,
+        lastShipmentDate: "—",
+        totalDriverRent: {},
+        routesUsed: new Set(),
+        routesMap: new Map(),
+        shippers: new Map(),
+      })
+    }
+
+    const entry = map.get(key)!
+    entry.bolCount++
+
+    if (doc.driver_name && doc.driver_name.trim()) {
+      entry.lastDriver = doc.driver_name.trim()
+    }
+    if (doc.driver_contact && doc.driver_contact.trim()) {
+      entry.lastDriverPhone = doc.driver_contact.trim()
+    }
+
+    const d = normalizeDate(doc.issue_date || doc.created_at)
+    if (d && d.getTime() > entry.lastDateMs) {
+      entry.lastDateMs = d.getTime()
+      entry.lastShipmentDate = formatDisplayDate(d)
+      if (doc.driver_name && doc.driver_name.trim()) {
+        entry.lastDriver = doc.driver_name.trim()
+      }
+      if (doc.driver_contact && doc.driver_contact.trim()) {
+        entry.lastDriverPhone = doc.driver_contact.trim()
+      }
+    }
+
+    const rentRaw = doc.driver_rent || doc.driverFreight || ""
+    if (rentRaw.trim()) {
+      const { amount, currency } = parseMoney(rentRaw)
+      if (amount > 0) {
+        entry.totalDriverRent[currency] = (entry.totalDriverRent[currency] || 0) + amount
+      }
+    }
+
+    const routeInfo = extractBolRoute(doc)
+    const routeText =
+      routeInfo.shortDisplay !== "—"
+        ? routeInfo.shortDisplay
+        : routeInfo.display !== "—"
+        ? routeInfo.display
+        : ""
+    if (routeText) {
+      entry.routesUsed.add(routeText)
+      entry.routesMap.set(routeText, (entry.routesMap.get(routeText) || 0) + 1)
+    }
+
+    if (doc.shipper_name && doc.shipper_name.trim()) {
+      const s = doc.shipper_name.trim()
+      entry.shippers.set(s, (entry.shippers.get(s) || 0) + 1)
+    }
   }
 
   return Array.from(map.values())
     .map((e) => {
-      const usdVal = e.goodsValueByCurrency["USD"] || 0
-      const averageValueUsd = e.bolCount > 0 ? Math.round((usdVal / e.bolCount) * 100) / 100 : 0
+      let topShipper = "—"
+      let maxCount = 0
+      for (const [shipper, count] of e.shippers.entries()) {
+        if (count > maxCount) {
+          maxCount = count
+          topShipper = shipper
+        }
+      }
+
+      let topRoute = "—"
+      let maxRouteCount = 0
+      for (const [route, count] of e.routesMap.entries()) {
+        if (count > maxRouteCount) {
+          maxRouteCount = count
+          topRoute = route
+        }
+      }
 
       return {
-        commodityName: e.commodityName,
+        truckNumber: e.truckNumber,
+        plateRegion: e.plateRegion,
         bolCount: e.bolCount,
-        packages: e.packages,
-        netWeightKg: Math.round(e.netWeightKg * 100) / 100,
-        goodsValueByCurrency: e.goodsValueByCurrency,
-        averageValueUsd,
-        destinations: Array.from(e.destinations),
+        lastDriver: e.lastDriver,
+        lastDriverPhone: e.lastDriverPhone,
+        lastShipmentDate: e.lastShipmentDate,
+        totalDriverRent: e.totalDriverRent,
+        routesUsed: Array.from(e.routesUsed),
+        topRoute: topRoute !== "—" ? topRoute : (e.routesUsed.values().next().value || "—"),
+        topShipper,
       }
     })
-    .sort((a, b) => b.bolCount - a.bolCount || b.netWeightKg - a.netWeightKg)
+    .sort((a, b) => b.bolCount - a.bolCount)
 }
 
 /**
@@ -289,11 +735,17 @@ export function groupDestinations(docs: SavedDocument[]): DestinationSummary[] {
     string,
     {
       locationName: string
+      country: string
       type: "POL" | "POD" | "Final Destination"
       bolCount: number
+      packages: number
       netWeightKg: number
+      grossWeightKg: number
       goodsValueByCurrency: Record<string, number>
       shippers: Map<string, number>
+      commodities: Map<string, number>
+      lastDateMs: number
+      lastDateStr: string
     }
   >()
 
@@ -302,20 +754,44 @@ export function groupDestinations(docs: SavedDocument[]): DestinationSummary[] {
     const cleanName = name.trim()
     const key = `${type}::${cleanName.toLowerCase()}`
 
+    // Determine country
+    let country = doc.destination_country || doc.origin_country || ""
+    if (!country) {
+      const lower = cleanName.toLowerCase()
+      if (lower.includes("nhava") || lower.includes("mumbai") || lower.includes("india") || lower.includes("mundra")) country = "India"
+      else if (lower.includes("islam qala") || lower.includes("kabul") || lower.includes("herat") || lower.includes("hairatan") || lower.includes("torghundi") || lower.includes("boldak")) country = "Afghanistan"
+      else if (lower.includes("bandar") || lower.includes("abbas") || lower.includes("chabahar") || lower.includes("iran") || lower.includes("dogharun")) country = "Iran"
+      else if (lower.includes("jebel") || lower.includes("dubai") || lower.includes("uae") || lower.includes("sharjah")) country = "UAE"
+      else if (lower.includes("karachi") || lower.includes("pakistan") || lower.includes("lahore")) country = "Pakistan"
+      else if (lower.includes("turkmenistan") || lower.includes("serkhetabat")) country = "Turkmenistan"
+      else if (lower.includes("uzbekistan") || lower.includes("termez")) country = "Uzbekistan"
+      else country = "—"
+    }
+
     if (!map.has(key)) {
       map.set(key, {
         locationName: cleanName,
+        country,
         type,
         bolCount: 0,
+        packages: 0,
         netWeightKg: 0,
+        grossWeightKg: 0,
         goodsValueByCurrency: {},
         shippers: new Map(),
+        commodities: new Map(),
+        lastDateMs: 0,
+        lastDateStr: "—",
       })
     }
 
     const entry = map.get(key)!
     entry.bolCount++
-    entry.netWeightKg += parseWeight(doc.net_weight)
+    entry.packages += parsePackages(doc.number_of_packages)
+    const net = parseWeight(doc.net_weight)
+    entry.netWeightKg += net
+    const gross = parseWeight(doc.gross_weight)
+    entry.grossWeightKg += gross > 0 ? gross : net
 
     const { amount, currency } = parseMoney(doc.goods_value)
     if (amount > 0) {
@@ -326,13 +802,45 @@ export function groupDestinations(docs: SavedDocument[]): DestinationSummary[] {
       const s = doc.shipper_name.trim()
       entry.shippers.set(s, (entry.shippers.get(s) || 0) + 1)
     }
+
+    const comm = extractCleanCommodity(doc.cargo_description || doc.goods_description || doc.commodity)
+    if (comm && comm !== "General Cargo") {
+      entry.commodities.set(comm, (entry.commodities.get(comm) || 0) + 1)
+    }
+
+    const d = normalizeDate(doc.issue_date || doc.created_at)
+    if (d && d.getTime() > entry.lastDateMs) {
+      entry.lastDateMs = d.getTime()
+      entry.lastDateStr = formatDisplayDate(d)
+    }
   }
 
   for (const doc of docs) {
-    if (doc.port_of_loading) addLocation(doc.port_of_loading, "POL", doc)
-    if (doc.port_of_discharge) addLocation(doc.port_of_discharge, "POD", doc)
+    let hasPol = false
+    let hasPod = false
+    if (doc.port_of_loading) {
+      addLocation(doc.port_of_loading, "POL", doc)
+      hasPol = true
+    }
+    if (doc.port_of_discharge) {
+      addLocation(doc.port_of_discharge, "POD", doc)
+      hasPod = true
+    }
     if (doc.place_of_delivery && doc.place_of_delivery !== doc.port_of_discharge) {
       addLocation(doc.place_of_delivery, "Final Destination", doc)
+    }
+
+    if (!hasPol || !hasPod) {
+      const routeInfo = extractBolRoute(doc)
+      if (!hasPol && routeInfo.origin && routeInfo.origin !== "—") {
+        addLocation(routeInfo.origin, "POL", doc)
+      }
+      if (routeInfo.via && routeInfo.via !== "—") {
+        addLocation(routeInfo.via, "POL", doc)
+      }
+      if (!hasPod && routeInfo.destination && routeInfo.destination !== "—") {
+        addLocation(routeInfo.destination, "POD", doc)
+      }
     }
   }
 
@@ -343,13 +851,24 @@ export function groupDestinations(docs: SavedDocument[]): DestinationSummary[] {
         .slice(0, 3)
         .map(([name]) => name)
 
+      const sortedCommodities = Array.from(e.commodities.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([name]) => name)
+      const topCommodity = sortedCommodities[0] || "—"
+
       return {
         locationName: e.locationName,
+        country: e.country,
         type: e.type,
         bolCount: e.bolCount,
+        packages: e.packages,
         netWeightKg: Math.round(e.netWeightKg * 100) / 100,
+        grossWeightKg: Math.round(e.grossWeightKg * 100) / 100,
         goodsValueByCurrency: e.goodsValueByCurrency,
         topShippers,
+        topShipper: topShippers[0] || "—",
+        topCommodity,
+        lastShipmentDate: e.lastDateStr,
       }
     })
     .sort((a, b) => b.bolCount - a.bolCount || b.netWeightKg - a.netWeightKg)

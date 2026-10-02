@@ -31,7 +31,7 @@ async function loadWithRetry(
   importer: () => Promise<any>,
   maxRetries: number = 2,
   moduleName: string = "Module",
-  timeoutMs: number = 6000
+  timeoutMs: number = 30000
 ): Promise<any> {
   let lastError: any = null
 
@@ -81,7 +81,7 @@ export function safeLazy<T = any>(
   importer: () => Promise<any>,
   options: SafeLazyOptions = {}
 ): () => Promise<{ default: React.ComponentType<any> }> {
-  const { moduleName = "Application View", maxRetries = 2, timeoutMs = 6000 } = options
+  const { moduleName = "Application View", maxRetries = 2, timeoutMs = 30000 } = options
 
   return async () => {
     try {

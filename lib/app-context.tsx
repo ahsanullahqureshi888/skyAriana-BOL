@@ -247,13 +247,37 @@ function syncMasterEntitiesToLegacy(entities: import('@/lib/types/master-data').
     const consignees = entities.filter(e => e.type.includes('CONSIGNEE')).map(e => ({ id: e.id, name: e.name, address: e.address || '', contact: e.contactPerson || e.phone || '', email: e.email || '' }))
     const notifyParties = entities.filter(e => e.type.includes('NOTIFY_PARTY')).map(e => ({ id: e.id, name: e.name, address: e.address || '', contact: e.contactPerson || e.phone || '', email: e.email || '' }))
 
+    // Helper to merge existing without overwriting or losing records
+    const mergeWithExisting = (key: string, newItems: any[]) => {
+      try {
+        const raw = window.localStorage.getItem(key)
+        const existing = raw ? JSON.parse(raw) : []
+        const map = new Map<string, any>()
+        if (Array.isArray(existing)) {
+          for (const item of existing) {
+            if (item?.name?.trim()) map.set(item.name.trim().toLowerCase(), item)
+          }
+        }
+        for (const item of newItems) {
+          if (item?.name?.trim()) map.set(item.name.trim().toLowerCase(), item)
+        }
+        return Array.from(map.values())
+      } catch {
+        return newItems
+      }
+    }
+
+    const mergedShippers = mergeWithExisting('sky-bol-saved-shippers', shippers)
+    const mergedConsignees = mergeWithExisting('sky-bol-saved-consignees', consignees)
+    const mergedNotify = mergeWithExisting('sky-bol-saved-notify-parties', notifyParties)
+
     // Sync to both legacy storage keys for 100% backward and cross-module compatibility
-    window.localStorage.setItem('skybol:saved-shippers', JSON.stringify(shippers))
-    window.localStorage.setItem('sky-bol-saved-shippers', JSON.stringify(shippers))
-    window.localStorage.setItem('skybol:saved-consignees', JSON.stringify(consignees))
-    window.localStorage.setItem('sky-bol-saved-consignees', JSON.stringify(consignees))
-    window.localStorage.setItem('skybol:saved-notify-parties', JSON.stringify(notifyParties))
-    window.localStorage.setItem('sky-bol-saved-notify-parties', JSON.stringify(notifyParties))
+    window.localStorage.setItem('skybol:saved-shippers', JSON.stringify(mergedShippers))
+    window.localStorage.setItem('sky-bol-saved-shippers', JSON.stringify(mergedShippers))
+    window.localStorage.setItem('skybol:saved-consignees', JSON.stringify(mergedConsignees))
+    window.localStorage.setItem('sky-bol-saved-consignees', JSON.stringify(mergedConsignees))
+    window.localStorage.setItem('skybol:saved-notify-parties', JSON.stringify(mergedNotify))
+    window.localStorage.setItem('sky-bol-saved-notify-parties', JSON.stringify(mergedNotify))
     window.dispatchEvent(new Event('storage'))
   } catch (e) {}
 }
@@ -1524,16 +1548,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
   }, [persistLedgersDirectly])
 
-  // Background auto-sync safeguard for ledgers (debounced 1000ms to eliminate UI freezing)
-  useEffect(() => {
-    if (!state.accounts || state.accounts === SAMPLE_ACCOUNTS) return;
-    
-    const timer = setTimeout(() => {
-      persistLedgersDirectly(state.accounts, state.deletedLedgerEntries || [])
-    }, 1000)
 
-    return () => clearTimeout(timer)
-  }, [state.accounts, state.deletedLedgerEntries, persistLedgersDirectly])
 
   const updateLedgerEntry = useCallback((accountId: string, companyId: string, entryId: string, entry: Partial<LedgerEntry>) => {
     saveFinancialsForEntry(entry.barnamehNo, entryId, entry)

@@ -242,7 +242,7 @@ export interface ExportCorridorPreset {
   id: string
   name: string
   namePersian: string
-  routeCode: "DGH-MERSIN" | "NMZ-BND" | "DGH-MERSIN-REEFER" | "DGH-MERSIN-NHAVA-REEFER" | "CUSTOM"
+  routeCode: "DGH-MERSIN" | "NMZ-BND" | "DGH-MERSIN-REEFER" | "DGH-MERSIN-NHAVA-REEFER" | "NMZ-BND-RF-SW" | "CUSTOM"
   originBorder: string
   originBorderPersian: string
   destinationPort: string
