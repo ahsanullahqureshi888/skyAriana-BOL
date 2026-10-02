@@ -58,6 +58,7 @@ import { SavedBolReport } from "@/components/reports/saved-bol-report"
 import { extractBolRoute, parsePackages, parseWeight, parseMoney, parsePackageUnit, formatPackageBreakdown } from "@/lib/reports/parsers"
 import type { ReportTab } from "@/lib/reports/types"
 import { isMeaningfulBOL, parseBolSeq, isUUID, cleanBolNumber } from "@/lib/utils/bol-filters"
+import { RecentBolCard } from "./recent-bol-card"
 
 export { isMeaningfulBOL, parseBolSeq, isUUID, cleanBolNumber }
 
@@ -1176,19 +1177,30 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     }
   }, [filteredDocuments, apiSummaryStats, deferredQuery, activeCategory, dateFilter])
 
-  // Get Top 6 Latest BOLs for the Top Feature Banner (from dedicated recent API)
+  // Get Top 6 Latest BOLs for the Top Feature Banner (from dedicated recent API with canonical deduplication)
   const latestTopBOLs = useMemo(() => {
-    if (apiLatestTopBOLs && apiLatestTopBOLs.length > 0 && !deferredQuery && activeCategory === "all") {
-      return apiLatestTopBOLs
+    const rawList = (apiLatestTopBOLs && apiLatestTopBOLs.length > 0 && !deferredQuery && activeCategory === "all")
+      ? apiLatestTopBOLs
+      : [...documents]
+          .sort((a, b) => {
+            const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
+            const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
+            if (dateB !== dateA) return dateB - dateA
+            return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
+          })
+
+    const seen = new Set<string>()
+    const deduplicated: SavedDocument[] = []
+    for (const d of rawList) {
+      const num = getCleanBolNumber(d)
+      const key = (num && num !== "BOL" ? num : (d.id || "")).toUpperCase().trim()
+      if (key && !seen.has(key)) {
+        seen.add(key)
+        deduplicated.push(d)
+      }
+      if (deduplicated.length >= 6) break
     }
-    return [...documents]
-      .sort((a, b) => {
-        const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
-        const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
-        if (dateB !== dateA) return dateB - dateA
-        return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
-      })
-      .slice(0, 6)
+    return deduplicated
   }, [documents, apiLatestTopBOLs, deferredQuery, activeCategory])
 
   const accountCompanies = useMemo(() => {
@@ -2250,117 +2262,41 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       {/* Main Content View Container */}
       <CardContent className="min-h-[420px] flex-1 overflow-auto bg-slate-50/40 p-3 sm:p-5">
         
-        {/* TOP LATEST BOLS HERO HIGHLIGHT STRIP (BRING UP THE LATEST BOL CREATIONS) */}
+        {/* TOP LATEST BOLS HERO HIGHLIGHT STRIP (REDESIGNED FOR MAXIMUM CLARITY & RESPONSIVENESS) */}
         {!isLoading && latestTopBOLs.length > 0 && activeCategory !== "account" && !query && (
-          <div className="mb-6 rounded-[28px] border border-amber-300/70 bg-linear-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 p-4.5 shadow-[0_10px_30px_-10px_rgba(245,158,11,0.15)] backdrop-blur-2xl relative overflow-hidden">
-            {/* Soft Ambient Light Glow */}
-            <div className="pointer-events-none absolute -top-10 -right-10 w-44 h-44 bg-amber-400/20 rounded-full blur-3xl" />
-            
-            <div className="flex items-center justify-between gap-2 mb-3.5 relative z-10">
+          <div className="mb-6 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 p-3.5 sm:p-5 shadow-xs relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-linear-to-r before:from-amber-400 before:via-amber-500 before:to-yellow-400">
+            {/* Header: Left-Aligned, Clean Spacing, Dynamic Count */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 relative z-10">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center shadow-md shadow-amber-500/30">
-                  <Zap className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shadow-xs">
+                  <Zap className="w-4 h-4 fill-slate-950" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-950 flex items-center gap-2 tracking-tight">
+                  <h3 className="text-sm font-black text-slate-950 dark:text-white flex items-center gap-2 tracking-tight">
                     LATEST BOL CREATIONS
-                    <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-[10px] font-black shadow-xs">
-                      6 RECENT
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 text-[10px] font-black">
+                      {latestTopBOLs.length} RECENT
                     </span>
                   </h3>
-                  <p className="text-[11px] text-slate-600 font-semibold">Your most recent Bill of Lading documents created in system</p>
+                  <p className="text-[11.5px] text-slate-600 dark:text-slate-400 font-medium">
+                    Recent Bill of Lading documents created in system
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 min-[1200px]:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-6 relative z-10">
-              {latestTopBOLs.map((doc, idx) => (
-                <div
-                  key={`latest-${doc.id}`}
-                  className="group relative rounded-2xl bg-white/85 backdrop-blur-xl border border-amber-200/80 p-3.5 shadow-sm hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 flex flex-col justify-between overflow-hidden"
-                >
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div>
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-[11px] font-mono shadow-2xs truncate">
-                        #{getCleanBolNumber(doc)}
-                      </span>
-                      <span className="text-[9px] font-extrabold text-amber-800 bg-amber-100/90 border border-amber-200/60 px-1.5 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                        <Clock className="w-2.5 h-2.5 text-amber-700" />
-                        {formatDocDate(doc)}
-                      </span>
-                    </div>
-
-                    <p className="mt-2 text-xs font-black text-slate-950 truncate" title={doc.shipper_name}>
-                      {doc.shipper_name || "No Shipper"}
-                    </p>
-                    <p className="text-[11px] text-slate-600 font-bold truncate flex items-center gap-1 mt-0.5">
-                      <ArrowRight className="w-3 h-3 text-amber-600 shrink-0" />
-                      <span className="truncate">{doc.consignee_name || "No Consignee"}</span>
-                    </p>
-
-                    {/* Quick Cargo & Logistics Details */}
-                    <div className="mt-2 rounded-xl bg-amber-50/90 border border-amber-200/80 p-2 text-amber-950 text-[10px] space-y-1">
-                      {/* Row 1: Packages & Weight */}
-                      <div className="flex items-center justify-between gap-1 font-bold">
-                        <span className="truncate flex items-center gap-1" title={doc.number_of_packages || "0 CTNS"}>
-                          <Boxes className="w-3 h-3 text-amber-700 shrink-0" />
-                          <span className="truncate">{doc.number_of_packages || "0 CTNS"}</span>
-                        </span>
-                        {(doc.net_weight || doc.gross_weight) && (
-                          <span className="truncate font-mono font-black text-slate-900 shrink-0">
-                            {formatDisplayWeight(doc.net_weight || doc.gross_weight)}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Row 2: Truck Plate / Driver & Driver Rent */}
-                      <div className="flex items-center justify-between gap-1 pt-1 border-t border-amber-200/60">
-                        <span className="truncate flex items-center gap-1 text-[9.5px] font-bold text-slate-800" dir="auto">
-                          <Truck className="w-3 h-3 text-amber-700 shrink-0" />
-                          <bdi className="truncate max-w-[85px]">{doc.truck_number || (doc.driver_name ? doc.driver_name : "No truck #")}</bdi>
-                        </span>
-                        {isNonZeroRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent) && (
-                          <span className="truncate font-mono font-black text-[9.5px] text-amber-900 bg-amber-100/90 px-1.5 py-0.5 rounded border border-amber-300/70 shrink-0">
-                            {formatDriverRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 pt-2.5 border-t border-amber-100/80 flex items-center gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => editBOL(doc)}
-                      className="flex-1 h-8 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs cursor-pointer shadow-xs active:scale-95 transition-all"
-                    >
-                      <Pencil className="w-3 h-3 mr-1" /> Edit
-                    </Button>
-
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onLoadDocument(doc.id || doc.bol_number, "attachments")}
-                      className="h-8 px-2 rounded-xl border-cyan-300 bg-cyan-50/80 text-cyan-900 font-extrabold text-xs cursor-pointer hover:bg-cyan-100 active:scale-95 transition-all"
-                      title="Digital Shipment Files & Attachments"
-                    >
-                      <FolderArchive className="w-3 h-3 mr-1 text-cyan-700" /> Files
-                    </Button>
-
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => downloadBOLPDF(doc)}
-                      className="flex-1 h-8 rounded-xl border-amber-300 bg-amber-50/80 text-amber-900 font-extrabold text-xs cursor-pointer hover:bg-amber-100 active:scale-95 transition-all"
-                    >
-                      <FileDown className="w-3 h-3 mr-1 text-amber-700" /> PDF
-                    </Button>
-                  </div>
-                </div>
+            {/* Responsive Card Grid: 1 col (mobile), 2 cols (tablet), 3 cols (laptop), 4 cols (desktop), 6 cols (large desktop) */}
+            <div className="grid gap-3.5 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[1600px]:grid-cols-6 relative z-10 items-stretch">
+              {latestTopBOLs.map((doc) => (
+                <RecentBolCard
+                  key={`latest-${doc.id || doc.bol_number}`}
+                  doc={doc}
+                  onEdit={() => editBOL(doc)}
+                  onFiles={() => onLoadDocument(doc.id || doc.bol_number, "attachments")}
+                  onPdf={() => downloadBOLPDF(doc)}
+                  onCardClick={() => viewBOLPreview(doc)}
+                  isDownloadingPdf={downloadingPdfId === doc.id}
+                />
               ))}
             </div>
           </div>
