@@ -74,6 +74,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${vazirmatn.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning dir="ltr">
+      <head>
+        <meta charSet="utf-8" />
+        <meta httpEquiv="Content-Type" content="text/html; charset=utf-8" />
+      </head>
       <body className="font-sans antialiased min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
           <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: -1 }}>
