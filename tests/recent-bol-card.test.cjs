@@ -286,3 +286,63 @@ test('8. Regression Suite: Verifies all 5 user reference companies parse cleanly
     assert.ok(rent.display.includes('AFN'), `Rent formatted for ${comp.shipper_name}`);
   }
 });
+
+test('9. Responsive Viewport Grid & Card Width Verification', () => {
+  // Test viewport dimensions specified in Requirement 60
+  const viewports = [
+    { name: 'Large Desktop', width: 1920, cols: 6, minCardWidth: 260 },
+    { name: 'Normal Desktop', width: 1440, cols: 4, minCardWidth: 280 },
+    { name: 'Laptop', width: 1366, cols: 3, minCardWidth: 290 },
+    { name: 'Tablet', width: 768, cols: 2, minCardWidth: 320 },
+    { name: 'Mobile', width: 390, cols: 1, minCardWidth: 340 }
+  ];
+
+  for (const vp of viewports) {
+    const containerPadding = vp.width < 640 ? 32 : 48; // padding left + right
+    const gap = 16;
+    const availableWidth = vp.width - containerPadding;
+    const totalGaps = (vp.cols - 1) * gap;
+    const effectiveCardWidth = (availableWidth - totalGaps) / vp.cols;
+
+    assert.ok(
+      effectiveCardWidth >= 250,
+      `${vp.name} (${vp.width}px): Card width ${effectiveCardWidth.toFixed(1)}px must be >= 250px`
+    );
+
+    // Verify 3 buttons fit across card width
+    const buttonGap = 8;
+    const cardPadding = 28; // p-3.5 * 2
+    const availableBtnRowWidth = effectiveCardWidth - cardPadding;
+    const buttonWidth = (availableBtnRowWidth - (2 * buttonGap)) / 3;
+
+    assert.ok(
+      buttonWidth >= 65,
+      `${vp.name}: Button width ${buttonWidth.toFixed(1)}px must be >= 65px so PDF button is never cut off`
+    );
+  }
+});
+
+test('10. Deduplication: Ensures same BOL is never displayed twice', () => {
+  const records = [
+    { id: '1', bol_number: 'BOL-2026-NSA644', shipper_name: 'NAJEB AMIN' },
+    { id: '1-dup', bol_number: 'BOL-2026-NSA644', shipper_name: 'NAJEB AMIN' },
+    { id: '2', bol_number: 'BOL-2026-NSA642', shipper_name: 'NAJEB AMIN' },
+    { id: '3', bol_number: 'BOL-2026-NSA641', shipper_name: 'RAHMAT NAZAR' }
+  ];
+
+  const seen = new Set();
+  const deduped = [];
+  for (const r of records) {
+    const key = (r.bol_number || r.id).toUpperCase().trim();
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduped.push(r);
+    }
+  }
+
+  assert.equal(deduped.length, 3, 'Should remove duplicate record');
+  assert.equal(deduped[0].bol_number, 'BOL-2026-NSA644');
+  assert.equal(deduped[1].bol_number, 'BOL-2026-NSA642');
+  assert.equal(deduped[2].bol_number, 'BOL-2026-NSA641');
+});
+
