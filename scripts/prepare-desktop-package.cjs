@@ -28,10 +28,12 @@ const packageJson = {
     files: ["dist-electron/**/*", "package.json", "LICENSE"],
     extraResources: [
       { from: "../.next-production/standalone", to: "app-server" },
+      { from: "../.next-production/standalone/node_modules", to: "app-server/node_modules" },
       { from: "../.next-production/static", to: "app-server/.next-production/static" },
       { from: "../public", to: "app-server/public", filter: ["**/*", "!uploads/**/*", "!test-ledger.pdf"] },
       { from: "../public/icon-512x512.png", to: "app-icon.png" },
       { from: "../seed-data", to: "seed-data", filter: [".local-*.json", ".bol-counter", ".invoice-counter"] },
+      ...(fs.existsSync(path.join(root, "resources", "backend")) ? [{ from: "../resources/backend", to: "backend" }] : []),
     ],
     win: { target: ["dir"], signAndEditExecutable: false },
   },
