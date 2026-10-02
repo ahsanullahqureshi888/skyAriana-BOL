@@ -4,11 +4,13 @@ import * as localStorage from "@/lib/services/local-storage-service"
 import { getNextAtomicBolNumber, getNextAvailableBolNumber, advanceBolSequenceIfHigher } from "@/lib/services/bol-sequence"
 import { getFastApiBaseUrl, isFastApiHealthy } from "@/lib/api/backend-url"
 import seedBolsData from "@/lib/data/seed-bols.json"
+import { computeBolSummary, isMeaningfulBOL, parseBolSeq, toLightweightBol, enrichBolListWithLocal, isUUID, cleanBolNumber } from "@/lib/utils/bol-filters"
 
 function extractBolNumberSuffix(bolNum: any): number {
   if (!bolNum) return 0
-  const str = String(bolNum)
-  const match = str.match(/NSA(\d+)/i) || str.match(/(\d+)\s*$/)
+  const str = String(bolNum).trim()
+  if (isUUID(str)) return 0
+  const match = str.match(/NSA[-\s]*(\d+)/i) || str.match(/(\d+)\s*$/)
   if (match && match[1]) {
     const val = parseInt(match[1], 10)
     return isNaN(val) ? 0 : val
@@ -28,7 +30,74 @@ export async function GET(request: Request) {
       return NextResponse.json({ bolNumber })
     } catch (err) {
       console.error("[bol API] Error generating next number:", err)
-      return NextResponse.json({ bolNumber: "BOL-NSA619" })
+      return NextResponse.json({ bolNumber: "BOL-2026-NSA626" })
+    }
+  }
+
+  if (action === "summary") {
+    // 1. Try ultra-fast FastAPI SQLite backend (<5ms)
+    try {
+      if (await isFastApiHealthy()) {
+        const fastRes = await fetch(`${getFastApiBaseUrl()}/api/v1/bols/summary`, {
+          signal: AbortSignal.timeout(600),
+          headers: { Accept: "application/json" },
+        })
+        if (fastRes.ok) {
+          const json = await fastRes.json()
+          if (json && json.data && json.data.total_bols > 0) {
+            return NextResponse.json({ success: true, data: json.data, source: "fastapi-sqlite" })
+          }
+        }
+      }
+    } catch {}
+
+    // Fallback to local storage
+    try {
+      const localBols = await localStorage.getAllLocalBOLs()
+      const summary = computeBolSummary(localBols)
+      return NextResponse.json({ success: true, data: summary, source: "local-storage" })
+    } catch (err) {
+      return NextResponse.json({ success: false, error: "Failed to compute summary" }, { status: 500 })
+    }
+  }
+
+  if (action === "recent") {
+    const limitParam = parseInt(searchParams.get("limit") || "6", 10)
+    const limit = Math.max(1, Math.min(20, isNaN(limitParam) ? 6 : limitParam))
+
+    try {
+      const localBols = await localStorage.getAllLocalBOLs().catch(() => [])
+      if (await isFastApiHealthy()) {
+        const fastRes = await fetch(`${getFastApiBaseUrl()}/api/v1/bols/recent?limit=${limit}`, {
+          signal: AbortSignal.timeout(600),
+          headers: { Accept: "application/json" },
+        })
+        if (fastRes.ok) {
+          const json = await fastRes.json()
+          if (json && Array.isArray(json.data) && json.data.length > 0) {
+            const enriched = enrichBolListWithLocal(json.data, localBols)
+            return NextResponse.json({ success: true, data: enriched.map(toLightweightBol), source: "fastapi-sqlite" })
+          }
+        }
+      }
+    } catch {}
+
+    try {
+      const localBols = await localStorage.getAllLocalBOLs()
+      const valid = localBols
+        .filter(isMeaningfulBOL)
+        .sort((a, b) => {
+          const dateA = new Date(a.created_at || a.updated_at || a.issue_date || 0).getTime()
+          const dateB = new Date(b.created_at || b.updated_at || b.issue_date || 0).getTime()
+          if (dateB !== dateA) return dateB - dateA
+          return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
+        })
+        .slice(0, limit)
+        .map(toLightweightBol)
+
+      return NextResponse.json({ success: true, data: valid, source: "local-storage" })
+    } catch (err) {
+      return NextResponse.json({ success: false, error: "Failed to fetch recent BOLs" }, { status: 500 })
     }
   }
 
@@ -69,20 +138,25 @@ export async function GET(request: Request) {
         signal: AbortSignal.timeout(600),
         headers: { Accept: "application/json" },
       })
-    if (fastRes.ok) {
-      const fastResult = await fastRes.json()
-      if (fastResult && Array.isArray(fastResult.items)) {
-        return NextResponse.json({
-          data: fastResult.items,
-          total: fastResult.total,
-          page: fastResult.page,
-          page_size: fastResult.page_size,
-          total_pages: Math.ceil(fastResult.total / (fastResult.page_size || 50)),
-          source: "fastapi-sqlite",
-        })
+      if (fastRes.ok) {
+        const fastResult = await fastRes.json()
+        if (fastResult && Array.isArray(fastResult.items)) {
+          const hasFilter = Boolean(searchParam || filterKeys.some((k) => Boolean(searchParams.get(k))))
+          if (fastResult.total > 0 || hasFilter) {
+            const localBols = await localStorage.getAllLocalBOLs().catch(() => [])
+            const enriched = enrichBolListWithLocal(fastResult.items, localBols)
+            return NextResponse.json({
+              data: enriched.map(toLightweightBol),
+              total: fastResult.total,
+              page: fastResult.page,
+              page_size: fastResult.page_size,
+              total_pages: Math.ceil(fastResult.total / (fastResult.page_size || 50)),
+              source: "fastapi-sqlite",
+            })
+          }
+        }
       }
     }
-  }
   } catch {
     // Seamless fallback to Supabase and local storage
   }
@@ -202,7 +276,7 @@ export async function GET(request: Request) {
       const paged = allBols.slice(start, start + pageSize)
 
       return NextResponse.json({
-        data: paged,
+        data: paged.map(toLightweightBol),
         total,
         page,
         page_size: pageSize,
@@ -211,7 +285,7 @@ export async function GET(request: Request) {
       })
     }
 
-    return NextResponse.json({ data: allBols, total: allBols.length, source: localBols.length ? "merged" : "supabase" })
+    return NextResponse.json({ data: allBols.map(toLightweightBol), total: allBols.length, source: localBols.length ? "merged" : "supabase" })
   } catch (err) {
     console.error("[v0] Error fetching BOLs:", err instanceof Error ? err.message : String(err))
     const localBols = await localStorage.getAllLocalBOLs()
@@ -256,7 +330,7 @@ export async function GET(request: Request) {
       const paged = sortedLocal.slice(start, start + pageSize)
 
       return NextResponse.json({
-        data: paged,
+        data: paged.map(toLightweightBol),
         total,
         page,
         page_size: pageSize,
@@ -267,7 +341,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ 
-      data: sortedLocal, 
+      data: sortedLocal.map(toLightweightBol), 
       total: sortedLocal.length,
       source: "local",
       notice: "Using locally cached BOLs"
@@ -308,7 +382,10 @@ export async function POST(request: Request) {
 
     while (attempts < 3) {
       attempts++
-      const bolNumber = (attempts === 1 && body.bol_number) ? body.bol_number : await getNextAtomicBolNumber()
+      const candidateBol = (body.bol_number && typeof body.bol_number === "string" && !isUUID(body.bol_number) && body.bol_number.trim().length > 3)
+        ? body.bol_number.trim()
+        : null
+      const bolNumber = (attempts === 1 && candidateBol) ? candidateBol : await getNextAtomicBolNumber()
 
       const bolData: Record<string, any> = {
         bol_number: bolNumber,
@@ -330,7 +407,9 @@ export async function POST(request: Request) {
 
       // Persist locally
       await localStorage.storeLocalBOL(bolNumber, bolData)
-      await advanceBolSequenceIfHigher(bolNumber)
+      if (!isUUID(bolNumber)) {
+        await advanceBolSequenceIfHigher(bolNumber)
+      }
 
       // Forward creation to FastAPI SQLite backend (<10ms)
       try {
@@ -346,10 +425,26 @@ export async function POST(request: Request) {
               border_station: bolData.border_station || "Islam Qala",
               driver_name: bolData.driver_name || "",
               father_name: bolData.driver_father_name || bolData.father_name || null,
-              driver_rent: parseFloat(bolData.driver_rent || "0") || 0,
-              carton_count: parseInt(bolData.number_of_packages || "0", 10) || 0,
-              gross_weight_kg: parseFloat(bolData.gross_weight || "0") || 0,
-              net_weight_kg: parseFloat(bolData.net_weight || "0") || 0,
+              driver_rent: (() => {
+                const s = String(bolData.driver_rent || bolData.driverFreight || bolData.driverRent || "").replace(/,/g, "")
+                const m = s.match(/-?[\d.]+/)
+                return m ? (parseFloat(m[0]) || 0) : 0
+              })(),
+              carton_count: (() => {
+                const s = String(bolData.number_of_packages || bolData.numberOfPackages || "").replace(/,/g, "")
+                const m = s.match(/\d+/)
+                return m ? (parseInt(m[0], 10) || 0) : 0
+              })(),
+              gross_weight_kg: (() => {
+                const s = String(bolData.gross_weight || bolData.grossWeight || "").replace(/,/g, "")
+                const m = s.match(/-?[\d.]+/)
+                return m ? (parseFloat(m[0]) || 0) : 0
+              })(),
+              net_weight_kg: (() => {
+                const s = String(bolData.net_weight || bolData.netWeight || "").replace(/,/g, "")
+                const m = s.match(/-?[\d.]+/)
+                return m ? (parseFloat(m[0]) || 0) : 0
+              })(),
               cargo_description: bolData.cargo_description || bolData.goods_description || null,
               status: "active",
               shipper_name: bolData.shipper_name || null,

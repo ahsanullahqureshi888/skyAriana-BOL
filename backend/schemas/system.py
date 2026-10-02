@@ -10,6 +10,19 @@ class HealthResponse(BaseModel):
     version: str = Field(default="1.0.0", description="Backend version")
     timestamp: str = Field(description="ISO-8601 timestamp of health evaluation")
     uptime_seconds: float = Field(description="Seconds since service start")
+    database_connected: bool = Field(default=True, description="Database connection health")
+    database_ping_ms: Optional[float] = Field(default=None, description="Database ping roundtrip latency in ms")
+
+
+class PerformanceDiagnosticsResponse(BaseModel):
+    status: str = Field(default="optimal", description="Overall performance status")
+    database_ping_ms: float = Field(description="Database ping response time in milliseconds")
+    active_connections: int = Field(default=1, description="Active connection count")
+    cache_stats: Dict[str, Any] = Field(description="Cache hit ratio and item metrics")
+    slow_query_summary: Dict[str, Any] = Field(description="Slow query log summary")
+    memory_usage_mb: float = Field(description="Process memory working set in megabytes")
+    system_uptime_seconds: float = Field(description="Uptime in seconds")
+    recent_requests_avg_ms: float = Field(default=0.0, description="Average response latency of recent requests")
 
 
 class ReadyResponse(BaseModel):

@@ -18,6 +18,7 @@ from backend.schemas.bol import (
     BOLListItem,
     BOLPatchRequest,
     BOLSaveResponse,
+    BOLSummary,
 )
 from backend.schemas.placeholders import (
     APIResponse,
@@ -29,6 +30,8 @@ from backend.services.bol_service import (
     create_bol_atomic,
     duplicate_bol,
     get_bol_detail,
+    get_bol_summary,
+    get_recent_bols,
     list_bols_paged,
     patch_bol,
 )
@@ -72,6 +75,33 @@ async def list_bols(
         total=total,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.get("/summary", response_model=APIResponse[BOLSummary])
+async def get_summary_endpoint(
+    db: AsyncSession = Depends(get_db),
+):
+    """Fast database-aggregated totals for summary cards (Total BOLs, Packages, Weight, Goods Value)."""
+    summary = await get_bol_summary(db)
+    return APIResponse(
+        success=True,
+        message="BOL summary retrieved successfully",
+        data=summary,
+    )
+
+
+@router.get("/recent", response_model=APIResponse[List[BOLListItem]])
+async def get_recent_endpoint(
+    limit: int = Query(6, ge=1, le=20, description="Number of recent records to return"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retrieve top recent lightweight BOLs for the hero banner."""
+    recent_items = await get_recent_bols(db, limit=limit)
+    return APIResponse(
+        success=True,
+        message="Recent BOLs retrieved successfully",
+        data=recent_items,
     )
 
 

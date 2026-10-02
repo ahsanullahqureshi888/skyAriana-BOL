@@ -37,6 +37,14 @@ class BOLListItem(BaseModel):
     cargo_description: Optional[str] = None
 
 
+class BOLSummary(BaseModel):
+    """Aggregate KPI metrics across all active BOLs for instant summary cards."""
+    total_bols: int = 0
+    total_packages: int = 0
+    total_weight: float = 0.0
+    total_goods_value: float = 0.0
+
+
 class BOLItemSchema(BaseModel):
     """Line item in a Bill of Lading."""
     model_config = ConfigDict(from_attributes=True)

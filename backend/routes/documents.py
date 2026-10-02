@@ -9,13 +9,17 @@ from __future__ import annotations
 import os
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, List, Literal, Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.schemas.placeholders import APIResponse
+from backend.database import get_db
+from backend.schemas.bol import DocumentMetadataSchema
+from backend.schemas.placeholders import APIResponse, PaginatedList
 from backend.services.documents import (
     BOLDocumentContext,
     CommercialInvoiceContext,
@@ -32,6 +36,72 @@ from backend.services.documents import (
 
 router = APIRouter(prefix="/documents", tags=["Documents & Reports"])
 jobs_router = APIRouter(prefix="/jobs", tags=["Background Jobs"])
+
+
+@router.get("", response_model=PaginatedList[DocumentMetadataSchema])
+async def list_documents(
+    q: Optional[str] = Query(None, description="Search document title or filename"),
+    document_type: Optional[str] = Query(None, description="Filter by type (bol_scan, invoice_pdf, etc.)"),
+    bol_id: Optional[str] = Query(None, description="Filter by linked BOL ID"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """Retrieve lightweight document metadata list with server-side pagination (Sections 5, 6).
+    
+    Excludes heavy extracted_text and binary payloads for rapid response (<10ms).
+    """
+    page = max(1, page)
+    page_size = max(1, min(page_size, 100))
+    offset = (page - 1) * page_size
+
+    where_clauses = []
+    params: dict[str, Any] = {}
+
+    if document_type:
+        where_clauses.append("document_type = :doc_type")
+        params["doc_type"] = document_type
+    if bol_id:
+        where_clauses.append("bol_id = :bol_id")
+        params["bol_id"] = bol_id
+    if q and q.strip():
+        where_clauses.append("(title LIKE :q OR file_path LIKE :q)")
+        params["q"] = f"%{q.strip()}%"
+
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+    count_sql = f"SELECT COUNT(*) FROM documents {where_sql}"
+    total = (await db.execute(text(count_sql), params)).scalar() or 0
+
+    list_sql = f"""
+        SELECT id, title, document_type, file_size, mime_type, created_at
+        FROM documents
+        {where_sql}
+        ORDER BY created_at DESC, id DESC
+        LIMIT :limit OFFSET :offset
+    """
+    params["limit"] = page_size
+    params["offset"] = offset
+
+    rows = (await db.execute(text(list_sql), params)).all()
+    items = [
+        DocumentMetadataSchema(
+            id=r[0],
+            title=r[1] or "",
+            document_type=r[2] or "document",
+            file_size_bytes=r[3] or 0,
+            mime_type=r[4] or "application/pdf",
+            created_at=str(r[5]) if r[5] else None,
+        )
+        for r in rows
+    ]
+
+    return PaginatedList(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 # -----------------------------------------------------------------------------

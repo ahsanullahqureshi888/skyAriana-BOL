@@ -2,33 +2,36 @@ import { NextResponse } from "next/server"
 import shipperSeedData from "@/lib/data/shippers-from-pdf.json"
 import consigneeSeedData from "@/lib/data/consignees-from-pdf.json"
 import notifyPartySeedData from "@/lib/data/notify-parties-from-pdf.json"
+import { getFastApiBaseUrl, isFastApiHealthy } from "@/lib/api/backend-url"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const q = (searchParams.get("q") || "").trim().toLowerCase()
   const role = (searchParams.get("role") || "ALL").toUpperCase()
-  const limit = Math.max(1, Math.min(50, parseInt(searchParams.get("limit") || "20", 10)))
+  const limit = Math.max(1, Math.min(500, parseInt(searchParams.get("limit") || "50", 10)))
 
   // 1. Probe FastAPI SQLite backend (<10ms)
   try {
-    const fastUrl = new URL("http://127.0.0.1:8000/api/v1/parties/search")
-    if (q) fastUrl.searchParams.set("q", q)
-    if (role) fastUrl.searchParams.set("role", role)
-    fastUrl.searchParams.set("limit", String(limit))
+    if (await isFastApiHealthy()) {
+      const fastUrl = new URL(`${getFastApiBaseUrl()}/api/v1/parties/search`)
+      if (q) fastUrl.searchParams.set("q", q)
+      if (role) fastUrl.searchParams.set("role", role)
+      fastUrl.searchParams.set("limit", String(limit))
 
-    const fastRes = await fetch(fastUrl.toString(), {
-      signal: AbortSignal.timeout(600),
-      headers: { Accept: "application/json" },
-    })
+      const fastRes = await fetch(fastUrl.toString(), {
+        signal: AbortSignal.timeout(600),
+        headers: { Accept: "application/json" },
+      })
 
-    if (fastRes.ok) {
-      const fastResult = await fastRes.json()
-      if (fastResult && Array.isArray(fastResult.data)) {
-        return NextResponse.json({
-          success: true,
-          data: fastResult.data,
-          source: "fastapi-sqlite",
-        })
+      if (fastRes.ok) {
+        const fastResult = await fastRes.json()
+        if (fastResult && Array.isArray(fastResult.data)) {
+          return NextResponse.json({
+            success: true,
+            data: fastResult.data,
+            source: "fastapi-sqlite",
+          })
+        }
       }
     }
   } catch {

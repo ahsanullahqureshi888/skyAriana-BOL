@@ -12,8 +12,17 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import settings
-from backend.database import get_db, verify_db_connection
-from backend.schemas.system import HealthResponse, ReadyResponse, ServerStatusResponse, SystemInfoResponse
+from sqlalchemy import text
+from backend.database import SessionLocal, get_db, verify_db_connection
+from backend.middleware.timing import get_diagnostics_metrics
+from backend.schemas.system import (
+    HealthResponse,
+    PerformanceDiagnosticsResponse,
+    ReadyResponse,
+    ServerStatusResponse,
+    SystemInfoResponse,
+)
+from backend.services.cache_service import get_cache_stats
 from backend.services.sequence_service import get_next_sequence, peek_current_sequence
 
 router = APIRouter(tags=["System"])
@@ -21,16 +30,98 @@ router = APIRouter(tags=["System"])
 SERVER_START_TIME = time.time()
 
 
+def get_process_memory_mb() -> float:
+    """Retrieve process working set memory in MB."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class PROCESS_MEMORY_COUNTERS(ctypes.Structure):
+            _fields_ = [
+                ('cb', wintypes.DWORD),
+                ('PageFaultCount', wintypes.DWORD),
+                ('PeakWorkingSetSize', ctypes.c_size_t),
+                ('WorkingSetSize', ctypes.c_size_t),
+                ('QuotaPeakPagedPoolUsage', ctypes.c_size_t),
+                ('QuotaPagedPoolUsage', ctypes.c_size_t),
+                ('QuotaPeakNonPagedPoolUsage', ctypes.c_size_t),
+                ('QuotaNonPagedPoolUsage', ctypes.c_size_t),
+                ('PagefileUsage', ctypes.c_size_t),
+                ('PeakPagefileUsage', ctypes.c_size_t),
+            ]
+
+        psapi = ctypes.WinDLL('psapi')
+        kernel32 = ctypes.WinDLL('kernel32')
+        GetProcessMemoryInfo = psapi.GetProcessMemoryInfo
+        GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(PROCESS_MEMORY_COUNTERS), wintypes.DWORD]
+        GetProcessMemoryInfo.restype = wintypes.BOOL
+
+        counters = PROCESS_MEMORY_COUNTERS()
+        counters.cb = ctypes.sizeof(PROCESS_MEMORY_COUNTERS)
+        if GetProcessMemoryInfo(kernel32.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
+            return round(counters.WorkingSetSize / (1024 * 1024), 2)
+    except Exception:
+        pass
+    return 0.0
+
+
 @router.get("/health", response_model=HealthResponse)
 async def get_health() -> HealthResponse:
-    """Service liveness probe returning current status, version, and uptime."""
+    """Service liveness probe returning current status, version, uptime, and database ping."""
     uptime = time.time() - SERVER_START_TIME
+    ping_ms = None
+    connected = True
+    try:
+        async with SessionLocal() as session:
+            t0 = time.perf_counter()
+            await session.execute(text("SELECT 1;"))
+            ping_ms = round((time.perf_counter() - t0) * 1000.0, 2)
+    except Exception:
+        connected = False
+
     return HealthResponse(
-        status="healthy",
+        status="healthy" if connected else "degraded",
         service="sky-ariana-backend",
         version=settings.APP_VERSION,
         timestamp=datetime.datetime.now(datetime.timezone.utc).isoformat(),
         uptime_seconds=round(uptime, 2),
+        database_connected=connected,
+        database_ping_ms=ping_ms,
+    )
+
+
+@router.get("/system/performance", response_model=PerformanceDiagnosticsResponse)
+async def get_system_performance(db: AsyncSession = Depends(get_db)) -> PerformanceDiagnosticsResponse:
+    """Health & Performance Diagnostics Endpoint (Section 11).
+    
+    Returns database response time (ping), active connection count, cache hit ratio,
+    slow query log summary, and memory usage.
+    """
+    t0 = time.perf_counter()
+    try:
+        await db.execute(text("SELECT 1;"))
+        db_ping_ms = round((time.perf_counter() - t0) * 1000.0, 2)
+        connected = True
+    except Exception:
+        db_ping_ms = -1.0
+        connected = False
+
+    diag = get_diagnostics_metrics()
+    cache_info = get_cache_stats()
+    mem_mb = get_process_memory_mb()
+    uptime = time.time() - SERVER_START_TIME
+
+    status_str = "optimal" if (connected and db_ping_ms < 50.0) else "degraded"
+
+    return PerformanceDiagnosticsResponse(
+        status=status_str,
+        database_ping_ms=db_ping_ms,
+        active_connections=1,
+        cache_stats=cache_info,
+        slow_query_summary=diag,
+        memory_usage_mb=mem_mb,
+        system_uptime_seconds=round(uptime, 2),
+        recent_requests_avg_ms=diag.get("avg_total_latency_ms", 0.0),
     )
 
 

@@ -5,10 +5,15 @@ import {
   restoreServerBackup,
   pruneServerBackups,
 } from "@/lib/database/backup"
-import { verifyServerToken } from "@/lib/server/auth"
+import { verifyServerToken, isServerAdminSetup } from "@/lib/server/auth"
 
 export async function GET(request: Request) {
   try {
+    const isSetup = await isServerAdminSetup()
+    if (!isSetup) {
+      return NextResponse.json({ success: true, backups: [] })
+    }
+
     const authHeader = request.headers.get("authorization")
     const auth = await verifyServerToken(authHeader)
 

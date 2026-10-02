@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import * as localStorage from "@/lib/services/local-storage-service"
 import { getNextAtomicBolNumber, advanceBolSequenceIfHigher } from "@/lib/services/bol-sequence"
+import { getFastApiBaseUrl, isFastApiHealthy } from "@/lib/api/backend-url"
 
 export async function POST(
   request: Request,
@@ -16,23 +17,25 @@ export async function POST(
 
   // 1. Probe FastAPI backend (<10ms atomic clone)
   try {
-    const fastUrl = new URL(`http://127.0.0.1:8000/api/v1/bols/${encodeURIComponent(id)}/duplicate`)
-    fastUrl.searchParams.set("new_bol_number", targetBolNumber)
+    if (await isFastApiHealthy()) {
+      const fastUrl = new URL(`${getFastApiBaseUrl()}/api/v1/bols/${encodeURIComponent(id)}/duplicate`)
+      fastUrl.searchParams.set("new_bol_number", targetBolNumber)
 
-    const fastRes = await fetch(fastUrl.toString(), {
-      method: "POST",
-      signal: AbortSignal.timeout(1200),
-      headers: { Accept: "application/json" },
-    })
+      const fastRes = await fetch(fastUrl.toString(), {
+        method: "POST",
+        signal: AbortSignal.timeout(1200),
+        headers: { Accept: "application/json" },
+      })
 
-    if (fastRes.ok) {
-      const fastResult = await fastRes.json()
-      if (fastResult && fastResult.data) {
-        return NextResponse.json({
-          success: true,
-          data: fastResult.data,
-          source: "fastapi-sqlite",
-        })
+      if (fastRes.ok) {
+        const fastResult = await fastRes.json()
+        if (fastResult && fastResult.data) {
+          return NextResponse.json({
+            success: true,
+            data: fastResult.data,
+            source: "fastapi-sqlite",
+          })
+        }
       }
     }
   } catch {

@@ -2,61 +2,84 @@
 from __future__ import annotations
 
 from typing import Optional
-from sqlalchemy import select
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from backend.models.logistics import ContainerModel
-from backend.schemas.bol import ContainerSchema
 
 
 async def lookup_container(db: AsyncSession, container_number: str) -> Optional[dict]:
-    """Instant container lookup via indexed container_number column."""
+    """Instant container lookup via indexed container_number column with single-pass SQL join."""
     clean_num = container_number.strip().upper()
     if not clean_num:
         return None
 
-    stmt = select(ContainerModel).where(ContainerModel.container_number == clean_num).limit(1)
-    res = await db.execute(stmt)
-    container = res.scalar_one_or_none()
+    # Try exact match first (uses ix_containers_number_nocase / unique index)
+    sql_exact = text("""
+        SELECT 
+            c.id, c.container_number, c.container_type, c.seal_number, 
+            c.tare_weight_kg, c.max_payload_kg, c.status,
+            b.id AS bol_id, b.bol_number, b.status AS bol_status, 
+            b.shipper_name, b.consignee_name, b.origin, b.destination,
+            s.id AS shipment_id, s.tracking_number, s.status AS shipment_status, s.carrier
+        FROM containers c
+        LEFT JOIN bol_records b ON c.bol_id = b.id
+        LEFT JOIN shipments s ON c.shipment_id = s.id
+        WHERE c.container_number = :num
+        LIMIT 1
+    """)
+    res = await db.execute(sql_exact, {"num": clean_num})
+    row = res.mappings().first()
 
-    if not container:
-        # Fallback to case-insensitive partial match
-        stmt = select(ContainerModel).where(ContainerModel.container_number.ilike(f"%{clean_num}%")).limit(1)
-        res = await db.execute(stmt)
-        container = res.scalar_one_or_none()
+    if not row:
+        # Fallback to LIKE match
+        sql_like = text("""
+            SELECT 
+                c.id, c.container_number, c.container_type, c.seal_number, 
+                c.tare_weight_kg, c.max_payload_kg, c.status,
+                b.id AS bol_id, b.bol_number, b.status AS bol_status, 
+                b.shipper_name, b.consignee_name, b.origin, b.destination,
+                s.id AS shipment_id, s.tracking_number, s.status AS shipment_status, s.carrier
+            FROM containers c
+            LEFT JOIN bol_records b ON c.bol_id = b.id
+            LEFT JOIN shipments s ON c.shipment_id = s.id
+            WHERE c.container_number LIKE :pattern
+            LIMIT 1
+        """)
+        res = await db.execute(sql_like, {"pattern": f"%{clean_num}%"})
+        row = res.mappings().first()
 
-    if not container:
+    if not row:
         return None
 
     bol_summary = None
-    if container.bol:
+    if row["bol_id"]:
         bol_summary = {
-            "id": container.bol.id,
-            "bol_number": container.bol.bol_number,
-            "status": container.bol.status,
-            "shipper_name": container.bol.shipper_name,
-            "consignee_name": container.bol.consignee_name,
-            "origin": container.bol.origin,
-            "destination": container.bol.destination,
+            "id": row["bol_id"],
+            "bol_number": row["bol_number"],
+            "status": row["bol_status"],
+            "shipper_name": row["shipper_name"],
+            "consignee_name": row["consignee_name"],
+            "origin": row["origin"],
+            "destination": row["destination"],
         }
 
     shipment_summary = None
-    if container.shipment:
+    if row["shipment_id"]:
         shipment_summary = {
-            "id": container.shipment.id,
-            "tracking_number": container.shipment.tracking_number,
-            "status": container.shipment.status,
-            "carrier": container.shipment.carrier,
+            "id": row["shipment_id"],
+            "tracking_number": row["tracking_number"],
+            "status": row["shipment_status"],
+            "carrier": row["carrier"],
         }
 
     return {
-        "id": container.id,
-        "container_number": container.container_number,
-        "container_type": container.container_type,
-        "seal_number": container.seal_number,
-        "tare_weight_kg": float(container.tare_weight_kg or 0),
-        "max_payload_kg": float(container.max_payload_kg or 0),
-        "status": container.status,
+        "id": row["id"],
+        "container_number": row["container_number"],
+        "container_type": row["container_type"],
+        "seal_number": row["seal_number"],
+        "tare_weight_kg": float(row["tare_weight_kg"] or 0),
+        "max_payload_kg": float(row["max_payload_kg"] or 0),
+        "status": row["status"],
         "bol": bol_summary,
         "shipment": shipment_summary,
     }
+

@@ -591,4 +591,16 @@ describe("Enterprise Financial Period Closing & Invariance Engine", () => {
     )
     assert.ok(true, "Allowed posting into open 2027-01 without modifying closed 2026-09")
   })
+
+  after(async () => {
+    if (originalLedgerDb) {
+      await saveLedgerSystemDb(originalLedgerDb)
+    }
+    await restoreFile(LEDGER_FILE)
+    await restoreFile(PERIODS_FILE)
+    await restoreFile(BALANCES_FILE)
+    await restoreFile(SNAPSHOTS_FILE)
+    await restoreFile(SETTINGS_FILE)
+    await restoreFile(AUDIT_FILE)
+  })
 })

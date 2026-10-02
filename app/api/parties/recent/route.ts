@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import shipperSeedData from "@/lib/data/shippers-from-pdf.json"
 import consigneeSeedData from "@/lib/data/consignees-from-pdf.json"
 import notifyPartySeedData from "@/lib/data/notify-parties-from-pdf.json"
+import { getFastApiBaseUrl, isFastApiHealthy } from "@/lib/api/backend-url"
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -9,22 +10,24 @@ export async function GET(request: Request) {
 
   // 1. Probe FastAPI SQLite backend
   try {
-    const fastUrl = new URL("http://127.0.0.1:8000/api/v1/parties/recent")
-    if (role && role !== "ALL") fastUrl.searchParams.set("role", role)
+    if (await isFastApiHealthy()) {
+      const fastUrl = new URL(`${getFastApiBaseUrl()}/api/v1/parties/recent`)
+      if (role && role !== "ALL") fastUrl.searchParams.set("role", role)
 
-    const fastRes = await fetch(fastUrl.toString(), {
-      signal: AbortSignal.timeout(600),
-      headers: { Accept: "application/json" },
-    })
+      const fastRes = await fetch(fastUrl.toString(), {
+        signal: AbortSignal.timeout(600),
+        headers: { Accept: "application/json" },
+      })
 
-    if (fastRes.ok) {
-      const fastResult = await fastRes.json()
-      if (fastResult && Array.isArray(fastResult.data) && fastResult.data.length > 0) {
-        return NextResponse.json({
-          success: true,
-          data: fastResult.data,
-          source: "fastapi-sqlite",
-        })
+      if (fastRes.ok) {
+        const fastResult = await fastRes.json()
+        if (fastResult && Array.isArray(fastResult.data) && fastResult.data.length > 0) {
+          return NextResponse.json({
+            success: true,
+            data: fastResult.data,
+            source: "fastapi-sqlite",
+          })
+        }
       }
     }
   } catch {

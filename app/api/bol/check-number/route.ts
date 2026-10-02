@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import * as localStorage from "@/lib/services/local-storage-service"
 
+import { getFastApiBaseUrl, isFastApiHealthy } from "@/lib/api/backend-url"
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const number = (searchParams.get("number") || "").trim()
@@ -12,23 +14,25 @@ export async function GET(request: Request) {
 
   // 1. Probe FastAPI backend (<10ms indexed check)
   try {
-    const fastUrl = new URL("http://127.0.0.1:8000/api/v1/bols/check-number")
-    fastUrl.searchParams.set("number", number)
-    if (excludeId) fastUrl.searchParams.set("exclude_id", excludeId)
+    if (await isFastApiHealthy()) {
+      const fastUrl = new URL(`${getFastApiBaseUrl()}/api/v1/bols/check-number`)
+      fastUrl.searchParams.set("number", number)
+      if (excludeId) fastUrl.searchParams.set("exclude_id", excludeId)
 
-    const fastRes = await fetch(fastUrl.toString(), {
-      signal: AbortSignal.timeout(600),
-      headers: { Accept: "application/json" },
-    })
+      const fastRes = await fetch(fastUrl.toString(), {
+        signal: AbortSignal.timeout(600),
+        headers: { Accept: "application/json" },
+      })
 
-    if (fastRes.ok) {
-      const fastResult = await fastRes.json()
-      if (fastResult && fastResult.data) {
-        return NextResponse.json({
-          success: true,
-          data: fastResult.data,
-          source: "fastapi-sqlite",
-        })
+      if (fastRes.ok) {
+        const fastResult = await fastRes.json()
+        if (fastResult && fastResult.data) {
+          return NextResponse.json({
+            success: true,
+            data: fastResult.data,
+            source: "fastapi-sqlite",
+          })
+        }
       }
     }
   } catch {

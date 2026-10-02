@@ -1,3 +1,4 @@
+import uuid
 import pytest
 from httpx import AsyncClient
 
@@ -133,8 +134,9 @@ async def test_companies_and_customers(async_client: AsyncClient):
 async def test_shipments_reports_backups(async_client: AsyncClient):
     """Verify shipments, reports, and backups endpoints."""
     # Shipment
+    trk_id = f"TRK-2026-{uuid.uuid4().hex[:6]}"
     ship_payload = {
-        "tracking_number": "TRK-2026-9901",
+        "tracking_number": trk_id,
         "bol_number": "BOL-2026-TEST-001",
         "origin": "Torghundi Border",
         "destination": "Herat Logistics Hub",
@@ -143,7 +145,7 @@ async def test_shipments_reports_backups(async_client: AsyncClient):
     }
     ship_res = await async_client.post("/api/v1/shipments", json=ship_payload)
     assert ship_res.status_code == 201
-    assert ship_res.json()["data"]["tracking_number"] == "TRK-2026-9901"
+    assert ship_res.json()["data"]["tracking_number"] == trk_id
 
     # Report
     rep_payload = {"report_type": "ledger_summary", "format": "excel"}
