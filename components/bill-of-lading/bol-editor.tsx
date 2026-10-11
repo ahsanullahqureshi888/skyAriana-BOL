@@ -1564,11 +1564,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       } catch (_) {}
     }
 
-    // Fast path: If full document is already available in memory (from RecentBolCard or SavedDocuments table)
+    // Fast optimistic path: If initial document is available (from RecentBolCard or SavedDocuments table)
     if (initialData) {
       const normalized = normalizeBolRecord(initialData, canonicalId)
       startTransition(() => {
-        setIsHydrating(false)
         setHydrationError(null)
         setActiveBolId(canonicalId)
         if (targetTab && activeTabRef.current !== targetTab) {
@@ -1576,11 +1575,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         }
         applyLoadedDocument(normalized, canonicalId)
       })
-      return
     }
 
     // Set hydration state immediately
-    setIsHydrating(true)
+    setIsHydrating(!initialData)
     setHydrationError(null)
     setActiveBolId(canonicalId)
 
@@ -1599,6 +1597,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       const isCurrentComplete = Boolean(
         (curFormData?.truck_number || curFormData?.truckNumber) &&
         (curFormData?.consignee_name || curFormData?.consigneeName) &&
+        (curFormData?.consignee_address || curFormData?.consigneeAddress) &&
+        (curFormData?.cargo_route_note || curFormData?.cargoRouteNote) &&
         (curFormData?.routes && Array.isArray(curFormData?.routes) && curFormData.routes.length > 0)
       )
       if (isCurrentComplete) {
@@ -1635,15 +1635,18 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       cachedDoc &&
       (cachedDoc.truck_number || cachedDoc.truckNumber) &&
       (cachedDoc.consignee_name || cachedDoc.consigneeName) &&
+      (cachedDoc.consignee_address || cachedDoc.consigneeAddress) &&
+      (cachedDoc.cargo_route_note || cachedDoc.cargoRouteNote) &&
       (cachedDoc.routes && Array.isArray(cachedDoc.routes) && cachedDoc.routes.length > 0)
     )
 
-    if (isCachedComplete) {
+    if (cachedDoc) {
       if (loadRequestIdRef.current === currentRequestId) {
-        const normalized = normalizeBolRecord(cachedDoc, canonicalId)
+        const mergedWithCache = { ...(initialData || {}), ...cachedDoc }
+        const normalized = normalizeBolRecord(mergedWithCache, canonicalId)
         startTransition(() => {
           applyLoadedDocument(normalized, canonicalId)
-          setIsHydrating(false)
+          if (isCachedComplete) setIsHydrating(false)
         })
       }
     }
@@ -1678,7 +1681,35 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       }
 
       if (doc) {
-        const merged: any = { ...(cachedDoc || {}), ...doc }
+        const merged: any = {
+          ...(cachedDoc || {}),
+          ...(initialData || {}),
+          ...doc,
+        }
+        // Retain values if doc has empty strings or missing fields
+        if (!merged.cargo_route_note) merged.cargo_route_note = cachedDoc?.cargo_route_note || initialData?.cargo_route_note || ""
+        if (!merged.cargoRouteNote) merged.cargoRouteNote = merged.cargo_route_note
+        if (!merged.consignee_address) merged.consignee_address = cachedDoc?.consignee_address || initialData?.consignee_address || ""
+        if (!merged.consigneeAddress) merged.consigneeAddress = merged.consignee_address
+        if (!merged.consignee_contact) merged.consignee_contact = cachedDoc?.consignee_contact || initialData?.consignee_contact || ""
+        if (!merged.consigneeContact) merged.consigneeContact = merged.consignee_contact
+        if (!merged.consignee_email) merged.consignee_email = cachedDoc?.consignee_email || initialData?.consignee_email || ""
+        if (!merged.consigneeEmail) merged.consigneeEmail = merged.consignee_email
+        if (!merged.shipper_address) merged.shipper_address = cachedDoc?.shipper_address || initialData?.shipper_address || ""
+        if (!merged.shipperAddress) merged.shipperAddress = merged.shipper_address
+        if (!merged.shipper_contact) merged.shipper_contact = cachedDoc?.shipper_contact || initialData?.shipper_contact || ""
+        if (!merged.shipperContact) merged.shipperContact = merged.shipper_contact
+        if (!merged.kgs_per_carton) merged.kgs_per_carton = cachedDoc?.kgs_per_carton || initialData?.kgs_per_carton || ""
+        if (!merged.kgsPerCarton) merged.kgsPerCarton = merged.kgs_per_carton
+        if (!merged.gross_weight_per_carton) merged.gross_weight_per_carton = cachedDoc?.gross_weight_per_carton || initialData?.gross_weight_per_carton || ""
+        if (!merged.grossWeightPerCarton) merged.grossWeightPerCarton = merged.gross_weight_per_carton
+        if (!merged.rate_per_kgs) merged.rate_per_kgs = cachedDoc?.rate_per_kgs || initialData?.rate_per_kgs || ""
+        if (!merged.ratePerKgs) merged.ratePerKgs = merged.rate_per_kgs
+        if (!merged.goods_value) merged.goods_value = cachedDoc?.goods_value || initialData?.goods_value || ""
+        if (!merged.goodsValue) merged.goodsValue = merged.goods_value
+        if (!merged.notes_1 && (cachedDoc?.notes_1 || initialData?.notes_1)) merged.notes_1 = cachedDoc?.notes_1 || initialData?.notes_1
+        if (!merged.notes_2 && (cachedDoc?.notes_2 || initialData?.notes_2)) merged.notes_2 = cachedDoc?.notes_2 || initialData?.notes_2
+
         if (Array.isArray(doc.routes) && doc.routes.length > 0) {
           merged.routes = doc.routes
         }
@@ -1708,7 +1739,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             }
           }
         } catch (_) {}
-      } else if (!isCachedComplete) {
+      } else if (!isCachedComplete && !initialData) {
         setIsHydrating(false)
         setHydrationError(`BOL could not be loaded: ${canonicalId}`)
         toast.error(`Unable to load document ${canonicalId}`)
@@ -4617,11 +4648,25 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         const savedId = canonicalRecord.id || editDocumentId || savedBolNumber
 
         // Update form data and switch to edit mode so user keeps current document
-        const updatedFormData = {
+        const updatedFormData: BillOfLadingFormData = {
+          ...formData,
           ...canonicalRecord,
           id: savedId,
           bol_number: savedBolNumber,
           issue_date: canonicalRecord.issue_date || issueDate,
+          consignee_address: canonicalRecord.consignee_address || (canonicalRecord as any).consigneeAddress || formData.consignee_address || "",
+          consignee_contact: canonicalRecord.consignee_contact || (canonicalRecord as any).consigneeContact || formData.consignee_contact || "",
+          consignee_email: canonicalRecord.consignee_email || (canonicalRecord as any).consigneeEmail || formData.consignee_email || "",
+          shipper_address: canonicalRecord.shipper_address || (canonicalRecord as any).shipperAddress || formData.shipper_address || "",
+          shipper_contact: canonicalRecord.shipper_contact || (canonicalRecord as any).shipperContact || formData.shipper_contact || "",
+          shipper_email: canonicalRecord.shipper_email || (canonicalRecord as any).shipperEmail || formData.shipper_email || "",
+          cargo_route_note: canonicalRecord.cargo_route_note || (canonicalRecord as any).cargoRouteNote || formData.cargo_route_note || "",
+          kgs_per_carton: canonicalRecord.kgs_per_carton || (canonicalRecord as any).kgsPerCarton || formData.kgs_per_carton || "",
+          gross_weight_per_carton: canonicalRecord.gross_weight_per_carton || (canonicalRecord as any).grossWeightPerCarton || formData.gross_weight_per_carton || "",
+          rate_per_kgs: canonicalRecord.rate_per_kgs || (canonicalRecord as any).ratePerKgs || formData.rate_per_kgs || "",
+          goods_value: canonicalRecord.goods_value || (canonicalRecord as any).goodsValue || formData.goods_value || "",
+          notes_1: canonicalRecord.notes_1 !== undefined && canonicalRecord.notes_1 !== "" ? canonicalRecord.notes_1 : formData.notes_1,
+          notes_2: canonicalRecord.notes_2 !== undefined && canonicalRecord.notes_2 !== "" ? canonicalRecord.notes_2 : formData.notes_2,
         }
         setFormData(updatedFormData)
         setIsEditMode(true)

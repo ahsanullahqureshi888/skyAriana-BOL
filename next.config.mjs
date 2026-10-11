@@ -19,9 +19,11 @@ try {
 const nextConfig = {
   turbopack: {},
   webpack: (config, { dev, isServer }) => {
-    config.cache = {
-      type: 'filesystem',
-    };
+    if (dev) {
+      config.cache = {
+        type: 'filesystem',
+      };
+    }
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,

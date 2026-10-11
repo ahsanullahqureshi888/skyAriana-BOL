@@ -701,7 +701,12 @@ export async function POST(request: Request) {
             }
             console.error("[v0] Supabase insert error:", error.message, error.details)
           } else if (data) {
-            savedData = data
+            savedData = {
+              ...bolData,
+              ...(data || {}),
+              ...bolData,
+              id: data?.id || bolData.id || bolNumber,
+            }
             savedToSupabase = true
             break
           }

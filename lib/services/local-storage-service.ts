@@ -142,6 +142,20 @@ function harmonizeBolRecord(data: any, bolNumber?: string): any {
   const contSize = data?.container_size || data?.containerSize || ""
   const contNums = data?.container_numbers || data?.containerNumbers || ""
 
+  const consigneeAddress = data?.consignee_address || data?.consigneeAddress || ""
+  const consigneeContact = data?.consignee_contact || data?.consigneeContact || ""
+  const consigneeEmail = data?.consignee_email || data?.consigneeEmail || ""
+  const shipperAddress = data?.shipper_address || data?.shipperAddress || ""
+  const shipperContact = data?.shipper_contact || data?.shipperContact || ""
+  const shipperEmail = data?.shipper_email || data?.shipperEmail || ""
+  const cargoRoute = data?.cargo_route_note || data?.cargoRouteNote || ""
+  const kgsCtn = data?.kgs_per_carton || data?.kgsPerCarton || ""
+  const grossCtn = data?.gross_weight_per_carton || data?.grossWeightPerCarton || ""
+  const rateKgs = data?.rate_per_kgs || data?.ratePerKgs || ""
+  const goodsVal = data?.goods_value || data?.goodsValue || ""
+  const notes1 = data?.notes_1 !== undefined && data?.notes_1 !== null ? data.notes_1 : (data?.notes1 ?? "")
+  const notes2 = data?.notes_2 !== undefined && data?.notes_2 !== null ? data.notes_2 : (data?.notes2 ?? "")
+
   return {
     ...data,
     id: num || rawId,
@@ -152,8 +166,20 @@ function harmonizeBolRecord(data: any, bolNumber?: string): any {
     issueDate,
     shipper_name: shipper,
     shipperName: shipper,
+    shipper_address: shipperAddress,
+    shipperAddress,
+    shipper_contact: shipperContact,
+    shipperContact,
+    shipper_email: shipperEmail,
+    shipperEmail,
     consignee_name: consignee,
     consigneeName: consignee,
+    consignee_address: consigneeAddress,
+    consigneeAddress,
+    consignee_contact: consigneeContact,
+    consigneeContact,
+    consignee_email: consigneeEmail,
+    consigneeEmail,
     truck_number: truck,
     truckNumber: truck,
     driver_name: driver,
@@ -168,6 +194,18 @@ function harmonizeBolRecord(data: any, bolNumber?: string): any {
     grossWeight: grossWt,
     cargo_description: cargoDesc,
     cargoDescription: cargoDesc,
+    cargo_route_note: cargoRoute,
+    cargoRouteNote: cargoRoute,
+    kgs_per_carton: kgsCtn,
+    kgsPerCarton: kgsCtn,
+    gross_weight_per_carton: grossCtn,
+    grossWeightPerCarton: grossCtn,
+    rate_per_kgs: rateKgs,
+    ratePerKgs: rateKgs,
+    goods_value: goodsVal,
+    goodsValue: goodsVal,
+    notes_1: notes1,
+    notes_2: notes2,
     container_type: contType,
     containerType: contType,
     container_size: contSize,

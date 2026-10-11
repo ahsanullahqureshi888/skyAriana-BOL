@@ -352,7 +352,13 @@ export async function PUT(
         if (error) {
           console.error("[v0] Error updating/upserting BOL in Supabase:", error.message)
         } else if (data) {
-          savedData = data
+          savedData = {
+            ...updatePayload,
+            ...fullUpdated,
+            ...(data || {}),
+            ...updatePayload,
+            id: data?.id || updatePayload.id || id,
+          }
           savedToSupabase = true
         }
       } catch (supabaseErr) {

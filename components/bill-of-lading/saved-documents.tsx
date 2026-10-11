@@ -132,6 +132,18 @@ interface SavedDocument {
   seal_numbers?: string
   measurement?: string
   cargo_route_note?: string
+  consignee_address?: string
+  consignee_contact?: string
+  consignee_email?: string
+  shipper_address?: string
+  shipper_contact?: string
+  shipper_email?: string
+  notes_1?: string
+  notes_2?: string
+  notes_1_label?: string
+  notes_2_label?: string
+  notes_1_theme?: string
+  notes_2_theme?: string
   routes?: Array<{
     id?: string
     location?: string
@@ -151,6 +163,7 @@ interface SavedDocument {
   archived_at?: string | null
   archived_by?: string | null
   pdf_status?: "none" | "ready" | "outdated" | "missing" | "error"
+  [key: string]: any
 }
 
 interface AccountCompanyPdfFile {
@@ -505,6 +518,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                 : (localMatch.driver_rent || localMatch.driverFreight || localMatch.driverRent || "")
 
               return {
+                ...localMatch,
                 ...item,
                 issue_date: issueDate,
                 truck_number: truckNumber,
@@ -521,6 +535,22 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
                 gross_weight: (localMatch.gross_weight && parseWeight(localMatch.gross_weight) <= 60000 && String(localMatch.gross_weight).length > String(item.gross_weight || "").length)
                   ? localMatch.gross_weight
                   : (item.gross_weight || localMatch.gross_weight || ""),
+                consignee_name: item.consignee_name || localMatch.consignee_name || localMatch.consigneeName || "",
+                consignee_address: item.consignee_address || localMatch.consignee_address || localMatch.consigneeAddress || "",
+                consigneeAddress: item.consigneeAddress || localMatch.consigneeAddress || localMatch.consignee_address || "",
+                consignee_contact: item.consignee_contact || localMatch.consignee_contact || localMatch.consigneeContact || "",
+                consignee_email: item.consignee_email || localMatch.consignee_email || localMatch.consigneeEmail || "",
+                shipper_name: item.shipper_name || localMatch.shipper_name || localMatch.shipperName || "",
+                shipper_address: item.shipper_address || localMatch.shipper_address || localMatch.shipperAddress || "",
+                shipper_contact: item.shipper_contact || localMatch.shipper_contact || localMatch.shipperContact || "",
+                cargo_route_note: item.cargo_route_note || item.cargoRouteNote || localMatch.cargo_route_note || localMatch.cargoRouteNote || "",
+                cargoRouteNote: item.cargoRouteNote || item.cargo_route_note || localMatch.cargoRouteNote || localMatch.cargo_route_note || "",
+                kgs_per_carton: item.kgs_per_carton || item.kgsPerCarton || localMatch.kgs_per_carton || localMatch.kgsPerCarton || "",
+                gross_weight_per_carton: item.gross_weight_per_carton || item.grossWeightPerCarton || localMatch.gross_weight_per_carton || localMatch.grossWeightPerCarton || "",
+                rate_per_kgs: item.rate_per_kgs || item.ratePerKgs || localMatch.rate_per_kgs || localMatch.ratePerKgs || "",
+                goods_value: item.goods_value || item.goodsValue || localMatch.goods_value || localMatch.goodsValue || "",
+                notes_1: item.notes_1 || localMatch.notes_1 || "",
+                notes_2: item.notes_2 || localMatch.notes_2 || "",
               }
             })
 
@@ -563,11 +593,27 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
           if (!existing) {
             mergedMap.set(key, d)
           } else {
-            const timeExisting = new Date((existing as any).updated_at || existing.created_at || (existing as any).issue_date || 0).getTime()
-            const timeNew = new Date((d as any).updated_at || d.created_at || (d as any).issue_date || 0).getTime()
-            if (timeNew >= timeExisting) {
-              mergedMap.set(key, d)
-            }
+            mergedMap.set(key, {
+              ...existing,
+              ...d,
+              consignee_name: d.consignee_name || existing.consignee_name || (existing as any).consigneeName || "",
+              consignee_address: d.consignee_address || existing.consignee_address || (existing as any).consigneeAddress || "",
+              consigneeAddress: (d as any).consigneeAddress || d.consignee_address || (existing as any).consigneeAddress || existing.consignee_address || "",
+              consignee_contact: d.consignee_contact || existing.consignee_contact || (existing as any).consigneeContact || "",
+              consignee_email: d.consignee_email || existing.consignee_email || (existing as any).consigneeEmail || "",
+              shipper_name: d.shipper_name || existing.shipper_name || (existing as any).shipperName || "",
+              shipper_address: d.shipper_address || existing.shipper_address || (existing as any).shipperAddress || "",
+              shipper_contact: d.shipper_contact || existing.shipper_contact || (existing as any).shipperContact || "",
+              cargo_route_note: (d as any).cargo_route_note || (d as any).cargoRouteNote || (existing as any).cargo_route_note || (existing as any).cargoRouteNote || "",
+              cargoRouteNote: (d as any).cargoRouteNote || (d as any).cargo_route_note || (existing as any).cargoRouteNote || (existing as any).cargo_route_note || "",
+              kgs_per_carton: (d as any).kgs_per_carton || (d as any).kgsPerCarton || (existing as any).kgs_per_carton || (existing as any).kgsPerCarton || "",
+              gross_weight_per_carton: (d as any).gross_weight_per_carton || (d as any).grossWeightPerCarton || (existing as any).gross_weight_per_carton || (existing as any).grossWeightPerCarton || "",
+              goods_value: (d as any).goods_value || (d as any).goodsValue || existing.goods_value || "",
+              rate_per_kgs: (d as any).rate_per_kgs || (d as any).ratePerKgs || (existing as any).rate_per_kgs || "",
+              notes_1: (d as any).notes_1 || (existing as any).notes_1 || "",
+              notes_2: (d as any).notes_2 || (existing as any).notes_2 || "",
+              routes: (Array.isArray(d.routes) && d.routes.length > 0) ? d.routes : (existing.routes || []),
+            })
           }
         }
 
