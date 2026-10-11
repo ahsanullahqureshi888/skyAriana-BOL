@@ -2,7 +2,7 @@
   "name": "aq-companies",
   "productName": "AQ COMPANIES",
   "version": "5.1.0",
-  "description": "AQ COMPANIES – Logistics & BOL Management Desktop Workspace",
+  "description": "AQ COMPANIES - Logistics and BOL Management Desktop Workspace",
   "author": "Ahsanullah Qureshi",
   "copyright": "Copyright © Ahsanullah Qureshi",
   "main": "dist-electron/main.js",
@@ -154,6 +154,9 @@
     "appId": "com.aqcompanies.bol",
     "productName": "AQ COMPANIES",
     "electronDist": "node_modules/electron/dist",
+    "toolsets": {
+      "nsis": "1.2.1"
+    },
     "asar": true,
     "directories": {
       "output": "release"

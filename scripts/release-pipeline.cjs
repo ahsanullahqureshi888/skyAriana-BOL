@@ -84,7 +84,11 @@ if (fs.existsSync(syncScript)) {
   execSync(`node "${syncScript}"`, { cwd: rootDir, stdio: "inherit" })
 }
 const electronBuilderBin = path.join(rootDir, "node_modules", "electron-builder", "cli.js")
-execSync(`node "${electronBuilderBin}" --win nsis --x64`, { cwd: rootDir, stdio: "inherit" })
+execSync(`node "${electronBuilderBin}" --win nsis --x64`, {
+  cwd: rootDir,
+  stdio: "inherit",
+  env: { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: "false" }
+})
 
 // Step 5: Validate Installer and Generate SHA-256 Checksum
 console.log("\n[5/5] Generating Checksums and Validating Release Artifacts...")
