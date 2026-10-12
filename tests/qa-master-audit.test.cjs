@@ -505,10 +505,12 @@ test("Phase 12: WhatsApp Message Builders (All 4 Options & Partial BOL)", () => 
   // Option 1: Executive Update
   const updateMsg = buildWhatsAppShipmentUpdate(fullBol);
   assert.match(updateMsg, /SHIPMENT UPDATE/);
-  assert.match(updateMsg, /\*Truck:\* 26253 کابل/);
-  assert.match(updateMsg, /\*Cargo:\* GOLDEN RAISINS \(MED\)/);
-  assert.match(updateMsg, /\*Packages:\* 1,476 CTNS/);
-  assert.match(updateMsg, /\*Net Weight:\* 23,616 KG/);
+  assert.match(updateMsg, /26253 کابل/);
+  assert.match(updateMsg, /GOLDEN RAISINS/);
+  assert.match(updateMsg, /1,476 CTNS/);
+  assert.match(updateMsg, /23,616 KG/);
+  assert.match(updateMsg, /Dougharoun.*Bandar Abbas/);
+  assert.match(updateMsg, /TRANSIT DETAILS/);
 
   // Option 2: Bilingual Update
   const bilingualMsg = buildWhatsAppBilingualMessage(fullBol);
