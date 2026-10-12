@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain, shell } from "electron"
+import { BrowserWindow, dialog, ipcMain, shell, clipboard } from "electron"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { atomicWriteFile } from "../services/atomic-file"
@@ -131,5 +131,26 @@ export function registerIpcHandlers(options: {
 
   ipcMain.handle("network:switch-mode", async (_event, payload: { mode: ConnectionMode; serverConfig?: Partial<NetworkConfig> }) => {
     return backendManager.switchMode(payload.mode, payload.serverConfig)
+  })
+
+  // Desktop Global Clipboard Bridge Handlers
+  ipcMain.handle("clipboard:read-text", () => {
+    try {
+      return clipboard.readText()
+    } catch {
+      return ""
+    }
+  })
+
+  ipcMain.handle("clipboard:write-text", (_event, text: unknown) => {
+    try {
+      if (typeof text === "string") {
+        clipboard.writeText(text)
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
   })
 }

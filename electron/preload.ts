@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld("skyDesktop", {
   saveNetworkConfig: (config: any) => ipcRenderer.invoke("network:save-config", config),
   testServerConnection: (url: string) => ipcRenderer.invoke("network:test-connection", url),
   switchNetworkMode: (mode: "local" | "server", serverConfig?: any) => ipcRenderer.invoke("network:switch-mode", { mode, serverConfig }),
+  // Desktop Clipboard Bridge
+  readClipboardText: () => ipcRenderer.invoke("clipboard:read-text"),
+  writeClipboardText: (text: string) => ipcRenderer.invoke("clipboard:write-text", text),
 })
 
 // Native Desktop Menu Event Bridge
