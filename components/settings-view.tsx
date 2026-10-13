@@ -6,6 +6,7 @@ import { CURRENT_SYSTEM_VERSION } from "@/lib/config/system-version"
 import { UserRole, User } from "@/lib/types"
 import {
   LayoutGrid,
+  Search,
   MonitorSmartphone,
   Users,
   Lock,
@@ -138,6 +139,24 @@ const PRESET_SEALS = [
 
 export type SettingsTab = "all" | "users" | "client_portal" | "stamp" | "company" | "cloud" | "security" | "updates" | "vault" | "gdrive" | "deleted" | "server" | "backup_recovery" | "accounting_periods" | "ai_assistant" | "performance"
 
+export interface SettingItem {
+  id: SettingsTab
+  label: string
+  labelFa: string
+  icon: React.ComponentType<{ className?: string }>
+  badge?: string | number
+  badgeColor?: string
+  desc: string
+}
+
+export interface SettingCategory {
+  id: string
+  title: string
+  titleFa: string
+  icon: React.ComponentType<{ className?: string }>
+  items: SettingItem[]
+}
+
 const DEFAULT_BADGE = {
   label: "Staff User",
   bg: "bg-slate-100 border-slate-300",
@@ -235,7 +254,24 @@ const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; i
 
 export function SettingsView() {
   const { users, addUser, updateUserRole, deleteUser, changePassword, currentUser, isSyncing, syncCloudData, accounts, toggleUserStatus, resetUserPassword, setView } = useApp()
-  const [activeTab, setActiveTab] = useState<SettingsTab>("all")
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage.getItem("skybol:settings-active-tab")
+      if (saved && (saved === "all" || saved === "users" || saved === "client_portal" || saved === "stamp" || saved === "company" || saved === "cloud" || saved === "security" || saved === "updates" || saved === "vault" || saved === "gdrive" || saved === "deleted" || saved === "server" || saved === "backup_recovery" || saved === "accounting_periods" || saved === "ai_assistant" || saved === "performance")) {
+        return saved as SettingsTab
+      }
+    }
+    return "users"
+  })
+  const [settingsSearch, setSettingsSearch] = useState("")
+
+  const handleSelectTab = (tab: SettingsTab) => {
+    setActiveTab(tab)
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("skybol:settings-active-tab", tab)
+    }
+  }
+
   const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false)
 
   // Storage Analytics & Health Calculation
@@ -334,6 +370,180 @@ export function SettingsView() {
     website: "www.skyariana.com",
   })
   const [isCompanySaved, setIsCompanySaved] = useState(false)
+
+  // Categorized Settings Architecture
+  const SETTING_CATEGORIES: SettingCategory[] = useMemo(() => [
+    {
+      id: "access",
+      title: "Team & Permissions",
+      titleFa: "کاربران و دسترسی‌ها",
+      icon: Users,
+      items: [
+        {
+          id: "users" as SettingsTab,
+          label: "Staff Users & RBAC",
+          labelFa: "کاربران و نقش‌ها",
+          icon: Users,
+          badge: users.length,
+          badgeColor: "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300",
+          desc: "Role-based access control, permissions and user accounts",
+        },
+        {
+          id: "client_portal" as SettingsTab,
+          label: "Client Portal Access",
+          labelFa: "پورتال مشتریان",
+          icon: MonitorSmartphone,
+          desc: "Customer self-service logins and document tracking scopes",
+        },
+        {
+          id: "security" as SettingsTab,
+          label: "Security & Passwords",
+          labelFa: "امنیت و کلمات عبور",
+          icon: Key,
+          desc: "Update administrator password and security credentials",
+        },
+      ],
+    },
+    {
+      id: "organization",
+      title: "Company & Identity",
+      titleFa: "مشخصات شرکت و مهر",
+      icon: Building2,
+      items: [
+        {
+          id: "company" as SettingsTab,
+          label: "Company Profile & Legal",
+          labelFa: "مشخصات رسمی شرکت",
+          icon: Building2,
+          desc: "Company registration, bilingual names, addresses & phones",
+        },
+        {
+          id: "stamp" as SettingsTab,
+          label: "Stamp & Sign Studio",
+          labelFa: "استودیو مهر و امضا",
+          icon: ShieldCheck,
+          badge: stampConfig.enabled ? "Active" : "Off",
+          badgeColor: stampConfig.enabled ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+          desc: "Official digital seals, live signature canvas & scaling",
+        },
+      ],
+    },
+    {
+      id: "cloud_data",
+      title: "Cloud & Backups",
+      titleFa: "همگام‌سازی و پشتیبان",
+      icon: Cloud,
+      items: [
+        {
+          id: "cloud" as SettingsTab,
+          label: "Multi-Device Cloud Sync",
+          labelFa: "همگام‌سازی ابری",
+          icon: Cloud,
+          desc: "Real-time sync pairing across PCs and mobile devices",
+        },
+        {
+          id: "gdrive" as SettingsTab,
+          label: "Google Drive Backup",
+          labelFa: "گوگل درایو",
+          icon: UploadCloud,
+          desc: "Automated cloud backup to secondary Google Drive storage",
+        },
+        {
+          id: "backup_recovery" as SettingsTab,
+          label: "Enterprise Backup & Health",
+          labelFa: "پشتیبان‌گیری پیشرفته",
+          icon: ShieldCheck,
+          badge: "PRO",
+          badgeColor: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-black",
+          desc: "One-click ZIP archives, encrypted packages & snapshots",
+        },
+        {
+          id: "vault" as SettingsTab,
+          label: "Browser Data Vault",
+          labelFa: "خزانه داده محلی",
+          icon: HardDrive,
+          desc: "Local database quota analytics and JSON export files",
+        },
+        {
+          id: "deleted" as SettingsTab,
+          label: "Trash & Recovery",
+          labelFa: "بازیابی حذف‌شده‌ها",
+          icon: RotateCcw,
+          desc: "Restore accidentally deleted BOLs, accounts and records",
+        },
+      ],
+    },
+    {
+      id: "system",
+      title: "System & Infrastructure",
+      titleFa: "زیرساخت و سیستم",
+      icon: Server,
+      items: [
+        {
+          id: "server" as SettingsTab,
+          label: "LAN Server & Central Node",
+          labelFa: "سرور محلی و شبکه",
+          icon: Server,
+          desc: "Configure local network server endpoint and LAN hub",
+        },
+        {
+          id: "accounting_periods" as SettingsTab,
+          label: "Accounting Periods & Locks",
+          labelFa: "دوره‌های مالی و قفل‌ها",
+          icon: Lock,
+          desc: "Fiscal period closures, locking past entries from edits",
+        },
+        {
+          id: "ai_assistant" as SettingsTab,
+          label: "AI Operations Assistant",
+          labelFa: "دستیار هوش مصنوعی",
+          icon: Sparkles,
+          badge: "NEW",
+          badgeColor: "bg-purple-500/20 text-purple-700 dark:text-purple-300 font-black",
+          desc: "Operational automation rules, prompts and AI assistant",
+        },
+        {
+          id: "performance" as SettingsTab,
+          label: "Performance Diagnostics",
+          labelFa: "تست سرعت و سلامت",
+          icon: Activity,
+          badge: "FAST",
+          badgeColor: "bg-amber-400/20 text-amber-800 dark:text-amber-300 font-black",
+          desc: "Real-time cache health, network latency and DOM metrics",
+        },
+        {
+          id: "updates" as SettingsTab,
+          label: "System Build & Version",
+          labelFa: "نسخه و بروزرسانی",
+          icon: Smartphone,
+          desc: `Release ${CURRENT_SYSTEM_VERSION.version} (${CURRENT_SYSTEM_VERSION.buildNumber})`,
+        },
+      ],
+    },
+  ], [users.length, stampConfig.enabled])
+
+  const currentActiveItem = useMemo(() => {
+    for (const cat of SETTING_CATEGORIES) {
+      const found = cat.items.find(it => it.id === activeTab)
+      if (found) return found
+    }
+    return null
+  }, [SETTING_CATEGORIES, activeTab])
+
+  const filteredCategories = useMemo(() => {
+    if (!settingsSearch.trim()) return SETTING_CATEGORIES
+    const q = settingsSearch.toLowerCase().trim()
+    return SETTING_CATEGORIES.map(cat => ({
+      ...cat,
+      items: cat.items.filter(
+        it =>
+          it.label.toLowerCase().includes(q) ||
+          it.labelFa.includes(q) ||
+          it.desc.toLowerCase().includes(q) ||
+          it.id.toLowerCase().includes(q)
+      ),
+    })).filter(cat => cat.items.length > 0)
+  }, [SETTING_CATEGORIES, settingsSearch])
 
   // System Update Check State
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false)
@@ -687,448 +897,295 @@ export function SettingsView() {
   const passStrength = getPasswordStrength(newPassword)
 
   return (
-    <div data-settings-view="true" className="w-full max-w-7xl mx-auto p-2.5 sm:p-4 md:p-6 space-y-4 sm:space-y-6 font-sans select-text touch-auto">
-      {/* Top Banner - Luxury Glassmorphic Sapphire Theme */}
-      <div className="rounded-3xl border border-blue-200/70 bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-950 p-5 sm:p-7 md:p-8 text-white shadow-2xl shadow-blue-950/30 relative overflow-hidden">
-        {/* Subtle Ambient Background Glows */}
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+    <div data-settings-view="true" className="w-full max-w-[1780px] mx-auto p-2.5 sm:p-4 md:p-6 space-y-5 font-sans select-text touch-auto">
+      {/* Sleek, Luxury Header Bar */}
+      <header className="rounded-3xl border border-slate-200/90 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 p-4 sm:p-5 shadow-lg shadow-slate-200/40 dark:shadow-none backdrop-blur-xl relative overflow-hidden">
+        {/* Subtle Brand Accent Gradient Line */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-900 via-indigo-600 to-amber-500" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
-          <div className="space-y-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[10px] font-black uppercase tracking-widest text-amber-300 shadow-inner">
-                <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                <span>SYSTEM CONTROL PANEL</span>
-              </div>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[10px] font-black text-emerald-300">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[10px] font-black uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                <Sliders className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                <span>System Control Panel</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[10px] font-black text-emerald-800 dark:text-emerald-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Cloud Connected</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-mono font-bold text-slate-600 dark:text-slate-400">
+                v{CURRENT_SYSTEM_VERSION.version}
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-amber-200">
-              System Settings & Management
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+              <span>System Settings & Preferences</span>
+              <span className="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 font-[vazirmatn]" dir="rtl">
+                / تنظیمات جامع سیستم
+              </span>
             </h1>
-            <p className="text-xs sm:text-sm text-blue-200/90 font-[vazirmatn] font-bold" dir="rtl">
-              تنظیمات جامع سیستم، مهر و امضای رسمی، مدیریت کاربران، مشخصات شرکت و همگام‌سازی ابری
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Enterprise staff permissions, company profile, official seal & digital signature studio, cloud backup & system diagnostics
             </p>
           </div>
 
-          {/* Current User Card */}
-          <div className="flex items-center gap-3.5 bg-white/10 backdrop-blur-xl p-3.5 sm:p-4 rounded-2xl border border-white/20 self-start md:self-auto shadow-lg shadow-black/20">
-            <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 border border-amber-300 shadow-md flex items-center justify-center font-black text-lg sm:text-xl text-amber-950 shrink-0">
-              {currentUser?.name?.charAt(0) || "A"}
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs sm:text-sm font-black text-white truncate">{currentUser?.name || "Administrator"}</div>
-              <div className="text-[10px] text-amber-300 font-mono font-black tracking-wider uppercase mt-0.5">
-                {currentUser?.role || "superadmin"}
+          {/* Current Administrator Chip & Sync Action */}
+          <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => syncCloudData()}
+              disabled={isSyncing}
+              className="gap-2 rounded-2xl border-slate-300 dark:border-slate-700 bg-slate-50/80 hover:bg-slate-100 text-slate-800 dark:text-slate-200 font-bold text-xs h-10 px-3.5 cursor-pointer shadow-2xs transition-all"
+              title="Refresh and synchronize database across devices"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${isSyncing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{isSyncing ? "Syncing..." : "Sync Cloud"}</span>
+            </Button>
+
+            <div className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 shadow-2xs">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-amber-950 font-black text-sm flex items-center justify-center shadow-xs shrink-0">
+                {currentUser?.name?.charAt(0) || "A"}
               </div>
-              <div className="text-[9px] text-slate-300 font-bold mt-0.5">@{currentUser?.username || "admin"}</div>
+              <div className="min-w-0">
+                <div className="text-xs font-black text-slate-900 dark:text-white truncate max-w-[140px]">
+                  {currentUser?.name || "Administrator"}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] uppercase font-mono font-black text-amber-600 dark:text-amber-400">
+                    {currentUser?.role || "superadmin"}
+                  </span>
+                  <span className="text-[9px] text-slate-400">@{currentUser?.username || "admin"}</span>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+      </header>
+
+      {/* Responsive Mobile / Tablet Category & Item Selector */}
+      <div className="lg:hidden w-full space-y-2.5 bg-white/95 dark:bg-slate-900/95 p-3 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
+        {/* Search Bar for Mobile */}
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={settingsSearch}
+            onChange={(e) => setSettingsSearch(e.target.value)}
+            placeholder="Search settings (جستجوی تنظیمات)..."
+            className="w-full h-8.5 pl-8.5 pr-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:bg-white text-slate-900 dark:text-white"
+          />
+        </div>
+
+        {/* Horizontal Scrollable Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none touch-pan-x">
+          <button
+            type="button"
+            onClick={() => handleSelectTab("all")}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 whitespace-nowrap cursor-pointer transition-all ${
+              activeTab === "all"
+                ? "bg-blue-900 text-white shadow-xs"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5 text-amber-400" />
+            <span>All in One (همه)</span>
+          </button>
+
+          {SETTING_CATEGORIES.flatMap((c: SettingCategory): SettingItem[] => c.items).map((it: SettingItem) => {
+            const Icon = it.icon
+            const isActive = activeTab === it.id
+            return (
+              <button
+                key={it.id}
+                type="button"
+                onClick={() => handleSelectTab(it.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 whitespace-nowrap cursor-pointer transition-all ${
+                  isActive
+                    ? "bg-blue-900 text-white shadow-xs"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-amber-400" : "text-slate-500"}`} />
+                <span>{it.label}</span>
+                {it.badge !== undefined && (
+                  <span className={`px-1 py-0.2 rounded-full text-[9px] font-black ${
+                    isActive ? "bg-white/20 text-white" : it.badgeColor || "bg-slate-200 text-slate-700"
+                  }`}>
+                    {it.badge}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* Modern Navigation Tabs Bar */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white/90 dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 shadow-md shadow-slate-200/30 backdrop-blur-xl flex-wrap sm:flex-wrap md:flex-wrap shrink-0 justify-center md:justify-start">
-          {/* Master Tab: ALL IN ONE */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("all")}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "all"
-                ? "bg-gradient-to-r from-blue-950 via-indigo-950 to-blue-900 text-white shadow-md shadow-blue-950/20 ring-2 ring-amber-400/60"
-                : "text-slate-700 hover:bg-slate-100 hover:text-slate-950"
-            }`}
-            title="See all settings sections at once in a single unified view"
-          >
-            <LayoutGrid className="w-4 h-4 text-amber-400" />
-            <span>All in One (مشاهده همه)</span>
-            <span className={`px-1.5 py-0.2 text-[10px] font-black rounded-full ${activeTab === "all" ? "bg-amber-400 text-slate-950" : "bg-slate-200 text-slate-700"}`}>
-              10
-            </span>
-          </button>
-
-          <div className="w-px h-5 bg-slate-200 dark:bg-slate-700 shrink-0" />
-
-          {/* Tab 1: Users */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("users")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "users"
-                ? "bg-blue-900 text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 text-amber-500" />
-            <span>Users</span>
-            <span className={`px-1.5 py-0.2 text-[10px] font-black rounded-full ${activeTab === "users" ? "bg-white/20 text-white" : "bg-blue-100 text-blue-900"}`}>
-              {users.length}
-            </span>
-          </button>
-
-          {/* Tab 2: Client Portal */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("client_portal")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "client_portal"
-                ? "bg-blue-900 text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <MonitorSmartphone className="w-3.5 h-3.5 text-blue-500" />
-            <span>Client Portal</span>
-          </button>
-
-          {/* Tab 3: Stamp & Signature */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("stamp")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "stamp"
-                ? "bg-blue-900 text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Stamp & Sign</span>
-          </button>
-
-          {/* Tab 4: Company Profile */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("company")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "company"
-                ? "bg-blue-900 text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5 text-amber-500" />
-            <span>Company</span>
-          </button>
-
-          {/* Tab 5: Cloud Sync */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("cloud")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "cloud"
-                ? "bg-blue-900 text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <Cloud className="w-3.5 h-3.5 text-sky-500" />
-            <span>Cloud Sync</span>
-          </button>
-
-          {/* Tab 6: Google Drive */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("gdrive")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "gdrive"
-                ? "bg-blue-900 text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <UploadCloud className="w-3.5 h-3.5 text-teal-500" />
-            <span>Google Drive</span>
-          </button>
-
-          {/* Tab 7: Data Vault */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("vault")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "vault"
-                ? "bg-blue-900 text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <HardDrive className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Data Vault</span>
-          </button>
-
-          {/* Tab 8: Security */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("security")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "security"
-                ? "bg-blue-900 text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <Key className="w-3.5 h-3.5 text-amber-500" />
-            <span>Security</span>
-          </button>
-
-          {/* Tab 9: Deleted Recovery */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("deleted")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "deleted"
-                ? "bg-blue-900 text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
-            <span>Recovery</span>
-          </button>
-
-          {/* Tab: Main Server & LAN */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("server")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "server"
-                ? "bg-blue-900 text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <Server className="w-3.5 h-3.5 text-blue-500" />
-            <span>Server & LAN</span>
-          </button>
-
-          {/* Tab: Enterprise Backup & Health */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("backup_recovery")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "backup_recovery"
-                ? "bg-emerald-900 text-white shadow-md ring-2 ring-emerald-400/60"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Backup & Recovery</span>
-            <span className="px-1.5 py-0.2 text-[9px] font-black rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">
-              PRO
-            </span>
-          </button>
-
-          {/* Tab: Accounting Periods & Financial Locks */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("accounting_periods")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "accounting_periods"
-                ? "bg-blue-900 text-white shadow-md ring-2 ring-blue-400/60"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <Lock className="w-3.5 h-3.5 text-blue-500" />
-            <span>Accounting Periods</span>
-          </button>
-
-          {/* Tab: AI Operations Assistant */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("ai_assistant")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "ai_assistant"
-                ? "bg-purple-900 text-white shadow-md ring-2 ring-purple-400/60"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-            <span>AI Assistant</span>
-            <span className="px-1.5 py-0.2 text-[9px] font-black rounded-full bg-purple-500/20 text-purple-800 dark:text-purple-300">
-              NEW
-            </span>
-          </button>
-
-          {/* Tab: Performance Diagnostics */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("performance")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "performance"
-                ? "bg-amber-500 text-slate-950 shadow-md ring-2 ring-amber-400"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <Activity className="w-3.5 h-3.5 text-amber-500" />
-            <span>Diagnostics</span>
-            <span className="px-1.5 py-0.2 text-[9px] font-black rounded-full bg-amber-400/20 text-amber-800 dark:text-amber-300">
-              FAST
-            </span>
-          </button>
-
-          {/* Tab 10: System Build */}
-          <button
-            type="button"
-            onClick={() => setActiveTab("updates")}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "updates"
-                ? "bg-blue-900 text-white shadow-md"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-            }`}
-          >
-            <Smartphone className="w-3.5 h-3.5 text-emerald-500" />
-            <span>System Build</span>
-          </button>
-        </div>
-
-        {/* Sticky Quick-Jump Bar when in "All in One" mode */}
-        {activeTab === "all" && (
-          <div className="sticky top-2 z-30 flex items-center justify-between gap-2 p-2 rounded-2xl bg-slate-950/95 text-slate-200 border border-slate-800 shadow-2xl backdrop-blur-xl text-xs flex-wrap">
-            <div className="flex items-center gap-1.5 shrink-0 px-2 text-amber-400 font-black text-[11px] tracking-wider uppercase">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Quick Jump:</span>
+      {/* Main Two-Column Master-Detail Layout */}
+      <div className="flex flex-col lg:flex-row items-start gap-6">
+        {/* ========================================================================= */}
+        {/* LEFT SIDEBAR: CATEGORIZED SETTINGS NAVIGATION (DESKTOP)                   */}
+        {/* ========================================================================= */}
+        <aside className="hidden lg:block w-72 shrink-0 space-y-4 sticky top-4">
+          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl border border-slate-200/90 dark:border-slate-800/90 p-3.5 shadow-md shadow-slate-200/40 dark:shadow-none space-y-3">
+            {/* Search Filter Input */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={settingsSearch}
+                onChange={(e) => setSettingsSearch(e.target.value)}
+                placeholder="Search settings (جستجو)..."
+                className="w-full h-9 pl-9 pr-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800 dark:text-slate-200 placeholder:text-slate-400"
+              />
+              {settingsSearch && (
+                <button
+                  type="button"
+                  onClick={() => setSettingsSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 text-xs"
+                >
+                  ✕
+                </button>
+              )}
             </div>
-            <div className="flex items-center gap-1 flex-wrap py-0.5">
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-users")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-amber-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <Users className="w-3 h-3 text-amber-400" />
-                <span>1. Users</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-portal")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-blue-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <MonitorSmartphone className="w-3 h-3 text-blue-400" />
-                <span>2. Portal</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-stamp")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-emerald-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                <span>3. Stamp & Sign</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-company")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-amber-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <Building2 className="w-3 h-3 text-amber-400" />
-                <span>4. Company</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-cloud")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-sky-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <Cloud className="w-3 h-3 text-sky-400" />
-                <span>5. Cloud Sync</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-gdrive")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-teal-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <UploadCloud className="w-3 h-3 text-teal-400" />
-                <span>6. Google Drive</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-vault")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-indigo-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <HardDrive className="w-3 h-3 text-indigo-400" />
-                <span>7. Vault</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-security")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-amber-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <Key className="w-3 h-3 text-amber-400" />
-                <span>8. Security</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-deleted")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-rose-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <RotateCcw className="w-3 h-3 text-rose-400" />
-                <span>9. Recovery</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-server")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-blue-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <Server className="w-3 h-3 text-blue-400" />
-                <span>LAN Server</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-backup-recovery")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-emerald-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <ShieldCheck className="w-3 h-3 text-emerald-400" />
-                <span>Backup Pro</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-accounting-periods")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-blue-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <Lock className="w-3 h-3 text-blue-400" />
-                <span>Periods</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-ai-assistant")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-purple-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <Sparkles className="w-3 h-3 text-purple-400" />
-                <span>AI Assistant</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-performance")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-amber-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <Activity className="w-3 h-3 text-amber-400" />
-                <span>Diagnostics</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollToSection("section-updates")}
-                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-emerald-400 hover:text-slate-950 text-white whitespace-nowrap text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-              >
-                <Smartphone className="w-3 h-3 text-emerald-400" />
-                <span>10. Build</span>
-              </button>
-            </div>
-          </div>
-        )}
 
-        {/* Single Section Active Ribbon */}
-        {activeTab !== "all" && (
-          <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-blue-50/90 border border-blue-200 text-blue-950 shadow-xs">
-            <div className="flex items-center gap-2 text-xs font-bold">
-              <span className="px-2 py-0.5 rounded-lg bg-blue-600 text-white text-[10px] font-black uppercase">
-                Focused Section
-              </span>
-              <span className="hidden sm:inline">You are viewing an individual section.</span>
-            </div>
+            {/* "All Sections" master button */}
             <button
               type="button"
-              onClick={() => setActiveTab("all")}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white hover:bg-blue-600 hover:text-white border border-blue-300 text-blue-900 text-xs font-black transition-all shadow-xs cursor-pointer active:scale-95"
+              onClick={() => handleSelectTab("all")}
+              className={`w-full flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "all"
+                  ? "bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 text-white shadow-md shadow-blue-950/20"
+                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Show All Sections at Once (مشاهده تمام بخش‌ها یکجا)</span>
+              <div className="flex items-center gap-2.5">
+                <div className={`p-1.5 rounded-xl ${activeTab === "all" ? "bg-white/10 text-amber-300" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"}`}>
+                  <LayoutGrid className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                  <div className="font-extrabold text-[12px]">All in One Overview</div>
+                  <div className={`text-[10px] font-[vazirmatn] ${activeTab === "all" ? "text-blue-200" : "text-slate-400"}`}>
+                    مشاهده یکجای تمام بخش‌ها
+                  </div>
+                </div>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                activeTab === "all" ? "bg-amber-400 text-slate-950" : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+              }`}>
+                15
+              </span>
             </button>
+
+            <div className="h-px bg-slate-100 dark:bg-slate-800" />
+
+            {/* Categories & Items List */}
+            <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1 scrollbar-thin">
+              {filteredCategories.map((category) => (
+                <div key={category.id} className="space-y-1">
+                  <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                    <span>{category.title}</span>
+                    <span className="font-[vazirmatn] text-[9px] opacity-75">{category.titleFa}</span>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    {category.items.map((item) => {
+                      const Icon = item.icon
+                      const isActive = activeTab === item.id
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleSelectTab(item.id)}
+                          className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            isActive
+                              ? "bg-blue-900 text-white shadow-sm ring-1 ring-blue-700/60"
+                              : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-amber-400" : "text-slate-500 dark:text-slate-400"}`} />
+                            <div className="text-left min-w-0">
+                              <div className="truncate text-[11.5px] font-bold">{item.label}</div>
+                              <div className={`text-[9.5px] truncate font-[vazirmatn] ${isActive ? "text-blue-200" : "text-slate-400"}`}>
+                                {item.labelFa}
+                              </div>
+                            </div>
+                          </div>
+
+                          {item.badge !== undefined && (
+                            <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-black shrink-0 ${
+                              isActive ? "bg-white/20 text-white" : item.badgeColor || "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            }`}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {filteredCategories.length === 0 && (
+                <div className="p-4 text-center text-xs text-slate-400">
+                  No settings match &quot;{settingsSearch}&quot;
+                </div>
+              )}
+            </div>
+
+            {/* Quick Storage Meter Bar at Bottom of Sidebar */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+              <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Server className="w-3 text-blue-500" />
+                    <span>Database Quota</span>
+                  </span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-black">
+                    {storageStats.totalKB} KB
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-600 to-emerald-500 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, Math.max(3, storageStats.percent))}%` }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+        </aside>
+
+        {/* ========================================================================= */}
+        {/* RIGHT CONTENT WORKSPACE                                                   */}
+        {/* ========================================================================= */}
+        <main className="flex-1 min-w-0 w-full space-y-6">
+          {activeTab !== "all" && currentActiveItem && (
+            <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-300 font-extrabold text-xs flex items-center gap-1.5">
+                  <span>Settings</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="text-blue-700 dark:text-amber-400 font-black">{currentActiveItem.label}</span>
+                </span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-[vazirmatn] font-bold" dir="rtl">
+                  {currentActiveItem.labelFa}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleSelectTab("all")}
+                className="text-xs text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1.5 font-bold cursor-pointer transition-colors"
+                title="View all settings on a single page"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">View All Sections</span>
+              </button>
+            </div>
+          )}
 
       {/* TAB 1: USER MANAGEMENT & PERMISSIONS                                      */}
       {/* ========================================================================= */}
@@ -2782,6 +2839,8 @@ export function SettingsView() {
           <PerformanceDiagnosticsTab />
         </div>
       )}
+        </main>
+      </div>
 
       {/* Cloud Sync Hub Modal */}
       <CloudSyncModal open={isCloudSyncOpen} onOpenChange={setIsCloudSyncOpen} />

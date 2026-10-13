@@ -339,22 +339,22 @@ export function UsersPermissionsTab() {
 
   return (
     <div className="space-y-6">
-      {/* Executive Header Banner */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-lg border border-slate-800">
+      {/* Executive Header Toolbar */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 flex items-center justify-center font-black text-xl shadow-md">
-              <ShieldCheck className="w-6 h-6" />
+            <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 flex items-center justify-center font-black text-xl shrink-0">
+              <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base sm:text-lg font-black text-white">Staff Roles & Enterprise Permissions</h2>
-                <span className="text-xs text-amber-300 font-[vazirmatn] font-bold" dir="rtl">
+                <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">Staff Roles & Enterprise Permissions</h2>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-[vazirmatn] font-bold" dir="rtl">
                   مدیریت دسترسی کارمندان، اختیارات و تاییدات
                 </span>
               </div>
-              <p className="text-xs text-slate-300">
-                Four-eyes authorization, multi-currency approval rules, data leak prevention, and immutable audit logs.
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Four-eyes authorization, multi-currency approval rules, and immutable audit logs.
               </p>
             </div>
           </div>
@@ -362,17 +362,17 @@ export function UsersPermissionsTab() {
           <div className="flex items-center gap-2 flex-wrap">
             <Button
               onClick={() => setIsAddUserModalOpen(true)}
-              className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs h-9 px-3.5 rounded-xl shadow-sm cursor-pointer"
+              className="bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs h-9 px-3.5 rounded-xl shadow-xs cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5 mr-1.5" />
+              <Plus className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
               Add User (کاربر جدید)
             </Button>
             <Button
               onClick={() => setIsCloneRoleModalOpen(true)}
               variant="outline"
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20 font-bold text-xs h-9 px-3 rounded-xl cursor-pointer"
+              className="bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs h-9 px-3 rounded-xl cursor-pointer"
             >
-              <Copy className="w-3.5 h-3.5 mr-1.5 text-amber-300" />
+              <Copy className="w-3.5 h-3.5 mr-1.5 text-blue-600 dark:text-blue-400" />
               Clone Role
             </Button>
           </div>

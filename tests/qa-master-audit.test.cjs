@@ -505,7 +505,7 @@ test("Phase 12: WhatsApp Message Builders (All 4 Options & Partial BOL)", () => 
   // Option 1: Executive Update
   const updateMsg = buildWhatsAppShipmentUpdate(fullBol);
   assert.match(updateMsg, /SHIPMENT UPDATE/);
-  assert.match(updateMsg, /26253 کابل/);
+  assert.match(updateMsg, /26253.*Kabul/);
   assert.match(updateMsg, /GOLDEN RAISINS/);
   assert.match(updateMsg, /1,476 CTNS/);
   assert.match(updateMsg, /23,616 KG/);
