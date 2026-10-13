@@ -218,13 +218,13 @@ function MainContent() {
                   const hasBol = Boolean(d.bol_number && String(d.bol_number).trim().length > 3)
                   const q = (d.number_of_packages || "").trim().toLowerCase()
                   const hasPkg = q !== "" && q !== "0" && q !== "0-ctns" && q !== "0 ctns"
-                  const nw = (d.net_weight || "").trim()
-                  const gw = (d.gross_weight || "").trim()
-                  const val = (d.goods_value || "").trim()
-                  const cName = (d.consignee_name || "").trim().toLowerCase()
+                  const nw = String(d.net_weight ?? "").trim()
+                  const gw = String(d.gross_weight ?? "").trim()
+                  const val = String(d.goods_value ?? "").trim()
+                  const cName = String(d.consignee_name ?? "").trim().toLowerCase()
                   const hasConsignee = cName !== "" && cName !== "no consignee"
-                  const hasDesc = (d.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 3
-                  const hasDriver = Boolean((d.driver_name || "").trim() || (d.driver_rent || "").trim() || (d.truck_number || "").trim())
+                  const hasDesc = String(d.cargo_description ?? "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 3
+                  const hasDriver = Boolean(String(d.driver_name ?? "").trim() || String(d.driver_rent ?? "").trim() || String(d.truck_number ?? "").trim())
                   return hasShipper || hasBol || hasPkg || nw !== "" || gw !== "" || val !== "" || hasConsignee || hasDesc || hasDriver
                 })
                 const jsonStr = JSON.stringify(allMerged)
@@ -275,9 +275,9 @@ function MainContent() {
     return <LoginScreen />
   }
 
-  const ledgerPanel = currentAccount && currentCompany && view !== 'accounts' && view !== 'companies'
+  const ledgerPanel = currentAccount && currentCompany
     ? <LedgerView />
-    : currentAccount && view !== 'accounts'
+    : currentAccount
       ? <CompaniesView />
       : <AccountsView />
 
@@ -301,7 +301,7 @@ function MainContent() {
   }
 
   const isShipper = currentUser?.role === 'shipper' || view === 'shipper-portal'
-  const isBolView = !isShipper && (view === 'bol' || view === 'accounts' || view === 'companies' || view === 'ledger')
+  const isBolView = !isShipper && view === 'bol'
 
   return (
     <AppShell
@@ -309,7 +309,7 @@ function MainContent() {
       footer={<MobileBottomNav />}
     >
       <MainWorkspace
-        fluid={isBolView || isShipper}
+        fluid={isBolView || isShipper || view === 'accounts' || view === 'companies' || view === 'ledger'}
         noPadding={isBolView}
       >
         {isShipper ? (
@@ -324,6 +324,27 @@ function MainContent() {
               <div key="bol-editor" className="animate-page-crossfade flex-1 flex flex-col min-h-0 h-full">
                 <ModuleErrorBoundary moduleName="Bill of Lading Workspace">
                   <BOLEditor accountLedgerPanel={ledgerPanel} />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'accounts' && (
+              <div key="accounts" className="animate-page-crossfade w-full flex-1 flex flex-col min-h-0">
+                <ModuleErrorBoundary moduleName="Customer Accounts">
+                  <AccountsView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'companies' && (
+              <div key="companies" className="animate-page-crossfade w-full flex-1 flex flex-col min-h-0">
+                <ModuleErrorBoundary moduleName="Companies & Branches">
+                  <CompaniesView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'ledger' && (
+              <div key="ledger" className="animate-page-crossfade w-full flex-1 flex flex-col min-h-0">
+                <ModuleErrorBoundary moduleName="Customer Ledger">
+                  <LedgerView />
                 </ModuleErrorBoundary>
               </div>
             )}

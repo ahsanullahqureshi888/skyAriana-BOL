@@ -63,7 +63,22 @@ export function CompaniesView() {
   // Delete Company state
   const [companyToDelete, setCompanyToDelete] = useState<{ id: string; name: string } | null>(null)
 
-  if (!currentAccount) return null
+  if (!currentAccount) {
+    return (
+      <div className="w-full min-h-[60vh] flex flex-col items-center justify-center p-8 text-center space-y-4 font-sans animate-in fade-in duration-200">
+        <div className="w-14 h-14 rounded-2xl bg-cyan-900/10 border border-cyan-500/20 flex items-center justify-center text-cyan-600">
+          <Building className="w-7 h-7" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-base font-bold text-slate-800">No Account Selected / حساب نه دی ټاکل شوی</h3>
+          <p className="text-xs text-slate-500 max-w-sm">Please select a business account to view its companies and branches.</p>
+        </div>
+        <Button onClick={() => setView('accounts')} className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold rounded-xl h-9 px-4 cursor-pointer shadow-md">
+          Go to Accounts / حسابونو ته لاړ شئ
+        </Button>
+      </div>
+    )
+  }
 
   const handleAddCompany = () => {
     if (newCompanyName.trim()) {
