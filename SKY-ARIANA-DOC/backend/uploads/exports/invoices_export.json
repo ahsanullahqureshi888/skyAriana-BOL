@@ -1,0 +1,82 @@
+[
+    {
+        "invoice_number": "INV-SABBB-2026-001",
+        "invoice_date": "2026-07-12",
+        "due_date": "2026-07-12",
+        "customer_name": "WAVELON IMPEX",
+        "currency": "USD",
+        "status": "partial",
+        "invoice_template": "premium_afghan_glass",
+        "subtotal": 96000.0,
+        "freight": 18600.0,
+        "insurance": 0.0,
+        "other_charges": 0.0,
+        "discount": 0.0,
+        "tax": 0.0,
+        "documentation_fees": 400.0,
+        "customs_clearance_fees": 0.0,
+        "grand_total": 115000.0,
+        "paid_amount": 19200.0,
+        "remaining_balance": 95800.0,
+        "notes": "Standard commercial delivery by air cargo.",
+        "notify_party": {
+            "companyName": "",
+            "contactPerson": "",
+            "address": "",
+            "city": "",
+            "state": "",
+            "postalCode": "",
+            "country": "",
+            "phone": "",
+            "email": "",
+            "taxNumber": "",
+            "licenseNumber": ""
+        },
+        "shipper_exporter": {
+            "companyName": "SKY ARIANA LTD",
+            "contactPerson": "",
+            "address": "Shahidano Chowk, Kandahar",
+            "city": "",
+            "state": "",
+            "postalCode": "",
+            "country": "Afghanistan",
+            "phone": "",
+            "email": "",
+            "taxNumber": "2401-2198",
+            "licenseNumber": ""
+        },
+        "notify_party_same_as_consignee": false,
+        "notify_party_customer_id": 3,
+        "items": [
+            {
+                "description": "DRY FIGS",
+                "hs_code": "0804.20.10",
+                "quantity": 12000,
+                "unit": "KG",
+                "unit_price": 8.0,
+                "amount": 96000.0,
+                "sort_order": 1
+            }
+        ],
+        "shipment_details": {
+            "booking_number": null,
+            "bill_of_lading_number": null,
+            "container_number": "N/A - AIR CARGO",
+            "container_type": "AIR",
+            "seal_number": null,
+            "commodity": "DRY FIGS",
+            "gross_weight": 12960.0,
+            "net_weight": 12000.0,
+            "package_count": 1200,
+            "package_type": "BOXES",
+            "port_of_loading": "KABUL INTERNATIONAL AIRPORT, KABUL, AFGHANISTAN",
+            "port_of_discharge": "INDIRA GANDHI INTERNATIONAL AIRPORT, DELHI, INDIA",
+            "vessel_name": null,
+            "voyage_number": null,
+            "shipping_line": "Kam Air",
+            "incoterms": "CIP",
+            "etd": "2026-07-12",
+            "eta": "2026-07-12"
+        }
+    }
+]

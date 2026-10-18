@@ -1,0 +1,426 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply h-full overflow-x-hidden;
+  }
+
+  body {
+    @apply h-full overflow-x-hidden antialiased selection:bg-sky-500/20 selection:text-sky-900;
+    overscroll-behavior-x: none;
+  }
+
+  #root {
+    @apply h-full overflow-x-hidden;
+  }
+}
+
+@layer components {
+  @supports (scrollbar-width: thin) {
+    .app-scrollbar {
+      scrollbar-width: thin;
+    }
+    .nav-scrollbar {
+      scrollbar-width: none;
+    }
+  }
+
+  @supports (scrollbar-color: auto) {
+    .app-scrollbar {
+      scrollbar-color: rgba(14, 165, 233, 0.22) transparent;
+    }
+  }
+
+  .nav-scrollbar::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .app-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(14, 165, 233, 0.22);
+    border-radius: 999px;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .form-label {
+    @apply block text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-500 mb-2;
+  }
+
+  .form-control {
+    @apply h-12 w-full rounded-xl border border-sky-100 bg-white/70 px-4 text-base font-semibold text-slate-900 shadow-inner shadow-sky-950/[0.02] transition-all placeholder:text-slate-400 focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/10;
+  }
+
+  .form-select {
+    @apply h-12 w-full rounded-xl border border-sky-100 bg-white/70 px-4 pr-10 text-base font-semibold text-slate-900 shadow-inner shadow-sky-950/[0.02] transition-all focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/10;
+  }
+
+  .glass-panel {
+    @apply bg-white/78 backdrop-blur-xl border border-sky-100/70 rounded-3xl shadow-xl shadow-sky-950/[0.06];
+  }
+
+  .transaction-form input:not([type='file']),
+  .transaction-form select {
+    min-height: 3rem;
+    line-height: 1.35;
+  }
+
+  .transaction-form label {
+    @apply text-[11px] font-extrabold uppercase tracking-[0.12em] text-slate-500;
+  }
+
+  .transaction-form input:not([type='file']),
+  .transaction-form select,
+  .transaction-form textarea {
+    @apply border-sky-100/90 bg-white/70 text-base text-slate-900 shadow-inner shadow-sky-950/[0.02];
+  }
+
+  .transaction-form select {
+    min-width: 0;
+    text-overflow: ellipsis;
+  }
+
+  .transaction-form textarea {
+    min-height: 6.5rem;
+    @apply p-3 text-base;
+  }
+
+  .receipt-preview-grid {
+    grid-template-columns: minmax(88px, 0.72fr) minmax(0, 1fr);
+  }
+
+  /* iOS Premium Wallet Card & Glass Styles */
+  .ios-wallet-card {
+    position: relative;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #1b304c 0%, #0d1e34 100%);
+    box-shadow: 0 10px 30px -10px rgba(7, 19, 36, 0.35), 
+                inset 0 1px 1px rgba(255, 255, 255, 0.15),
+                inset 0 -1px 1px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+  }
+  
+  .ios-wallet-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    background: radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .ios-card-chip {
+    width: 38px;
+    height: 28px;
+    background: linear-gradient(135deg, #e3c487 0%, #cfa353 50%, #f7e6b5 100%);
+    border-radius: 6px;
+    position: relative;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3), 
+                0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .ios-card-chip::after {
+    content: '';
+    position: absolute;
+    top: 4px; left: 8px; right: 8px; bottom: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 3px;
+  }
+
+  .ios-card-chip-lines {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  
+  .ios-card-chip-lines::before,
+  .ios-card-chip-lines::after {
+    content: '';
+    position: absolute;
+    background: rgba(0, 0, 0, 0.2);
+  }
+  
+  .ios-card-chip-lines::before {
+    top: 50%; left: 0; right: 0; height: 1px;
+    transform: translateY(-50%);
+  }
+  
+  .ios-card-chip-lines::after {
+    left: 50%; top: 0; bottom: 0; width: 1px;
+    transform: translateX(-50%);
+  }
+
+  .ios-glossy-shine {
+    position: absolute;
+    top: 0; left: -150%; width: 100%; height: 100%;
+    background: linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.13) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    transform: skewX(-25deg);
+    transition: 0.75s;
+  }
+
+  .ios-wallet-card:hover .ios-glossy-shine {
+    left: 150%;
+  }
+
+  /* Safe interactive items */
+  .ios-touch-target {
+    min-height: 44px;
+  }
+
+  .mobile-drawer {
+    transform: translate3d(-100%, 0, 0);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    will-change: transform;
+    contain: layout paint;
+  }
+
+  .mobile-drawer.translate-x-0 {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .page-enter {
+    animation: page-enter 220ms ease-out both;
+  }
+
+  @keyframes page-enter {
+    from { opacity: 0; transform: translate3d(0, 4px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+
+  .ios-scroll-lock {
+    overflow: hidden !important;
+    height: 100dvh !important;
+    touch-action: none;
+    -webkit-overflow-scrolling: auto;
+  }
+
+  .ios-button-tap {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .ios-button-tap:active {
+    transform: scale(0.96);
+  }
+
+  .ios-card-fade-up {
+    animation: ios-card-fade-up 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes ios-card-fade-up {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 16px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .transaction-form input:not([type='file']),
+  .transaction-form select,
+  .transaction-form textarea,
+  .mobile-action-toolbar button {
+    min-height: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-drawer,
+  .page-enter,
+  .ios-card-fade-up {
+    animation: none !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+
+/* Custom CSS Print Layouts for Receipts */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 7mm 8mm;
+  }
+
+  html,
+  body {
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    background: white !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-family: Tahoma, Arial, Helvetica, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #receipt-print-area, #receipt-print-area * {
+    visibility: visible;
+  }
+
+  #receipt-print-area {
+    position: absolute;
+    left: 0 !important;
+    top: 0 !important;
+    width: 111.5% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    border: 1px solid #d9e8f7 !important;
+    box-shadow: none !important;
+    padding: 5mm !important;
+    margin: 0 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    overflow: hidden !important;
+    color: #0f172a !important;
+    zoom: 0.9;
+  }
+
+  #receipt-print-area .receipt-inner {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
+  #receipt-print-area,
+  #receipt-print-area * {
+    text-shadow: none !important;
+    filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  #receipt-print-area section,
+  #receipt-print-area header,
+  #receipt-print-area footer {
+    box-shadow: none !important;
+  }
+
+  main, body {
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .receipt-document {
+    border-radius: 0 !important;
+  }
+
+  #receipt-print-area header,
+  #receipt-print-area section {
+    margin-bottom: 2mm !important;
+  }
+
+  #receipt-print-area footer {
+    margin-top: 1.8mm !important;
+    padding-top: 1.8mm !important;
+  }
+
+  #receipt-print-area .receipt-header > div:last-child {
+    gap: 3mm !important;
+    padding: 3mm !important;
+  }
+
+  #receipt-print-area .receipt-title-block {
+    padding-top: 2mm !important;
+    padding-bottom: 2mm !important;
+  }
+
+  #receipt-print-area .receipt-summary {
+    gap: 2mm !important;
+    padding: 2.5mm !important;
+  }
+
+  #receipt-print-area .receipt-info-panel dt,
+  #receipt-print-area .receipt-info-panel dd {
+    padding-top: 1.8mm !important;
+    padding-bottom: 1.8mm !important;
+  }
+
+  #receipt-print-area .receipt-notes {
+    padding: 2.5mm !important;
+  }
+
+  #receipt-print-area .receipt-notes p {
+    min-height: 12mm !important;
+    line-height: 1.35 !important;
+  }
+
+  #receipt-print-area .receipt-signatures {
+    gap: 2.5mm !important;
+    margin-top: 0 !important;
+    padding-top: 2.5mm !important;
+  }
+
+  #receipt-print-area .receipt-sign-card {
+    min-height: 19mm !important;
+    padding: 2mm 2.5mm !important;
+    border-radius: 3mm !important;
+  }
+
+  #receipt-print-area .receipt-sign-card > div:first-child {
+    height: 8mm !important;
+    margin-bottom: 1.5mm !important;
+  }
+
+  #receipt-print-area .receipt-stamp-box {
+    width: 28mm !important;
+    height: 13mm !important;
+    margin-bottom: 1.5mm !important;
+    border-radius: 3mm !important;
+  }
+
+  #receipt-print-area .p-6 {
+    padding: 4.5mm !important;
+  }
+
+  #receipt-print-area .p-5,
+  #receipt-print-area .p-4 {
+    padding: 2.5mm !important;
+  }
+
+  #receipt-print-area .receipt-footer p {
+    margin-top: 0.6mm !important;
+    font-size: 7.5pt !important;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .animate-pulse-glow {
+    animation: pulseGlow 3s infinite ease-in-out;
+  }
+}

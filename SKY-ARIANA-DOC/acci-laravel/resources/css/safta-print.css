@@ -1,0 +1,224 @@
+/* SAFTA Certificate of Origin Styling - 100% Pixel-Perfect Print-Replica ("Same to Same") */
+
+.safta-document {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 8mm 10mm;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-family: Arial, Helvetica, sans-serif;
+    box-sizing: border-box;
+    position: relative;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.safta-title-header {
+    text-align: center;
+    margin-bottom: 1.5mm;
+}
+
+.safta-title-header h1 {
+    font-size: 13.5pt !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-weight: 900 !important;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #000000 !important;
+}
+
+.safta-title-header h2 {
+    font-size: 10pt !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-weight: 700 !important;
+    margin: 1px 0 1.5mm 0;
+    text-transform: uppercase;
+    color: #000000 !important;
+}
+
+.safta-main-grid {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.safta-main-grid td,
+.safta-main-grid th {
+    border: 1px solid #000000;
+    padding: 10px;
+    vertical-align: top;
+    font-size: 8pt;
+    line-height: 1.25;
+}
+
+/* Pre-printed Form Labels & Instructions */
+.safta-box-title {
+    font-size: 9px;
+    font-weight: normal;
+    line-height: 1.15;
+    margin-bottom: 4px;
+    display: block;
+    color: #374151;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Dynamically Filled User Data */
+.safta-box-content {
+    font-size: 9.5px;
+    font-weight: 800;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    color: #000000;
+    text-transform: uppercase;
+    letter-spacing: -0.025em;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    max-width: 100% !important;
+}
+
+/* Authentic Original Stamp Box in Box 4 */
+.safta-official-stamp-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 10px 0;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.safta-official-stamp-box .stamp-word {
+    border: 1.5px solid #1d4076;
+    padding: 2px 28px;
+    font-size: 15px;
+    font-family: "Times New Roman", Times, serif;
+    font-weight: bold;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: #1d4076;
+    background-color: transparent !important;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.safta-official-stamp-box .stamp-sub {
+    font-size: 9px;
+    color: #1f2937;
+    font-weight: 500;
+    margin-top: 6px;
+    text-align: center;
+    display: block;
+}
+
+/* Official ACCI SAFTA pale yellow safety paper background (#fcecb8) */
+.safta-main-grid,
+.safta-main-grid tr,
+.safta-main-grid td,
+.safta-main-grid th,
+.safta-cargo-table,
+.safta-cargo-table tr,
+.safta-cargo-table th,
+.safta-cargo-table td,
+.safta-footer-grid,
+.safta-footer-grid tr,
+.safta-footer-grid td {
+    background-color: #fcecb8 !important;
+}
+
+/* Cargo Table (Boxes 5 to 11) - Strict 7 Column Layout & Borders */
+.safta-cargo-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    border: 1px solid #000000;
+    margin-top: -1px;
+}
+
+.safta-cargo-table th {
+    border: 1px solid #000000;
+    border-bottom: none !important;
+    padding: 6px;
+    font-size: 8.5pt;
+    font-weight: normal;
+    line-height: 1.1;
+    vertical-align: top;
+    text-align: left;
+    background-color: #fcecb8 !important;
+    color: #111827;
+    box-sizing: border-box;
+    height: 36px;
+}
+
+.safta-cargo-table td {
+    border: 1px solid #000000;
+    border-top: none !important;
+    padding: 38mm 6px 8px 6px !important;
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 10pt !important;
+    font-weight: 700 !important;
+    line-height: 1.45 !important;
+    vertical-align: top;
+    min-height: 380px;
+    height: 135mm;
+    box-sizing: border-box;
+    color: #000000 !important;
+}
+
+/* Footer Section (Boxes 12 & 13) */
+.safta-footer-grid {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin-top: -1px;
+}
+
+.safta-footer-grid td {
+    border: 1px solid #000000;
+    padding: 3mm;
+    vertical-align: top;
+    height: 60mm;
+    min-height: 160px;
+    position: relative;
+    width: 50%;
+}
+
+.safta-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-top: 2mm;
+}
+
+.safta-red-control-no {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    color: #dc2626 !important;
+    font-family: "Courier New", Courier, monospace !important;
+    letter-spacing: 0.22em !important;
+    -webkit-user-select: none;
+    user-select: none;
+    text-align: left;
+}
+
+@media print {
+    .safta-document {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        background-color: #ffffff !important;
+        border: none !important;
+        overflow: hidden !important;
+        page-break-inside: avoid !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}

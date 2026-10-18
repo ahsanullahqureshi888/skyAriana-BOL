@@ -1,0 +1,495 @@
+- generic [ref=f3e2]:
+  - complementary [ref=f3e3]:
+    - generic [ref=f3e4]:
+      - generic [ref=f3e5]:
+        - generic [ref=f3e6]: 
+        - generic [ref=f3e8]:
+          - heading "Sky Ariana" [level=1] [ref=f3e9]
+          - paragraph [ref=f3e10]: "& Balam Bar Baran Logistics"
+      - button "" [ref=f3e12]
+    - generic [ref=f3e14]:
+      - generic [ref=f3e15]:
+        - generic [ref=f3e16]:
+          - generic [ref=f3e17]: 
+          - text: Document Language
+        - combobox " Document Language" [ref=f3e18]:
+          - option "English (US)" [selected]
+          - option "Persian (فارسی - RTL)"
+          - option "Pashto (پښتو - RTL)"
+      - generic [ref=f3e19]:
+        - generic [ref=f3e20]:
+          - generic [ref=f3e21]:
+            - generic [ref=f3e22]: 
+            - text: Currency
+          - combobox " Currency" [ref=f3e23]:
+            - option "USD ($)" [selected]
+            - option "EUR (€)"
+            - option "AED (د.إ)"
+            - option "AFN (؋)"
+            - option "IRR (﷼)"
+        - generic [ref=f3e24]:
+          - generic [ref=f3e25]:
+            - generic [ref=f3e26]: 
+            - text: Status
+          - combobox " Status" [ref=f3e27]:
+            - option "Unpaid" [selected]
+            - option "Paid"
+            - option "Partial"
+    - generic [ref=f3e28]:
+      - button " Ocean Cargo (Dubai-Kabul)" [ref=f3e29] [cursor=pointer]:
+        - generic [ref=f3e30]: 
+        - text: Ocean Cargo (Dubai-Kabul)
+      - button " Air Freight (Istanbul-Kabul)" [ref=f3e31] [cursor=pointer]:
+        - generic [ref=f3e32]: 
+        - text: Air Freight (Istanbul-Kabul)
+    - generic [ref=f3e33]:
+      - group [ref=f3e34]:
+        - generic " Local Databases " [ref=f3e35] [cursor=pointer]:
+          - generic [ref=f3e36]:
+            - generic [ref=f3e37]: 
+            - text: Local Databases
+          - generic [ref=f3e38]: 
+        - generic [ref=f3e39]:
+          - generic [ref=f3e40]:
+            - generic [ref=f3e41]: Load Buyer Details
+            - combobox "Load Buyer Details" [ref=f3e42]:
+              - option "-- Select Saved Buyer --" [selected]
+              - option "Asia Transit Trading LLC (Afghanistan)"
+              - option "Kabul Merchant & Distributors Co. (Afghanistan)"
+              - option "Dubai Logistics Trade Hub (United Arab Emirates)"
+              - option "WAVELON IMPEX (India)"
+          - generic [ref=f3e43]:
+            - generic [ref=f3e44]: Append Saved Product
+            - combobox "Append Saved Product" [ref=f3e45]:
+              - option "-- Add Saved Product --" [selected]
+              - option "Industrial Solar Panel Inverters (5KW Hybrid PLC) [8504.40.90] - $680"
+              - option "Heavy Duty Lithium-Ion Battery Storage Rack (48V 200Ah) [8507.60.00] - $1850"
+              - option "Agricultural Drip Irrigation Pipe Rolls (16mm Diameter) [3917.39.00] - $45"
+              - option "Afghan Grade-A Red Saffron Export Packages (1kg Tins) [0910.20.00] - $1450"
+              - option "Automobile Brake Disc Calipers (High Carbon Steel) [8708.30.90] - $110"
+              - option "DRY FIGS [0804.20.10] - $5500"
+              - option "AIR-FREIGHT TRANSPORTATION OF DRY FIGS FROM KABUL TO DELHI [0804.20.10] - $1.6"
+      - group [ref=f3e46]:
+        - generic " Brand Branding / Logo " [ref=f3e47] [cursor=pointer]:
+          - generic [ref=f3e48]:
+            - generic [ref=f3e49]: 
+            - text: Brand Branding / Logo
+          - generic [ref=f3e50]: 
+      - group [ref=f3e51]:
+        - generic " Invoice Details " [ref=f3e52] [cursor=pointer]:
+          - generic [ref=f3e53]:
+            - generic [ref=f3e54]: 
+            - text: Invoice Details
+          - generic [ref=f3e55]: 
+        - text: 
+      - group [ref=f3e56]:
+        - generic " Seller (Exporter Details) " [ref=f3e57] [cursor=pointer]:
+          - generic [ref=f3e58]:
+            - generic [ref=f3e59]: 
+            - text: Seller (Exporter Details)
+          - generic [ref=f3e60]: 
+      - group [ref=f3e61]:
+        - generic " Buyer (Importer Details) " [ref=f3e62] [cursor=pointer]:
+          - generic [ref=f3e63]:
+            - generic [ref=f3e64]: 
+            - text: Buyer (Importer Details)
+          - generic [ref=f3e65]: 
+      - group [ref=f3e66]:
+        - generic " Notify Party Details " [ref=f3e67] [cursor=pointer]:
+          - generic [ref=f3e68]:
+            - generic [ref=f3e69]: 
+            - text: Notify Party Details
+          - generic [ref=f3e70]: 
+      - group [ref=f3e71]:
+        - generic "Shipment & Logistics " [ref=f3e72] [cursor=pointer]:
+          - generic [ref=f3e73]: Shipment & Logistics
+          - generic [ref=f3e74]: 
+        - option "40' HC Container"
+        - option "20' GP Container"
+        - option "40' RF (Reefer)"
+        - option "Air Cargo" [selected]
+        - option "DDP - Delivered Duty Paid" [selected]
+        - option "FOB - Free On Board"
+        - option "CIF - Cost, Insurance & Freight"
+        - option "CFR - Cost and Freight"
+        - option "EXW - Ex Works"
+      - group [ref=f3e75]:
+        - generic " Line Items " [ref=f3e76] [cursor=pointer]:
+          - generic [ref=f3e77]:
+            - generic [ref=f3e78]: 
+            - text: Line Items
+          - generic [ref=f3e79]: 
+        - text:  +
+      - group [ref=f3e80]:
+        - generic " Adjustments & Fees " [ref=f3e81] [cursor=pointer]:
+          - generic [ref=f3e82]:
+            - generic [ref=f3e83]: 
+            - text: Adjustments & Fees
+          - generic [ref=f3e84]: 
+      - group [ref=f3e85]:
+        - generic " Bank & Payment Settlement " [ref=f3e86] [cursor=pointer]:
+          - generic [ref=f3e87]:
+            - generic [ref=f3e88]: 
+            - text: Bank & Payment Settlement
+          - generic [ref=f3e89]: 
+      - group [ref=f3e90]:
+        - generic " Signature Pad & Verification " [ref=f3e91] [cursor=pointer]:
+          - generic [ref=f3e92]:
+            - generic [ref=f3e93]: 
+            - text: Signature Pad & Verification
+          - generic [ref=f3e94]: 
+        - text:  
+    - generic [ref=f3e96]:
+      - button " Excel Export" [ref=f3e97] [cursor=pointer]:
+        - generic [ref=f3e98]: 
+        - text: Excel Export
+      - button " One-Click Print" [ref=f3e99] [cursor=pointer]:
+        - generic [ref=f3e100]: 
+        - text: One-Click Print
+  - main [ref=f3e101]:
+    - generic [ref=f3e102]:
+      - generic [ref=f3e103]:
+        - generic [ref=f3e104]:
+          - generic [ref=f3e105]: 
+          - text: A4 Commercial Invoice
+        - generic [ref=f3e106]: 100%
+      - generic "Print preview controls" [ref=f3e107]:
+        - button " Fit" [ref=f3e108] [cursor=pointer]:
+          - generic [ref=f3e109]: 
+          - text: Fit
+        - button "Actual size" [ref=f3e110] [cursor=pointer]
+        - button "" [ref=f3e111] [cursor=pointer]
+        - button "+" [ref=f3e113] [cursor=pointer]
+        - button " Print / PDF" [ref=f3e115] [cursor=pointer]:
+          - generic [ref=f3e116]: 
+          - text: Print / PDF
+    - generic [ref=f3e117]:
+      - generic:
+        - img "Watermark Logo"
+      - generic [ref=f3e118]:
+        - img "SKY ARIANA & BALAM BAR BARAN Logo" [ref=f3e120]
+        - generic [ref=f3e121]:
+          - generic [ref=f3e122]: SKY ARIANA & BALAM BAR BARAN
+          - generic [ref=f3e123]: IMPORT • EXPORT • LOGISTICS • TRANSPORT
+        - generic [ref=f3e124]:
+          - heading "COMMERCIAL INVOICE" [level=2] [ref=f3e126]
+          - generic [ref=f3e127]:
+            - generic [ref=f3e128]:
+              - generic [ref=f3e129]: "INVOICE NO:"
+              - generic [ref=f3e130]: SKY-BBB-2026-9042
+            - generic [ref=f3e131]:
+              - generic [ref=f3e132]: "REFERENCE NO:"
+              - generic [ref=f3e133]: REF-A81093-X
+            - generic [ref=f3e134]:
+              - generic [ref=f3e135]: "INVOICE DATE:"
+              - generic [ref=f3e136]: JUL 12, 2026
+            - generic [ref=f3e137]:
+              - generic [ref=f3e138]: "DUE DATE:"
+              - generic [ref=f3e139]: AUG 11, 2026
+            - generic [ref=f3e140]:
+              - generic [ref=f3e141]: "CURRENCY:"
+              - generic [ref=f3e142]: USD ($)
+            - generic [ref=f3e143]:
+              - generic [ref=f3e144]: "STATUS:"
+              - generic [ref=f3e145]: UNPAID
+      - generic [ref=f3e146]:
+        - generic [ref=f3e147]:
+          - generic [ref=f3e148]: 
+          - generic [ref=f3e149]: COMPANY OFFICES
+        - generic [ref=f3e150]:
+          - generic [ref=f3e151]:
+            - generic [ref=f3e152]:
+              - generic [ref=f3e153]: 
+              - text: AFGHANISTAN OFFICE
+            - generic [ref=f3e154]: 2nd Floor, Office No. 16 Etimad Rahimi Market, Shahidano Chowk Kandahar, Afghanistan
+            - generic [ref=f3e156]:
+              - generic [ref=f3e157]: 
+              - text: "Licence:"
+              - strong [ref=f3e158]: 2401-2198
+            - generic [ref=f3e159]:
+              - link " info@skyariana.com" [ref=f3e160] [cursor=pointer]:
+                - /url: mailto:info@skyariana.com
+                - generic [ref=f3e161]: 
+                - text: info@skyariana.com
+              - link " transport@skyariana.com" [ref=f3e162] [cursor=pointer]:
+                - /url: mailto:transport@skyariana.com
+                - generic [ref=f3e163]: 
+                - text: transport@skyariana.com
+              - link " +93 700 939 365" [ref=f3e164] [cursor=pointer]:
+                - /url: tel:+93700939365
+                - generic [ref=f3e165]: 
+                - text: +93 700 939 365
+              - link " +93 711 435 529" [ref=f3e166] [cursor=pointer]:
+                - /url: tel:+93711435529
+                - generic [ref=f3e167]: 
+                - text: +93 711 435 529
+          - generic [ref=f3e169]:
+            - generic [ref=f3e170]:
+              - generic [ref=f3e171]: 
+              - text: IRAN OFFICE
+            - generic [ref=f3e172]: "Cubic Building Bandar Abbas, Iran P.O. Box: 7913973295"
+            - generic [ref=f3e173]:
+              - 'link " Telefax: +98 76 32226028" [ref=f3e174] [cursor=pointer]':
+                - /url: tel:+987632226028
+                - generic [ref=f3e175]: 
+                - text: "Telefax: +98 76 32226028"
+              - link " +98 917 232 5086" [ref=f3e176] [cursor=pointer]:
+                - /url: tel:+989172325086
+                - generic [ref=f3e177]: 
+                - text: +98 917 232 5086
+              - link " info@balambarbaran.com" [ref=f3e178] [cursor=pointer]:
+                - /url: mailto:info@balambarbaran.com
+                - generic [ref=f3e179]: 
+                - text: info@balambarbaran.com
+              - link " ceo@balambarbaran.com" [ref=f3e180] [cursor=pointer]:
+                - /url: mailto:ceo@balambarbaran.com
+                - generic [ref=f3e181]: 
+                - text: ceo@balambarbaran.com
+      - generic [ref=f3e182]:
+        - generic [ref=f3e183]:
+          - generic [ref=f3e184]: SELLER / EXPORTER
+          - generic [ref=f3e185]:
+            - paragraph [ref=f3e186]:
+              - strong [ref=f3e187]: SKY ARIANA & BALAM BAR BARAN
+            - paragraph [ref=f3e188]: Suite 12, Ariana Logistics Plaza, Airport Road, Kabul, Afghanistan
+            - paragraph [ref=f3e189]: "TIN: TIN-90812490-K | License: L-AFG-908234-BBB"
+            - paragraph [ref=f3e190]: "Tel: +93 79 912 3456 / +93 78 898 7654"
+            - paragraph [ref=f3e191]: "Email: ops@sky-balam.com"
+        - generic [ref=f3e192]:
+          - generic [ref=f3e193]: BUYER / IMPORTER (CONSIGNEE)
+          - generic [ref=f3e194]:
+            - paragraph [ref=f3e195]:
+              - strong [ref=f3e196]: WAVELON IMPEX
+            - paragraph [ref=f3e197]: Purchasing Director
+            - paragraph [ref=f3e198]: A 4008, RKLP MARKET, SAROLI, SURAT, INDIA
+            - paragraph [ref=f3e199]: "Country: India"
+            - paragraph [ref=f3e200]: "Tax/TIN: GST-36WAVELON9"
+            - paragraph [ref=f3e201]: "Tel: +91 261 440 9901 | Email: imports@wavelonimpex.in"
+        - generic [ref=f3e202]:
+          - generic [ref=f3e203]: NOTIFY PARTY
+          - generic [ref=f3e204]:
+            - paragraph [ref=f3e205]:
+              - strong [ref=f3e206]: TIYA GOODS WHOLESALERS LLC
+            - paragraph [ref=f3e207]: DUBAI, UNITED ARAB EMIRATES
+            - paragraph [ref=f3e208]: "Licence: 1499993"
+      - generic [ref=f3e209]:
+        - generic [ref=f3e210]:
+          - generic [ref=f3e211]: 
+          - generic [ref=f3e212]: AIR-CARGO SHIPMENT INFORMATION
+        - generic [ref=f3e213]:
+          - generic [ref=f3e214]:
+            - generic [ref=f3e215]: "BOOKING NUMBER:"
+            - generic [ref=f3e216]: BKG-AC-99401
+          - generic [ref=f3e217]:
+            - generic [ref=f3e218]: "BILL OF LADING NO:"
+            - generic [ref=f3e219]: AWB-098-1124908
+          - generic [ref=f3e220]:
+            - generic [ref=f3e221]: "COMMODITY Description:"
+            - generic [ref=f3e222]: DRY FIGS
+          - generic [ref=f3e223]:
+            - generic [ref=f3e224]: "HS CODE (GLOBAL):"
+            - generic [ref=f3e225]: 0804.20.10
+          - generic [ref=f3e226]:
+            - generic [ref=f3e227]: "INCOTERMS:"
+            - generic [ref=f3e228]: DDP
+          - generic [ref=f3e229]:
+            - generic [ref=f3e230]: "GROSS WEIGHT (KG):"
+            - generic [ref=f3e231]: 12,000 kg
+          - generic [ref=f3e232]:
+            - generic [ref=f3e233]: "NET WEIGHT (KG):"
+            - generic [ref=f3e234]: 12,000 kg
+          - generic [ref=f3e235]:
+            - generic [ref=f3e236]: "NO. OF PACKAGES:"
+            - generic [ref=f3e237]: 400 PKGS
+          - generic [ref=f3e238]:
+            - generic [ref=f3e239]: "AIRLINE / CARRIER:"
+            - generic [ref=f3e240]: Sky Ariana Logistics Line
+          - generic [ref=f3e241]:
+            - generic [ref=f3e242]: "ORIGIN COUNTRY:"
+            - generic [ref=f3e243]: Afghanistan
+          - generic [ref=f3e244]:
+            - generic [ref=f3e245]: "FINAL DESTINATION:"
+            - generic [ref=f3e246]: India
+          - generic [ref=f3e247]:
+            - generic [ref=f3e248]: "AIRPORT OF DEPARTURE:"
+            - generic [ref=f3e249]: KABUL INTERNATIONAL AIRPORT, KABUL, AFGHANISTAN
+          - generic [ref=f3e250]:
+            - generic [ref=f3e251]: "AIRPORT OF DESTINATION:"
+            - generic [ref=f3e252]: INDIRA GANDHI INTERNATIONAL AIRPORT, DELHI, INDIA
+          - generic [ref=f3e253]:
+            - generic [ref=f3e254]: "EST. DEPARTURE (ETD):"
+            - generic [ref=f3e255]: JUL 15, 2026
+          - generic [ref=f3e256]:
+            - generic [ref=f3e257]: "EST. ARRIVAL (ETA):"
+            - generic [ref=f3e258]: JUL 27, 2026
+          - generic [ref=f3e259]:
+            - generic [ref=f3e260]: "MODE OF TRANSPORTATION:"
+            - generic [ref=f3e261]: AIR CARGO
+          - generic [ref=f3e262]:
+            - generic [ref=f3e263]: "CARGO WEIGHT:"
+            - generic [ref=f3e264]: 12 METRIC TONS
+          - generic [ref=f3e265]:
+            - generic [ref=f3e266]: "TOTAL WEIGHT:"
+            - generic [ref=f3e267]: 12,000 KG
+          - generic [ref=f3e268]:
+            - generic [ref=f3e269]: "SHIPPING ROUTE:"
+            - generic [ref=f3e270]: KABUL, AFGHANISTAN → DELHI, INDIA
+      - generic [ref=f3e271]:
+        - generic [ref=f3e272]: CARGO DESCRIPTION
+        - generic [ref=f3e273]: TRANSPORTATION OF 12 METRIC TONS (12,000 KG) OF DRY FIGS BY AIR CARGO FROM KABUL, AFGHANISTAN TO DELHI, INDIA.
+      - table [ref=f3e275]:
+        - rowgroup [ref=f3e276]:
+          - row [ref=f3e277]:
+            - columnheader "No." [ref=f3e278]
+            - columnheader "Description of Goods" [ref=f3e279]
+            - columnheader "Weight" [ref=f3e280]
+            - columnheader "Unit" [ref=f3e281]
+            - columnheader "Rate" [ref=f3e282]
+            - columnheader "Amount" [ref=f3e283]
+        - rowgroup [ref=f3e284]:
+          - row [ref=f3e285]:
+            - cell "1" [ref=f3e286]
+            - cell [ref=f3e287]:
+              - strong [ref=f3e288]: AIR-FREIGHT TRANSPORTATION OF DRY FIGS FROM KABUL TO DELHI
+            - cell "12,000" [ref=f3e289]
+            - cell "KG" [ref=f3e290]
+            - cell "USD 1.60" [ref=f3e291]
+            - cell [ref=f3e292]:
+              - strong [ref=f3e293]: $19,200.00
+      - generic [ref=f3e294]:
+        - generic [ref=f3e295]:
+          - generic [ref=f3e296]:
+            - generic [ref=f3e297]:
+              - generic [ref=f3e298]: 
+              - generic [ref=f3e299]: BENEFICIARY BANK DETAILS
+            - table [ref=f3e301]:
+              - rowgroup [ref=f3e302]:
+                - row [ref=f3e303]:
+                  - cell "Beneficiary Bank:" [ref=f3e304]
+                  - cell [ref=f3e305]:
+                    - strong [ref=f3e306]: KOTAK MAHINDRA BANK
+                - row [ref=f3e307]:
+                  - cell "Bank Branch:" [ref=f3e308]
+                  - cell "SURAT, INDIA" [ref=f3e309]
+                - row [ref=f3e310]:
+                  - cell "Beneficiary:" [ref=f3e311]
+                  - cell "WAVELON IMPEX" [ref=f3e312]
+                - row [ref=f3e313]:
+                  - cell "Account No:" [ref=f3e314]
+                  - cell [ref=f3e315]:
+                    - strong [ref=f3e316]: "9898015500"
+                - row [ref=f3e317]:
+                  - cell "IBAN:" [ref=f3e318]
+                  - cell [ref=f3e319]:
+                    - strong [ref=f3e320]: N/A
+                - row [ref=f3e321]:
+                  - cell "SWIFT Code:" [ref=f3e322]
+                  - cell [ref=f3e323]:
+                    - strong [ref=f3e324]: KKBKINBBCPC
+                - row [ref=f3e325]:
+                  - cell "Bank Address:" [ref=f3e326]
+                  - cell "2ND FLOOR, BAKHTAWAR BUILDING, 229 NARIMAN POINT, MUMBAI, INDIA – 400021" [ref=f3e327]
+                - row [ref=f3e328]:
+                  - cell "Payment Terms:" [ref=f3e329]
+                  - cell "Advanced T/T Bank Transfer" [ref=f3e330]
+          - generic [ref=f3e331]:
+            - generic [ref=f3e332]:
+              - generic [ref=f3e333]: 
+              - generic [ref=f3e334]: DECLARATION & TERMS
+            - generic [ref=f3e335]: Air-freight charges only. Commercial value of goods documented separately under separate cover.
+        - generic [ref=f3e336]:
+          - generic [ref=f3e337]:
+            - table [ref=f3e338]:
+              - rowgroup [ref=f3e339]:
+                - row [ref=f3e340]:
+                  - cell "Subtotal:" [ref=f3e341]
+                  - cell "$19,200.00" [ref=f3e342]
+                - row [ref=f3e343]:
+                  - cell "Freight Charges:" [ref=f3e344]
+                  - cell "$0.00" [ref=f3e345]
+                - row [ref=f3e346]:
+                  - cell "Transit Insurance:" [ref=f3e347]
+                  - cell "$0.00" [ref=f3e348]
+                - row [ref=f3e349]:
+                  - cell "Customs Clearance:" [ref=f3e350]
+                  - cell "$0.00" [ref=f3e351]
+                - row [ref=f3e352]:
+                  - cell "Documentation/BL:" [ref=f3e353]
+                  - cell "$0.00" [ref=f3e354]
+                - row [ref=f3e355]:
+                  - cell "Port Handling Fees:" [ref=f3e356]
+                  - cell "$0.00" [ref=f3e357]
+                - row [ref=f3e358]:
+                  - cell "Loyalty Discount:" [ref=f3e359]
+                  - cell "-$0.00" [ref=f3e360]
+                - row [ref=f3e361]:
+                  - cell "Sales Tax / VAT (0%):" [ref=f3e362]
+                  - cell "$0.00" [ref=f3e363]
+                - row [ref=f3e364]:
+                  - cell "GRAND TOTAL (USD):" [ref=f3e365]
+                  - cell "$19,200.00" [ref=f3e366]
+            - generic [ref=f3e367]:
+              - strong [ref=f3e368]: "Amount in Words:"
+              - text: NINETEEN THOUSAND TWO HUNDRED US DOLLARS ONLY
+          - generic [ref=f3e369]:
+            - generic [ref=f3e370]:
+              - generic "https://tracking.skyariana.com/bl/BL-SABBB-440129" [ref=f3e371]
+              - generic [ref=f3e373]: Scan to Track
+            - generic [ref=f3e374]:
+              - generic: SKY-BBB LOGISTICS DEPT.
+              - generic [ref=f3e375]: M. Balam
+              - generic [ref=f3e377]: M. Balam
+              - generic [ref=f3e378]: Director Operations, BBB
+              - generic [ref=f3e379]: "Date: JUL 12, 2026"
+      - generic [ref=f3e380]:
+        - paragraph [ref=f3e381]: Thank you for your business. We look forward to managing your international supply chain.
+        - generic [ref=f3e382]: SKY ARIANA & BALAM BAR BARAN
+        - generic [ref=f3e384]:
+          - generic [ref=f3e385]:
+            - generic [ref=f3e386]:
+              - generic [ref=f3e387]: 
+              - text: AFGHANISTAN OFFICE
+            - generic [ref=f3e388]: 2nd Fl., Off. 16, Etimad Rahimi Market, Shahidano Chowk, Kandahar, Afghanistan
+            - generic [ref=f3e389]:
+              - generic [ref=f3e390]: 
+              - text: "Lic: 2401-2198"
+            - generic [ref=f3e391]:
+              - link " info@skyariana.com" [ref=f3e392] [cursor=pointer]:
+                - /url: mailto:info@skyariana.com
+                - generic [ref=f3e393]: 
+                - text: info@skyariana.com
+              - link " transport@skyariana.com" [ref=f3e394] [cursor=pointer]:
+                - /url: mailto:transport@skyariana.com
+                - generic [ref=f3e395]: 
+                - text: transport@skyariana.com
+              - link " +93 700 939 365" [ref=f3e396] [cursor=pointer]:
+                - /url: tel:+93700939365
+                - generic [ref=f3e397]: 
+                - text: +93 700 939 365
+              - link " +93 711 435 529" [ref=f3e398] [cursor=pointer]:
+                - /url: tel:+93711435529
+                - generic [ref=f3e399]: 
+                - text: +93 711 435 529
+          - generic [ref=f3e401]:
+            - generic [ref=f3e402]:
+              - generic [ref=f3e403]: 
+              - text: IRAN OFFICE
+            - generic [ref=f3e404]: "Cubic Building, Bandar Abbas, Iran | P.O. Box: 7913973295"
+            - generic [ref=f3e405]:
+              - link " +98 76 32226028" [ref=f3e406] [cursor=pointer]:
+                - /url: tel:+987632226028
+                - generic [ref=f3e407]: 
+                - text: +98 76 32226028
+              - link " +98 917 232 5086" [ref=f3e408] [cursor=pointer]:
+                - /url: tel:+989172325086
+                - generic [ref=f3e409]: 
+                - text: +98 917 232 5086
+              - link " info@balambarbaran.com" [ref=f3e410] [cursor=pointer]:
+                - /url: mailto:info@balambarbaran.com
+                - generic [ref=f3e411]: 
+                - text: info@balambarbaran.com
+              - link " ceo@balambarbaran.com" [ref=f3e412] [cursor=pointer]:
+                - /url: mailto:ceo@balambarbaran.com
+                - generic [ref=f3e413]: 
+                - text: ceo@balambarbaran.com
+        - generic [ref=f3e414]: Page 1 of 1

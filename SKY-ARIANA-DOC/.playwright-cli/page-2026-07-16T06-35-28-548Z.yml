@@ -1,0 +1,70 @@
+- generic [ref=f2e3]:
+  - complementary [ref=f2e4]:
+    - button "Expand sidebar" [ref=f2e6] [cursor=pointer]:
+      - img "Sky Ariana Logo" [ref=f2e7]
+    - navigation [ref=f2e8]:
+      - link "Dashboard" [ref=f2e9] [cursor=pointer]:
+        - /url: /
+      - link "Invoices" [ref=f2e15] [cursor=pointer]:
+        - /url: /invoices
+      - link "Customers" [ref=f2e19] [cursor=pointer]:
+        - /url: /customers
+      - link "Products & Services" [ref=f2e25] [cursor=pointer]:
+        - /url: /products
+      - link "Company Settings" [ref=f2e30] [cursor=pointer]:
+        - /url: /settings
+      - link "Backup & Restore" [ref=f2e34] [cursor=pointer]:
+        - /url: /backups
+      - link "Activity History" [ref=f2e39] [cursor=pointer]:
+        - /url: /logs
+      - link "User Management" [ref=f2e44] [cursor=pointer]:
+        - /url: /user-management
+    - button [ref=f2e49] [cursor=pointer]
+  - generic [ref=f2e53]:
+    - banner [ref=f2e54]:
+      - img "Sky Ariana & Balam Bar Baran" [ref=f2e57]
+      - generic [ref=f2e58]:
+        - generic [ref=f2e59]:
+          - button "Switch Language" [ref=f2e60] [cursor=pointer]
+          - combobox [ref=f2e64] [cursor=pointer]:
+            - option "English (EN)" [selected]
+            - option "فارسی (FA)"
+            - option "پښتو (PS)"
+        - generic "Admin User (Super Admin)" [ref=f2e66]: AU
+    - main [ref=f2e67]:
+      - generic [ref=f2e68]:
+        - generic [ref=f2e69]:
+          - generic [ref=f2e70]:
+            - generic [ref=f2e71]: Audit center
+            - heading "Activity history" [level=1] [ref=f2e72]
+            - paragraph [ref=f2e76]: Review the people, systems, and security events that changed your workspace.
+          - generic [ref=f2e77]:
+            - generic [ref=f2e78]: 0 events
+            - button "Export CSV" [ref=f2e79] [cursor=pointer]
+        - region "Activity filters" [ref=f2e83]:
+          - textbox "Search activity" [ref=f2e88]:
+            - /placeholder: Search actor, action, target, IP…
+          - generic [ref=f2e89]:
+            - combobox "Filter by actor" [ref=f2e90]:
+              - option "All actors" [selected]
+            - combobox "Filter by module" [ref=f2e91]:
+              - option "All modules" [selected]
+            - combobox "Filter by action" [ref=f2e92]:
+              - option "All actions" [selected]
+            - combobox "Filter by severity" [ref=f2e93]:
+              - option "All severity" [selected]
+              - option "Success"
+              - option "Informational"
+              - option "Warning"
+              - option "Critical"
+            - combobox "Filter by result" [ref=f2e94]:
+              - option "All results" [selected]
+              - option "Successful only"
+              - option "Failed only"
+              - option "Warnings only"
+            - textbox "Filter by IP address" [ref=f2e95]:
+              - /placeholder: IP address
+            - textbox [ref=f2e97]
+            - textbox [ref=f2e99]
+          - generic [ref=f2e100]: Showing the latest 100 recorded events
+        - generic "Loading activity" [ref=f2e104]

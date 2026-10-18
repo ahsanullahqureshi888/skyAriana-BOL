@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Import Test</title>
+    <script src="https://unpkg.com/pdfjs-dist@4.0.379/build/pdf.min.js"></script>
+</head>
+<body>
+    <h1>PDF Import Test</h1>
+    <input type="file" id="pdfFile" accept=".pdf">
+    <pre id="output"></pre>
+    
+    <script>
+        const pdfjsLib = window['pdfjs-dist/build/pdf'];
+        console.log('[v0] pdfjsLib:', pdfjsLib);
+        
+        if (pdfjsLib) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.0.379/build/pdf.worker.min.js';
+        }
+        
+        document.getElementById('pdfFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                
+                document.getElementById('output').textContent += `Pages: ${pdf.numPages}\n`;
+                
+                const page = await pdf.getPage(1);
+                const textContent = await page.getTextContent();
+                
+                const items = textContent.items.filter(item => item.str && item.str.trim());
+                document.getElementById('output').textContent += `Text items on page 1: ${items.length}\n`;
+                
+                items.slice(0, 10).forEach(item => {
+                    document.getElementById('output').textContent += `${item.str}\n`;
+                });
+                
+            } catch (error) {
+                document.getElementById('output').textContent = 'Error: ' + error.message;
+            }
+        });
+    </script>
+</body>
+</html>

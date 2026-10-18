@@ -1,6 +1,7 @@
 import '@/lib/polyfills'
 import type { Metadata, Viewport } from 'next'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import { PWARegister } from '@/components/pwa-register'
 import { ChunkErrorHandler } from '@/components/chunk-error-handler'
 import { ThemeProvider } from '@/components/theme-provider'
@@ -89,6 +90,7 @@ export default function RootLayout({
           <ChunkErrorHandler />
           {children}
           {process.env.NODE_ENV === 'production' && <Analytics />}
+          {process.env.NODE_ENV === 'production' && <SpeedInsights />}
         </ThemeProvider>
       </body>
     </html>

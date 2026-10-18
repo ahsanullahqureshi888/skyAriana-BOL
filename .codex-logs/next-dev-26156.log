@@ -1,0 +1,10 @@
+[2026-06-01T21:59:18.930Z] Starting Next dev server
+[2026-06-01T21:59:18.946Z] Next PID 29992
+▲ Next.js 16.2.0 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://0.0.0.0:3000
+✓ Ready in 865ms
+
+ GET / 200 in 1220ms (next.js: 392ms, application-code: 828ms)
+ GET / 200 in 497ms (next.js: 13ms, application-code: 484ms)
+ GET / 200 in 375ms (next.js: 6ms, application-code: 368ms)

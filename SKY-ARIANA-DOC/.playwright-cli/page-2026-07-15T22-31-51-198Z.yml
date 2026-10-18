@@ -1,0 +1,598 @@
+- generic [ref=f9e3]:
+  - complementary [ref=f9e4]:
+    - button "Expand sidebar" [ref=f9e6] [cursor=pointer]:
+      - img "Sky Ariana Logo" [ref=f9e7]
+    - navigation [ref=f9e8]:
+      - link "Dashboard" [ref=f9e9] [cursor=pointer]:
+        - /url: /
+      - link "Invoices" [ref=f9e15] [cursor=pointer]:
+        - /url: /invoices
+      - link "Customers" [ref=f9e19] [cursor=pointer]:
+        - /url: /customers
+      - link "Products & Services" [ref=f9e25] [cursor=pointer]:
+        - /url: /products
+      - link "Company Settings" [ref=f9e30] [cursor=pointer]:
+        - /url: /settings
+      - link "Backup & Restore" [ref=f9e34] [cursor=pointer]:
+        - /url: /backups
+      - link "Activity History" [ref=f9e39] [cursor=pointer]:
+        - /url: /logs
+      - link "User Management" [ref=f9e44] [cursor=pointer]:
+        - /url: /user-management
+    - button [ref=f9e49] [cursor=pointer]
+  - generic [ref=f9e53]:
+    - banner [ref=f9e54]:
+      - img "Sky Ariana & Balam Bar Baran" [ref=f9e57]
+      - generic [ref=f9e58]:
+        - generic [ref=f9e59]:
+          - button "Switch Language" [ref=f9e60] [cursor=pointer]
+          - combobox [ref=f9e64] [cursor=pointer]:
+            - option "English (EN)" [selected]
+            - option "فارسی (FA)"
+            - option "پښتو (PS)"
+        - generic "Admin User (Super Admin)" [ref=f9e66]: AU
+    - main [ref=f9e67]:
+      - generic [ref=f9e68]:
+        - generic [ref=f9e69]:
+          - generic [ref=f9e70]:
+            - generic [ref=f9e71]: Saved
+            - link [ref=f9e72] [cursor=pointer]:
+              - /url: /invoices
+            - heading "Create New Commercial Invoice" [level=2] [ref=f9e75]
+          - generic [ref=f9e76]:
+            - generic [ref=f9e77]:
+              - button "EN" [ref=f9e78]
+              - button "FA" [ref=f9e79]
+              - button "PS" [ref=f9e80]
+            - button "Save Draft" [ref=f9e81] [cursor=pointer]
+            - button "Save Invoice" [ref=f9e86] [cursor=pointer]
+        - generic [ref=f9e92]:
+          - generic [ref=f9e93]:
+            - heading "General Invoice Info" [level=3] [ref=f9e94]
+            - generic [ref=f9e96]:
+              - generic [ref=f9e97]:
+                - generic [ref=f9e98]: Invoice Number (Optional)
+                - textbox "e.g. SA-2026-0001 (auto-gens if empty)" [ref=f9e99]
+              - generic [ref=f9e100]:
+                - generic [ref=f9e101]: Currency
+                - combobox [ref=f9e102] [cursor=pointer]:
+                  - option "USD ($)" [selected]
+                  - option "AFN (؋)"
+                  - option "IRR (ریال)"
+            - generic [ref=f9e103]:
+              - generic [ref=f9e104]:
+                - generic [ref=f9e105]: Invoice Date
+                - textbox [ref=f9e106]: 2026-07-15
+              - generic [ref=f9e107]:
+                - generic [ref=f9e108]: Due Date
+                - textbox [ref=f9e109]: 2026-08-14
+          - generic [ref=f9e110]:
+            - generic [ref=f9e111]:
+              - heading "Invoice Template" [level=3] [ref=f9e112]
+              - paragraph [ref=f9e113]: Changing the design does not change invoice data or calculations.
+            - generic [ref=f9e114]:
+              - button [ref=f9e115] [cursor=pointer]:
+                - generic:
+                  - strong: Premium Afghan Heritage
+                  - generic: Banknote-inspired Afghan landmarks with navy and muted-gold detailing.
+              - button [ref=f9e120] [cursor=pointer]:
+                - generic:
+                  - strong: Premium Afghan Glass
+                  - generic: Modern pale-blue glass design with refined gold accents.
+                - generic [ref=f9e125]: Selected
+              - button [ref=f9e128] [cursor=pointer]:
+                - generic:
+                  - strong: Classic Afghan Blue & Gold
+                  - generic: Formal compact layout with royal-blue headers and gold rules.
+          - generic [ref=f9e133]:
+            - group [ref=f9e134]:
+              - generic "Shipper / Seller / Exporter Saved" [ref=f9e135] [cursor=pointer]:
+                - strong: Shipper / Seller / Exporter
+                - generic [ref=f9e141]: Saved
+              - generic [ref=f9e144]:
+                - generic [ref=f9e145]:
+                  - generic [ref=f9e146]:
+                    - generic [ref=f9e147]: Select Existing Shipper
+                    - combobox "Select Existing Shipper" [ref=f9e148]:
+                      - option "-- Manual invoice details --" [selected]
+                  - generic [ref=f9e149] [cursor=pointer]:
+                    - checkbox "Use Company Information as Shipper" [checked] [ref=f9e150]
+                    - generic [ref=f9e151]: Use Company Information as Shipper
+                - generic [ref=f9e152]:
+                  - generic [ref=f9e153]:
+                    - generic [ref=f9e154]: Company Name *
+                    - textbox "Company Name *" [ref=f9e155]:
+                      - /placeholder: Enter company name
+                  - generic [ref=f9e156]:
+                    - generic [ref=f9e157]: Contact Person
+                    - textbox "Contact Person" [ref=f9e158]:
+                      - /placeholder: Enter contact person
+                  - generic [ref=f9e159]:
+                    - generic [ref=f9e160]: Licence Number
+                    - textbox "Licence Number" [ref=f9e161]:
+                      - /placeholder: e.g. LIC-2401
+                  - generic [ref=f9e162]:
+                    - generic [ref=f9e163]: Tax / Registration Number
+                    - textbox "Tax / Registration Number" [ref=f9e164]:
+                      - /placeholder: e.g. GST / VAT / TRN
+                  - generic [ref=f9e165]:
+                    - generic [ref=f9e166]: Address Line 1 *
+                    - textbox "Address Line 1 *" [ref=f9e167]:
+                      - /placeholder: Street, building, market
+                  - generic [ref=f9e168]:
+                    - generic [ref=f9e169]: Address Line 2
+                    - textbox "Address Line 2" [ref=f9e170]:
+                      - /placeholder: Office, floor, district
+                  - generic [ref=f9e171]:
+                    - generic [ref=f9e172]: City
+                    - textbox "City" [ref=f9e173]
+                  - generic [ref=f9e174]:
+                    - generic [ref=f9e175]: Province / State
+                    - textbox "Province / State" [ref=f9e176]:
+                      - /placeholder: Province or state
+                  - generic [ref=f9e177]:
+                    - generic [ref=f9e178]: Postal Code
+                    - textbox "Postal Code" [ref=f9e179]:
+                      - /placeholder: Postal code
+                  - generic [ref=f9e180]:
+                    - generic [ref=f9e181]: Country *
+                    - textbox "Country *" [ref=f9e182]:
+                      - /placeholder: Country
+                  - generic [ref=f9e183]:
+                    - generic [ref=f9e184]: Phone Number
+                    - textbox "Phone Number" [ref=f9e185]:
+                      - /placeholder: Primary phone
+                  - generic [ref=f9e186]:
+                    - generic [ref=f9e187]: Alternative Phone
+                    - textbox "Alternative Phone" [ref=f9e188]:
+                      - /placeholder: Alternative phone
+                  - generic [ref=f9e189]:
+                    - generic [ref=f9e190]: Email Address
+                    - textbox "Email Address" [ref=f9e191]:
+                      - /placeholder: name@company.com
+                  - generic [ref=f9e192]:
+                    - generic [ref=f9e193]: Website
+                    - textbox "Website" [ref=f9e194]:
+                      - /placeholder: https://company.com
+                - generic [ref=f9e195]:
+                  - button "Save Shipper Details" [ref=f9e196] [cursor=pointer]
+                  - button "Save as New Contact" [ref=f9e201] [cursor=pointer]
+                  - button "Update Existing Contact" [disabled] [ref=f9e205]
+            - group [ref=f9e209]:
+              - generic "Consignee / Buyer / Importer Saved" [ref=f9e210] [cursor=pointer]:
+                - strong: Consignee / Buyer / Importer
+                - generic [ref=f9e216]: Saved
+              - generic [ref=f9e219]:
+                - generic [ref=f9e221]:
+                  - generic [ref=f9e222]: Select Existing Consignee / Buyer
+                  - combobox "Select Existing Consignee / Buyer" [ref=f9e223]:
+                    - option "-- Manual invoice details --" [selected]
+                - generic [ref=f9e224]:
+                  - generic [ref=f9e225]:
+                    - generic [ref=f9e226]: Company Name *
+                    - textbox "Company Name *" [ref=f9e227]:
+                      - /placeholder: Enter company name
+                  - generic [ref=f9e228]:
+                    - generic [ref=f9e229]: Contact Person
+                    - textbox "Contact Person" [ref=f9e230]:
+                      - /placeholder: Enter contact person
+                  - generic [ref=f9e231]:
+                    - generic [ref=f9e232]: Licence Number
+                    - textbox "Licence Number" [ref=f9e233]:
+                      - /placeholder: e.g. LIC-2401
+                  - generic [ref=f9e234]:
+                    - generic [ref=f9e235]: Tax / Registration Number
+                    - textbox "Tax / Registration Number" [ref=f9e236]:
+                      - /placeholder: e.g. GST / VAT / TRN
+                  - generic [ref=f9e237]:
+                    - generic [ref=f9e238]: Address Line 1 *
+                    - textbox "Address Line 1 *" [ref=f9e239]:
+                      - /placeholder: Street, building, market
+                  - generic [ref=f9e240]:
+                    - generic [ref=f9e241]: Address Line 2
+                    - textbox "Address Line 2" [ref=f9e242]:
+                      - /placeholder: Office, floor, district
+                  - generic [ref=f9e243]:
+                    - generic [ref=f9e244]: City
+                    - textbox "City" [ref=f9e245]
+                  - generic [ref=f9e246]:
+                    - generic [ref=f9e247]: Province / State
+                    - textbox "Province / State" [ref=f9e248]:
+                      - /placeholder: Province or state
+                  - generic [ref=f9e249]:
+                    - generic [ref=f9e250]: Postal Code
+                    - textbox "Postal Code" [ref=f9e251]:
+                      - /placeholder: Postal code
+                  - generic [ref=f9e252]:
+                    - generic [ref=f9e253]: Country *
+                    - textbox "Country *" [ref=f9e254]:
+                      - /placeholder: Country
+                  - generic [ref=f9e255]:
+                    - generic [ref=f9e256]: Phone Number
+                    - textbox "Phone Number" [ref=f9e257]:
+                      - /placeholder: Primary phone
+                  - generic [ref=f9e258]:
+                    - generic [ref=f9e259]: Alternative Phone
+                    - textbox "Alternative Phone" [ref=f9e260]:
+                      - /placeholder: Alternative phone
+                  - generic [ref=f9e261]:
+                    - generic [ref=f9e262]: Email Address
+                    - textbox "Email Address" [ref=f9e263]:
+                      - /placeholder: name@company.com
+                  - generic [ref=f9e264]:
+                    - generic [ref=f9e265]: Website
+                    - textbox "Website" [ref=f9e266]:
+                      - /placeholder: https://company.com
+                - generic [ref=f9e267]:
+                  - button "Save Consignee Details" [ref=f9e268] [cursor=pointer]
+                  - button "Save as New Contact" [ref=f9e273] [cursor=pointer]
+                  - button "Update Existing Contact" [disabled] [ref=f9e277]
+            - group [ref=f9e281]:
+              - generic "Notify Party Optional Saved" [ref=f9e282] [cursor=pointer]:
+                - strong: Notify Party
+                - generic [ref=f9e288]: Optional
+                - generic [ref=f9e289]: Saved
+              - generic [ref=f9e292]:
+                - generic [ref=f9e293]:
+                  - generic [ref=f9e294]:
+                    - generic [ref=f9e295]: Select Existing Notify Party
+                    - combobox "Select Existing Notify Party" [ref=f9e296]:
+                      - option "-- Manual invoice details --" [selected]
+                  - generic [ref=f9e297] [cursor=pointer]:
+                    - checkbox "Notify Party is same as Consignee" [ref=f9e298]
+                    - generic [ref=f9e299]: Notify Party is same as Consignee
+                - generic [ref=f9e300]:
+                  - generic [ref=f9e301]:
+                    - generic [ref=f9e302]: Company Name
+                    - textbox "Company Name" [ref=f9e303]:
+                      - /placeholder: Enter company name
+                  - generic [ref=f9e304]:
+                    - generic [ref=f9e305]: Contact Person
+                    - textbox "Contact Person" [ref=f9e306]:
+                      - /placeholder: Enter contact person
+                  - generic [ref=f9e307]:
+                    - generic [ref=f9e308]: Licence Number
+                    - textbox "Licence Number" [ref=f9e309]:
+                      - /placeholder: e.g. LIC-2401
+                  - generic [ref=f9e310]:
+                    - generic [ref=f9e311]: Tax / Registration Number
+                    - textbox "Tax / Registration Number" [ref=f9e312]:
+                      - /placeholder: e.g. GST / VAT / TRN
+                  - generic [ref=f9e313]:
+                    - generic [ref=f9e314]: Address Line 1
+                    - textbox "Address Line 1" [ref=f9e315]:
+                      - /placeholder: Street, building, market
+                  - generic [ref=f9e316]:
+                    - generic [ref=f9e317]: Address Line 2
+                    - textbox "Address Line 2" [ref=f9e318]:
+                      - /placeholder: Office, floor, district
+                  - generic [ref=f9e319]:
+                    - generic [ref=f9e320]: City
+                    - textbox "City" [ref=f9e321]
+                  - generic [ref=f9e322]:
+                    - generic [ref=f9e323]: Province / State
+                    - textbox "Province / State" [ref=f9e324]:
+                      - /placeholder: Province or state
+                  - generic [ref=f9e325]:
+                    - generic [ref=f9e326]: Postal Code
+                    - textbox "Postal Code" [ref=f9e327]:
+                      - /placeholder: Postal code
+                  - generic [ref=f9e328]:
+                    - generic [ref=f9e329]: Country
+                    - textbox "Country" [ref=f9e330]
+                  - generic [ref=f9e331]:
+                    - generic [ref=f9e332]: Phone Number
+                    - textbox "Phone Number" [ref=f9e333]:
+                      - /placeholder: Primary phone
+                  - generic [ref=f9e334]:
+                    - generic [ref=f9e335]: Alternative Phone
+                    - textbox "Alternative Phone" [ref=f9e336]:
+                      - /placeholder: Alternative phone
+                  - generic [ref=f9e337]:
+                    - generic [ref=f9e338]: Email Address
+                    - textbox "Email Address" [ref=f9e339]:
+                      - /placeholder: name@company.com
+                  - generic [ref=f9e340]:
+                    - generic [ref=f9e341]: Website
+                    - textbox "Website" [ref=f9e342]:
+                      - /placeholder: https://company.com
+                  - generic [ref=f9e343]:
+                    - generic [ref=f9e344]: Account Number
+                    - textbox "Account Number" [ref=f9e345]:
+                      - /placeholder: Bank account number
+                  - generic [ref=f9e346]:
+                    - generic [ref=f9e347]: Bank Name
+                    - textbox "Bank Name" [ref=f9e348]:
+                      - /placeholder: Bank name
+                  - generic [ref=f9e349]:
+                    - generic [ref=f9e350]: IBAN
+                    - textbox "IBAN" [ref=f9e351]:
+                      - /placeholder: International bank account number
+                  - generic [ref=f9e352]:
+                    - generic [ref=f9e353]: SWIFT / BIC
+                    - textbox "SWIFT / BIC" [ref=f9e354]:
+                      - /placeholder: 8 or 11 characters
+                  - generic [ref=f9e355]:
+                    - generic [ref=f9e356]: Routing Code
+                    - textbox "Routing Code" [ref=f9e357]:
+                      - /placeholder: Routing code
+                  - generic [ref=f9e358]:
+                    - generic [ref=f9e359]: Bank Address
+                    - textbox "Bank Address" [ref=f9e360]:
+                      - /placeholder: Branch or bank address
+                  - generic [ref=f9e361]:
+                    - generic [ref=f9e362]: Notes
+                    - textbox "Notes" [ref=f9e363]:
+                      - /placeholder: Optional Notify Party notes
+                - generic [ref=f9e364]:
+                  - button "Save Notify Party Details" [ref=f9e365] [cursor=pointer]
+                  - button "Save as New Contact" [ref=f9e370] [cursor=pointer]
+                  - button "Update Existing Contact" [disabled] [ref=f9e374]
+                  - button "Clear Notify Party" [ref=f9e378] [cursor=pointer]
+          - generic [ref=f9e382]:
+            - heading "Shipment & Logistics" [level=3] [ref=f9e383]
+            - generic [ref=f9e384]:
+              - generic [ref=f9e385]:
+                - generic [ref=f9e386]: Vessel / Plane Name
+                - textbox "e.g. Kam Air Cargo / Voyage" [ref=f9e387]
+              - generic [ref=f9e388]:
+                - generic [ref=f9e389]: Voyage No
+                - textbox [ref=f9e390]
+            - generic [ref=f9e391]:
+              - generic [ref=f9e392]:
+                - generic [ref=f9e393]: Port of Loading
+                - textbox [ref=f9e394]
+              - generic [ref=f9e395]:
+                - generic [ref=f9e396]: Port of Discharge
+                - textbox [ref=f9e397]
+            - generic [ref=f9e398]:
+              - generic [ref=f9e399]:
+                - generic [ref=f9e400]: Incoterms
+                - combobox [ref=f9e401] [cursor=pointer]:
+                  - option "CIP" [selected]
+                  - option "FOB"
+                  - option "CIF"
+                  - option "EXW"
+                  - option "CFR"
+                  - option "DDP"
+              - generic [ref=f9e402]:
+                - generic [ref=f9e403]: Booking Number
+                - textbox [ref=f9e404]
+              - generic [ref=f9e405]:
+                - generic [ref=f9e406]: B/L / AWB No
+                - textbox [ref=f9e407]
+            - generic [ref=f9e408]:
+              - generic [ref=f9e409]:
+                - generic [ref=f9e410]: Container Number
+                - textbox [ref=f9e411]
+              - generic [ref=f9e412]:
+                - generic [ref=f9e413]: Seal Number
+                - textbox [ref=f9e414]
+              - generic [ref=f9e415]:
+                - generic [ref=f9e416]: Commodity
+                - textbox [ref=f9e417]
+            - generic [ref=f9e418]:
+              - generic [ref=f9e419]:
+                - generic [ref=f9e420]: Gross Wt
+                - spinbutton [ref=f9e421]
+              - generic [ref=f9e422]:
+                - generic [ref=f9e423]: Net Wt
+                - spinbutton [ref=f9e424]
+              - generic [ref=f9e425]:
+                - generic [ref=f9e426]: Pkg Count
+                - spinbutton [ref=f9e427]
+              - generic [ref=f9e428]:
+                - generic [ref=f9e429]: Pkg Type
+                - textbox "e.g. BAGS" [ref=f9e430]
+          - region [ref=f9e431]:
+            - generic [ref=f9e432]:
+              - generic [ref=f9e433]:
+                - text: Customs-ready detail
+                - heading "Commercial Line Items" [level=3] [ref=f9e434]
+                - paragraph [ref=f9e435]: Add product, packaging, weight and customs information.
+              - generic [ref=f9e436]:
+                - generic [ref=f9e437]:
+                  - generic [ref=f9e438]: 1 line item
+                  - strong [ref=f9e439]: USD 0.00
+                - button "Add Line Item" [ref=f9e440] [cursor=pointer]
+            - article [ref=f9e444]:
+              - generic [ref=f9e445]:
+                - generic [ref=f9e446]:
+                  - button "Drag item 01 to reorder" [ref=f9e447]
+                  - generic [ref=f9e455]:
+                    - generic [ref=f9e456]: Commercial line item
+                    - heading "Item 01" [level=4] [ref=f9e457]
+                - generic [ref=f9e458]:
+                  - button "Collapse line item" [expanded] [ref=f9e459] [cursor=pointer]
+                  - button "Move item up" [disabled] [ref=f9e462]
+                  - button "Move item down" [disabled] [ref=f9e465]
+                  - button "Duplicate line item" [ref=f9e468] [cursor=pointer]
+                  - button "Delete line item" [ref=f9e472] [cursor=pointer]
+              - generic [ref=f9e476]:
+                - generic [ref=f9e477]:
+                  - generic [ref=f9e484]:
+                    - heading "Product details" [level=5] [ref=f9e485]
+                    - paragraph [ref=f9e486]: Catalog matching stays optional; every value remains editable.
+                  - generic [ref=f9e487]:
+                    - generic [ref=f9e488]:
+                      - generic [ref=f9e489]:
+                        - text: Product Autofill (Optional)
+                        - generic "Search product name, variety, grade, category or HS code." [ref=f9e490]:
+                          - img "Search product name, variety, grade, category or HS code." [ref=f9e491]
+                      - combobox "Product Autofill (Optional) Search product name, variety, grade, category or HS code." [ref=f9e495]
+                    - generic [ref=f9e496]:
+                      - generic [ref=f9e497]:
+                        - text: Custom HS Code
+                        - generic "Use digits and dots, for example 0804.20.10." [ref=f9e498]:
+                          - img "Use digits and dots, for example 0804.20.10." [ref=f9e499]
+                      - textbox "Custom HS Code Use digits and dots, for example 0804.20.10." [ref=f9e501]:
+                        - /placeholder: 0804.20.10
+                    - generic [ref=f9e502]:
+                      - generic [ref=f9e503]: Description / Product Name
+                      - textbox "Description / Product Name" [ref=f9e504]:
+                        - /placeholder: e.g. DRY FIGS
+                    - generic [ref=f9e505]:
+                      - generic [ref=f9e506]: Variety
+                      - textbox "Variety" [ref=f9e507]:
+                        - /placeholder: e.g. Afghan Dry Figs
+                    - generic [ref=f9e508]:
+                      - generic [ref=f9e509]: Grade
+                      - combobox "Grade" [ref=f9e510] [cursor=pointer]:
+                        - option "Select grade" [selected]
+                        - option "Custom Grade"
+                - generic [ref=f9e511]:
+                  - generic [ref=f9e518]:
+                    - heading "Quantity & packaging" [level=5] [ref=f9e519]
+                    - paragraph [ref=f9e520]: Keep trade units and package counts separate from physical weight.
+                  - generic [ref=f9e521]:
+                    - generic [ref=f9e522]:
+                      - generic [ref=f9e523]: Quantity
+                      - spinbutton "Quantity" [ref=f9e524]: "1"
+                    - generic [ref=f9e525]:
+                      - generic [ref=f9e526]: Quantity Unit
+                      - combobox "Quantity Unit" [ref=f9e527] [cursor=pointer]:
+                        - option "PCS" [selected]
+                        - option "CTN"
+                        - option "BAG"
+                        - option "BOX"
+                        - option "SACK"
+                        - option "PALLET"
+                        - option "DRUM"
+                        - option "BALE"
+                        - option "PACKAGE"
+                        - option "CASE"
+                        - option "BULK"
+                    - generic [ref=f9e528]:
+                      - generic [ref=f9e529]: Number of Packages
+                      - spinbutton "Number of Packages" [ref=f9e530]: "0"
+                    - generic [ref=f9e531]:
+                      - generic [ref=f9e532]: Package Type
+                      - combobox "Package Type" [ref=f9e533] [cursor=pointer]:
+                        - option "Select package" [selected]
+                        - option "Carton"
+                        - option "Box"
+                        - option "Bag"
+                        - option "Sack"
+                        - option "Vacuum Bag"
+                        - option "Plastic Bag"
+                        - option "Jute Bag"
+                        - option "Wooden Case"
+                        - option "Tin"
+                        - option "Drum"
+                        - option "Pallet"
+                        - option "Bulk"
+                        - option "Custom"
+                - generic [ref=f9e534]:
+                  - generic [ref=f9e541]:
+                    - heading "Weight" [level=5] [ref=f9e542]
+                    - paragraph [ref=f9e543]: Gross weight is checked against net weight when the field loses focus.
+                  - generic [ref=f9e544]:
+                    - generic [ref=f9e545]:
+                      - generic [ref=f9e546]:
+                        - text: Net Weight
+                        - generic "Net product weight, excluding packaging." [ref=f9e547]:
+                          - img "Net product weight, excluding packaging." [ref=f9e548]
+                      - spinbutton "Net Weight Net product weight, excluding packaging." [ref=f9e550]: "0"
+                    - generic [ref=f9e551]:
+                      - generic [ref=f9e552]:
+                        - text: Gross Weight
+                        - generic "Total shipped weight including packaging." [ref=f9e553]:
+                          - img "Total shipped weight including packaging." [ref=f9e554]
+                      - spinbutton "Gross Weight Total shipped weight including packaging." [ref=f9e556]: "0"
+                    - generic [ref=f9e557]:
+                      - generic [ref=f9e558]: Weight Unit
+                      - combobox "Weight Unit" [ref=f9e559] [cursor=pointer]:
+                        - option "KG" [selected]
+                        - option "MT"
+                        - option "G"
+                        - option "LB"
+                        - option "TON"
+                - generic [ref=f9e560]:
+                  - generic [ref=f9e567]:
+                    - heading "Pricing" [level=5] [ref=f9e568]
+                    - paragraph [ref=f9e569]: Choose the basis used to calculate the line total.
+                  - generic [ref=f9e570]:
+                    - generic [ref=f9e571]:
+                      - generic [ref=f9e572]: Unit Price
+                      - spinbutton "Unit Price" [ref=f9e573]: "0"
+                    - generic [ref=f9e574]:
+                      - generic [ref=f9e575]: Currency
+                      - combobox "Currency" [ref=f9e576] [cursor=pointer]:
+                        - option "USD" [selected]
+                        - option "AFN"
+                        - option "EUR"
+                        - option "GBP"
+                        - option "IRR"
+                    - generic [ref=f9e577]:
+                      - generic [ref=f9e578]:
+                        - text: Price Basis
+                        - generic "Per KG, MT and LB use net weight. Per Piece, Carton, Bag and Package use their matching count." [ref=f9e579]:
+                          - img "Per KG, MT and LB use net weight. Per Piece, Carton, Bag and Package use their matching count." [ref=f9e580]
+                      - combobox "Price Basis Per KG, MT and LB use net weight. Per Piece, Carton, Bag and Package use their matching count." [ref=f9e582] [cursor=pointer]:
+                        - option "Per KG" [selected]
+                        - option "Per MT"
+                        - option "Per LB"
+                        - option "Per Piece"
+                        - option "Per Carton"
+                        - option "Per Bag"
+                        - option "Per Package"
+                    - generic [ref=f9e583]:
+                      - generic [ref=f9e584]: Calculated total amount
+                      - strong [ref=f9e585]: USD 0.00
+                      - generic [ref=f9e586]: 0 KG x USD 0.00 (Per KG) = USD 0.00
+                - group [ref=f9e587]:
+                  - generic "+ Additional details Country, lot and remarks" [ref=f9e588] [cursor=pointer]:
+                    - text: +
+                    - generic [ref=f9e589]: Additional details
+                    - generic [ref=f9e590]: Country, lot and remarks
+              - generic [ref=f9e591]:
+                - generic [ref=f9e592]:
+                  - generic [ref=f9e593]: Net
+                  - generic [ref=f9e594]: 0 KG
+                - generic [ref=f9e595]:
+                  - generic [ref=f9e596]: Gross
+                  - generic [ref=f9e597]: 0 KG
+                - generic [ref=f9e598]:
+                  - generic [ref=f9e599]: Line total
+                  - generic [ref=f9e600]: USD 0.00
+          - generic [ref=f9e601]:
+            - heading "Adjustments & Fees (USD)" [level=3] [ref=f9e602]
+            - generic [ref=f9e603]:
+              - generic [ref=f9e604]:
+                - generic [ref=f9e605]: Freight Rate / Unit
+                - spinbutton [ref=f9e606]: "0"
+                - paragraph [ref=f9e607]: "Calculated freight: USD 0.00"
+              - generic [ref=f9e608]:
+                - generic [ref=f9e609]: Transit Insurance
+                - spinbutton [ref=f9e610]: "0"
+              - generic [ref=f9e611]:
+                - generic [ref=f9e612]: Other Charges
+                - spinbutton [ref=f9e613]: "0"
+              - generic [ref=f9e614]:
+                - generic [ref=f9e615]: Discount (-)
+                - spinbutton [ref=f9e616]: "0"
+              - generic [ref=f9e617]:
+                - generic [ref=f9e618]: Tax / VAT (+)
+                - spinbutton [ref=f9e619]: "0"
+            - generic [ref=f9e620]:
+              - heading "Additional Charges" [level=4] [ref=f9e621]
+              - generic [ref=f9e622]:
+                - generic:
+                  - generic: Documentation Fees
+                  - spinbutton [ref=f9e623]
+                - generic:
+                  - generic: Customs Clearance Fees
+                  - spinbutton [ref=f9e624]
+              - generic [ref=f9e625]:
+                - generic:
+                  - generic: Additional Fees Total
+                  - strong [ref=f9e626]: USD 0.00
+                - generic:
+                  - generic: Invoice Grand Total
+                  - strong [ref=f9e627]: USD 0.00
+              - generic [ref=f9e628]:
+                - generic [ref=f9e629]: Amount in Words
+                - strong [ref=f9e630]: ZERO US DOLLARS ONLY
+            - generic [ref=f9e631]:
+              - generic [ref=f9e632]: Special Notes / Declarations
+              - textbox "e.g. Air-freight charges only. Commercial value of goods documented separately." [ref=f9e633]
