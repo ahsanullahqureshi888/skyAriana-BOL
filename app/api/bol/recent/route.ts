@@ -3,6 +3,9 @@ import * as localStorage from "@/lib/services/local-storage-service"
 import { getFastApiBaseUrl, isFastApiHealthy } from "@/lib/api/backend-url"
 import { isMeaningfulBOL, parseBolSeq, toLightweightBol, enrichBolListWithLocal } from "@/lib/utils/bol-filters"
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const limitParam = parseInt(searchParams.get("limit") || "6", 10)
@@ -21,9 +24,10 @@ export async function GET(request: Request) {
         const json = await fastRes.json()
         if (json && Array.isArray(json.data) && json.data.length > 0) {
           const enriched = enrichBolListWithLocal(json.data, localBols)
+          const activeOnly = enriched.filter((b: any) => !b.isArchived && b.status !== "archived")
           return NextResponse.json({
             success: true,
-            data: enriched.map(toLightweightBol),
+            data: activeOnly.map(toLightweightBol),
             source: "fastapi-sqlite",
           })
         }
@@ -37,7 +41,7 @@ export async function GET(request: Request) {
   try {
     const localBols = await localStorage.getAllLocalBOLs()
     const valid = localBols
-      .filter(isMeaningfulBOL)
+      .filter((b: any) => isMeaningfulBOL(b) && !b.isArchived && b.status !== "archived")
       .sort((a, b) => {
         const dateA = new Date(a.created_at || a.updated_at || a.issue_date || 0).getTime()
         const dateB = new Date(b.created_at || b.updated_at || b.issue_date || 0).getTime()

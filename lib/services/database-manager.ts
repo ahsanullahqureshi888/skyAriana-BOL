@@ -49,9 +49,9 @@ export async function getDatabaseHealth(): Promise<DatabaseHealthReport> {
 
   for (const item of DATABASE_FILES) {
     const filePath = getDataPath(item.file)
-    const tmpPath = path.join(os.tmpdir(), item.file)
+    const tmpPath = path.join(/*turbopackIgnore: true*/ os.tmpdir(), item.file)
 
-    let activePath = fs.existsSync(filePath) ? filePath : (fs.existsSync(tmpPath) ? tmpPath : "")
+    let activePath = fs.existsSync(filePath) ? filePath : (fs.existsSync(/*turbopackIgnore: true*/ tmpPath) ? tmpPath : "")
     let count = 0
     let size = 0
     let mtime = "N/A"

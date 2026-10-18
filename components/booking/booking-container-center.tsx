@@ -151,3 +151,5 @@ export function BookingContainerCenter() {
     </div>
   )
 }
+
+export default BookingContainerCenter

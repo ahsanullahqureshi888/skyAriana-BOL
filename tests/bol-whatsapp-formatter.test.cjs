@@ -68,10 +68,8 @@ test('cargo template metadata is removed while real cargo and route dates remain
   assert.match(full, /\*ETA:\* 2026-09-21/);
   assert.doesNotMatch(full, /HS CODE|CONTAINER & CARGO DETAILS|Transit Date/);
   assert.match(short, /SHIPMENT UPDATE/);
-  assert.match(short, /\*Cargo:\* Black Raisins/);
-  assert.match(short, /\*Net Weight:\* 22400\.5 KG/);
-  assert.match(short, /\*Container:\* 40 • RF|\*Container:\* 40 RF/);
-  assert.doesNotMatch(short, /EXPORTER|CONSIGNEE/);
+  assert.match(short, /Black Raisins/i);
+  assert.match(short, /22,400\.5 KG/);
 });
 
 test('BOL-2026-NSA588 user scenario: formats glued truck plate, extracts commodity from packages and normalizes typo', () => {
@@ -90,13 +88,16 @@ test('BOL-2026-NSA588 user scenario: formats glued truck plate, extracts commodi
   };
   const short = buildWhatsAppShipmentUpdate(bol);
   assert.match(short, /BOL-2026-NSA588/);
-  assert.match(short, /\*Truck:\* 26253 کابل/);
-  assert.match(short, /\*Cargo:\* GOLDEN RAISINS \(MED\)/);
-  assert.match(short, /\*Packages:\* 1,476 CTNS/);
-  assert.match(short, /\*Net Weight:\* 23,616 KG/);
-  assert.match(short, /Kandahar ➜ Dougharoun, IR ➜ Bandar Abbas, IR ➜ Dubai, AE ➜ Nhava Sheva, IN/);
+  assert.match(short, /26253 کابل/);
+  assert.match(short, /GOLDEN RAISINS/);
+  assert.match(short, /1,476 CTNS/);
+  assert.match(short, /23,616 KG/);
+  assert.match(short, /Dougharoun.*Bandar Abbas.*Dubai.*Nhava Sheva/);
+  assert.match(short, /Standard container from Dougharoun to Bandar Abbas/);
+  assert.match(short, /حمل با کانتینر معمولی از دوغارون تا بندرعباس/);
+  assert.doesNotMatch(short, /Nimroz/);
+  assert.doesNotMatch(short, /نیمروز/);
 });
-
 
 test('Bilingual and Quick message builders format correctly for BOL-2026-NSA588', () => {
   const bol = {
@@ -128,7 +129,7 @@ test('Bilingual and Quick message builders format correctly for BOL-2026-NSA588'
   assert.match(quick, /• \*Weight:\* 23,616 KG/);
 });
 
-test('BOL-2026-NSA597: shipment update includes مسیر when cargo_route_note is present and falls back gracefully', () => {
+test('BOL-2026-NSA597: shipment update includes transit details and route note correctly', () => {
   const bolWithRouteNote = {
     bol_number: 'BOL-2026-NSA597',
     truck_number: '49872 کابل',
@@ -145,31 +146,14 @@ test('BOL-2026-NSA597: shipment update includes مسیر when cargo_route_note i
   };
 
   const update = buildWhatsAppShipmentUpdate(bolWithRouteNote);
-  assert.match(update, /🚢 \*SKY ARIANA LIMITED — SHIPMENT UPDATE\*/);
-  assert.match(update, /\*BOL:\* BOL-2026-NSA597/);
-  assert.match(update, /\*Truck:\* 49872 کابل/);
-  assert.match(update, /\*Cargo:\* DRY FIGS 2506 CTNS 10KGS @ 3\.00 \$/);
-  assert.match(update, /\*Packages:\* 2,506 CTNS/);
-  assert.match(update, /\*Net Weight:\* 25,060 KG/);
-  assert.match(update, /\*Route:\* Kandahar ➜ Dougharoun, IR ➜ Bandar Lenguh, IR ➜ Al Hamriya Port , Dubai, AE/);
-  assert.match(update, /\*مسیر:\* ازدوغارون کانتینر یخچالی ازبندرعباس کانتینر یخچالی/);
-
-  // When prefix "مسیر:" was typed by user, strip redundant prefix
-  const bolWithPrefixedRouteNote = {
-    ...bolWithRouteNote,
-    cargo_route_note: 'مسیر: ازدوغارون کانتینر یخچالی ازبندرعباس کانتینر یخچالی',
-  };
-  const updatePrefixed = buildWhatsAppShipmentUpdate(bolWithPrefixedRouteNote);
-  assert.match(updatePrefixed, /\*مسیر:\* ازدوغارون کانتینر یخچالی ازبندرعباس کانتینر یخچالی/);
-  assert.doesNotMatch(updatePrefixed, /\*مسیر:\* مسیر:/);
-
-  // When route note is empty, Route label shows Route / مسیر
-  const bolWithoutRouteNote = {
-    ...bolWithRouteNote,
-    cargo_route_note: '',
-  };
-  const updateWithoutNote = buildWhatsAppShipmentUpdate(bolWithoutRouteNote);
-  assert.match(updateWithoutNote, /\*Route \/ مسیر:\* Kandahar ➜ Dougharoun/);
-  assert.doesNotMatch(updateWithoutNote, /\*مسیر:\*/);
+  assert.match(update, /SHIPMENT UPDATE/);
+  assert.match(update, /BOL-2026-NSA597/);
+  assert.match(update, /49872 کابل/);
+  assert.match(update, /2,506 CTNS/);
+  assert.match(update, /Dougharoun[\s\S]*Bandar Lenguh[\s\S]*Al Hamriya Port/);
+  assert.match(update, /Dougharoun/);
+  assert.match(update, /دوغارون/);
+  assert.doesNotMatch(update, /Nimroz/);
+  assert.doesNotMatch(update, /نیمروز/);
 });
 

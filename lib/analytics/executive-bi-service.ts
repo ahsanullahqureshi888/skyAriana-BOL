@@ -35,6 +35,7 @@ import {
 } from "@/lib/types/executive-bi"
 import { KPI_REGISTRY, formatKpiValue, computeSafePercentageChange } from "./kpi-registry"
 import { DEFAULT_AFN_USD_RATE } from "@/lib/services/currency-service"
+import { parseWeight, parsePackages, parseMoney } from "@/lib/reports/parsers"
 
 const SHIPMENTS_FILE = getDataPath(".local-shipments.json")
 const BOLS_FILE = getDataPath(".local-bols.json")
@@ -288,13 +289,13 @@ export async function getExecutiveBiData(
         mode: (item.transport_mode || item.mode || "road").toLowerCase(),
         status: (item.status || "IN_TRANSIT").toUpperCase(),
         cargo_description: item.cargo_description || item.commodity || "General Cargo",
-        packages_count: Number(item.number_of_packages || item.package_count || item.cartons || 0),
-        gross_weight: Number(item.gross_weight || item.weight || 0),
-        net_weight: Number(item.net_weight || 0),
+        packages_count: parsePackages(item.number_of_packages || item.numberOfPackages || item.package_count || item.cartons || 0),
+        gross_weight: parseWeight(item.gross_weight || item.grossWeight || item.weight || 0),
+        net_weight: parseWeight(item.net_weight || item.netWeight || 0),
         truck_number: item.truck_number || item.truck_no || "",
         driver_name: item.driver_name || "",
-        driver_rent: Number(item.driver_rent || item.driver_freight || 0),
-        driver_rent_currency: item.driver_rent_currency || "AFN",
+        driver_rent: parseMoney(item.driver_rent || item.driver_freight || 0).amount,
+        driver_rent_currency: item.driver_rent_currency || parseMoney(item.driver_rent || item.driver_freight || 0).currency || "AFN",
         container_number: item.container_number || item.container_no || "",
         container_type: item.container_type || "40HQ",
         issue_date: item.issue_date || item.created_at || item.date || new Date().toISOString(),
@@ -303,7 +304,7 @@ export async function getExecutiveBiData(
         border_clearance_date: item.border_clearance_date || null,
         last_tracking_update: item.updated_at || item.last_checkpoint_date || item.issue_date,
         // Canonical rule: Cargo commercial value is recorded but NEVER treated as company service revenue
-        cargo_commercial_value: Number(item.goods_value || item.customs_declared_value || 0),
+        cargo_commercial_value: parseMoney(item.goods_value || item.customs_declared_value || 0).amount,
       })
     }
   }

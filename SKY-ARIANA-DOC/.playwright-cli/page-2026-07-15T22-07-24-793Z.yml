@@ -1,0 +1,77 @@
+- generic [ref=f2e3]:
+  - complementary [ref=f2e4]:
+    - generic [ref=f2e5]:
+      - generic [ref=f2e6]:
+        - img "Sky Ariana Logo" [ref=f2e7]
+        - generic [ref=f2e8]:
+          - generic [ref=f2e9]: SKY ARIANA
+          - generic [ref=f2e10]: IMPORT & EXPORT
+      - button "Collapse sidebar" [ref=f2e11] [cursor=pointer]
+    - navigation [ref=f2e14]:
+      - link "Dashboard" [ref=f2e15] [cursor=pointer]:
+        - /url: /
+      - link "Invoices" [ref=f2e22] [cursor=pointer]:
+        - /url: /invoices
+      - link "Customers" [ref=f2e27] [cursor=pointer]:
+        - /url: /customers
+      - link "Products & Services" [ref=f2e34] [cursor=pointer]:
+        - /url: /products
+      - link "Company Settings" [ref=f2e40] [cursor=pointer]:
+        - /url: /settings
+      - link "Backup & Restore" [ref=f2e45] [cursor=pointer]:
+        - /url: /backups
+      - link "Activity History" [ref=f2e51] [cursor=pointer]:
+        - /url: /logs
+      - link "User Management" [ref=f2e57] [cursor=pointer]:
+        - /url: /user-management
+    - button "Logout" [ref=f2e63] [cursor=pointer]
+  - generic [ref=f2e68]:
+    - banner [ref=f2e69]:
+      - generic [ref=f2e71]:
+        - img "Sky Ariana & Balam Bar Baran" [ref=f2e72]
+        - generic [ref=f2e73]:
+          - text: Business Operations
+          - heading "SKY ARIANA & BALAM BAR BARAN" [level=1] [ref=f2e74]
+      - generic [ref=f2e75]:
+        - generic [ref=f2e76]:
+          - button "Switch Language" [ref=f2e77] [cursor=pointer]
+          - combobox [ref=f2e81] [cursor=pointer]:
+            - option "English (EN)" [selected]
+            - option "فارسی (FA)"
+            - option "پښتو (PS)"
+        - generic [ref=f2e82]:
+          - generic [ref=f2e83]:
+            - generic [ref=f2e84]: Admin User
+            - generic [ref=f2e85]: Super Admin
+          - generic "Admin User (Super Admin)" [ref=f2e86]: AU
+    - main [ref=f2e87]:
+      - generic [ref=f2e88]:
+        - generic [ref=f2e89]:
+          - generic [ref=f2e90]:
+            - generic [ref=f2e91]: WORKSPACE
+            - heading "Invoices" [level=1] [ref=f2e92]
+            - paragraph [ref=f2e93]: Create, search, and manage your commercial invoices.
+          - generic [ref=f2e94]:
+            - link "Export Excel" [ref=f2e95] [cursor=pointer]:
+              - /url: http://localhost:8000/api/backup/export/excel
+            - link "Create Invoice" [ref=f2e99] [cursor=pointer]:
+              - /url: /invoices/create
+        - region "Invoice filters" [ref=f2e101]:
+          - generic [ref=f2e102]:
+            - searchbox "Search invoices" [ref=f2e104]
+            - generic [ref=f2e105]:
+              - generic [ref=f2e106]: Buyer / Importer / Consignee
+              - combobox "Filter by buyer, importer, or consignee" [ref=f2e107] [cursor=pointer]:
+                - option "Loading buyers…" [selected]
+            - generic [ref=f2e108]:
+              - generic [ref=f2e109]: Status
+              - combobox "Filter by invoice status" [ref=f2e110] [cursor=pointer]:
+                - option "All" [selected]
+                - option "Paid"
+                - option "Unpaid"
+                - option "Partial"
+        - region "Invoices" [ref=f2e111]:
+          - generic [ref=f2e113]:
+            - strong [ref=f2e114]: "0"
+            - text: invoices found
+          - generic [ref=f2e115]: Loading invoices…

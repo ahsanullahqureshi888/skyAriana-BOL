@@ -1,0 +1,18 @@
+.um-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin: 0 0 15px;
+  color: #7f91ab;
+  font-size: 10px;
+}
+
+.um-pagination > div { display: flex; gap: 6px; }
+.um-pagination .um-button { min-height: 32px; padding: 0 10px; font-size: 10px; }
+.um-pagination label { display: inline-flex; align-items: center; gap: 5px; }
+.um-pagination select { min-height: 30px; padding: 0 7px; border: 1px solid #d5e1ef; border-radius: 8px; color: #526b8e; background: #fff; font-size: 10px; }
+
+@media (max-width: 620px) {
+  .um-pagination { align-items: stretch; flex-wrap: wrap; justify-content: space-between; }
+}

@@ -638,13 +638,12 @@
     }
     100% {
       opacity: 1;
-      transform: translate3d(0, 0, 0);
+      transform: none;
     }
   }
 
   .animate-page-crossfade {
-    animation: bol-page-crossfade 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    will-change: transform, opacity;
+    animation: bol-page-crossfade 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   /* Interactive tactile response on buttons & triggers */

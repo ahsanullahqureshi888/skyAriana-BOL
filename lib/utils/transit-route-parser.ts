@@ -12,6 +12,7 @@ export interface ParsedLogisticsRoute {
   legs: RouteLeg[]
   switchBlBadge: string | null
   reeferBadge: string | null
+  destinationBadge?: string | null
 }
 
 const KNOWN_TRANSIT_LOCATIONS = [
@@ -21,6 +22,7 @@ const KNOWN_TRANSIT_LOCATIONS = [
   "نیمروز",
   "دوغارون",
   "اسپین بولدک",
+  "سپین بولدک",
   "بندرعباس",
   "کراچی",
   "چابهار",
@@ -30,9 +32,12 @@ const KNOWN_TRANSIT_LOCATIONS = [
   "جبل علی",
   "دبی",
   "بندر مرسین ترکیه",
+  "مرسین ترکیه",
   "مرسین",
   "موندرا / نهاوا شیوا هند",
   "موندرا هند",
+  "نهاوا شیوا",
+  "Nhava Sheva",
   "مقصد نهایی",
   "هرات",
   "کابل",
@@ -42,7 +47,7 @@ const KNOWN_TRANSIT_LOCATIONS = [
 
 /**
  * Parses a raw logistics route directive text (such as "از نیمروز کانتینر معمولی از بندرعباس کانتینر یخچالی (با سوییچ بی ال در دبی / جبل علی)")
- * into structured multi-leg segments, container type indicators, and switch B/L instructions.
+ * into structured multi-leg segments, container type indicators, switch B/L instructions, and destinations.
  */
 export function parseLogisticsRoute(rawText?: string | null): ParsedLogisticsRoute {
   if (!rawText || typeof rawText !== "string") {
@@ -52,6 +57,7 @@ export function parseLogisticsRoute(rawText?: string | null): ParsedLogisticsRou
       legs: [],
       switchBlBadge: null,
       reeferBadge: null,
+      destinationBadge: null,
     }
   }
 
@@ -63,6 +69,7 @@ export function parseLogisticsRoute(rawText?: string | null): ParsedLogisticsRou
       legs: [],
       switchBlBadge: null,
       reeferBadge: null,
+      destinationBadge: null,
     }
   }
 
@@ -71,24 +78,39 @@ export function parseLogisticsRoute(rawText?: string | null): ParsedLogisticsRou
   const reeferMatch = text.match(/\(([^)]*(?:Reefer|یخچالی)[^)]*)\)/i)
   if (reeferMatch) {
     reeferBadge = reeferMatch[1].trim()
-  } else if (text.includes("تمام مسیر کانتینر یخچالی") || text.includes("تمام مسیر یخچالی")) {
+  } else if (text.includes("تمام مسیر کانتینر یخچالی") || text.includes("تمام مسیر یخچالی") || /full\s*way\s*reefer/i.test(text)) {
     reeferBadge = "تمام مسیر یخچالی (Full Way Reefer)"
   }
 
-  // 2. Extract Switch B/L directive: e.g. "(با سوییچ بی ال در دبی / جبل علی)" or "با سوییچ بی ال در دبی / جبل علی"
+  // 2. Extract Switch B/L directive: e.g. "(با سوییچ بی ال در دبی / جبل علی)" or "با سوییچ B/L در دبی / جبل علی"
   let switchBlBadge: string | null = null
-  const switchBlRegex = /(?:\(?\s*با\s+سوییچ\s+بی\s+ال(?:\s+در\s+([^\)\(]+))?\s*\)?)/
+  const switchBlRegex = /(?:\(?\s*(?:با\s+)?سوی[ی]?چ\s*(?:بی\s*ال|B\/L|بارنامه)(?:\s+در\s+([^\)\(,\.؛،]+))?\s*\)?)/i
   const switchMatch = text.match(switchBlRegex)
   if (switchMatch) {
     const loc = switchMatch[1] ? switchMatch[1].trim() : ""
     switchBlBadge = loc ? `سوییچ بی ال در ${loc}` : "با سوییچ بی ال"
   }
 
-  // 3. Extract multi-leg segments starting with "از ..."
-  const cleanedForLegs = text
+  // 3. Extract Destination directive: e.g. "مقصد نهایی: نهاوا شیوا (Nhava Sheva)"
+  let destinationBadge: string | null = null
+  const destMatch = text.match(/(?:مقصد\s*(?:نهایی)?[:\s]+)([^,\.؛،\n]+)/i)
+  if (destMatch) {
+    destinationBadge = destMatch[1].trim()
+  }
+
+  // 4. Extract multi-leg segments starting with "از ..."
+  let cleanedForLegs = text
+    .replace(/[🗺️📦❄️🔄📍]/g, " ")
     .replace(switchBlRegex, "")
     .replace(/\([^)]*(?:Reefer|یخچالی)[^)]*\)/gi, "")
+    .replace(/(?:و\s+)?مقصد\s*(?:نهایی)?[:\s]+[^,\.؛،\n]+/gi, "")
     .trim()
+
+  // Normalize inverted Persian phrasing: "سپس با کانتینر یخچالی از بندرعباس" -> "از بندرعباس با کانتینر یخچالی"
+  cleanedForLegs = cleanedForLegs.replace(
+    /سپس\s+((?:با\s+)?کانتینر\s+(?:یخچالی|معمولی)[^از]*)\s+از\s+([^\s،,]+)/g,
+    (_, cont, loc) => `از ${loc} ${cont}`
+  )
 
   const legs: RouteLeg[] = []
   const rawParts = cleanedForLegs.split(/(?=از\s+)/).map((p) => p.trim()).filter(Boolean)
@@ -107,7 +129,7 @@ export function parseLogisticsRoute(rawText?: string | null): ParsedLogisticsRou
     if (!matchedLocation) {
       const tokens = afterAz.split(/\s+/)
       matchedLocation =
-        tokens[0] === "اسلام" || tokens[0] === "اسپین"
+        tokens[0] === "اسلام" || tokens[0] === "اسپین" || tokens[0] === "سپین"
           ? `${tokens[0]} ${tokens[1] || ""}`
           : tokens[0] || ""
     }
@@ -133,5 +155,7 @@ export function parseLogisticsRoute(rawText?: string | null): ParsedLogisticsRou
     legs,
     switchBlBadge,
     reeferBadge,
+    destinationBadge,
   }
 }
+

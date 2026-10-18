@@ -59,3 +59,22 @@ test('Transit Route Parser: Freeform custom text note', () => {
   assert.equal(parsed.reeferBadge, null);
   assert.equal(parsed.originalText, input);
 });
+
+test('Transit Route Parser: Dogharoun Nhava Sheva multi-modal scenario with Switch B/L', () => {
+  const input = '🗺️از دوغارون با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva).';
+  const parsed = parseLogisticsRoute(input);
+
+  assert.equal(parsed.isStructured, true);
+  assert.equal(parsed.legs.length, 2);
+  assert.equal(parsed.legs[0].origin, 'از دوغارون');
+  assert.equal(parsed.legs[0].isDry, true);
+  assert.equal(parsed.legs[0].isReefer, false);
+
+  assert.equal(parsed.legs[1].origin, 'از بندرعباس');
+  assert.equal(parsed.legs[1].isReefer, true);
+  assert.equal(parsed.legs[1].isDry, false);
+
+  assert.equal(parsed.switchBlBadge, 'سوییچ بی ال در دبی / جبل علی');
+  assert.equal(parsed.destinationBadge, 'نهاوا شیوا (Nhava Sheva)');
+});
+

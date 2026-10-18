@@ -286,7 +286,7 @@ function ledgerDateKey(value: unknown): string {
 }
 
 export function validateLedgerInvariance(
-  ledgerRecords: Record<string, AuditableLedgerEntry[]> = {}
+  ledgerRecords: Record<string, AuditableLedgerEntry[] | { entries?: AuditableLedgerEntry[]; currentBalance?: number } | unknown> = {}
 ): LedgerAuditResult {
   let totalAccounts = 0
   let totalEntries = 0
@@ -298,7 +298,13 @@ export function validateLedgerInvariance(
   totalAccounts = accountKeys.length
 
   for (const account of accountKeys) {
-    const entries = Array.isArray(ledgerRecords[account]) ? ledgerRecords[account] : []
+    const rawVal = ledgerRecords[account]
+    let entries: AuditableLedgerEntry[] = []
+    if (Array.isArray(rawVal)) {
+      entries = rawVal as AuditableLedgerEntry[]
+    } else if (rawVal && typeof rawVal === "object" && "entries" in rawVal && Array.isArray((rawVal as { entries: unknown[] }).entries)) {
+      entries = (rawVal as { entries: AuditableLedgerEntry[] }).entries
+    }
     totalEntries += entries.length
 
     let accDebit = 0
@@ -306,9 +312,11 @@ export function validateLedgerInvariance(
 
     // Sort a copy so importing or auditing does not mutate the caller's records.
     // Accept ISO and legacy day-first dates; keep same-day row order stable.
-    const chronological = entries.map((entry, index) => ({ entry, index })).sort((a, b) =>
-      ledgerDateKey(a.entry?.date).localeCompare(ledgerDateKey(b.entry?.date))
-    )
+    const chronological = entries
+      .map((entry: AuditableLedgerEntry, index: number) => ({ entry, index }))
+      .sort((a: { entry: AuditableLedgerEntry; index: number }, b: { entry: AuditableLedgerEntry; index: number }) =>
+        ledgerDateKey(a.entry?.date).localeCompare(ledgerDateKey(b.entry?.date))
+      )
     for (const { entry, index } of chronological) {
       const d = auditAmount(entry?.debit)
       const c = auditAmount(entry?.credit)

@@ -6,9 +6,11 @@
 import fs from "node:fs/promises"
 import fsSync from "node:fs"
 import path from "node:path"
-import { getDataPath, getUploadPath } from "@/lib/server-paths"
+import os from "node:os"
+import { getDataPath, getDataRoot, getUploadPath } from "@/lib/server-paths"
 import { readJsonFile, writeJsonFile } from "@/lib/services/blob-db"
 import { validateLedgerInvariance } from "@/lib/services/ledger-sync-utils"
+import { parseWeight, parsePackages } from "@/lib/reports/parsers"
 import { collectAllSystemData } from "./backup-collector"
 import { createFullSystemBackup } from "./create-backup"
 import { CURRENT_DATABASE_SCHEMA_VERSION } from "./backup-manifest"
@@ -22,7 +24,14 @@ const BACKUPS_CATALOG_FILE = getDataPath(".local-backups-catalog.json")
  */
 export async function runDeepHealthScan(): Promise<DeepHealthReport> {
   const issues: DatabaseHealthIssue[] = []
-  const dataDir = path.join(process.cwd(), "data")
+  const primaryDataDir = getDataRoot() || path.join(process.cwd(), "data")
+
+  // Ensure primary data directory exists if possible
+  try {
+    if (!fsSync.existsSync(primaryDataDir)) {
+      await fs.mkdir(primaryDataDir, { recursive: true })
+    }
+  } catch (_) {}
 
   // 1. Storage & Writable check
   let databaseReadable = true
@@ -30,21 +39,32 @@ export async function runDeepHealthScan(): Promise<DeepHealthReport> {
   let totalStorageBytes = 0
 
   try {
-    const testFile = path.join(dataDir, `.health-probe-${Date.now()}.tmp`)
+    const testFile = path.join(primaryDataDir, `.health-probe-${Date.now()}.tmp`)
     await fs.writeFile(testFile, "health-check-probe", "utf8")
     const testRead = await fs.readFile(testFile, "utf8")
     databaseWritable = testRead === "health-check-probe"
     await fs.unlink(testFile).catch(() => {})
   } catch (err) {
-    databaseWritable = false
-    issues.push({
-      severity: "CRITICAL",
-      category: "STORAGE",
-      module: "STORAGE_ENGINE",
-      title: "Database storage directory is NOT writable",
-      details: err instanceof Error ? err.message : String(err),
-      repairable: false,
-    })
+    // In serverless environments (Vercel / AWS Lambda), the deployment root is read-only (/var/task).
+    // The storage engine (blob-db) writes to os.tmpdir() and synchronizes with cloud storage.
+    try {
+      const serverlessTmpDir = os.tmpdir()
+      const testTmpFile = path.join(serverlessTmpDir, `.health-probe-${Date.now()}.tmp`)
+      await fs.writeFile(testTmpFile, "health-check-probe", "utf8")
+      const testRead = await fs.readFile(testTmpFile, "utf8")
+      databaseWritable = testRead === "health-check-probe"
+      await fs.unlink(testTmpFile).catch(() => {})
+    } catch (tmpErr) {
+      databaseWritable = false
+      issues.push({
+        severity: "CRITICAL",
+        category: "STORAGE",
+        module: "STORAGE_ENGINE",
+        title: "Database storage directory is NOT writable",
+        details: err instanceof Error ? err.message : String(err),
+        repairable: false,
+      })
+    }
   }
 
   // 2. Load all tables
@@ -80,11 +100,17 @@ export async function runDeepHealthScan(): Promise<DeepHealthReport> {
 
   // Compute storage size of .local-*.json files
   try {
-    const dataFiles = await fs.readdir(dataDir).catch(() => [])
-    for (const f of dataFiles) {
-      if (f.startsWith(".local-") && f.endsWith(".json")) {
-        const stat = await fs.stat(path.join(dataDir, f)).catch(() => null)
-        if (stat) totalStorageBytes += stat.size
+    const scanDirs = [primaryDataDir, path.join(process.cwd(), "data"), process.cwd(), os.tmpdir()]
+    const seenFiles = new Set<string>()
+    for (const dir of scanDirs) {
+      if (!fsSync.existsSync(dir)) continue
+      const dataFiles = await fs.readdir(dir).catch(() => [])
+      for (const f of dataFiles) {
+        if (f.startsWith(".local-") && f.endsWith(".json") && !seenFiles.has(f)) {
+          seenFiles.add(f)
+          const stat = await fs.stat(path.join(dir, f)).catch(() => null)
+          if (stat) totalStorageBytes += stat.size
+        }
       }
     }
   } catch {}
@@ -249,6 +275,217 @@ export async function runDeepHealthScan(): Promise<DeepHealthReport> {
       }
     }
   }
+
+  // 4b. Accounting Health: NaN, Infinity, and broken transaction references
+  let nanInfinityCount = 0
+  if (typeof accountLedgers === "object" && accountLedgers !== null) {
+    for (const [accName, val] of Object.entries(accountLedgers)) {
+      const rows: any[] = Array.isArray(val) ? val : (val as any)?.entries || []
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
+        if (row && typeof row === "object") {
+          const debit = row.debit
+          const credit = row.credit
+          const balance = row.balance
+          if (
+            Number.isNaN(debit) ||
+            !Number.isFinite(debit) ||
+            Number.isNaN(credit) ||
+            !Number.isFinite(credit) ||
+            Number.isNaN(balance) ||
+            !Number.isFinite(balance)
+          ) {
+            nanInfinityCount++
+            issues.push({
+              severity: "CRITICAL",
+              category: "ACCOUNTING",
+              module: "ACCOUNT_LEDGERS",
+              recordId: `${accName}-row-${i}`,
+              title: `Non-finite numeric balance/debit/credit (NaN or Infinity) in account ${accName}`,
+              details: `Row index ${i} has invalid numeric value (debit: ${debit}, credit: ${credit}, balance: ${balance}).`,
+              repairable: true,
+              repairAction: "RECOMPUTE_LEDGER_BALANCES",
+            })
+          }
+        }
+      }
+    }
+  }
+
+  // 4c. BOL Health & Extreme Value Detection
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  let missingBolNumberCount = 0
+  let uuidAsBolNumberCount = 0
+  let invalidPackagesCount = 0
+  let invalidWeightsCount = 0
+  let extremeValuesCount = 0
+  let legacyProvenanceIssuesCount = 0
+
+  for (const b of bols) {
+    const rawNum = String(b.bol_number || "").trim()
+
+    // Missing official BOL number
+    if (!rawNum) {
+      missingBolNumberCount++
+      issues.push({
+        severity: "CRITICAL",
+        category: "DOCUMENT",
+        module: "BOLS",
+        recordId: b.id,
+        title: `Missing official BOL number on record ${b.id}`,
+        details: "BOL record has blank or missing bol_number identity.",
+        repairable: true,
+        repairAction: "REPAIR_DUPLICATE_BOLS",
+      })
+    }
+    // UUID shown/used as document identity
+    else if (uuidRegex.test(rawNum)) {
+      uuidAsBolNumberCount++
+      issues.push({
+        severity: "WARNING",
+        category: "DOCUMENT",
+        module: "BOLS",
+        recordId: b.id,
+        title: `UUID format used as official BOL document number: ${rawNum}`,
+        details: "BOL number should be canonical sequence (e.g. BOL-YYYY-XXX) rather than raw UUID.",
+        repairable: false,
+      })
+    }
+
+    // Invalid package quantities & weights
+    const rawPkgs = b.number_of_packages || b.numberOfPackages || b.packages || b.total_packages || b.package_count
+    const pkgs = rawPkgs !== undefined && rawPkgs !== null && String(rawPkgs).trim() !== "" ? parsePackages(rawPkgs) : 0
+
+    const rawWeight = b.gross_weight || b.grossWeight || b.weight
+    const weight = rawWeight !== undefined && rawWeight !== null && String(rawWeight).trim() !== "" ? parseWeight(rawWeight) : 0
+
+    const rawPkgsStr = rawPkgs !== undefined && rawPkgs !== null ? String(rawPkgs).trim() : ""
+    const hasPkgsText = rawPkgsStr !== ""
+    const isPkgsInvalid = pkgs < 0 || Number.isNaN(pkgs) || (hasPkgsText && !/\d/.test(rawPkgsStr) && !["N/A", "PENDING", "-", "NONE"].includes(rawPkgsStr.toUpperCase()))
+
+    if (isPkgsInvalid) {
+      invalidPackagesCount++
+      issues.push({
+        severity: "WARNING",
+        category: "DOCUMENT",
+        module: "BOLS",
+        recordId: rawNum || b.id,
+        title: `Invalid package quantity (${rawPkgsStr || pkgs}) on BOL ${rawNum || b.id}`,
+        details: "Package count is negative or non-numeric.",
+        repairable: false,
+      })
+    }
+
+    const rawWeightStr = rawWeight !== undefined && rawWeight !== null ? String(rawWeight).trim() : ""
+    const hasWeightText = rawWeightStr !== ""
+    const isWeightInvalid = weight < 0 || Number.isNaN(weight) || (hasWeightText && !/\d/.test(rawWeightStr) && !["N/A", "PENDING", "-", "NONE"].includes(rawWeightStr.toUpperCase()))
+
+    if (isWeightInvalid) {
+      invalidWeightsCount++
+      issues.push({
+        severity: "WARNING",
+        category: "DOCUMENT",
+        module: "BOLS",
+        recordId: rawNum || b.id,
+        title: `Invalid weight (${rawWeightStr || weight}) on BOL ${rawNum || b.id}`,
+        details: "Gross weight is negative or non-numeric.",
+        repairable: false,
+      })
+    }
+
+    // Extreme Value Detection (Legacy corruption patterns: packages > 1B, weights > 1e16 KG)
+    // IMPORTANT: DO NOT AUTO-FIX EXTREME VALUES (create Data Quality Warning; no silent mutation)
+    if (pkgs > 1_000_000_000) {
+      extremeValuesCount++
+      issues.push({
+        severity: "CRITICAL",
+        category: "DOCUMENT",
+        module: "BOLS",
+        recordId: rawNum || b.id,
+        title: `DATA QUALITY WARNING: Extreme package quantity detected (${pkgs.toLocaleString()}) on BOL ${rawNum || b.id}`,
+        details: `Package quantity exceeds 1,000,000,000. Suspected legacy overflow corruption. Requires manual operator audit.`,
+        repairable: false,
+      })
+    }
+
+    if (weight > 1e16) {
+      extremeValuesCount++
+      issues.push({
+        severity: "CRITICAL",
+        category: "DOCUMENT",
+        module: "BOLS",
+        recordId: rawNum || b.id,
+        title: `DATA QUALITY WARNING: Extreme cargo weight detected (${weight} KG) on BOL ${rawNum || b.id}`,
+        details: `Gross weight exceeds 1e16 KG. Suspected floating-point corruption. Requires manual operator audit.`,
+        repairable: false,
+      })
+    }
+
+    // Historical BOL Health: Check legacy records retain provenance
+    const isLegacy = Boolean(b.is_legacy || b.isLegacy || b.source === "LEGACY" || rawNum.includes("051"))
+    if (isLegacy) {
+      const hasSource = Boolean(b.source_file || b.sourceFile || b.source_page || b.sourcePage || b.barnama || b.Barnama || b.source_serial)
+      if (!hasSource) {
+        legacyProvenanceIssuesCount++
+        issues.push({
+          severity: "WARNING",
+          category: "DOCUMENT",
+          module: "HISTORICAL_BOLS",
+          recordId: rawNum || b.id,
+          title: `Historical provenance missing on legacy record ${rawNum || b.id}`,
+          details: "Legacy record is missing Barnama or source file/page metadata.",
+          repairable: false,
+        })
+      }
+    }
+  }
+
+  // 4d. Data Drift Detection (sudden unexpected drops in record counts)
+  const DRIFT_FILE = getDataPath(".local-data-drift-history.json")
+  let dataDriftWarning = false
+  const currentSnapshot = {
+    timestamp: new Date().toISOString(),
+    bols: bols.length,
+    ledgerEntries: Object.values(accountLedgers).reduce<number>(
+      (acc, v: any) => acc + (Array.isArray(v) ? v.length : v?.entries?.length || 0),
+      0
+    ),
+    documents: documents.length,
+    companies: companies.length,
+    invoices: invoices.length,
+  }
+
+  const driftHistory = await readJsonFile<any[]>(DRIFT_FILE, [])
+  if (driftHistory.length > 0) {
+    const prev = driftHistory[0]
+    // Check if documents or bols dropped by >50%
+    if (prev.documents >= 50 && currentSnapshot.documents < prev.documents * 0.5) {
+      dataDriftWarning = true
+      issues.push({
+        severity: "CRITICAL",
+        category: "DOCUMENT",
+        module: "DATA_DRIFT",
+        title: `POSSIBLE DATA LOSS: Suspicious sudden drop in documents count (${prev.documents} -> ${currentSnapshot.documents})`,
+        details: "Document count dropped precipitously since last health audit. Check for accidental mass deletion or path detachment.",
+        repairable: false,
+      })
+    }
+    if (prev.bols >= 50 && currentSnapshot.bols < prev.bols * 0.5) {
+      dataDriftWarning = true
+      issues.push({
+        severity: "CRITICAL",
+        category: "DOCUMENT",
+        module: "DATA_DRIFT",
+        title: `POSSIBLE DATA LOSS: Suspicious sudden drop in BOL records (${prev.bols} -> ${currentSnapshot.bols})`,
+        details: "BOL count dropped precipitously since last health audit.",
+        repairable: false,
+      })
+    }
+  }
+
+  driftHistory.unshift(currentSnapshot)
+  if (driftHistory.length > 100) driftHistory.length = 100
+  await writeJsonFile(DRIFT_FILE, driftHistory)
 
   // 5. Document & Attachment Check
   const uploadRoot = getUploadPath()

@@ -23,6 +23,8 @@ import {
   HardDrive,
   Check,
   Lock,
+  Download,
+  FileText,
 } from "lucide-react"
 import type { BackupItem, RestorePreview, RestoreResult } from "@/lib/backup/backup-types"
 
@@ -44,7 +46,7 @@ export function RestoreModalWizard({
   const [step, setStep] = useState<WizardStep>(1)
   const [isLoadingPreview, setIsLoadingPreview] = useState(false)
   const [preview, setPreview] = useState<RestorePreview | null>(null)
-  const [restoreMode, setRestoreMode] = useState<"replace" | "merge">("replace")
+  const [restoreMode, setRestoreMode] = useState<"merge" | "replace">("merge")
   const [confirmPhrase, setConfirmPhrase] = useState("")
   const [isRestoring, setIsRestoring] = useState(false)
   const [restoreProgressStage, setRestoreProgressStage] = useState<string>("")
@@ -242,31 +244,31 @@ export function RestoreModalWizard({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setRestoreMode("replace")}
+                  onClick={() => setRestoreMode("merge")}
                   className={`p-2.5 rounded-lg border text-left transition-all ${
-                    restoreMode === "replace"
-                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                    restoreMode === "merge"
+                      ? "border-emerald-600 bg-emerald-500/5 ring-1 ring-emerald-600"
                       : "border-border hover:bg-muted/50"
                   }`}
                 >
-                  <div className="font-bold text-foreground">Replace Database (Recommended)</div>
+                  <div className="font-bold text-emerald-700 dark:text-emerald-400">Merge Records (Recommended)</div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
-                    Restores the exact complete state as of backup creation.
+                    Merges records safely by canonical ID without deleting newly created records.
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setRestoreMode("merge")}
+                  onClick={() => setRestoreMode("replace")}
                   className={`p-2.5 rounded-lg border text-left transition-all ${
-                    restoreMode === "merge"
-                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                    restoreMode === "replace"
+                      ? "border-rose-600 bg-rose-500/5 ring-1 ring-rose-600"
                       : "border-border hover:bg-muted/50"
                   }`}
                 >
-                  <div className="font-bold text-foreground">Merge Records</div>
+                  <div className="font-bold text-rose-700 dark:text-rose-400">Replace Database (Danger)</div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">
-                    Merges records by ID without deleting newly created records.
+                    Restores the exact complete state as of backup creation. Replaces existing records.
                   </div>
                 </button>
               </div>
@@ -295,17 +297,26 @@ export function RestoreModalWizard({
               </ul>
             </div>
 
-            <div className="space-y-2 pt-2">
-              <label className="font-semibold text-foreground block">
-                Type <code className="bg-muted px-1.5 py-0.5 rounded font-mono font-bold text-rose-600">RESTORE</code> to authorize:
-              </label>
-              <Input
-                placeholder="Type RESTORE in capital letters"
-                value={confirmPhrase}
-                onChange={(e) => setConfirmPhrase(e.target.value)}
-                className="font-mono text-xs uppercase"
-              />
-            </div>
+            {restoreMode === "replace" ? (
+              <div className="space-y-2 pt-2 p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg">
+                <label className="font-semibold text-rose-700 dark:text-rose-400 block">
+                  High-Impact Operation: Type <code className="bg-muted px-1.5 py-0.5 rounded font-mono font-bold text-rose-600">RESTORE</code> to authorize:
+                </label>
+                <Input
+                  placeholder="Type RESTORE in capital letters"
+                  value={confirmPhrase}
+                  onChange={(e) => setConfirmPhrase(e.target.value)}
+                  className="font-mono text-xs uppercase border-rose-400 focus-visible:ring-rose-400"
+                />
+              </div>
+            ) : (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-800 dark:text-emerald-300 text-xs">
+                <span className="font-bold">Safe Non-Destructive Merge:</span>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Records will be deduplicated and safely combined. Current database items will not be erased. Ready to execute.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -339,6 +350,37 @@ export function RestoreModalWizard({
                   <div>Pre-Restore Snapshot: {restoreResult.preRestoreBackupFile}</div>
                   <div>Records Restored: {restoreResult.recordsRestored}</div>
                   <div>Duration: {(((restoreResult.durationMs || 0)) / 1000).toFixed(2)}s</div>
+                </div>
+
+                <div className="pt-2 flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const reportFile = (restoreResult as any).reportJsonPath
+                        ? (restoreResult as any).reportJsonPath.split(/[/\\]/).pop()
+                        : `${(restoreResult as any).restoreId || "report"}.json`
+                      window.open(`/api/backup/report?file=${encodeURIComponent(reportFile)}&format=json`, "_blank")
+                    }}
+                    className="h-7 text-[11px] gap-1"
+                  >
+                    <Download className="h-3 w-3" />
+                    Download Audit Report (.json)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const reportFile = (restoreResult as any).reportHtmlPath
+                        ? (restoreResult as any).reportHtmlPath.split(/[/\\]/).pop()
+                        : `${(restoreResult as any).restoreId || "report"}.json`
+                      window.open(`/api/backup/report?file=${encodeURIComponent(reportFile)}&format=html`, "_blank")
+                    }}
+                    className="h-7 text-[11px] gap-1 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40"
+                  >
+                    <Download className="h-3 w-3" />
+                    Download Audit Report (.html)
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -404,8 +446,12 @@ export function RestoreModalWizard({
               <Button
                 size="sm"
                 onClick={executeRestore}
-                disabled={confirmPhrase !== "RESTORE" || isRestoring}
-                className="text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold"
+                disabled={(restoreMode === "replace" && confirmPhrase !== "RESTORE") || isRestoring}
+                className={
+                  restoreMode === "replace"
+                    ? "text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold"
+                    : "text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                }
               >
                 Execute Safe Restore
               </Button>

@@ -81,7 +81,18 @@ export function ModuleLoadFallback({
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
           {onRetry && (
             <button
-              onClick={onRetry}
+              onClick={() => {
+                const isChunk =
+                  error?.name === "ChunkLoadError" ||
+                  errorString.includes("Loading chunk") ||
+                  errorString.includes("Failed to load chunk") ||
+                  errorString.includes("_next/static/chunks")
+                if (isChunk && typeof window !== "undefined") {
+                  window.location.reload()
+                } else if (onRetry) {
+                  onRetry()
+                }
+              }}
               disabled={isRetrying}
               className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >

@@ -96,11 +96,14 @@ Live Database Summary:
 
 Directly answer the user's questions clearly, accurately, and concisely using GitHub-flavored Markdown, bullet points, bold numbers, and markdown tables. Answer in English or Dari/Pashto if queried in those languages.`
 
-              const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${apiKey}`
+              const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:streamGenerateContent?alt=sse&key=${apiKey}`
               
               const geminiRes = await fetch(endpoint, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-goog-api-key": apiKey,
+                },
                 body: JSON.stringify({
                   contents: [
                     { role: "user", parts: [{ text: systemPrompt }] },

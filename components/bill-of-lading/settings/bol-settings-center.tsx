@@ -124,17 +124,17 @@ export function BolSettingsCenter({
   onSaveToCloud,
   isSaving = false,
 }: BolSettingsCenterProps) {
-  // Loaded permanent settings from storage
-  const [savedSettings, setSavedSettings] = useState<BolDocumentSettings>(DEFAULT_BOL_SETTINGS)
+  // Loaded permanent settings from storage (lazy initialized to eliminate mount cascade)
+  const [savedSettings, setSavedSettings] = useState<BolDocumentSettings>(() => loadBolDocumentSettings())
   // Working draft of settings
-  const [draftSettings, setDraftSettings] = useState<BolDocumentSettings>(DEFAULT_BOL_SETTINGS)
+  const [draftSettings, setDraftSettings] = useState<BolDocumentSettings>(() => savedSettings)
   // Active navigation tab
   const [activeTab, setActiveTab] = useState<SettingsTabId>('watermark')
   // Active watermark draft state (immediate live feedback)
-  const [draftWatermarkUrl, setDraftWatermarkUrl] = useState(activeBgImageUrl)
-  const [draftWatermarkOpacity, setDraftWatermarkOpacity] = useState(activeBgOpacity)
-  const [draftShowStamp, setDraftShowStamp] = useState(showStampSignature)
-  const [draftLogoUrl, setDraftLogoUrl] = useState(logoUrl)
+  const [draftWatermarkUrl, setDraftWatermarkUrl] = useState(() => activeBgImageUrl || savedSettings.defaultBgImageUrl)
+  const [draftWatermarkOpacity, setDraftWatermarkOpacity] = useState(() => activeBgOpacity ?? savedSettings.defaultBgOpacity)
+  const [draftShowStamp, setDraftShowStamp] = useState(() => showStampSignature)
+  const [draftLogoUrl, setDraftLogoUrl] = useState(() => logoUrl || savedSettings.logoUrl)
 
   // Tracking unsaved changes
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -143,15 +143,12 @@ export function BolSettingsCenter({
   const logoInputRef = useRef<HTMLInputElement>(null)
   const importInputRef = useRef<HTMLInputElement>(null)
 
-  // Load settings on initial mount
+  // Sync external prop changes
   useEffect(() => {
-    const loaded = loadBolDocumentSettings()
-    setSavedSettings(loaded)
-    setDraftSettings(loaded)
-    setDraftWatermarkUrl(activeBgImageUrl || loaded.defaultBgImageUrl)
-    setDraftWatermarkOpacity(activeBgOpacity ?? loaded.defaultBgOpacity)
+    if (activeBgImageUrl) setDraftWatermarkUrl(activeBgImageUrl)
+    if (activeBgOpacity !== undefined) setDraftWatermarkOpacity(activeBgOpacity)
     setDraftShowStamp(showStampSignature)
-    setDraftLogoUrl(logoUrl || loaded.logoUrl)
+    if (logoUrl) setDraftLogoUrl(logoUrl)
   }, [activeBgImageUrl, activeBgOpacity, showStampSignature, logoUrl])
 
   // Mark unsaved changes when draft deviates from saved

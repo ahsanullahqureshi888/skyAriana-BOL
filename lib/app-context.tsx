@@ -2,7 +2,7 @@
 
 import { Account, Company, LedgerEntry, Invoice, InvoiceItem, LedgerSettings, User, UserRole } from '@/lib/types'
 import { authenticateLocalUser } from "@/lib/services/local-user-auth"
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect, startTransition } from 'react'
 import { mergeEntities } from '@/lib/master-data/duplicate-detector'
 import { getDefaultMasterEntities } from '@/lib/master-data/seed-loader'
 import { getFinancialsMap, saveFinancialsForEntry, saveFinancialsForEntries, smartMergeRow, smartMergeLedgerRecords, isCleanCompanyName } from '@/lib/services/ledger-sync-utils'
@@ -89,7 +89,7 @@ interface AppState {
   invoices: Invoice[]
   currentAccount: Account | null
   currentCompany: Company | null
-  view: 'accounts' | 'companies' | 'ledger' | 'accounting' | 'invoice' | 'bol' | 'settings' | 'bank' | 'invoice-pad' | 'sky-cmr' | 'sky-doc' | 'reports' | 'shipper-portal' | 'analytics' | 'export-calculator' | 'acci-portal' | 'shipments' | 'whatsapp' | 'customer-portal' | 'customer-portal-admin' | 'accounting-finance' | 'document-compliance' | 'booking-containers' | 'bulk-entry' | 'master-data' | 'workflow' | 'notifications' | 'data-protection' | 'daily-operations' | 'audit-history' | 'search' | 'ai-assistant' | 'routes-locations' | 'rates-quotations' | 'procurement' | 'fleet-operations' | 'warehouse-cargo' | 'customs-transit' | 'ocean-operations' | 'air-freight' | 'claims-incidents' | 'crm-sales' | 'period-closing' | 'treasury' | 'management-reports' | 'file-center' | 'communications'
+  view: 'accounts' | 'companies' | 'ledger' | 'accounting' | 'invoice' | 'bol' | 'settings' | 'bank' | 'invoice-pad' | 'sky-cmr' | 'sky-doc' | 'reports' | 'shipper-portal' | 'analytics' | 'export-calculator' | 'acci-portal' | 'shipments' | 'whatsapp' | 'customer-portal' | 'customer-portal-admin' | 'accounting-finance' | 'document-compliance' | 'booking-containers' | 'bulk-entry' | 'master-data' | 'workflow' | 'notifications' | 'data-protection' | 'backup' | 'daily-operations' | 'audit-history' | 'search' | 'ai-assistant' | 'routes-locations' | 'rates-quotations' | 'procurement' | 'fleet-operations' | 'warehouse-cargo' | 'customs-transit' | 'ocean-operations' | 'air-freight' | 'claims-incidents' | 'crm-sales' | 'period-closing' | 'treasury' | 'management-reports' | 'file-center' | 'communications'
 
   isAuthenticated: boolean
   currentUser: User | null
@@ -282,19 +282,74 @@ function syncMasterEntitiesToLegacy(entities: import('@/lib/types/master-data').
   } catch (e) {}
 }
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>({
+let ledgerPostDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+function getInitialAppState(): AppState {
+  let isAuth = false
+  let user: User | null = null
+  let currentUsers = DEFAULT_USERS_LIST
+  let restoredDeletedEntries: DeletedLedgerEntryItem[] = []
+  let restoredMasterEntities: import('@/lib/types/master-data').MasterEntity[] = []
+
+  if (typeof window !== "undefined") {
+    try {
+      const storedUsersRaw = localStorage.getItem("skybol:system-users")
+      if (storedUsersRaw) {
+        const parsed = JSON.parse(storedUsersRaw)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          currentUsers = parsed
+        }
+      }
+
+      const rawDeleted = localStorage.getItem("skybol:deleted-ledger-entries")
+      if (rawDeleted) {
+        const parsedDeleted = JSON.parse(rawDeleted)
+        if (Array.isArray(parsedDeleted)) {
+          restoredDeletedEntries = parsedDeleted
+        }
+      }
+
+      const rawMaster = localStorage.getItem("skybol:master-entities")
+      if (rawMaster) {
+        const parsedMaster = JSON.parse(rawMaster)
+        if (Array.isArray(parsedMaster) && parsedMaster.length > 0) {
+          restoredMasterEntities = parsedMaster
+        }
+      }
+
+      const savedUser = localStorage.getItem("skybol:user") || sessionStorage.getItem("skybol:user")
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser)
+        if (parsed?.username) {
+          user = parsed
+          isAuth = true
+        }
+      }
+    } catch (e) {
+      console.warn("[AppProvider] Failed to read storage during state initialization:", e)
+    }
+  }
+
+  if (restoredMasterEntities.length === 0) {
+    restoredMasterEntities = getDefaultMasterEntities()
+  }
+
+  return {
     accounts: SAMPLE_ACCOUNTS,
     invoices: [],
     currentAccount: null,
     currentCompany: null,
-    view: 'accounts',
-    isAuthenticated: false,
-    currentUser: null,
-    users: DEFAULT_USERS_LIST,
-    deletedLedgerEntries: [],
-  masterEntities: [],
-  })
+    view: user?.role === "shipper" ? "shipper-portal" : "accounts",
+    isAuthenticated: isAuth,
+    currentUser: user,
+    users: currentUsers,
+    deletedLedgerEntries: restoredDeletedEntries,
+    masterEntities: restoredMasterEntities,
+  }
+}
+
+export function AppProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<AppState>(getInitialAppState)
 
   // Restore login session and stored users on mount
   useEffect(() => {
@@ -555,11 +610,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avatar: foundUser.avatar || "/logo.png",
       lastLogin: new Date().toISOString().split("T")[0],
     }
-    // Remove a previous remembered identity when switching to a session-only login.
-    localStorage.removeItem("skybol:user")
-    sessionStorage.removeItem("skybol:user")
-    const storage = rememberMe ? localStorage : sessionStorage
-    storage.setItem("skybol:user", JSON.stringify(userObj))
+    try {
+      localStorage.setItem("skybol:user", JSON.stringify(userObj))
+      sessionStorage.setItem("skybol:user", JSON.stringify(userObj))
+      localStorage.setItem("skybol:first-run-completed", "true")
+    } catch (_) {}
     setState((prev) => ({
       ...prev,
       isAuthenticated: true,
@@ -1112,7 +1167,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (debounceTimer) clearTimeout(debounceTimer)
       debounceTimer = setTimeout(() => {
         void syncShippersAndBols()
-      }, 120)
+      }, 1500)
     }
 
     window.addEventListener("skybol:account-ledger-updated", handleUpdate)
@@ -1289,28 +1344,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.warn("[app-context] localStorage quota exceeded, canonical records stored on server:", storageErr)
       }
 
-      // Direct multi-backend persistence
-      fetch("/api/account-ledgers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accounts: companyNames,
-          ledgerEntries: records,
-          deletedLedgerEntries: deletedItems,
-        }),
-        keepalive: true,
-      }).catch(() => {})
+      // Direct multi-backend persistence (debounced by 600ms to eliminate multi-megabyte network thrashing during rapid edits)
+      if (ledgerPostDebounceTimer) clearTimeout(ledgerPostDebounceTimer)
+      ledgerPostDebounceTimer = setTimeout(() => {
+        fetch("/api/account-ledgers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accounts: companyNames,
+            ledgerEntries: records,
+            deletedLedgerEntries: deletedItems,
+          }),
+          keepalive: true,
+        }).catch(() => {})
 
-      fetch("/api/bol-account-ledgers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customCompanies: companyNames,
-          ledgerRecords: records,
-          deletedLedgerEntries: deletedItems,
-        }),
-        keepalive: true,
-      }).catch(() => {})
+        fetch("/api/bol-account-ledgers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customCompanies: companyNames,
+            ledgerRecords: records,
+            deletedLedgerEntries: deletedItems,
+          }),
+          keepalive: true,
+        }).catch(() => {})
+      }, 600)
     } catch (e) {
       console.warn("Direct ledger persistence error:", e)
     }
@@ -2169,7 +2227,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setView = useCallback((view: AppState['view']) => {
-    setState(prev => ({ ...prev, view }))
+    startTransition(() => {
+      setState(prev => ({ ...prev, view }))
+    })
   }, [])
 
   const goBack = useCallback(() => {

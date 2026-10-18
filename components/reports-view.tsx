@@ -63,6 +63,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { SavedBolReport } from "@/components/reports/saved-bol-report"
 import { SaveToDriveButton } from "@/components/google-drive/save-to-drive-button"
 import { toast } from "sonner"
@@ -315,6 +322,7 @@ export function ReportsView() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showMobileFilters, setShowMobileFilters] = useState(false)
   const [showMobileMoreActions, setShowMobileMoreActions] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Print & PDF Export Configuration State
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
@@ -412,6 +420,16 @@ export function ReportsView() {
       console.error("Error loading documents for reports:", e)
     }
 
+    // Also fetch the complete authoritative dataset from /api/bol?all=true
+    fetch("/api/bol?all=true")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
+          setBolDocs(json.data)
+        }
+      })
+      .catch(() => {})
+
     try {
       const rawInvs = window.localStorage.getItem("skybol:saved-invoices")
       if (rawInvs) {
@@ -462,6 +480,12 @@ export function ReportsView() {
     }
   }, [loadDocuments])
 
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true)
+    loadDocuments()
+    toast.success("Container data refreshed")
+    setTimeout(() => setIsRefreshing(false), 600)
+  }, [loadDocuments])
 
   // Save Custom Expenses
   const saveExpensesList = (newList: CustomExpenseEntry[]) => {
@@ -1651,260 +1675,294 @@ export function ReportsView() {
   }
 
   return (
-    <div data-reports-center="true" className={`min-h-screen p-2.5 sm:p-4 md:p-6 font-sans transition-colors duration-200 ${
-      isLight 
-        ? "bg-gradient-to-br from-slate-100 via-blue-50/50 to-indigo-50/70 text-slate-900" 
-        : "bg-slate-950 text-slate-100"
-    }`}>
-      <div className="max-w-[1780px] w-full mx-auto space-y-4 sm:space-y-6">
+    <div data-reports-center="true" className="w-full space-y-4 sm:space-y-6 font-sans select-text">
+      <div className="w-full space-y-4 sm:space-y-6">
 
         {/* =================================================================== */}
         {/* TOP CONTROLS & HEADER BANNER */}
         {/* =================================================================== */}
-        <div className={`backdrop-blur-xl border rounded-2xl p-3.5 sm:p-5 shadow-lg flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 transition-all ${
+        <header className={`rounded-3xl border p-4 sm:p-5 shadow-sm transition-all flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 relative overflow-hidden ${
           isLight
-            ? "bg-white/95 border-slate-200 shadow-slate-200/60 text-slate-900"
-            : "bg-slate-900/90 border-slate-800 shadow-lg text-slate-100"
+            ? "bg-white/95 border-slate-200/90 shadow-slate-200/40 text-slate-900"
+            : "bg-slate-900/95 border-slate-800/90 shadow-none text-slate-100"
         }`}>
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0">
+          {/* Subtle Brand Accent Line */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-900 via-indigo-600 to-cyan-500" />
+
+          {/* Left Brand & Title Info */}
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-900 via-indigo-700 to-cyan-600 flex items-center justify-center text-white shadow-md shadow-blue-950/20 shrink-0">
               <Container className="w-6 h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={`text-base sm:text-xl md:text-2xl font-black tracking-tight ${
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className={`text-lg sm:text-xl md:text-2xl font-black tracking-tight ${
                   isLight ? "text-slate-900" : "text-white"
                 }`}>
                   Container Analytics &amp; Freight Profit/Loss
                 </h1>
-                <Badge className={
-                  isLight
-                    ? "bg-cyan-100 text-cyan-800 border-cyan-300 font-bold text-[10px] sm:text-xs"
-                    : "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold text-[10px] sm:text-xs"
-                }>
+                <span
+                  dir="rtl"
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold font-[vazirmatn] border ${
+                    isLight
+                      ? "bg-cyan-50 text-cyan-900 border-cyan-200"
+                      : "bg-cyan-950/50 text-cyan-300 border-cyan-800"
+                  }`}
+                >
                   گزارش کانتینرها، صادرات/واردات و سود کرایه‌ها
-                </Badge>
+                </span>
               </div>
-              <p className={`text-[11px] sm:text-xs font-semibold mt-0.5 ${
-                isLight ? "text-slate-500" : "text-slate-400"
-              }`}>
-                Detailed Export vs. Import Analysis, Container TEU Tonnage &amp; Per-Box Freight Profit
-              </p>
+              <div className="flex items-center gap-2 flex-wrap text-xs font-medium">
+                <p className={isLight ? "text-slate-500" : "text-slate-400"}>
+                  Detailed Export vs. Import Analysis, Container TEU Tonnage &amp; Per-Box Freight Profit
+                </p>
+                <span className="hidden md:inline text-slate-300 dark:text-slate-700">•</span>
+                <span className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
+                  isLight ? "bg-slate-100 text-slate-700" : "bg-slate-800 text-slate-300"
+                }`}>
+                  {filteredContainers.length} of {allContainerRecords.length} Containers
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Mobile Quick Action Buttons (< sm) */}
           <div className="flex sm:hidden flex-col w-full gap-2 no-print">
-            <div className="flex items-center gap-1.5 w-full justify-between">
+            {/* Primary Action Row */}
+            <div className="grid grid-cols-3 gap-1.5 w-full">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={loadDocuments}
-                className={`h-9 px-3 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
+                onClick={() => setIsAddExpenseOpen(true)}
+                className={`h-9 px-2 rounded-xl text-[11px] font-bold cursor-pointer ${
                   isLight
-                    ? "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200"
-                    : "bg-slate-800/80 border-slate-700 hover:bg-slate-700 text-slate-200"
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                    : "bg-emerald-950/40 text-emerald-300 border-emerald-700 hover:bg-emerald-900/60"
                 }`}
               >
-                <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                <Plus className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                <span>Expense</span>
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`h-9 px-2 rounded-xl text-[11px] font-bold cursor-pointer ${
+                      isLight
+                        ? "bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100"
+                        : "bg-slate-800/80 border-slate-700 text-slate-200"
+                    }`}
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                    <span>Export</span>
+                    <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-56 p-1.5 rounded-xl shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 z-50">
+                  <DropdownMenuItem onClick={handleExportExcel} className="gap-2.5 p-2 rounded-lg text-xs font-semibold cursor-pointer">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    <span>Export Excel (.xlsx)</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-1" />
+                  <DropdownMenuItem onClick={handleExportCSV} className="gap-2.5 p-2 rounded-lg text-xs font-semibold cursor-pointer">
+                    <FileDown className="w-4 h-4 text-cyan-600" />
+                    <span>Export CSV (.csv)</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setIsPrintDialogOpen(true)}
+                className="h-9 px-2 rounded-xl text-[11px] font-bold bg-blue-900 hover:bg-blue-800 text-white shadow-sm cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 mr-1 text-amber-400" />
+                <span>Print A4</span>
+              </Button>
+            </div>
+
+            {/* Status & Secondary Tools Row */}
+            <div className="flex items-center gap-1.5 w-full justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  setTempRateInput(exchangeRate.toString())
+                  setIsRateModalOpen(true)
+                }}
+                className={`flex-1 flex items-center justify-center gap-1.5 h-8 px-2 rounded-xl text-[11px] font-bold border transition cursor-pointer ${
+                  isLight
+                    ? "bg-amber-50/80 text-amber-950 border-amber-300/80"
+                    : "bg-amber-950/30 text-amber-200 border-amber-700/50"
+                }`}
+              >
+                <Coins className="w-3 h-3 text-amber-500 shrink-0" />
+                <span className="font-mono font-extrabold">1 USD = {exchangeRate} AFN</span>
+              </button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className={`h-8 px-2.5 rounded-xl text-[11px] font-bold shrink-0 cursor-pointer ${
+                  isLight ? "bg-slate-100 border-slate-300 text-slate-700" : "bg-slate-800/80 border-slate-700 text-slate-200"
+                }`}
+              >
+                <RefreshCw className={`w-3 h-3 mr-1 ${isRefreshing ? "animate-spin" : ""}`} />
                 <span>Refresh</span>
               </Button>
 
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsAddExpenseOpen(true)}
-                className={`h-9 px-3 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
-                  isLight
-                    ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
-                    : "bg-emerald-950/40 text-emerald-300 border-emerald-700 hover:bg-emerald-900/60"
+                onClick={toggleTheme}
+                className={`h-8 px-2.5 rounded-xl text-[11px] font-bold shrink-0 cursor-pointer ${
+                  isLight ? "border-slate-300 text-slate-700 bg-white" : "border-slate-700 text-slate-300 bg-slate-800/80"
                 }`}
               >
-                <Plus className="w-4 h-4 mr-1 text-emerald-600" />
-                <span>Add Expense</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportExcel}
-                className={`h-9 px-3 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
-                  isLight
-                    ? "bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100"
-                    : "bg-blue-950/40 text-blue-300 border-blue-700 hover:bg-blue-900/60"
-                }`}
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-blue-600" />
-                <span>Export</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowMobileMoreActions(!showMobileMoreActions)}
-                className={`h-9 px-2.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
-                  isLight ? "border-slate-300 text-slate-700" : "border-slate-700 text-slate-300"
-                }`}
-                title="More actions"
-              >
-                •••
+                {isLight ? <Sun className="w-3 h-3 text-amber-500" /> : <Moon className="w-3 h-3 text-indigo-400" />}
               </Button>
             </div>
-
-            {showMobileMoreActions && (
-              <div className="flex items-center gap-1.5 w-full flex-wrap p-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleTheme}
-                  className="h-8 text-xs gap-1"
-                >
-                  {isLight ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-amber-400" />}
-                  <span>{isLight ? "Light Mode" : "Dark Mode"}</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleExportCSV}
-                  className="h-8 text-xs gap-1"
-                >
-                  <FileDown className="w-3.5 h-3.5 text-cyan-600" />
-                  <span>CSV</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setTempRateInput(exchangeRate.toString())
-                    setIsRateModalOpen(true)
-                  }}
-                  className="h-8 text-xs gap-1"
-                >
-                  <Coins className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Rate ({exchangeRate} AFN)</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsPrintDialogOpen(true)}
-                  className="h-8 text-xs gap-1"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Print A4</span>
-                </Button>
-              </div>
-            )}
           </div>
 
           {/* Desktop & Tablet Action Buttons (sm+) */}
-          <div className="hidden sm:flex items-center gap-2 w-full lg:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0 no-print">
-            {/* Theme Toggle Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleTheme}
-              className={`gap-1.5 h-9 rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-xs transition-all ${
-                isLight
-                  ? "bg-amber-50/90 text-amber-900 border-amber-300 hover:bg-amber-100 hover:border-amber-400"
-                  : "bg-slate-800/90 text-amber-300 border-slate-700 hover:bg-slate-700 hover:text-amber-200"
-              }`}
-              title="Toggle between Light and Dark themes"
-            >
-              {isLight ? <Sun className="w-4 h-4 text-amber-600 fill-amber-500" /> : <Moon className="w-4 h-4 text-amber-300 fill-amber-400" />}
-              <span>{isLight ? "Light Mode" : "Dark Mode"}</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadDocuments}
-              className={`gap-1.5 h-9 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
-                isLight
-                  ? "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200"
-                  : "bg-slate-800/80 border-slate-700 hover:bg-slate-700 text-slate-200"
-              }`}
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Refresh</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAddExpenseOpen(true)}
-              className={`gap-1.5 h-9 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
-                isLight
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
-                  : "bg-emerald-950/40 text-emerald-300 border-emerald-700 hover:bg-emerald-900/60"
-              }`}
-            >
-              <Plus className="w-4 h-4 text-emerald-600" />
-              <span>Add Expense / Log</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportExcel}
-              className={`gap-1.5 h-9 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
-                isLight
-                  ? "bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100"
-                  : "bg-blue-950/40 text-blue-300 border-blue-700 hover:bg-blue-900/60"
-              }`}
-              title="Download Excel Workbook with multiple sheets"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
-              <span>Export Excel</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportCSV}
-              className={`gap-1.5 h-9 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
-                isLight
-                  ? "bg-cyan-50 text-cyan-800 border-cyan-300 hover:bg-cyan-100"
-                  : "bg-cyan-950/40 text-cyan-300 border-cyan-700 hover:bg-cyan-900/60"
-              }`}
-              title="Download clean CSV table"
-            >
-              <FileDown className="w-3.5 h-3.5 text-cyan-600" />
-              <span>CSV</span>
-            </Button>
-
-            {/* Live Exchange Rate Selector Button */}
-            <Button
-              variant="outline"
-              size="sm"
+          <div className="hidden sm:flex flex-wrap items-center gap-2.5 w-full 2xl:w-auto justify-start 2xl:justify-end no-print">
+            {/* Live Exchange Rate Selector Pill */}
+            <button
+              type="button"
               onClick={() => {
                 setTempRateInput(exchangeRate.toString())
                 setIsRateModalOpen(true)
               }}
-              className={`gap-1.5 h-9 rounded-xl text-xs font-black shrink-0 cursor-pointer border transition-all ${
+              className={`inline-flex items-center gap-2 h-9 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-2xs hover:scale-[1.02] active:scale-95 ${
                 isLight
-                  ? "bg-amber-50/90 hover:bg-amber-100/90 text-amber-900 border-amber-300 shadow-xs"
-                  : "bg-amber-950/30 hover:bg-amber-900/40 text-amber-300 border-amber-700/50"
+                  ? "bg-amber-50/90 hover:bg-amber-100 text-amber-950 border-amber-300/80"
+                  : "bg-amber-950/30 hover:bg-amber-900/40 text-amber-200 border-amber-700/60"
               }`}
               title="Click to view or adjust Afghan Afghani (AFN) to USD exchange rate"
             >
               <Coins className="w-3.5 h-3.5 text-amber-500" />
-              <span>1 USD = {exchangeRate} AFN</span>
-              <Badge className="ml-1 text-[9px] px-1 py-0 bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-400">
+              <span className="font-mono tracking-tight font-extrabold">1 USD = {exchangeRate} AFN</span>
+              <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-400/30">
                 Rate
-              </Badge>
+              </span>
+            </button>
+
+            {/* Compact Theme Toggle Button (Icon only) */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleTheme}
+              className={`w-9 h-9 p-0 rounded-xl shrink-0 cursor-pointer border shadow-2xs transition-all ${
+                isLight
+                  ? "bg-white hover:bg-slate-50 border-slate-300 text-slate-700 hover:text-slate-900"
+                  : "bg-slate-800/80 hover:bg-slate-800 border-slate-700 text-slate-200 hover:text-white"
+              }`}
+              title={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
+            >
+              {isLight ? (
+                <Sun className="w-4 h-4 text-amber-500 fill-amber-500/20" />
+              ) : (
+                <Moon className="w-4 h-4 text-sky-400 fill-sky-400/20" />
+              )}
             </Button>
 
+            {/* Refresh Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className={`gap-1.5 h-9 px-3 rounded-xl text-xs font-bold shrink-0 cursor-pointer border shadow-2xs transition-all ${
+                isLight
+                  ? "bg-white hover:bg-slate-50 border-slate-300 text-slate-700 hover:text-slate-900"
+                  : "bg-slate-800/80 hover:bg-slate-800 border-slate-700 text-slate-200 hover:text-white"
+              }`}
+              title="Reload shipments and recalculate container metrics"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-slate-500 dark:text-slate-400 ${isRefreshing ? "animate-spin" : ""}`} />
+              <span>Refresh</span>
+            </Button>
+
+            {/* Add Expense Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAddExpenseOpen(true)}
+              className={`gap-1.5 h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer border shadow-2xs transition-all ${
+                isLight
+                  ? "bg-emerald-50 hover:bg-emerald-100/90 text-emerald-900 border-emerald-300 hover:border-emerald-400"
+                  : "bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border-emerald-800 hover:border-emerald-700"
+              }`}
+              title="Add custom OPEX or logistics expense log"
+            >
+              <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Add Expense / Log</span>
+            </Button>
+
+            {/* Unified Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`gap-1.5 h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer border shadow-2xs transition-all ${
+                    isLight
+                      ? "bg-white hover:bg-slate-50 border-slate-300 text-slate-700 hover:text-slate-900"
+                      : "bg-slate-800/80 hover:bg-slate-800 border-slate-700 text-slate-200 hover:text-white"
+                  }`}
+                  title="Download report data in Excel or CSV format"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>Export</span>
+                  <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60 p-1.5 rounded-2xl shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 z-50">
+                <DropdownMenuItem
+                  onClick={handleExportExcel}
+                  className="gap-2.5 p-2 rounded-xl cursor-pointer text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                    <FileSpreadsheet className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-slate-900 dark:text-slate-100">Export Excel (.xlsx)</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Full multi-tab workbook</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+                <DropdownMenuItem
+                  onClick={handleExportCSV}
+                  className="gap-2.5 p-2 rounded-xl cursor-pointer text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
+                    <FileDown className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-slate-900 dark:text-slate-100">Export CSV (.csv)</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Clean tabular dataset</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Print A4 / PDF Button */}
             <Button
               variant="default"
               size="sm"
               onClick={() => setIsPrintDialogOpen(true)}
-              className="gap-1.5 h-9 rounded-xl text-xs font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md hover:from-blue-700 hover:to-indigo-700 shrink-0 cursor-pointer"
+              className="gap-1.5 h-9 px-4 rounded-xl text-xs font-bold bg-blue-900 hover:bg-blue-800 text-white shadow-md shadow-blue-900/20 shrink-0 cursor-pointer transition-all active:scale-95"
+              title="Generate official printable A4 report or download PDF"
             >
-              <Printer className="w-3.5 h-3.5" />
+              <Printer className="w-3.5 h-3.5 text-amber-400" />
               <span>Print A4 / PDF</span>
             </Button>
           </div>
-        </div>
+        </header>
 
         {/* =================================================================== */}
         {/* DIRECTION TOGGLE CHIPS & FILTERS TOOLBAR */}

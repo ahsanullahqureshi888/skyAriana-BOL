@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useCallback, useEffect } from "react"
+import React, { useState, useMemo, useCallback, useEffect, startTransition } from "react"
 import { SavedDocument, OverviewKpis } from "@/lib/reports/types"
 import {
   formatDisplayDate,
@@ -12,7 +12,9 @@ import {
   parsePackages,
   parseMoney,
 } from "@/lib/reports/parsers"
+import { extractDriverFatherName, extractTransitBorderStation } from "@/lib/reports/export-excel"
 import { parseSyncedCargoItems } from "@/lib/utils/cargo-grid"
+import { extractBolCargoAndRates } from "@/lib/reports/cargo-rate-extractor"
 import type { BillOfLadingFormData } from "@/lib/types/bill-of-lading"
 import { BolExpandedRow } from "./bol-expanded-row"
 import { Button } from "@/components/ui/button"
@@ -66,6 +68,7 @@ export type SortField =
   | "invoice_no"
   | "shipper_name"
   | "consignee_name"
+  | "notify_party"
   | "packages"
   | "net_weight"
   | "gross_weight"
@@ -171,6 +174,79 @@ export interface DetailedReportTableProps {
 
 const LOCAL_STORAGE_COLS_KEY = "aq_bol_report_visible_cols_v2"
 
+const TOGGLEABLE_COLUMNS = COLUMN_DEFINITIONS.filter(
+  (c) => c.id !== "idx" && c.id !== "expand" && c.id !== "bolNo"
+)
+
+interface ColumnCustomizerProps {
+  visibleColumns: Set<ColumnId>
+  onToggleColumn: (colId: ColumnId) => void
+  onApplyPreset: (preset: ColumnPreset) => void
+}
+
+const ColumnCustomizer = React.memo(function ColumnCustomizer({
+  visibleColumns,
+  onToggleColumn,
+  onApplyPreset,
+}: ColumnCustomizerProps) {
+  const [open, setOpen] = useState(false)
+
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    // Break out of synchronous event dispatch so button click responds immediately (< 16ms INP)
+    startTransition(() => {
+      setOpen(nextOpen)
+    })
+  }, [])
+
+  return (
+    <DropdownMenu modal={false} open={open} onOpenChange={handleOpenChange}>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8.5 px-3 rounded-xl border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
+          <span>Columns ({visibleColumns.size})</span>
+          <ChevronDown className="w-3 h-3 text-slate-400" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64 max-h-[80vh] overflow-y-auto rounded-xl p-2 font-medium">
+        <DropdownMenuLabel className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+          Column Presets
+        </DropdownMenuLabel>
+        <div className="grid grid-cols-2 gap-1 p-1">
+          {(["operations", "finance", "shipping", "minimal", "all"] as ColumnPreset[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onApplyPreset(p)}
+              className="px-2 py-1 rounded text-left text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950 hover:text-blue-700 cursor-pointer transition-all"
+            >
+              {COLUMN_PRESETS[p].label}
+            </button>
+          ))}
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+          Toggle Individual Columns
+        </DropdownMenuLabel>
+        {TOGGLEABLE_COLUMNS.map((col) => (
+          <DropdownMenuCheckboxItem
+            key={col.id}
+            checked={visibleColumns.has(col.id)}
+            onCheckedChange={() => onToggleColumn(col.id)}
+            className="text-xs cursor-pointer"
+          >
+            {col.label} <span className="text-[10px] text-slate-400 ml-auto font-mono">({col.category})</span>
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+})
+
 export function DetailedReportTable({
   documents,
   filteredDocuments,
@@ -219,26 +295,39 @@ export function DetailedReportTable({
 
   // Save column visibility changes
   const updateVisibleColumns = useCallback((cols: Set<ColumnId>) => {
-    setVisibleColumns(cols)
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(LOCAL_STORAGE_COLS_KEY, JSON.stringify(Array.from(cols)))
-      } catch {}
-    }
+    startTransition(() => {
+      setVisibleColumns(cols)
+    })
+    setTimeout(() => {
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(LOCAL_STORAGE_COLS_KEY, JSON.stringify(Array.from(cols)))
+        } catch {}
+      }
+    }, 0)
   }, [])
 
-  const applyPreset = (preset: ColumnPreset) => {
+  const applyPreset = useCallback((preset: ColumnPreset) => {
     updateVisibleColumns(new Set(COLUMN_PRESETS[preset].columns))
     toast.success(`Switched to ${COLUMN_PRESETS[preset].label} column preset`)
-  }
+  }, [updateVisibleColumns])
 
-  const toggleColumn = (colId: ColumnId) => {
+  const toggleColumn = useCallback((colId: ColumnId) => {
     if (colId === "idx" || colId === "expand" || colId === "bolNo") return // Always visible
-    const next = new Set(visibleColumns)
-    if (next.has(colId)) next.delete(colId)
-    else next.add(colId)
-    updateVisibleColumns(next)
-  }
+    startTransition(() => {
+      setVisibleColumns((prev) => {
+        const next = new Set(prev)
+        if (next.has(colId)) next.delete(colId)
+        else next.add(colId)
+        setTimeout(() => {
+          try {
+            localStorage.setItem(LOCAL_STORAGE_COLS_KEY, JSON.stringify(Array.from(next)))
+          } catch {}
+        }, 0)
+        return next
+      })
+    })
+  }, [])
 
   // Ensure all rows are rendered during browser print / PDF export
   useEffect(() => {
@@ -273,12 +362,16 @@ export function DetailedReportTable({
   }
 
   const expandAllRows = () => {
-    setExpandedDocIds(new Set(paginatedRows.map((r) => r.id)))
+    startTransition(() => {
+      setExpandedDocIds(new Set(paginatedRows.map((r) => r.id)))
+    })
     toast.info(`Expanded all ${paginatedRows.length} visible rows`)
   }
 
   const collapseAllRows = () => {
-    setExpandedDocIds(new Set())
+    startTransition(() => {
+      setExpandedDocIds(new Set())
+    })
     toast.info("Collapsed all rows")
   }
 
@@ -324,12 +417,14 @@ export function DetailedReportTable({
 
   // Sorting Handler
   const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
-    } else {
-      setSortField(field)
-      setSortOrder(field === "issue_date" || field === "goods_value" || field === "packages" ? "desc" : "asc")
-    }
+    startTransition(() => {
+      if (sortField === field) {
+        setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+      } else {
+        setSortField(field)
+        setSortOrder(field === "issue_date" || field === "goods_value" || field === "packages" ? "desc" : "asc")
+      }
+    })
   }
 
   // Sorted Dataset
@@ -357,6 +452,11 @@ export function DetailedReportTable({
           break
         case "consignee_name":
           comparison = (a.consignee_name || "").localeCompare(b.consignee_name || "")
+          break
+        case "notify_party":
+          const notifyA = (a.notify_party_name || a.notify_party || (a as any).notifyParty || "").trim()
+          const notifyB = (b.notify_party_name || b.notify_party || (b as any).notifyParty || "").trim()
+          comparison = notifyA.localeCompare(notifyB)
           break
         case "packages":
           comparison = parsePackages(a.number_of_packages) - parsePackages(b.number_of_packages)
@@ -515,8 +615,10 @@ export function DetailedReportTable({
                 key={chip.id}
                 type="button"
                 onClick={() => {
-                  setQuickChip(chip.id)
-                  setCurrentPage(1)
+                  startTransition(() => {
+                    setQuickChip(chip.id)
+                    setCurrentPage(1)
+                  })
                 }}
                 className={`px-2 py-0.8 rounded-lg text-[10.5px] font-extrabold transition-all cursor-pointer whitespace-nowrap ${
                   quickChip === chip.id
@@ -533,50 +635,11 @@ export function DetailedReportTable({
         {/* Right: Columns Selector, Export, Print, Density & View Mode */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Column Customizer Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8.5 px-3 rounded-xl border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-extrabold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
-                <span>Columns ({visibleColumns.size})</span>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 max-h-[80vh] overflow-y-auto rounded-xl p-2 font-medium">
-              <DropdownMenuLabel className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                Column Presets
-              </DropdownMenuLabel>
-              <div className="grid grid-cols-2 gap-1 p-1">
-                {(["operations", "finance", "shipping", "minimal", "all"] as ColumnPreset[]).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => applyPreset(p)}
-                    className="px-2 py-1 rounded text-left text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950 hover:text-blue-700 cursor-pointer transition-all"
-                  >
-                    {COLUMN_PRESETS[p].label}
-                  </button>
-                ))}
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                Toggle Individual Columns
-              </DropdownMenuLabel>
-              {COLUMN_DEFINITIONS.filter((c) => c.id !== "idx" && c.id !== "expand" && c.id !== "bolNo").map((col) => (
-                <DropdownMenuCheckboxItem
-                  key={col.id}
-                  checked={visibleColumns.has(col.id)}
-                  onCheckedChange={() => toggleColumn(col.id)}
-                  className="text-xs cursor-pointer"
-                >
-                  {col.label} <span className="text-[10px] text-slate-400 ml-auto font-mono">({col.category})</span>
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ColumnCustomizer
+            visibleColumns={visibleColumns}
+            onToggleColumn={toggleColumn}
+            onApplyPreset={applyPreset}
+          />
 
           {/* Expand/Collapse All Rows */}
           <Button
@@ -629,7 +692,11 @@ export function DetailedReportTable({
           <Button
             type="button"
             variant="outline"
-            onClick={() => setIsFitScreen(!isFitScreen)}
+            onClick={() => {
+              startTransition(() => {
+                setIsFitScreen(!isFitScreen)
+              })
+            }}
             className={`h-8.5 px-3 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
               !isFitScreen
                 ? "border-blue-600 bg-blue-600 text-white shadow-xs"
@@ -645,7 +712,11 @@ export function DetailedReportTable({
           <div className="flex items-center gap-0.5 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5 bg-slate-100 dark:bg-slate-800 h-8.5">
             <button
               type="button"
-              onClick={() => setTableDensity("compact")}
+              onClick={() => {
+                startTransition(() => {
+                  setTableDensity("compact")
+                })
+              }}
               className={`px-2.5 py-1 text-[11px] font-extrabold rounded-lg transition-all cursor-pointer ${
                 tableDensity === "compact"
                   ? "bg-white dark:bg-slate-700 text-blue-900 dark:text-blue-200 shadow-xs"
@@ -656,7 +727,11 @@ export function DetailedReportTable({
             </button>
             <button
               type="button"
-              onClick={() => setTableDensity("normal")}
+              onClick={() => {
+                startTransition(() => {
+                  setTableDensity("normal")
+                })
+              }}
               className={`px-2.5 py-1 text-[11px] font-extrabold rounded-lg transition-all cursor-pointer ${
                 tableDensity === "normal"
                   ? "bg-white dark:bg-slate-700 text-blue-900 dark:text-blue-200 shadow-xs"
@@ -940,8 +1015,16 @@ export function DetailedReportTable({
 
               {/* Notify Party */}
               {visibleColumns.has("notify") && (
-                <th className={`px-2.5 font-extrabold text-slate-200 uppercase tracking-wider min-w-[150px] ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}>
-                  Notify Party
+                <th
+                  onClick={() => handleSort("notify_party")}
+                  className={`px-2.5 font-extrabold text-slate-200 uppercase tracking-wider min-w-[150px] cursor-pointer hover:text-white select-none ${tableDensity === "compact" ? "py-2 text-[10px]" : "py-2.5 text-[11px]"}`}
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Notify Party</span>
+                    {sortField === "notify_party" && (
+                      sortOrder === "asc" ? <ArrowUp className="w-3 h-3 text-blue-400" /> : <ArrowDown className="w-3 h-3 text-blue-400" />
+                    )}
+                  </div>
                 </th>
               )}
 
@@ -1074,6 +1157,8 @@ export function DetailedReportTable({
               const cellPad = tableDensity === "compact" ? "py-2 px-2 text-[10.5px]" : "py-2.5 px-2.5 text-xs"
 
               const truckText = extractTruckNo(doc) || doc.truck_number || "—"
+              const driverFatherName = extractDriverFatherName(doc)
+              const borderStation = extractTransitBorderStation(doc)
               const invText = extractInvoiceNo(doc) || doc.invoice_no || (doc as any).invoice_number || "—"
               const routeInfo = extractBolRoute(doc)
               const syncedCargo = parseSyncedCargoItems(doc as unknown as Partial<BillOfLadingFormData>)
@@ -1081,10 +1166,17 @@ export function DetailedReportTable({
 
               const isShipperRtl = isRtlText(doc.shipper_name)
               const isConsigneeRtl = isRtlText(doc.consignee_name)
+              const notifyPartyText = (doc.notify_party_name || doc.notify_party || (doc as any).notifyParty || "").trim()
+              const notifyAddressText = (doc.notify_party_address || (doc as any).notify_party_address || (doc as any).notifyPartyAddress || (doc as any).notifyAddress || "").trim()
+              const isNotifyRtl = isRtlText(notifyPartyText)
+              const isNotifySame = !notifyPartyText ||
+                notifyPartyText.toUpperCase() === "SAME AS CONSIGNEE" ||
+                notifyPartyText.toUpperCase() === "SAME" ||
+                Boolean(doc.consignee_name && notifyPartyText.toUpperCase() === doc.consignee_name.trim().toUpperCase())
 
-              // Formatted single/multi cargo summary
-              const isMultiCargo = syncedCargo.items.length > 1
-              const firstCommodity = doc.commodity || "Cargo"
+              // Comprehensive full cargo & multi-rate extraction
+              const cargoData = extractBolCargoAndRates(doc)
+              const isMultiCargo = cargoData.isMultiCargo
 
               return (
                 <React.Fragment key={`${doc.id}-${idx}`}>
@@ -1163,10 +1255,15 @@ export function DetailedReportTable({
                           <span className="font-bold text-slate-900 dark:text-white font-mono text-[11px]" dir="ltr">
                             {truckText}
                           </span>
-                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 flex-wrap">
                             {doc.driver_name && (
-                              <span className="font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[85px]" title={doc.driver_name}>
+                              <span className="font-semibold text-slate-700 dark:text-slate-300 truncate max-w-[100px]" title={doc.driver_name}>
                                 {doc.driver_name}
+                              </span>
+                            )}
+                            {driverFatherName !== "-" && (
+                              <span className="text-[9.5px] text-slate-500 dark:text-slate-400 font-sans" title={`Father: ${driverFatherName}`}>
+                                (ولد {driverFatherName})
                               </span>
                             )}
                             {doc.driver_contact && (
@@ -1178,6 +1275,11 @@ export function DetailedReportTable({
                           {(doc.driver_rent || (doc as any).driverFreight) && (
                             <span className="inline-flex items-center text-[9px] font-black text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 rounded px-1.5 py-0.2 w-fit whitespace-nowrap" title="Driver Rent / کرایه موتر">
                               {doc.driver_rent || (doc as any).driverFreight}
+                            </span>
+                          )}
+                          {borderStation !== "-" && (
+                            <span className="text-[9px] text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-900 rounded px-1 w-fit whitespace-nowrap" title={`Transit Border: ${borderStation}`}>
+                              📍 {borderStation.split(" ")[0]}
                             </span>
                           )}
                         </div>
@@ -1232,32 +1334,102 @@ export function DetailedReportTable({
 
                     {/* Notify Party */}
                     {visibleColumns.has("notify") && (
-                      <td className={`${cellPad} text-slate-700 dark:text-slate-300 truncate max-w-[140px]`} title={doc.notify_party_name || "Same as Consignee"}>
-                        {doc.notify_party_name || <span className="text-slate-400 italic font-light">Same</span>}
+                      <td className={`${cellPad} text-slate-700 dark:text-slate-300 max-w-[170px]`}>
+                        {isNotifySame ? (
+                          <span className="text-slate-400 italic font-light text-xs" title="Same as Consignee">Same</span>
+                        ) : (
+                          <div
+                            className="flex flex-col"
+                            title={notifyAddressText ? `${notifyPartyText}\n${notifyAddressText}` : notifyPartyText}
+                          >
+                            <span
+                              className={`font-medium text-slate-800 dark:text-slate-200 hover:text-blue-600 transition-colors whitespace-normal break-words leading-tight ${isNotifyRtl ? "text-right font-[vazirmatn]" : ""}`}
+                              dir={isNotifyRtl ? "rtl" : "ltr"}
+                            >
+                              {notifyPartyText}
+                            </span>
+                            {notifyAddressText && (
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 truncate mt-0.5" title={notifyAddressText}>
+                                {notifyAddressText.split("\n")[0]}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                     )}
 
                     {/* Cargo Summary */}
                     {visibleColumns.has("cargo") && (
-                      <td className={`${cellPad}`}>
-                        {isMultiCargo ? (
-                          <div className="flex flex-col space-y-0.5">
-                            <span className="inline-flex items-center gap-1 font-bold text-blue-900 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-1.5 py-0.5 rounded text-[10.5px] w-fit">
-                              <Boxes className="w-3 h-3 text-blue-600" />
-                              {syncedCargo.items.length} Cargo Items
-                            </span>
-                            <span className="text-[10px] text-slate-500 truncate max-w-[200px]" title={firstCommodity}>
-                              {firstCommodity}
-                            </span>
+                      <td className={`${cellPad} min-w-[220px]`}>
+                        {cargoData.isMultiCargo ? (
+                          <div className="flex flex-col space-y-1.5 py-0.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="inline-flex items-center gap-1 font-black text-blue-900 dark:text-blue-200 bg-blue-100/90 dark:bg-blue-950/90 border border-blue-300 dark:border-blue-800 px-1.5 py-0.5 rounded text-[10px] w-fit shadow-2xs">
+                                <Boxes className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                {cargoData.items.length} Cargo Items
+                              </span>
+                              {syncedCargo.totals.totalPackages > 0 && (
+                                <span className="text-[9.5px] font-bold text-slate-400 tabular-nums">
+                                  (Σ {syncedCargo.totals.totalPackages.toLocaleString()} {syncedCargo.totals.packageUnit})
+                                </span>
+                              )}
+                            </div>
+                            <div className="space-y-1 divide-y divide-slate-100 dark:divide-slate-800/80">
+                              {cargoData.items.map((item, cIdx) => (
+                                <div key={item.id || cIdx} className="pt-1 first:pt-0">
+                                  <div className="flex items-start gap-1.5 text-[11px] leading-snug">
+                                    <span className="w-3.5 h-3.5 rounded bg-blue-50 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5 border border-blue-200/80 dark:border-blue-800">
+                                      {cIdx + 1}
+                                    </span>
+                                    <span className="font-bold text-slate-900 dark:text-slate-100 break-words" title={item.fullTitle}>
+                                      {item.fullTitle}
+                                    </span>
+                                  </div>
+                                  {(item.netWeight || item.rate) && (
+                                    <div className="flex items-center gap-2 pl-5 text-[10px] text-slate-500 dark:text-slate-400 font-mono flex-wrap mt-0.5">
+                                      {item.netWeight && (
+                                        <span className="text-amber-700 dark:text-amber-400 font-semibold" title="Net Weight">
+                                          ⚖️ {item.netWeight}
+                                        </span>
+                                      )}
+                                      {item.rate && (
+                                        <span className="text-blue-700 dark:text-blue-300 font-bold" title="Item Rate">
+                                          @ {item.rate}
+                                        </span>
+                                      )}
+                                      {item.goodsValue && (
+                                        <span className="text-emerald-700 dark:text-emerald-400 font-medium" title="Item Goods Value">
+                                          💵 {item.goodsValue}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         ) : (
-                          <div className="flex flex-col space-y-0.5">
-                            <span className="font-bold text-slate-900 dark:text-white truncate max-w-[200px]" title={firstCommodity}>
-                              {firstCommodity}
+                          <div className="flex flex-col space-y-0.5 min-w-[180px]">
+                            <span className="font-bold text-slate-900 dark:text-white break-words text-[11.5px]" title={cargoData.singleCommodityTitle}>
+                              {cargoData.singleCommodityTitle}
                             </span>
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              {syncedCargo.items[0]?.packageText || doc.number_of_packages || "—"} {syncedCargo.items[0]?.rate ? `@ ${syncedCargo.items[0].rate}` : ""}
-                            </span>
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono flex-wrap">
+                              {cargoData.items[0]?.packageText && (
+                                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                  📦 {cargoData.items[0].packageText}
+                                </span>
+                              )}
+                              {cargoData.items[0]?.netWeight && (
+                                <span className="text-amber-700 dark:text-amber-400 font-semibold">
+                                  • ⚖️ {cargoData.items[0].netWeight}
+                                </span>
+                              )}
+                              {cargoData.items[0]?.rate && (
+                                <span className="text-blue-600 dark:text-blue-400 font-bold">
+                                  • @ {cargoData.items[0].rate}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         )}
                       </td>
@@ -1341,13 +1513,45 @@ export function DetailedReportTable({
 
                     {/* Rate */}
                     {visibleColumns.has("rate") && (
-                      <td className={`${cellPad} font-semibold tabular-nums text-right text-blue-700 dark:text-blue-300`}>
-                        {isMultiCargo ? (
-                          <span className="text-[10px] font-extrabold text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-950 px-1 py-0.2 rounded border border-blue-200">
-                            Multi-Rate
-                          </span>
+                      <td className={`${cellPad} font-semibold tabular-nums text-right text-blue-700 dark:text-blue-300 whitespace-nowrap min-w-[110px]`}>
+                        {cargoData.isMultiRate ? (
+                          <div className="flex flex-col items-end space-y-1">
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black text-blue-900 dark:text-blue-200 bg-blue-100/90 dark:bg-blue-950 border border-blue-300 dark:border-blue-800 rounded px-1.5 py-0.2 mb-0.5 shadow-2xs">
+                              {cargoData.allRates.length} Rates
+                            </span>
+                            <div className="space-y-0.5 w-full">
+                              {cargoData.items.map((item, rIdx) => {
+                                if (!item.rate) return null
+                                return (
+                                  <div
+                                    key={rIdx}
+                                    className="flex items-center justify-end gap-1.5 font-mono text-[11px]"
+                                    title={`${item.fullTitle}: ${item.rate}`}
+                                  >
+                                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 font-sans">
+                                      #{rIdx + 1}:
+                                    </span>
+                                    <span className="font-black text-blue-800 dark:text-blue-300">
+                                      {item.rate}
+                                    </span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ) : cargoData.isUniformRate ? (
+                          <div className="flex flex-col items-end space-y-0.5">
+                            <span className="font-black text-blue-800 dark:text-blue-300 text-[11px]">
+                              {cargoData.allRates[0]}
+                            </span>
+                            <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500">
+                              (All {cargoData.items.length} Items)
+                            </span>
+                          </div>
                         ) : (
-                          <span>{doc.rate_per_kgs || "—"}</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">
+                            {cargoData.displayRate || doc.rate_per_kgs || (doc as any).rate_per_kg || "—"}
+                          </span>
                         )}
                       </td>
                     )}
@@ -1520,18 +1724,28 @@ export function DetailedReportTable({
 
           <div className="flex items-center gap-1.5">
             <Button
+              type="button"
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage(1)}
+              onClick={() => {
+                startTransition(() => {
+                  setCurrentPage(1)
+                })
+              }}
               disabled={currentPage === 1}
               className="h-7 px-2 text-xs rounded-lg"
             >
               First
             </Button>
             <Button
+              type="button"
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              onClick={() => {
+                startTransition(() => {
+                  setCurrentPage((p) => Math.max(1, p - 1))
+                })
+              }}
               disabled={currentPage === 1}
               className="h-7 px-2.5 text-xs rounded-lg"
             >
@@ -1541,18 +1755,28 @@ export function DetailedReportTable({
               Page {currentPage} of {totalPages}
             </span>
             <Button
+              type="button"
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              onClick={() => {
+                startTransition(() => {
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                })
+              }}
               disabled={currentPage === totalPages}
               className="h-7 px-2.5 text-xs rounded-lg"
             >
               Next
             </Button>
             <Button
+              type="button"
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage(totalPages)}
+              onClick={() => {
+                startTransition(() => {
+                  setCurrentPage(totalPages)
+                })
+              }}
               disabled={currentPage === totalPages}
               className="h-7 px-2 text-xs rounded-lg"
             >

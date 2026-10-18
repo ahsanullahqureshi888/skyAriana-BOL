@@ -78,9 +78,17 @@ if (!fs.existsSync(distMain)) {
 console.log("  -> Electron main and preload scripts compiled successfully.")
 
 // Step 4: Package Windows NSIS Installer via electron-builder
-console.log("\n[4/5] Packaging Windows NSIS Installer via electron-builder...")
+console.log("\n[4/5] Synchronizing Desktop Data & Packaging Windows NSIS Installer via electron-builder...")
+const syncScript = path.join(__dirname, "sync-desktop-data.cjs")
+if (fs.existsSync(syncScript)) {
+  execSync(`node "${syncScript}"`, { cwd: rootDir, stdio: "inherit" })
+}
 const electronBuilderBin = path.join(rootDir, "node_modules", "electron-builder", "cli.js")
-execSync(`node "${electronBuilderBin}" --win nsis --x64`, { cwd: rootDir, stdio: "inherit" })
+execSync(`node "${electronBuilderBin}" --win nsis --x64`, {
+  cwd: rootDir,
+  stdio: "inherit",
+  env: { ...process.env, CSC_IDENTITY_AUTO_DISCOVERY: "false" }
+})
 
 // Step 5: Validate Installer and Generate SHA-256 Checksum
 console.log("\n[5/5] Generating Checksums and Validating Release Artifacts...")

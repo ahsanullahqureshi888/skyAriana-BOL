@@ -2,12 +2,12 @@
   "name": "aq-companies",
   "productName": "AQ COMPANIES",
   "version": "5.1.0",
-  "description": "AQ COMPANIES – Logistics & BOL Management Desktop Workspace",
+  "description": "AQ COMPANIES - Logistics and BOL Management Desktop Workspace",
   "author": "Ahsanullah Qureshi",
   "copyright": "Copyright © Ahsanullah Qureshi",
   "main": "dist-electron/main.js",
   "private": true,
-  "packageManager": "pnpm@9.15.4",
+  "packageManager": "npm@10.9.2",
   "allowScripts": {
     "core-js": true,
     "electron": true,
@@ -26,7 +26,7 @@
     "dev": "next dev --webpack -p 3001",
     "electron:dev": "concurrently -k -s first \"npm:dev\" \"npm:electron:dev:launch\"",
     "electron:dev:launch": "wait-on http://127.0.0.1:3001 && cross-env ELECTRON_START_URL=http://127.0.0.1:3001 npm run build:electron && electron .",
-    "build": "cross-env NODE_OPTIONS=\"--max-old-space-size=8192\" next build --webpack",
+    "build": "next build",
     "build:electron": "tsc -p tsconfig.electron.json",
     "build:backend": "node scripts/build-backend.cjs",
     "build:frontend": "node scripts/local-production.cjs build",
@@ -40,10 +40,14 @@
     "test": "node --test --test-concurrency=1 tests/*.test.cjs && npm run typecheck",
     "verify:data": "node scripts/verify-data-integrity.cjs",
     "qa:data": "node scripts/verify-data-integrity.cjs",
+    "qa:backup": "node --test tests/backup-phase4-operations.test.cjs tests/backup-phase3-final.test.cjs tests/backup-restore-v2.test.cjs tests/backup-phase2-advanced.test.cjs tests/disaster-recovery.test.cjs",
+    "qa:restore": "node --test tests/backup-phase4-operations.test.cjs tests/backup-phase3-final.test.cjs tests/backup-restore-v2.test.cjs tests/staging-restore-hardening.test.cjs tests/disaster-recovery-and-health.test.cjs",
+    "qa:recovery": "node --test tests/backup-phase4-operations.test.cjs tests/backup-phase3-final.test.cjs tests/backup-phase2-advanced.test.cjs tests/disaster-recovery.test.cjs tests/disaster-recovery-and-health.test.cjs",
+    "test:disaster-recovery": "node --test tests/backup-phase2-advanced.test.cjs tests/disaster-recovery.test.cjs",
     "qa:mobile": "node --test tests/responsive-layout-system.test.cjs tests/mojibake-regression.test.cjs",
     "qa:a4": "node --test tests/a4-preview-signature-block.test.cjs tests/watermark-library.test.cjs",
     "qa": "node scripts/verify-data-integrity.cjs && node --test --test-concurrency=1 tests/*.test.cjs && npm run typecheck && npm run lint",
-    "qa:full": "npm run qa && npm run build",
+    "qa:full": "npm run qa:backup && npm run qa:restore && npm run qa:recovery && npm run qa && npm run build",
     "backup:release": "node scripts/create-and-verify-release-backup.cjs",
     "electron:build": "npm run build:frontend && npm run build:backend && npm run build:electron",
     "dist": "npm run electron:build && electron-builder --win nsis --x64",
@@ -88,9 +92,10 @@
     "@upstash/redis": "^1.38.2",
     "@vercel/analytics": "1.6.1",
     "@vercel/blob": "^2.8.0",
+    "@vercel/speed-insights": "^2.0.0",
     "adm-zip": "^0.6.1",
     "autoprefixer": "^10.4.20",
-    "browserslist": "^4.28.9",
+    "browserslist": "^4.29.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.1.1",
@@ -104,10 +109,10 @@
     "input-otp": "1.4.2",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.564.0",
-    "next": "^16.3.4",
+    "next": "16.4.0",
     "next-themes": "^0.4.6",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^6.0.227",
+    "pdfjs-dist": "^6.4.299",
     "pg": "^8.21.0",
     "react": "^19",
     "react-day-picker": "9.13.2",
@@ -134,12 +139,12 @@
     "concurrently": "^10.0.5",
     "cross-env": "^10.0.0",
     "drizzle-kit": "^0.31.10",
-    "electron": "39.8.10",
+    "electron": "41.10.6",
     "electron-builder": "^26.15.0",
     "electron-winstaller": "^5.4.0",
     "eslint": "9.0.0",
     "eslint-plugin-react-hooks": "^7.0.0",
-    "postcss": "^8.5.28",
+    "postcss": "^8.5.29",
     "tailwindcss": "^4.2.0",
     "tw-animate-css": "1.3.3",
     "typescript": "5.7.3",
@@ -150,6 +155,9 @@
     "appId": "com.aqcompanies.bol",
     "productName": "AQ COMPANIES",
     "electronDist": "node_modules/electron/dist",
+    "toolsets": {
+      "nsis": "1.2.1"
+    },
     "asar": true,
     "directories": {
       "output": "release"
@@ -165,7 +173,15 @@
       },
       {
         "from": ".next-production/standalone",
-        "to": "app-server"
+        "to": "app-server",
+        "filter": [
+          "**/*",
+          "!data/backups/**/*",
+          "!data/rollback-snapshots/**/*",
+          "!data/staging/**/*",
+          "!data/uploads/**/*",
+          "!backups/**/*"
+        ]
       },
       {
         "from": ".next-production/standalone/node_modules",
@@ -200,6 +216,10 @@
           ".bol-counter",
           ".invoice-counter"
         ]
+      },
+      {
+        "from": "data/app.db",
+        "to": "seed-data/data/app.db"
       }
     ],
     "win": {

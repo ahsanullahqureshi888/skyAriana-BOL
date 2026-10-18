@@ -60,6 +60,52 @@ export async function GET(request: Request) {
     }
   }
 
+  // Fast Account Summary (Accounts list + tombstones only, without megabytes of transaction rows)
+  if (action === "accounts" || action === "summary") {
+    try {
+      const dbData = await getAccountLedgerDatabase()
+      return NextResponse.json({
+        success: true,
+        data: {
+          accounts: dbData.accounts || [],
+          deletedLedgerEntries: dbData.deletedLedgerEntries || [],
+          totalAccounts: (dbData.accounts || []).length,
+        },
+        source: "local-file-summary",
+      })
+    } catch {
+      return NextResponse.json({ success: false, data: { accounts: [], deletedLedgerEntries: [] } }, { status: 500 })
+    }
+  }
+
+  // Single-account query (operate on selected account only — Section 73)
+  const singleAccountQuery = searchParams.get("account") || searchParams.get("company_name")
+  if (singleAccountQuery) {
+    try {
+      const dbData = await getAccountLedgerDatabase()
+      const targetKey = singleAccountQuery.trim().toLowerCase().replace(/[^a-z0-9]/g, "")
+      const filteredEntries: Record<string, any[]> = {}
+      if (dbData.ledgerEntries && typeof dbData.ledgerEntries === "object") {
+        for (const [k, rows] of Object.entries(dbData.ledgerEntries)) {
+          if (k.toLowerCase().replace(/[^a-z0-9]/g, "") === targetKey) {
+            filteredEntries[k] = rows
+          }
+        }
+      }
+      return NextResponse.json({
+        success: true,
+        data: {
+          accounts: dbData.accounts || [],
+          ledgerEntries: filteredEntries,
+          deletedLedgerEntries: dbData.deletedLedgerEntries || [],
+        },
+        source: "single-account-ledger",
+      })
+    } catch {
+      // Fall through to full
+    }
+  }
+
   try {
     const data = await getAccountLedgerDatabase()
     

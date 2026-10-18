@@ -9,8 +9,37 @@ const localBolsFile = getDataPath(".local-bols.json")
 const fullSnapshotFile = getDataPath(".local-full-snapshot.json")
 
 let memoryCacheBols: any[] | null = null
+let memoryCacheIndex = new Map<string, any>()
 let lastCacheTime = 0
-const CACHE_TTL_MS = 3000
+let snapshotDebounceTimer: NodeJS.Timeout | null = null
+const CACHE_TTL_MS = 60_000
+
+function refreshIndex(bols: any[]): void {
+  const idx = new Map<string, any>()
+  for (const b of bols) {
+    if (!b) continue
+    const rawNum = b.bol_number ? String(b.bol_number).trim() : ""
+    const rawId = b.id ? String(b.id).trim() : ""
+    const bNum2 = b.billOfLadingNumber ? String(b.billOfLadingNumber).trim() : ""
+    const bNum3 = b.bolNo ? String(b.bolNo).trim() : ""
+
+    const registerKey = (k: string) => {
+      if (!k) return
+      const lower = k.toLowerCase()
+      idx.set(lower, b)
+      const alpha = lower.replace(/[^a-z0-9]/g, "")
+      if (alpha.length > 3) idx.set(alpha, b)
+      const digits = lower.match(/\d+$/)?.[0]
+      if (digits && digits.length >= 3) idx.set(`digits:${digits}`, b)
+    }
+
+    registerKey(rawNum)
+    registerKey(rawId)
+    registerKey(bNum2)
+    registerKey(bNum3)
+  }
+  memoryCacheIndex = idx
+}
 
 async function readAllBols(): Promise<any[]> {
   const now = Date.now()
@@ -20,6 +49,7 @@ async function readAllBols(): Promise<any[]> {
   const loaded = await readJsonFile<any[]>(localBolsFile, [])
   if (Array.isArray(loaded) && loaded.length > 0) {
     memoryCacheBols = loaded
+    refreshIndex(loaded)
     lastCacheTime = now
     return loaded
   }
@@ -28,6 +58,7 @@ async function readAllBols(): Promise<any[]> {
   const initialSeed = Array.isArray(seedBolsData) ? (seedBolsData as any[]) : []
   if (initialSeed.length > 0) {
     memoryCacheBols = initialSeed
+    refreshIndex(initialSeed)
     lastCacheTime = now
     try {
       await writeJsonFile<any[]>(localBolsFile, initialSeed)
@@ -36,6 +67,7 @@ async function readAllBols(): Promise<any[]> {
   }
 
   memoryCacheBols = []
+  refreshIndex([])
   lastCacheTime = now
   return []
 }
@@ -43,9 +75,10 @@ async function readAllBols(): Promise<any[]> {
 async function writeAllBols(bols: any[]): Promise<void> {
   await writeJsonFile<any[]>(localBolsFile, bols)
   memoryCacheBols = bols
+  refreshIndex(bols)
   lastCacheTime = Date.now()
 
-  await updateFullSnapshot(bols)
+  debouncedUpdateFullSnapshot(bols)
 }
 
 async function mutateAllBols(updater: (bols: any[]) => any[] | Promise<any[]>): Promise<any[]> {
@@ -54,22 +87,25 @@ async function mutateAllBols(updater: (bols: any[]) => any[] | Promise<any[]>): 
     return updater(safeCurrent)
   })
   memoryCacheBols = next
+  refreshIndex(next)
   lastCacheTime = Date.now()
-  await updateFullSnapshot(next)
+  debouncedUpdateFullSnapshot(next)
   return next
 }
 
-async function updateFullSnapshot(bols: any[]): Promise<void> {
-  // Also update full snapshot so sync endpoints stay 100% consistent
-  try {
-    await mutateJsonFile<Record<string, any>>(fullSnapshotFile, {}, (snapshot) => ({
-      ...(snapshot && typeof snapshot === "object" ? snapshot : {}),
-      documents: bols,
-      updated_at: new Date().toISOString(),
-    }))
-  } catch (error) {
-    console.error("[local-storage] BOL saved but full snapshot update failed:", error)
-  }
+function debouncedUpdateFullSnapshot(bols: any[]): void {
+  if (snapshotDebounceTimer) clearTimeout(snapshotDebounceTimer)
+  snapshotDebounceTimer = setTimeout(async () => {
+    try {
+      await mutateJsonFile<Record<string, any>>(fullSnapshotFile, {}, (snapshot) => ({
+        ...(snapshot && typeof snapshot === "object" ? snapshot : {}),
+        documents: bols,
+        updated_at: new Date().toISOString(),
+      }))
+    } catch (error) {
+      console.error("[local-storage] BOL saved but full snapshot update failed:", error)
+    }
+  }, 1500)
 }
 
 export function isUUID(str?: any): boolean {
@@ -106,6 +142,20 @@ function harmonizeBolRecord(data: any, bolNumber?: string): any {
   const contSize = data?.container_size || data?.containerSize || ""
   const contNums = data?.container_numbers || data?.containerNumbers || ""
 
+  const consigneeAddress = data?.consignee_address || data?.consigneeAddress || ""
+  const consigneeContact = data?.consignee_contact || data?.consigneeContact || ""
+  const consigneeEmail = data?.consignee_email || data?.consigneeEmail || ""
+  const shipperAddress = data?.shipper_address || data?.shipperAddress || ""
+  const shipperContact = data?.shipper_contact || data?.shipperContact || ""
+  const shipperEmail = data?.shipper_email || data?.shipperEmail || ""
+  const cargoRoute = data?.cargo_route_note || data?.cargoRouteNote || ""
+  const kgsCtn = data?.kgs_per_carton || data?.kgsPerCarton || ""
+  const grossCtn = data?.gross_weight_per_carton || data?.grossWeightPerCarton || ""
+  const rateKgs = data?.rate_per_kgs || data?.ratePerKgs || ""
+  const goodsVal = data?.goods_value || data?.goodsValue || ""
+  const notes1 = data?.notes_1 !== undefined && data?.notes_1 !== null ? data.notes_1 : (data?.notes1 ?? "")
+  const notes2 = data?.notes_2 !== undefined && data?.notes_2 !== null ? data.notes_2 : (data?.notes2 ?? "")
+
   return {
     ...data,
     id: num || rawId,
@@ -116,8 +166,20 @@ function harmonizeBolRecord(data: any, bolNumber?: string): any {
     issueDate,
     shipper_name: shipper,
     shipperName: shipper,
+    shipper_address: shipperAddress,
+    shipperAddress,
+    shipper_contact: shipperContact,
+    shipperContact,
+    shipper_email: shipperEmail,
+    shipperEmail,
     consignee_name: consignee,
     consigneeName: consignee,
+    consignee_address: consigneeAddress,
+    consigneeAddress,
+    consignee_contact: consigneeContact,
+    consigneeContact,
+    consignee_email: consigneeEmail,
+    consigneeEmail,
     truck_number: truck,
     truckNumber: truck,
     driver_name: driver,
@@ -132,6 +194,18 @@ function harmonizeBolRecord(data: any, bolNumber?: string): any {
     grossWeight: grossWt,
     cargo_description: cargoDesc,
     cargoDescription: cargoDesc,
+    cargo_route_note: cargoRoute,
+    cargoRouteNote: cargoRoute,
+    kgs_per_carton: kgsCtn,
+    kgsPerCarton: kgsCtn,
+    gross_weight_per_carton: grossCtn,
+    grossWeightPerCarton: grossCtn,
+    rate_per_kgs: rateKgs,
+    ratePerKgs: rateKgs,
+    goods_value: goodsVal,
+    goodsValue: goodsVal,
+    notes_1: notes1,
+    notes_2: notes2,
     container_type: contType,
     containerType: contType,
     container_size: contSize,
@@ -210,8 +284,21 @@ export async function getLocalBOL(bolNumber: string): Promise<any | null> {
   const target = (bolNumber || "").trim().toLowerCase()
   if (!target) return null
 
+  // Fast O(1) indexed cache lookup
+  const direct = memoryCacheIndex.get(target)
+  if (direct) return direct
+
   const targetAlpha = target.replace(/[^a-z0-9]/g, "")
+  if (targetAlpha.length > 3) {
+    const alphaMatch = memoryCacheIndex.get(targetAlpha)
+    if (alphaMatch) return alphaMatch
+  }
+
   const targetDigits = target.match(/\d+$/)?.[0]
+  if (targetDigits && targetDigits.length >= 3) {
+    const digitMatch = memoryCacheIndex.get(`digits:${targetDigits}`)
+    if (digitMatch) return digitMatch
+  }
 
   const bol = bols.find(b => {
     const bId = (b.id ? String(b.id) : "").trim().toLowerCase()

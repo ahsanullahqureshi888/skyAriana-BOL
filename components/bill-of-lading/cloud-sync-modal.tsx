@@ -44,6 +44,7 @@ import {
   KeyRound,
 } from "lucide-react"
 import { toast } from "sonner"
+import { readFromClipboard } from "@/lib/services/clipboard-service"
 
 interface CloudSyncModalProps {
   open: boolean
@@ -699,7 +700,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete, initialTab 
 
   const handlePasteCode = async () => {
     try {
-      const text = await navigator.clipboard.readText()
+      const text = await readFromClipboard()
       if (text) {
         const match = text.match(/[?&]sync=([^&]+)/) || text.match(/(SKY-?\d{4,6})/i) || text.match(/(\d{4,6})/)
         if (match) {
@@ -708,10 +709,19 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete, initialTab 
         } else {
           setInputCode(text.trim().toUpperCase())
         }
+        return
       }
-    } catch (e) {
-      toast.error("Could not read clipboard")
+    } catch {}
+
+    const el = document.getElementById("cloud-sync-input-code") as HTMLInputElement | null
+    if (el) {
+      el.focus()
+      el.select()
     }
+    toast("Press Ctrl+V to paste your sync code", {
+      icon: "📋",
+      duration: 2500,
+    })
   }
 
 
@@ -1093,6 +1103,7 @@ export function CloudSyncModal({ open, onOpenChange, onSyncComplete, initialTab 
                 <div className="flex flex-col sm:flex-row gap-2.5">
                   <div className="relative flex-1">
                     <Input
+                      id="cloud-sync-input-code"
                       value={inputCode}
                       onChange={(e) => setInputCode(e.target.value.toUpperCase())}
                       placeholder="e.g. 4440 or SKY-4440"

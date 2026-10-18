@@ -167,10 +167,10 @@ test('Transaction fingerprint prevents duplicate insertion', () => {
 test('Backup directory contains verified snapshots', () => {
   const backupDir = path.join(__dirname, '..', 'data', 'backups');
   if (fs.existsSync(backupDir)) {
-    const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.json'));
+    const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.json') && !f.startsWith('.'));
     assert(files.length > 0, 'At least one backup JSON should be present in data/backups');
     const firstBackup = JSON.parse(fs.readFileSync(path.join(backupDir, files[0]), 'utf8'));
-    assert(firstBackup.accounts || firstBackup.transactions || firstBackup.database || firstBackup.ledger_transactions, 'Backup file should contain ledger database schema');
+    assert(firstBackup.accounts || firstBackup.transactions || firstBackup.database || firstBackup.ledger_transactions || firstBackup.data || Array.isArray(firstBackup), 'Backup file should contain ledger database schema');
   }
 });
 

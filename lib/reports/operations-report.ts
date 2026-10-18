@@ -332,8 +332,8 @@ export function buildOperationsReport(
     if (hasPdf) bolsWithPdf++
 
     // Origin / Destination / Border / Port
-    const origin = (doc.port_of_loading || doc.origin_country || "Kandahar").trim()
-    const destination = (doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || "Nhava Sheva").trim()
+    const origin = String(doc.port_of_loading || doc.origin_country || "Kandahar").trim()
+    const destination = String(doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || "Nhava Sheva").trim()
     const route = `${origin} ➜ ${destination}`
 
     const fullText = `${origin} ${destination} ${doc.cargo_description || ""} ${doc.port_of_loading || ""} ${doc.port_of_discharge || ""}`.toLowerCase()
@@ -367,9 +367,9 @@ export function buildOperationsReport(
     }
 
     // Container parsing
-    const rawContainers = (doc.container_numbers || (doc as any).container_number || "").trim()
+    const rawContainers = String(doc.container_numbers || (doc as any).container_number || "").trim()
     const containerSerials: string[] = rawContainers
-      ? rawContainers.split(/[\n,;/]+/).map((s: string) => s.trim().toUpperCase()).filter(Boolean)
+      ? rawContainers.split(/[\n,;/]+/).map((s: string) => String(s).trim().toUpperCase()).filter(Boolean)
       : []
 
     const isReefer = (doc.measurement || "").toLowerCase().includes("reefer") ||
@@ -432,7 +432,8 @@ export function buildOperationsReport(
         suggestedAction: "Assign 20FT/40HC container serial in editor.",
       })
     }
-    if (!doc.truck_number || doc.truck_number.trim() === "") {
+    const cleanTruckNo = String(doc.truck_number || "").trim()
+    if (!cleanTruckNo) {
       itemAttention.push("Afghan truck plate missing")
       needsAttention.push({
         category: "Transport",
@@ -445,7 +446,7 @@ export function buildOperationsReport(
       })
     }
 
-    const currentLoc = (doc.place_of_delivery || doc.port_of_loading || origin).trim()
+    const currentLoc = String(doc.place_of_delivery || doc.port_of_loading || origin || "").trim()
 
     // Build ShipmentActivityItem
     const activityItem: ShipmentActivityItem = {
@@ -527,7 +528,7 @@ export function buildOperationsReport(
     }
 
     // Trucks Activity (Preserve Afghan truck plate number strictly as string)
-    if (doc.truck_number && doc.truck_number.trim()) {
+    if (doc.truck_number && String(doc.truck_number).trim()) {
       trucks.push({
         truckNumber: String(doc.truck_number).trim(),
         driverName: doc.driver_name || "Unassigned",
@@ -588,8 +589,8 @@ export function buildOperationsReport(
     }
 
     // Rankings accumulation
-    if (doc.shipper_name) {
-      const s = doc.shipper_name.trim()
+    if (doc.shipper_name && String(doc.shipper_name).trim()) {
+      const s = String(doc.shipper_name).trim()
       const prev = shipperCounts.get(s) || { count: 0, containers: 0, weightKg: 0 }
       shipperCounts.set(s, {
         count: prev.count + 1,
@@ -597,8 +598,8 @@ export function buildOperationsReport(
         weightKg: prev.weightKg + grossWt,
       })
     }
-    if (doc.consignee_name) {
-      const c = doc.consignee_name.trim()
+    if (doc.consignee_name && String(doc.consignee_name).trim()) {
+      const c = String(doc.consignee_name).trim()
       const prev = consigneeCounts.get(c) || { count: 0, containers: 0, weightKg: 0 }
       consigneeCounts.set(c, {
         count: prev.count + 1,

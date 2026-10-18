@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import fs from "node:fs/promises"
 import fsSync from "node:fs"
 import path from "node:path"
-import { getDataPath } from "@/lib/server-paths"
+import os from "node:os"
+import { getDataPath, getBackupRoot } from "@/lib/server-paths"
 import { readJsonFile } from "@/lib/services/blob-db"
 import type { BackupItem } from "@/lib/backup/backup-types"
 
@@ -29,18 +30,25 @@ export async function GET(req: NextRequest) {
     let resolvedPath = target?.filePath
     let downloadFileName = target?.fileName || "sky-ariana-backup.zip"
 
-    if (!resolvedPath || !fsSync.existsSync(resolvedPath)) {
-      // Check data/backups directory directly
+    if (!resolvedPath || !fsSync.existsSync(/*turbopackIgnore: true*/ resolvedPath)) {
+      // Check backup roots directly
       if (fileName && !fileName.includes("..")) {
-        const directPath = path.join(process.cwd(), "data", "backups", fileName)
-        if (fsSync.existsSync(directPath)) {
-          resolvedPath = directPath
-          downloadFileName = fileName
+        const candidatePaths = [
+          path.join(getBackupRoot(), fileName),
+          path.join(process.cwd(), "data", "backups", fileName),
+          path.join(os.tmpdir(), "backups", fileName),
+        ]
+        for (const candidate of candidatePaths) {
+          if (fsSync.existsSync(/*turbopackIgnore: true*/ candidate)) {
+            resolvedPath = candidate
+            downloadFileName = fileName
+            break
+          }
         }
       }
     }
 
-    if (!resolvedPath || !fsSync.existsSync(resolvedPath)) {
+    if (!resolvedPath || !fsSync.existsSync(/*turbopackIgnore: true*/ resolvedPath)) {
       return NextResponse.json(
         { success: false, error: "Backup file not found on server" },
         { status: 404 }
@@ -48,11 +56,13 @@ export async function GET(req: NextRequest) {
     }
 
     const fileBuffer = await fs.readFile(resolvedPath)
+    const isJson = downloadFileName.toLowerCase().endsWith(".json")
+    const contentType = isJson ? "application/json; charset=utf-8" : "application/zip"
 
     return new NextResponse(fileBuffer, {
       status: 200,
       headers: {
-        "Content-Type": "application/zip",
+        "Content-Type": contentType,
         "Content-Disposition": `attachment; filename="${downloadFileName}"`,
         "Content-Length": fileBuffer.length.toString(),
       },

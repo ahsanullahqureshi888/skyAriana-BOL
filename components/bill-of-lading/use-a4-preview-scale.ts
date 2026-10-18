@@ -290,18 +290,16 @@ export function useA4PreviewScale(active: boolean, pageCount: number = 1) {
       (viewportRef as React.MutableRefObject<HTMLDivElement | null>).current = viewer
     }
 
-    if (viewer) {
-      resetAllParentScrolls(viewer)
-      viewer.scrollTop = 0
-      viewer.scrollLeft = 0
-    }
-
     // Wait until layout is visible and stable (Section 11)
     let raf1: number
     let raf2: number
     raf1 = requestAnimationFrame(() => {
       const v = getViewer()
-      if (v) resetAllParentScrolls(v)
+      if (v) {
+        resetAllParentScrolls(v)
+        v.scrollTop = 0
+        v.scrollLeft = 0
+      }
       raf2 = requestAnimationFrame(() => {
         calculateScalesRef.current()
         const v2 = getViewer()

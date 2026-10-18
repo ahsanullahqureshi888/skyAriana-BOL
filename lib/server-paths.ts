@@ -22,17 +22,46 @@ export function getDataRoot(): string {
 
 export function getBackupRoot(): string {
   if (process.env.BACKUP_PATH) return path.resolve(process.env.BACKUP_PATH)
-  return path.join(getDataRoot(), "..", "backups")
+  
+  // 1. In serverless environments (Vercel / AWS Lambda), the deployment directory is strictly read-only.
+  // Use os.tmpdir()/backups as the writable storage directory.
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const tmpBackups = path.join(os.tmpdir(), "backups")
+    try { fs.mkdirSync(tmpBackups, { recursive: true }) } catch {}
+    return tmpBackups
+  }
+
+  // 2. Check primary data/backups location where existing production archives reside
+  const appDataBackups = path.join(process.cwd(), "data", "backups")
+  if (fs.existsSync && fs.existsSync(appDataBackups)) return appDataBackups
+
+  // 3. Check getDataRoot()/backups
+  const dataRootBackups = path.join(getDataRoot(), "backups")
+  if (fs.existsSync && fs.existsSync(dataRootBackups)) return dataRootBackups
+
+  // 4. Check workspace root backups
+  const cwdBackups = path.join(process.cwd(), "backups")
+  if (fs.existsSync && fs.existsSync(cwdBackups)) return cwdBackups
+
+  // Fallback: create appDataBackups if writable, otherwise use os.tmpdir()
+  try {
+    fs.mkdirSync(appDataBackups, { recursive: true })
+    return appDataBackups
+  } catch {
+    const tmpBackups = path.join(os.tmpdir(), "backups")
+    try { fs.mkdirSync(tmpBackups, { recursive: true }) } catch {}
+    return tmpBackups
+  }
 }
 
 export function getDataPath(fileName: string): string {
   const base = path.basename(fileName)
   const root = process.cwd()
-  if (fs.existsSync && fs.existsSync(path.join(root, base))) {
-    return path.join(root, base)
+  if (fs.existsSync && fs.existsSync(path.join(/*turbopackIgnore: true*/ root, base))) {
+    return path.join(/*turbopackIgnore: true*/ root, base)
   }
   const dataDir = getDataRoot()
-  return path.join(dataDir, base)
+  return path.join(/*turbopackIgnore: true*/ dataDir, base)
 }
 
 export function getUploadPath(...segments: string[]): string {
@@ -77,55 +106,105 @@ export function getDatabasePath(): string {
 }
 
 export function getBackupDir(): string {
-  const root = getDataRoot()
-  const bkp = path.join(root, "backups")
-  if (!fs.existsSync(bkp)) {
-    try { fs.mkdirSync(bkp, { recursive: true }) } catch {}
-  }
-  return bkp
+  return getBackupRoot()
 }
 
 export function getRecoveryDir(): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const tmpRecovery = path.join(os.tmpdir(), "recovery")
+    try { fs.mkdirSync(tmpRecovery, { recursive: true }) } catch {}
+    return tmpRecovery
+  }
   const root = getDataRoot()
   const rec = path.join(root, "recovery")
   if (!fs.existsSync(rec)) {
-    try { fs.mkdirSync(rec, { recursive: true }) } catch {}
+    try {
+      fs.mkdirSync(rec, { recursive: true })
+    } catch {
+      const tmpRecovery = path.join(os.tmpdir(), "recovery")
+      try { fs.mkdirSync(tmpRecovery, { recursive: true }) } catch {}
+      return tmpRecovery
+    }
   }
   return rec
 }
 
 export function getLogsDir(): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const tmpLogs = path.join(os.tmpdir(), "logs")
+    try { fs.mkdirSync(tmpLogs, { recursive: true }) } catch {}
+    return tmpLogs
+  }
   const root = getDataRoot()
   const lg = path.join(root, "logs")
   if (!fs.existsSync(lg)) {
-    try { fs.mkdirSync(lg, { recursive: true }) } catch {}
+    try {
+      fs.mkdirSync(lg, { recursive: true })
+    } catch {
+      const tmpLogs = path.join(os.tmpdir(), "logs")
+      try { fs.mkdirSync(tmpLogs, { recursive: true }) } catch {}
+      return tmpLogs
+    }
   }
   return lg
 }
 
 export function getDocumentsDir(): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const tmpDoc = path.join(os.tmpdir(), "Documents")
+    try { fs.mkdirSync(tmpDoc, { recursive: true }) } catch {}
+    return tmpDoc
+  }
   const root = getDataRoot()
   const doc = path.join(root, "Documents")
   if (!fs.existsSync(doc)) {
-    try { fs.mkdirSync(doc, { recursive: true }) } catch {}
+    try {
+      fs.mkdirSync(doc, { recursive: true })
+    } catch {
+      const tmpDoc = path.join(os.tmpdir(), "Documents")
+      try { fs.mkdirSync(tmpDoc, { recursive: true }) } catch {}
+      return tmpDoc
+    }
   }
   return doc
 }
 
 export function getExportsDir(): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const tmpExp = path.join(os.tmpdir(), "exports")
+    try { fs.mkdirSync(tmpExp, { recursive: true }) } catch {}
+    return tmpExp
+  }
   const root = getDataRoot()
   const exp = path.join(root, "exports")
   if (!fs.existsSync(exp)) {
-    try { fs.mkdirSync(exp, { recursive: true }) } catch {}
+    try {
+      fs.mkdirSync(exp, { recursive: true })
+    } catch {
+      const tmpExp = path.join(os.tmpdir(), "exports")
+      try { fs.mkdirSync(tmpExp, { recursive: true }) } catch {}
+      return tmpExp
+    }
   }
   return exp
 }
 
 export function getTempDir(): string {
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    const tmpTmp = path.join(os.tmpdir(), "temp")
+    try { fs.mkdirSync(tmpTmp, { recursive: true }) } catch {}
+    return tmpTmp
+  }
   const root = getDataRoot()
   const tmp = path.join(root, "temp")
   if (!fs.existsSync(tmp)) {
-    try { fs.mkdirSync(tmp, { recursive: true }) } catch {}
+    try {
+      fs.mkdirSync(tmp, { recursive: true })
+    } catch {
+      const tmpTmp = path.join(os.tmpdir(), "temp")
+      try { fs.mkdirSync(tmpTmp, { recursive: true }) } catch {}
+      return tmpTmp
+    }
   }
   return tmp
 }

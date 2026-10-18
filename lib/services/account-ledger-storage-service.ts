@@ -23,7 +23,7 @@ const emptyDatabase: AccountLedgerDatabase = {
 
 let memoryCacheLedger: AccountLedgerDatabase | null = null
 let lastLedgerCacheTime = 0
-const LEDGER_TTL_MS = 1000
+const LEDGER_TTL_MS = 30_000
 
 export function mergeLedgerRows(existingRows: any[] = [], incomingRows: any[] = []): any[] {
   if (!Array.isArray(existingRows)) existingRows = []
@@ -85,10 +85,10 @@ export async function getAccountLedgerDatabase() {
   const now = Date.now()
   let database: AccountLedgerDatabase
   if (memoryCacheLedger && (now - lastLedgerCacheTime < LEDGER_TTL_MS)) {
-    database = structuredClone(memoryCacheLedger)
+    database = memoryCacheLedger
   } else {
     database = await readJsonFile<AccountLedgerDatabase>(ledgerDatabaseFile, emptyDatabase)
-    memoryCacheLedger = structuredClone(database)
+    memoryCacheLedger = database
     lastLedgerCacheTime = now
   }
 

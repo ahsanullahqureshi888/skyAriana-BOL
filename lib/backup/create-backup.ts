@@ -6,15 +6,15 @@
 import fs from "node:fs/promises"
 import fsSync from "node:fs"
 import path from "node:path"
+import os from "node:os"
 import crypto from "node:crypto"
-import { getDataPath } from "@/lib/server-paths"
+import { getDataPath, getBackupRoot } from "@/lib/server-paths"
 import { createZipArchive, type ArchiveEntry, extractZipArchive } from "@/lib/google-drive/archive"
 import { readJsonFile, writeJsonFile } from "@/lib/services/blob-db"
 import { collectAllSystemData, computeSha256 } from "./backup-collector"
 import { buildBackupManifest, buildRecoveryInfo, CURRENT_DATABASE_SCHEMA_VERSION, CURRENT_APPLICATION_VERSION } from "./backup-manifest"
 import type { BackupItem, BackupManifest, BackupType, BackupRecordCounts, CurrencyBalanceTotals } from "./backup-types"
 
-const BACKUPS_DIR = path.join(process.cwd(), "data", "backups")
 const BACKUPS_CATALOG_FILE = getDataPath(".local-backups-catalog.json")
 
 // System-level in-memory re-entrant lock to prevent concurrent backups/restores
@@ -80,8 +80,13 @@ export async function createFullSystemBackup(
   const actor = options?.actor || "System"
   return await withBackupLock(actor, async () => {
     // 1. Ensure backup directory exists
-    const targetDir = options?.customTargetDir || BACKUPS_DIR
-    await fs.mkdir(targetDir, { recursive: true }).catch(() => {})
+    let targetDir = options?.customTargetDir || getBackupRoot()
+    try {
+      await fs.mkdir(targetDir, { recursive: true })
+    } catch {
+      targetDir = path.join(os.tmpdir(), "backups")
+      await fs.mkdir(targetDir, { recursive: true }).catch(() => {})
+    }
 
     const type: BackupType = options?.type || "FULL"
     const now = new Date()

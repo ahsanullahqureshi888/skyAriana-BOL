@@ -6,7 +6,7 @@
 import fs from "node:fs/promises"
 import fsSync from "node:fs"
 import path from "node:path"
-import { getDataPath } from "@/lib/server-paths"
+import { getDataPath, getBackupRoot } from "@/lib/server-paths"
 import { readJsonFile, writeJsonFile } from "@/lib/services/blob-db"
 import { withBackupLock } from "./create-backup"
 import type { BackupItem, DisasterRecoveryConfig } from "./backup-types"
@@ -24,7 +24,7 @@ export const DEFAULT_DISASTER_RECOVERY_CONFIG: DisasterRecoveryConfig = {
     weeklyKeep: 8,
     monthlyKeep: 12,
   },
-  primaryStoragePath: path.join(process.cwd(), "data", "backups"),
+  primaryStoragePath: getBackupRoot(),
   secondaryBackupEnabled: false,
   cloudBackupEnabled: false,
   cloudBackupStatus: "DISABLED",

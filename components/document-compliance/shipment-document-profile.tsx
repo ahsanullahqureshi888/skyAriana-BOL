@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, XCircle, Clock, AlertTriangle, FileText, Upload, Printer, ArrowRightSquare } from "lucide-react"
-import { evaluateShipmentCompliance, upsertDocumentMetadata } from "@/lib/services/document-compliance-service"
+import { evaluateShipmentCompliance, upsertDocumentMetadata } from "@/lib/services/document-compliance-client"
 import { ComplianceValidationResult, DocumentType } from "@/lib/types/document-compliance"
 import { toast } from "sonner"
 import { CombinedPdfGenerator } from "./combined-pdf-generator"

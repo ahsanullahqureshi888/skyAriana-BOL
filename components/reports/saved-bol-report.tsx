@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo, useState, useRef, useEffect, useCallback } from "react"
+import React, { useMemo, useState, useRef, useEffect, useCallback, startTransition } from "react"
 import {
   SavedDocument,
   ReportTab,
@@ -39,7 +39,7 @@ import {
   auditDataQuality,
   detectPossibleDuplicates,
 } from "@/lib/reports/data-quality"
-import { exportReportToExcel } from "@/lib/reports/export-excel"
+import { exportReportToExcel, extractTransitBorderStation, extractDriverFatherName } from "@/lib/reports/export-excel"
 import {
   getSavedFilterPresets,
   saveFilterPreset,
@@ -77,6 +77,7 @@ import { ReportDetailDrawer, DrawerKpiItem, DrawerBreakdownSection } from "./rep
 import { buildManagementSummary } from "@/lib/whatsapp/bulk-message"
 import { normalizeToWhatsAppShipment } from "@/lib/whatsapp/normalized-shipment"
 import { Button } from "@/components/ui/button"
+import { AQ_COMPANIES_LOGO_SRC } from "@/lib/reports/report-logo"
 
 import {
   DropdownMenu,
@@ -225,6 +226,11 @@ export function SavedBolReport({
 }: SavedBolReportProps) {
   // Navigation & View State
   const [activeTab, setActiveTab] = useState<ReportTab>(initialTab)
+  const handleSwitchTab = useCallback((targetTab: ReportTab) => {
+    startTransition(() => {
+      setActiveTab(targetTab)
+    })
+  }, [])
   const [expandedCargoIds, setExpandedCargoIds] = useState<Set<string>>(new Set())
   const toggleCargoExpanded = (id: string) => {
     setExpandedCargoIds((prev) => {
@@ -330,10 +336,41 @@ export function SavedBolReport({
     toast.success("Set as default Report Center view")
   }
 
-  // 1. Resolve Active Dataset based on Filters and Drill-downs
+  // Full Dataset State: Ensure reports always display the entire database of BOLs
+  const [fullDataset, setFullDataset] = useState<SavedDocument[] | null>(null)
+  const [isLoadingFullDataset, setIsLoadingFullDataset] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+    const loadAllBols = async () => {
+      try {
+        setIsLoadingFullDataset(true)
+        const res = await fetch("/api/bol?all=true")
+        if (res.ok) {
+          const json = await res.json()
+          if (isMounted && json?.data && Array.isArray(json.data) && json.data.length > 0) {
+            setFullDataset(json.data)
+          }
+        }
+      } catch (err) {
+        console.warn("[SavedBolReport] Failed to fetch full BOL dataset:", err)
+      } finally {
+        if (isMounted) setIsLoadingFullDataset(false)
+      }
+    }
+    void loadAllBols()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // 1. Resolve Active Dataset based on full fetched dataset or passed documents
   const baseData = useMemo(() => {
+    if (fullDataset && fullDataset.length > 0) {
+      return fullDataset
+    }
     return documents
-  }, [documents])
+  }, [fullDataset, documents])
 
   // Extract unique options for quick dropdown filters
   const filterOptions = useMemo(() => {
@@ -374,11 +411,11 @@ export function SavedBolReport({
     if (drillDownEntity) {
       if (drillDownEntity.type === "shipper") {
         result = result.filter(
-          (d) => (d.shipper_name || "").toLowerCase() === drillDownEntity.name.toLowerCase()
+          (d) => ((d.shipper_name || "").trim() || "Unspecified Shipper").toLowerCase() === drillDownEntity.name.trim().toLowerCase()
         )
       } else if (drillDownEntity.type === "consignee") {
         result = result.filter(
-          (d) => (d.consignee_name || "").toLowerCase() === drillDownEntity.name.toLowerCase()
+          (d) => ((d.consignee_name || "").trim() || "Unspecified Consignee").toLowerCase() === drillDownEntity.name.trim().toLowerCase()
         )
       } else if (drillDownEntity.type === "commodity") {
         result = result.filter((d) => {
@@ -459,56 +496,58 @@ export function SavedBolReport({
   }, [searchQuery, advancedFilters, drillDownEntity])
 
   const handleQuickDateSelect = (opt: QuickDate) => {
-    setQuickDate(opt)
-    if (opt === "all") {
-      setAdvancedFilters((prev) => {
-        const next = { ...prev }
-        delete next.dateFrom
-        delete next.dateTo
-        return next
-      })
-      return
-    }
-    const now = new Date()
-    const todayStr = now.toISOString().split("T")[0]
+    startTransition(() => {
+      setQuickDate(opt)
+      if (opt === "all") {
+        setAdvancedFilters((prev) => {
+          const next = { ...prev }
+          delete next.dateFrom
+          delete next.dateTo
+          return next
+        })
+        return
+      }
+      const now = new Date()
+      const todayStr = now.toISOString().split("T")[0]
 
-    let from = ""
-    let to = todayStr
+      let from = ""
+      let to = todayStr
 
-    if (opt === "today") {
-      from = todayStr
-      to = todayStr
-    } else if (opt === "yesterday") {
-      const y = new Date(now)
-      y.setDate(y.getDate() - 1)
-      from = y.toISOString().split("T")[0]
-      to = from
-    } else if (opt === "7days") {
-      const d = new Date(now)
-      d.setDate(d.getDate() - 7)
-      from = d.toISOString().split("T")[0]
-    } else if (opt === "30days") {
-      const d = new Date(now)
-      d.setDate(d.getDate() - 30)
-      from = d.toISOString().split("T")[0]
-    } else if (opt === "this_month") {
-      const d = new Date(now.getFullYear(), now.getMonth(), 1)
-      from = d.toISOString().split("T")[0]
-    } else if (opt === "last_month") {
-      const first = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      const last = new Date(now.getFullYear(), now.getMonth(), 0)
-      from = first.toISOString().split("T")[0]
-      to = last.toISOString().split("T")[0]
-    } else if (opt === "this_year") {
-      const d = new Date(now.getFullYear(), 0, 1)
-      from = d.toISOString().split("T")[0]
-    }
+      if (opt === "today") {
+        from = todayStr
+        to = todayStr
+      } else if (opt === "yesterday") {
+        const y = new Date(now)
+        y.setDate(y.getDate() - 1)
+        from = y.toISOString().split("T")[0]
+        to = from
+      } else if (opt === "7days") {
+        const d = new Date(now)
+        d.setDate(d.getDate() - 7)
+        from = d.toISOString().split("T")[0]
+      } else if (opt === "30days") {
+        const d = new Date(now)
+        d.setDate(d.getDate() - 30)
+        from = d.toISOString().split("T")[0]
+      } else if (opt === "this_month") {
+        const d = new Date(now.getFullYear(), now.getMonth(), 1)
+        from = d.toISOString().split("T")[0]
+      } else if (opt === "last_month") {
+        const first = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        const last = new Date(now.getFullYear(), now.getMonth(), 0)
+        from = first.toISOString().split("T")[0]
+        to = last.toISOString().split("T")[0]
+      } else if (opt === "this_year") {
+        const d = new Date(now.getFullYear(), 0, 1)
+        from = d.toISOString().split("T")[0]
+      }
 
-    setAdvancedFilters((prev) => ({
-      ...prev,
-      dateFrom: from,
-      dateTo: to,
-    }))
+      setAdvancedFilters((prev) => ({
+        ...prev,
+        dateFrom: from,
+        dateTo: to,
+      }))
+    })
   }
 
   const handleClearAllFilters = () => {
@@ -560,7 +599,7 @@ export function SavedBolReport({
   }
 
   const shippersList = useMemo(() => {
-    if (activeTab !== "shippers" && activeTab !== "operations") {
+    if (activeTab !== "shippers" && activeTab !== "operations" && activeTab !== "overview") {
       return (reportDataCacheRef.current.get("shippers") as ShipperSummary[]) || []
     }
     if (reportDataCacheRef.current.has("shippers")) {
@@ -572,7 +611,7 @@ export function SavedBolReport({
   }, [filteredData, activeTab])
 
   const consigneesList = useMemo(() => {
-    if (activeTab !== "consignees") {
+    if (activeTab !== "consignees" && activeTab !== "operations" && activeTab !== "overview") {
       return (reportDataCacheRef.current.get("consignees") as ConsigneeSummary[]) || []
     }
     if (reportDataCacheRef.current.has("consignees")) {
@@ -584,7 +623,7 @@ export function SavedBolReport({
   }, [filteredData, activeTab])
 
   const commoditiesList = useMemo(() => {
-    if (activeTab !== "commodities" && activeTab !== "operations") {
+    if (activeTab !== "commodities" && activeTab !== "operations" && activeTab !== "overview") {
       return (reportDataCacheRef.current.get("commodities") as CommoditySummary[]) || []
     }
     if (reportDataCacheRef.current.has("commodities")) {
@@ -596,7 +635,7 @@ export function SavedBolReport({
   }, [filteredData, activeTab])
 
   const destinationsList = useMemo(() => {
-    if (activeTab !== "destinations" && activeTab !== "operations") {
+    if (activeTab !== "destinations" && activeTab !== "operations" && activeTab !== "overview") {
       return (reportDataCacheRef.current.get("destinations") as DestinationSummary[]) || []
     }
     if (reportDataCacheRef.current.has("destinations")) {
@@ -608,7 +647,7 @@ export function SavedBolReport({
   }, [filteredData, activeTab])
 
   const routesList = useMemo(() => {
-    if (activeTab !== "routes" && activeTab !== "operations") {
+    if (activeTab !== "routes" && activeTab !== "operations" && activeTab !== "overview") {
       return (reportDataCacheRef.current.get("routes") as RouteSummary[]) || []
     }
     if (reportDataCacheRef.current.has("routes")) {
@@ -620,7 +659,7 @@ export function SavedBolReport({
   }, [filteredData, activeTab])
 
   const trucksList = useMemo(() => {
-    if (activeTab !== "trucks" && activeTab !== "operations") {
+    if (activeTab !== "trucks" && activeTab !== "operations" && activeTab !== "overview") {
       return (reportDataCacheRef.current.get("trucks") as TruckSummary[]) || []
     }
     if (reportDataCacheRef.current.has("trucks")) {
@@ -630,6 +669,38 @@ export function SavedBolReport({
     reportDataCacheRef.current.set("trucks", result)
     return result
   }, [filteredData, activeTab])
+
+  // Driver Freight / Rent Disbursement Summary
+  const driverRentSummary = useMemo(() => {
+    const totals: Record<string, { amount: number; count: number }> = {}
+    for (const doc of filteredData) {
+      const raw = doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent || ""
+      if (raw) {
+        const { amount, currency } = parseMoney(raw)
+        if (amount > 0) {
+          if (!totals[currency]) totals[currency] = { amount: 0, count: 0 }
+          totals[currency].amount += amount
+          totals[currency].count += 1
+        }
+      }
+    }
+    return totals
+  }, [filteredData])
+
+  // Border Crossings & Transit Station Summary
+  const borderStationsSummary = useMemo(() => {
+    const counts: Record<string, { bols: number; packages: number; netWeight: number }> = {}
+    for (const doc of filteredData) {
+      const station = extractTransitBorderStation(doc)
+      if (!counts[station]) counts[station] = { bols: 0, packages: 0, netWeight: 0 }
+      counts[station].bols += 1
+      counts[station].packages += parsePackages(doc.number_of_packages)
+      counts[station].netWeight += parseWeight(doc.net_weight)
+    }
+    return Object.entries(counts)
+      .filter(([st]) => st !== "-")
+      .sort((a, b) => b[1].bols - a[1].bols)
+  }, [filteredData])
 
   const { containers: containerList, stats: containerStats } = useMemo(() => {
     if (activeTab !== "containers") {
@@ -2489,27 +2560,43 @@ export function SavedBolReport({
   }
 
   // Export handlers
-  const handleExportExcel = async () => {
-    const toastId = toast.loading("Generating Excel (.xlsx) Report...")
+  const handleExportExcel = async (exportMode: "all" | "current" = "all") => {
+    const isCurrentOnly = exportMode === "current"
+    const toastId = toast.loading(
+      isCurrentOnly
+        ? `Generating Excel (.xlsx) for ${activeTab.toUpperCase()}...`
+        : "Generating Complete Multi-Sheet Excel Workbook..."
+    )
     try {
+      const fileName = isCurrentOnly
+        ? `Sky-Ariana-${activeTab.toUpperCase()}-View`
+        : `Sky-Ariana-Operations-Full-Report`
+
       await exportReportToExcel(
         activeReportData,
-        `Sky-Ariana-${activeTab.toUpperCase()}-Report`,
-        activeTab
+        fileName,
+        activeTab,
+        exportMode
       )
       toast.dismiss(toastId)
-      toast.success("Excel (.xlsx) report generated successfully")
+      toast.success(
+        isCurrentOnly
+          ? `Excel report for ${activeTab.toUpperCase()} generated`
+          : "Complete 12-sheet Excel report generated successfully"
+      )
 
       // Record in history
       const entry: ReportHistoryEntry = {
         id: `hist-${Date.now()}`,
-        reportName: `${activeTab.toUpperCase()} Operations Report`,
+        reportName: isCurrentOnly
+          ? `${activeTab.toUpperCase()} Operations Report`
+          : "Complete Operations Workbook (12 Sheets)",
         reportType: activeTab,
         createdDate: new Date().toISOString(),
         createdBy: "System Administrator",
         filterRange: `${filteredData.length} records`,
         recordCount: activeReportData.length,
-        fileName: `Sky-Ariana-${activeTab.toUpperCase()}-Report.xlsx`,
+        fileName: `${fileName}.xlsx`,
       }
       addReportHistoryEntry(entry)
       setReportHistory(getReportHistory())
@@ -2677,27 +2764,54 @@ export function SavedBolReport({
       tbl.style.tableLayout = "fixed"
     })
 
+    // Remove duplicate on-screen header from clone since executive letterhead banner is prepended
+    clone.querySelectorAll("[data-report-header='true']").forEach((el) => el.remove())
+
     // Prepend executive letterhead banner to print root
     const printLetterhead = document.createElement("div")
     printLetterhead.className = "print-letterhead-banner mb-3 border-b-2 border-slate-900 pb-2.5"
     printLetterhead.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 6px;">
-        <div>
-          <h1 style="font-size: 19px; font-weight: 900; color: #0a2540; text-transform: uppercase; margin: 0; letter-spacing: -0.5px;">${reportCompanyName || "AQ COMPANIES"}</h1>
-          <p style="font-size: 9.5px; font-weight: 700; color: #475569; text-transform: uppercase; margin: 2px 0 0 0; letter-spacing: 0.8px;">SKY ARIANA • INTERNATIONAL FREIGHT & MULTI-MODAL LOGISTICS MANAGEMENT</p>
-          <p style="font-size: 11px; font-weight: 800; color: #1e3a8a; margin: 3px 0 0 0; text-transform: uppercase;">MASTER BILL OF LADING AUDIT & SHIPMENT MANIFEST (گزارش جامع بارنامه‌ها)</p>
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 7px; border-bottom: 2px solid #0f172a;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 58px; height: 58px; border-radius: 8px; border: 1px solid #cbd5e1; background: #ffffff; padding: 2px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); flex-shrink: 0;">
+            <img
+              src="${AQ_COMPANIES_LOGO_SRC}"
+              alt="AQ COMPANIES"
+              style="width: 100%; height: 100%; object-fit: contain;"
+            />
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <h1 style="font-size: 20px; font-weight: 900; color: #0a2540; text-transform: uppercase; margin: 0; letter-spacing: -0.5px; line-height: 1.1;">${reportCompanyName || "AQ COMPANIES"}</h1>
+              <span style="font-size: 8.5px; font-weight: 800; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; padding: 1.5px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.6px;">${activeTab.replace("_", " ").toUpperCase()} REPORT</span>
+            </div>
+            <p style="font-size: 9px; font-weight: 700; color: #475569; text-transform: uppercase; margin: 2px 0 0 0; letter-spacing: 0.8px;">SKY ARIANA • INTERNATIONAL FREIGHT & MULTI-MODAL LOGISTICS MANAGEMENT</p>
+            <p style="font-size: 10.5px; font-weight: 800; color: #1e3a8a; margin: 2px 0 0 0; text-transform: uppercase; letter-spacing: 0.2px;">MASTER BILL OF LADING AUDIT & SHIPMENT MANIFEST (گزارش جامع بارنامه‌ها)</p>
+          </div>
         </div>
-        <div style="text-align: right; font-size: 9px; font-weight: 600; color: #475569; line-height: 1.4;">
+        <div style="text-align: right; font-size: 8.5px; font-weight: 600; color: #475569; line-height: 1.45; border-left: 2px solid #e2e8f0; padding-left: 12px;">
           <p style="margin: 0;"><span style="color: #64748b;">Audit Date:</span> <strong style="color: #0f172a; font-family: monospace;">${new Date().toLocaleDateString("en-GB")} ${new Date().toLocaleTimeString()}</strong></p>
           <p style="margin: 0;"><span style="color: #64748b;">Audited Records:</span> <strong style="color: #0f172a; font-family: monospace;">${activeReportData.length} Bills of Lading</strong></p>
-          <p style="margin: 0;"><span style="color: #64748b;">Verification:</span> <strong style="color: #059669;">Verified Operations Record</strong></p>
+          <p style="margin: 0;"><span style="color: #64748b;">Verification:</span> <strong style="color: #059669; font-weight: 800;">Verified Operations Record</strong></p>
         </div>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 4px; padding: 5px 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px;">
-        <div><span style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">Total BOLs</span><p style="font-size: 12px; font-weight: 900; color: #0f172a; margin: 0; font-family: monospace;">${activeReportData.length}</p></div>
-        <div><span style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">Total Packages</span><p style="font-size: 12px; font-weight: 900; color: #0f172a; margin: 0; font-family: monospace;">${overviewKpis.totalPackages.toLocaleString()} CTNS</p></div>
-        <div><span style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">Gross / Net Weight</span><p style="font-size: 12px; font-weight: 900; color: #0f172a; margin: 0; font-family: monospace;">${overviewKpis.totalGrossWeightKg.toLocaleString()} / ${overviewKpis.totalNetWeightKg.toLocaleString()} KG</p></div>
-        <div><span style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase;">Total Goods Value</span><p style="font-size: 12px; font-weight: 900; color: #059669; margin: 0; font-family: monospace;">$${(overviewKpis.currencyTotals.find(c => c.currency === "USD")?.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p></div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 5px; padding: 6px 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px;">
+        <div style="border-right: 1px solid #e2e8f0; padding-right: 6px;">
+          <span style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px;">Total BOLs</span>
+          <p style="font-size: 13px; font-weight: 900; color: #0f172a; margin: 0; font-family: monospace;">${activeReportData.length}</p>
+        </div>
+        <div style="border-right: 1px solid #e2e8f0; padding-right: 6px;">
+          <span style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px;">Total Packages</span>
+          <p style="font-size: 11.5px; font-weight: 900; color: #0f172a; margin: 0; font-family: monospace;">${Object.keys(overviewKpis.packageUnitsBreakdown || {}).length > 0 ? Object.entries(overviewKpis.packageUnitsBreakdown || {}).map(([unit, cnt]) => `${cnt.toLocaleString()} ${unit}`).join(" / ") : `${overviewKpis.totalPackages.toLocaleString()} PKGS`}</p>
+        </div>
+        <div style="border-right: 1px solid #e2e8f0; padding-right: 6px;">
+          <span style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px;">Gross / Net Weight</span>
+          <p style="font-size: 12px; font-weight: 900; color: #0f172a; margin: 0; font-family: monospace;">${overviewKpis.totalGrossWeightKg.toLocaleString()} / ${overviewKpis.totalNetWeightKg.toLocaleString()} KG</p>
+        </div>
+        <div>
+          <span style="font-size: 7.5px; font-weight: 800; color: #059669; text-transform: uppercase; letter-spacing: 0.4px;">Total Goods Value</span>
+          <p style="font-size: 12.5px; font-weight: 900; color: #059669; margin: 0; font-family: monospace;">$${(overviewKpis.currencyTotals.find(c => c.currency === "USD")?.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        </div>
       </div>
     `
     clone.prepend(printLetterhead)
@@ -3131,10 +3245,16 @@ export function SavedBolReport({
             <Button
               variant="outline"
               size="sm"
-              onClick={onClose}
-              className="rounded-xl border-slate-200 dark:border-slate-700 h-9 font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+              onClick={() => {
+                setTimeout(() => {
+                  startTransition(() => {
+                    onClose()
+                  })
+                }, 0)
+              }}
+              className="rounded-xl border-slate-200 dark:border-slate-700 h-9 font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0 [&_span]:pointer-events-none [&_svg]:pointer-events-none cursor-pointer"
             >
-              <ArrowLeft className="w-4 h-4 mr-1.5" />
+              <ArrowLeft className="w-4 h-4 mr-1.5 shrink-0 pointer-events-none" />
               <span>Saved BOLs</span>
             </Button>
             <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block shrink-0"></div>
@@ -3161,7 +3281,7 @@ export function SavedBolReport({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-2xs hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-1.5 shrink-0 cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none"
                   title="Load or manage saved views and presets"
                 >
                   <Bookmark className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
@@ -3179,7 +3299,7 @@ export function SavedBolReport({
                     <DropdownMenuItem
                       key={preset.id}
                       onClick={() => handleApplyPreset(preset)}
-                      className="flex items-center justify-between text-xs font-semibold py-2 px-2 cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                      className="flex items-center justify-between text-xs font-semibold py-2 px-2 cursor-pointer rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
                     >
                       <div className="flex items-center gap-2 truncate">
                         <Bookmark className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -3229,7 +3349,7 @@ export function SavedBolReport({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="h-9 px-2.5 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-2xs shrink-0 cursor-pointer"
+                  className="h-9 px-2.5 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-2xs shrink-0 cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none"
                   title="More actions and exports"
                 >
                   <Download className="w-3.5 h-3.5 mr-1 text-slate-500" />
@@ -3250,9 +3370,13 @@ export function SavedBolReport({
                 
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-xs font-bold text-slate-500">Data Exports</DropdownMenuLabel>
-                <DropdownMenuItem onClick={handleExportExcel} className="text-xs font-bold text-emerald-700 cursor-pointer">
+                <DropdownMenuItem onClick={() => handleExportExcel("all")} className="text-xs font-bold text-emerald-700 cursor-pointer">
                   <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  Excel (.xlsx)
+                  Excel (.xlsx) — Complete (12 Sheets)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExportExcel("current")} className="text-xs font-bold text-emerald-800 cursor-pointer">
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Excel (.xlsx) — Active View ({activeTab})
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleExportCSV} className="text-xs font-bold cursor-pointer">
                   <FileText className="w-4 h-4 mr-2 text-slate-500" />
@@ -3280,7 +3404,7 @@ export function SavedBolReport({
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsFitScreen(!isFitScreen)}
-                className={"h-8 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer " + (isFitScreen ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100")}
+                className={"h-8 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none " + (isFitScreen ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100")}
                 title={isFitScreen ? "Standard width" : "Fit to width"}
               >
                 {isFitScreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -3290,7 +3414,7 @@ export function SavedBolReport({
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsPreviewMode(!isPreviewMode)}
-                className={"h-8 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer " + (isPreviewMode ? "bg-slate-800 text-white dark:bg-blue-600" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100")}
+                className={"h-8 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none " + (isPreviewMode ? "bg-slate-800 text-white dark:bg-blue-600" : "text-slate-600 dark:text-slate-300 hover:bg-slate-100")}
               >
                 <Eye className="w-3.5 h-3.5 mr-1.5" />
                 <span>{isPreviewMode ? "Exit Preview" : "A4 Preview"}</span>
@@ -3299,14 +3423,14 @@ export function SavedBolReport({
               <button
                 type="button"
                 onClick={() => setPdfOrientation("landscape")}
-                className={"px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer " + (pdfOrientation === "landscape" ? "bg-slate-800 text-white dark:bg-blue-600" : "text-slate-600 hover:bg-slate-100")}
+                className={"px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none " + (pdfOrientation === "landscape" ? "bg-slate-800 text-white dark:bg-blue-600" : "text-slate-600 hover:bg-slate-100")}
               >
                 Landscape
               </button>
               <button
                 type="button"
                 onClick={() => setPdfOrientation("portrait")}
-                className={"px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer " + (pdfOrientation === "portrait" ? "bg-slate-800 text-white dark:bg-blue-600" : "text-slate-600 hover:bg-slate-100")}
+                className={"px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none " + (pdfOrientation === "portrait" ? "bg-slate-800 text-white dark:bg-blue-600" : "text-slate-600 hover:bg-slate-100")}
               >
                 Portrait
               </button>
@@ -3329,7 +3453,7 @@ export function SavedBolReport({
           <div className="flex items-center gap-2 flex-wrap">
             <Button
               onClick={handlePrint}
-              className="h-9 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-black text-xs shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shrink-0"
+              className="h-9 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 font-black text-xs shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shrink-0 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Print this report / Save as PDF (Ctrl+P)"
             >
               <Printer className="w-4 h-4 text-emerald-400 dark:text-emerald-600" />
@@ -3339,7 +3463,7 @@ export function SavedBolReport({
             <Button
               onClick={handleGeneratePdf}
               disabled={isGeneratingPdf}
-              className="h-9 px-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs shadow-md shadow-blue-500/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shrink-0 disabled:opacity-60"
+              className="h-9 px-3.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white font-black text-xs shadow-md shadow-blue-500/25 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all shrink-0 disabled:opacity-60 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Download complete report as PDF file"
             >
               {isGeneratingPdf ? (
@@ -3355,15 +3479,72 @@ export function SavedBolReport({
               )}
             </Button>
 
-            <Button
-              variant="outline"
-              onClick={handleExportExcel}
-              className="h-9 px-3 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 text-emerald-900 dark:text-emerald-200 font-bold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer shrink-0"
-              title="Export report dataset to Microsoft Excel (.xlsx)"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Excel</span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-9 px-3 rounded-xl border-emerald-300 dark:border-emerald-800 bg-emerald-50/80 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 text-emerald-900 dark:text-emerald-200 font-bold text-xs shadow-2xs flex items-center gap-1.5 cursor-pointer shrink-0 transition-all hover:shadow-xs active:scale-95 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
+                  title="Export report dataset to Microsoft Excel (.xlsx)"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>Excel</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-emerald-600/70 ml-0.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 font-sans shadow-xl border-emerald-200 dark:border-emerald-800">
+                <DropdownMenuLabel className="text-xs font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  Excel (.xlsx) Export Options
+                </DropdownMenuLabel>
+
+                <DropdownMenuItem
+                  onClick={() => handleExportExcel("all")}
+                  className="text-xs font-bold text-emerald-800 dark:text-emerald-300 cursor-pointer py-2 focus:bg-emerald-50 dark:focus:bg-emerald-950/50"
+                >
+                  <div className="flex flex-col">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      Complete Audit Workbook (12 Sheets)
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-normal pl-5">
+                      Full multi-sheet workbook with KPI summary, fleet, and financials
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => handleExportExcel("current")}
+                  className="text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer py-2 focus:bg-slate-100 dark:focus:bg-slate-800"
+                >
+                  <div className="flex flex-col">
+                    <span className="flex items-center gap-1.5">
+                      <FileDown className="w-3.5 h-3.5 text-blue-600" />
+                      Active View Only ({activeTab.toUpperCase()})
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-normal pl-5">
+                      Lightweight export of current {activeTab} tab + Summary
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+
+                {selectedIds.length > 0 && (
+                  <DropdownMenuItem
+                    onClick={() => handleExportExcel("all")}
+                    className="text-xs font-bold text-amber-700 dark:text-amber-300 cursor-pointer py-2 focus:bg-amber-50 dark:focus:bg-amber-950/50"
+                  >
+                    <div className="flex flex-col">
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
+                        Selected Rows Only ({selectedIds.length} BOLs)
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-normal pl-5">
+                        Exports complete workbook filtered to selected items
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -3410,7 +3591,7 @@ export function SavedBolReport({
                   <button
                     key={btn.id}
                     onClick={() => handleQuickDateSelect(btn.id as QuickDate)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none ${
                       isSelected
                         ? "bg-blue-600 text-white shadow-xs"
                         : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
@@ -3428,7 +3609,7 @@ export function SavedBolReport({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsFilterDrawerOpen(true)}
-                className={`h-9 rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-xs font-bold ${
+                className={`h-9 rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-xs font-bold [&_span]:pointer-events-none [&_svg]:pointer-events-none ${
                   activeFiltersCount > 0
                     ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/80 dark:text-blue-300"
                     : "text-slate-700 dark:text-slate-200"
@@ -3448,7 +3629,7 @@ export function SavedBolReport({
                   variant="ghost"
                   size="sm"
                   onClick={handleClearAllFilters}
-                  className="h-9 px-3 rounded-xl text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
+                  className="h-9 px-3 rounded-xl text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
                   title="Clear all active filters"
                 >
                   <RotateCcw className="w-3.5 h-3.5 mr-1" />
@@ -3630,8 +3811,8 @@ export function SavedBolReport({
           <div className="grid grid-cols-2 sm:grid-cols-4 2xl:grid-cols-8 gap-2.5">
             {/* 1. Total BOLs */}
             <div
-              onClick={() => setActiveTab("detailed")}
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              onClick={() => handleSwitchTab("detailed")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Click to view in Detailed Report"
             >
               <div className="flex items-center justify-between text-slate-400 group-hover:text-blue-600">
@@ -3642,8 +3823,8 @@ export function SavedBolReport({
                 {filteredData.length}
               </p>
               <p className="text-[10px] font-bold text-slate-500 truncate mt-0.5">
-                {filteredData.length === documents.length ? (
-                  `${documents.length} Total Records`
+                {filteredData.length === baseData.length ? (
+                  `${baseData.length} Total Records`
                 ) : (
                   <span className="text-blue-600 font-extrabold">{filteredData.length} Filtered</span>
                 )}
@@ -3652,8 +3833,8 @@ export function SavedBolReport({
 
             {/* 2. Total Packages */}
             <div
-              onClick={() => setActiveTab("detailed")}
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              onClick={() => handleSwitchTab("detailed")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Click to view in Detailed Report"
             >
               <div className="flex items-center justify-between text-slate-400 group-hover:text-indigo-600">
@@ -3663,8 +3844,8 @@ export function SavedBolReport({
               <p className="text-lg sm:text-xl font-black font-mono text-indigo-700 dark:text-indigo-400 mt-1 truncate" title={`${overviewKpis.totalPackages.toLocaleString()} Packages`}>
                 {overviewKpis.totalPackages.toLocaleString()}
               </p>
-              <p className="text-[10px] font-bold text-slate-500 truncate mt-0.5">
-                {Object.keys(overviewKpis.packageUnitsBreakdown || {}).length > 1
+              <p className="text-[10px] font-bold text-slate-500 truncate mt-0.5" title={Object.entries(overviewKpis.packageUnitsBreakdown || {}).map(([unit, cnt]) => `${cnt.toLocaleString()} ${unit}`).join(" • ") || "Total Packages"}>
+                {Object.keys(overviewKpis.packageUnitsBreakdown || {}).length > 0
                   ? Object.entries(overviewKpis.packageUnitsBreakdown || {})
                       .map(([unit, cnt]) => `${cnt.toLocaleString()} ${unit}`)
                       .join(" • ")
@@ -3674,8 +3855,8 @@ export function SavedBolReport({
 
             {/* 3. Net Weight */}
             <div
-              onClick={() => setActiveTab("detailed")}
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              onClick={() => handleSwitchTab("detailed")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Click to view in Detailed Report"
             >
               <div className="flex items-center justify-between text-slate-400 group-hover:text-emerald-600">
@@ -3690,8 +3871,8 @@ export function SavedBolReport({
 
             {/* 4. Gross Weight */}
             <div
-              onClick={() => setActiveTab("detailed")}
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              onClick={() => handleSwitchTab("detailed")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Click to view in Detailed Report"
             >
               <div className="flex items-center justify-between text-slate-400 group-hover:text-slate-600">
@@ -3706,8 +3887,8 @@ export function SavedBolReport({
 
             {/* 5. Goods Value */}
             <div
-              onClick={() => setActiveTab("financial")}
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              onClick={() => handleSwitchTab("financial")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Click to view Financial Breakdown"
             >
               <div className="flex items-center justify-between text-slate-400 group-hover:text-emerald-600">
@@ -3732,8 +3913,8 @@ export function SavedBolReport({
 
             {/* 6. Active Shippers */}
             <div
-              onClick={() => setActiveTab("shippers")}
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              onClick={() => handleSwitchTab("shippers")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-blue-400 cursor-pointer transition-all hover:shadow-xs group min-w-0 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Click to view Shippers list"
             >
               <div className="flex items-center justify-between text-slate-400 group-hover:text-blue-600">
@@ -3748,8 +3929,8 @@ export function SavedBolReport({
 
             {/* 7. Active Consignees */}
             <div
-              onClick={() => setActiveTab("consignees")}
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-purple-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              onClick={() => handleSwitchTab("consignees")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-purple-400 cursor-pointer transition-all hover:shadow-xs group min-w-0 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Click to view Consignees list"
             >
               <div className="flex items-center justify-between text-slate-400 group-hover:text-purple-600">
@@ -3764,8 +3945,8 @@ export function SavedBolReport({
 
             {/* 8. Missing Data / Quality */}
             <div
-              onClick={() => setActiveTab("missing_data")}
-              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-amber-400 cursor-pointer transition-all hover:shadow-xs group min-w-0"
+              onClick={() => handleSwitchTab("missing_data")}
+              className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 hover:border-amber-400 cursor-pointer transition-all hover:shadow-xs group min-w-0 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Click to view Data Completeness Audit"
             >
               <div className="flex items-center justify-between text-slate-400 group-hover:text-amber-600">
@@ -3845,8 +4026,8 @@ export function SavedBolReport({
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 py-3 px-3.5 text-xs font-bold border-b-2 whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                    onClick={() => handleSwitchTab(tab.id)}
+                    className={`flex items-center gap-2 py-3 px-3.5 text-xs font-bold border-b-2 whitespace-nowrap transition-colors cursor-pointer shrink-0 [&_span]:pointer-events-none [&_svg]:pointer-events-none ${
                       isActive
                         ? "border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/40"
                         : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-700"
@@ -3863,7 +4044,7 @@ export function SavedBolReport({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className={`flex items-center gap-1.5 py-3 px-3.5 text-xs font-bold border-b-2 whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
+                    className={`flex items-center gap-1.5 py-3 px-3.5 text-xs font-bold border-b-2 whitespace-nowrap transition-colors cursor-pointer shrink-0 [&_span]:pointer-events-none [&_svg]:pointer-events-none ${
                       isSecondaryActive
                         ? "border-blue-600 text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/40"
                         : "border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-700"
@@ -3904,8 +4085,8 @@ export function SavedBolReport({
                     return (
                       <DropdownMenuItem
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center justify-between text-xs font-bold py-2 px-2.5 cursor-pointer rounded-lg ${
+                        onClick={() => handleSwitchTab(tab.id)}
+                        className={`flex items-center justify-between text-xs font-bold py-2 px-2.5 cursor-pointer rounded-lg [&_span]:pointer-events-none [&_svg]:pointer-events-none ${
                           isTabActive
                             ? "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 font-black"
                             : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
@@ -3951,8 +4132,12 @@ export function SavedBolReport({
               style={{ background: "linear-gradient(180deg, #0f172a 0%, #172554 100%)" }}
             >
               <div className="flex justify-between items-start">
-                <div className="w-16 h-16 rounded-2xl bg-blue-600/30 border border-blue-400/40 flex items-center justify-center font-black text-2xl text-blue-400">
-                  SA
+                <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center p-1.5 overflow-hidden shadow-md">
+                  <img
+                    src={AQ_COMPANIES_LOGO_SRC}
+                    alt="AQ COMPANIES"
+                    className="w-full h-full object-contain filter drop-shadow-sm brightness-110"
+                  />
                 </div>
                 <div className="text-right text-xs text-blue-200">
                   <p className="font-black text-sm text-white uppercase tracking-wide">{reportCompanyName || "AQ COMPANIES"}</p>
@@ -3992,17 +4177,24 @@ export function SavedBolReport({
           {/* Standard Report Top Title Header */}
           <div
             data-report-header="true"
-            className="border-b-2 border-slate-900 pb-4 mb-6 print:pb-2.5 print:mb-3 flex flex-col sm:flex-row justify-between items-start gap-4 break-inside-avoid print:break-inside-avoid"
+            className="border-b-2 border-slate-900 pb-4 mb-6 print:hidden flex flex-col sm:flex-row justify-between items-start gap-4 break-inside-avoid"
           >
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
-                <Sparkles className="w-7 h-7 text-blue-600" />
+              <div className="w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-center shrink-0 p-1.5 overflow-hidden">
+                <img
+                  src={AQ_COMPANIES_LOGO_SRC}
+                  alt="AQ COMPANIES"
+                  className="w-full h-full object-contain filter drop-shadow-xs"
+                />
               </div>
               <div>
-                <div>
-                  <h1 className="text-2xl font-black text-slate-950 uppercase tracking-tight">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tight">
                     {reportCompanyName || "AQ COMPANIES"}
                   </h1>
+                  <span className="text-[10px] font-extrabold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800 uppercase tracking-wider">
+                    Official Manifest
+                  </span>
                 </div>
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                   International Transport & Multi-Modal Logistics
@@ -4084,7 +4276,14 @@ export function SavedBolReport({
                 >
                   <p className="text-[10px] print:text-[8.5px] font-black text-slate-400 uppercase tracking-wider">Total Packages</p>
                   <p className="text-2xl print:text-lg font-black text-blue-700 font-mono mt-1 print:mt-0.5">
-                    {overviewKpis.totalPackages.toLocaleString()} <span className="text-xs print:text-[9px]">CTNS</span>
+                    {overviewKpis.totalPackages.toLocaleString()}
+                  </p>
+                  <p className="text-[10px] print:text-[8px] font-bold text-slate-500 truncate mt-0.5">
+                    {Object.keys(overviewKpis.packageUnitsBreakdown || {}).length > 0
+                      ? Object.entries(overviewKpis.packageUnitsBreakdown || {})
+                          .map(([unit, cnt]) => `${cnt.toLocaleString()} ${unit}`)
+                          .join(" • ")
+                      : "Packages"}
                   </p>
                 </div>
                 <div
@@ -4313,49 +4512,124 @@ export function SavedBolReport({
                   <span className="text-xs text-slate-400">Compact Operational Overview</span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 text-xs">
                   {/* Top Shippers Summary */}
-                  <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100">
-                    <p className="font-black text-slate-600 mb-2 uppercase text-[10px]">Top Shippers by Volume</p>
-                    <div className="space-y-1.5">
-                      {shippersList.slice(0, 4).map((s, idx) => (
-                        <div key={s.shipperName} className="flex justify-between items-center">
-                          <span className="font-semibold truncate max-w-[160px] text-slate-800">
-                            {idx + 1}. {s.shipperName}
-                          </span>
-                          <span className="font-mono font-bold text-slate-900">{s.bolCount} BOLs</span>
-                        </div>
-                      ))}
+                  <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex flex-col justify-between">
+                    <div>
+                      <p className="font-black text-slate-600 mb-2 uppercase text-[10px] flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-blue-600" />
+                        Top Shippers
+                      </p>
+                      <div className="space-y-1.5">
+                        {shippersList.slice(0, 4).map((s, idx) => (
+                          <div key={s.shipperName} className="flex justify-between items-center text-[11px]">
+                            <span className="font-semibold truncate max-w-[130px] text-slate-800" title={s.shipperName}>
+                              {idx + 1}. {s.shipperName}
+                            </span>
+                            <span className="font-mono font-bold text-slate-900 shrink-0">{s.bolCount} BOLs</span>
+                          </div>
+                        ))}
+                        {shippersList.length === 0 && (
+                          <span className="text-[11px] text-slate-400 italic">No shippers recorded</span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
                   {/* Top Commodities Summary */}
-                  <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100">
-                    <p className="font-black text-slate-600 mb-2 uppercase text-[10px]">Top Commodities</p>
-                    <div className="space-y-1.5">
-                      {commoditiesList.slice(0, 4).map((c, idx) => (
-                        <div key={c.commodityName} className="flex justify-between items-center">
-                          <span className="font-semibold truncate max-w-[160px] text-slate-800">
-                            {idx + 1}. {c.commodityName}
-                          </span>
-                          <span className="font-mono font-bold text-blue-700">{c.bolCount} BOLs</span>
-                        </div>
-                      ))}
+                  <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex flex-col justify-between">
+                    <div>
+                      <p className="font-black text-slate-600 mb-2 uppercase text-[10px] flex items-center gap-1.5">
+                        <Boxes className="w-3.5 h-3.5 text-blue-600" />
+                        Top Commodities
+                      </p>
+                      <div className="space-y-1.5">
+                        {commoditiesList.slice(0, 4).map((c, idx) => (
+                          <div key={c.commodityName} className="flex justify-between items-center text-[11px]">
+                            <span className="font-semibold truncate max-w-[130px] text-slate-800" title={c.commodityName}>
+                              {idx + 1}. {c.commodityName}
+                            </span>
+                            <span className="font-mono font-bold text-blue-700 shrink-0">{c.bolCount} BOLs</span>
+                          </div>
+                        ))}
+                        {commoditiesList.length === 0 && (
+                          <span className="text-[11px] text-slate-400 italic">No commodities recorded</span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
                   {/* Top Destinations Summary */}
-                  <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100">
-                    <p className="font-black text-slate-600 mb-2 uppercase text-[10px]">Top Transit Hubs & Ports</p>
-                    <div className="space-y-1.5">
-                      {destinationsList.slice(0, 4).map((d, idx) => (
-                        <div key={d.locationName} className="flex justify-between items-center">
-                          <span className="font-semibold truncate max-w-[160px] text-slate-800">
-                            {idx + 1}. {d.locationName}
-                          </span>
-                          <span className="font-mono font-bold text-purple-700">{d.bolCount} BOLs</span>
-                        </div>
-                      ))}
+                  <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex flex-col justify-between">
+                    <div>
+                      <p className="font-black text-slate-600 mb-2 uppercase text-[10px] flex items-center gap-1.5">
+                        <Compass className="w-3.5 h-3.5 text-purple-600" />
+                        Transit Hubs & Ports
+                      </p>
+                      <div className="space-y-1.5">
+                        {destinationsList.slice(0, 4).map((d, idx) => (
+                          <div key={d.locationName} className="flex justify-between items-center text-[11px]">
+                            <span className="font-semibold truncate max-w-[130px] text-slate-800" title={d.locationName}>
+                              {idx + 1}. {d.locationName}
+                            </span>
+                            <span className="font-mono font-bold text-purple-700 shrink-0">{d.bolCount} BOLs</span>
+                          </div>
+                        ))}
+                        {destinationsList.length === 0 && (
+                          <span className="text-[11px] text-slate-400 italic">No destinations recorded</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Top Afghan Border Stations */}
+                  <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex flex-col justify-between">
+                    <div>
+                      <p className="font-black text-slate-600 mb-2 uppercase text-[10px] flex items-center gap-1.5">
+                        <Navigation className="w-3.5 h-3.5 text-emerald-600" />
+                        Border Crossings
+                      </p>
+                      <div className="space-y-1.5">
+                        {borderStationsSummary.slice(0, 4).map(([station, stats], idx) => (
+                          <div key={station} className="flex justify-between items-center text-[11px]">
+                            <span className="font-semibold truncate max-w-[130px] text-slate-800" title={station}>
+                              {idx + 1}. {station.split(" ")[0]}
+                            </span>
+                            <span className="font-mono font-bold text-emerald-700 shrink-0">{stats.bols} BOLs</span>
+                          </div>
+                        ))}
+                        {borderStationsSummary.length === 0 && (
+                          <span className="text-[11px] text-slate-400 italic">No border crossings</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Driver Freight Rent Summary */}
+                  <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex flex-col justify-between">
+                    <div>
+                      <p className="font-black text-slate-600 mb-2 uppercase text-[10px] flex items-center gap-1.5">
+                        <Truck className="w-3.5 h-3.5 text-amber-600" />
+                        Driver Freight Rent
+                      </p>
+                      <div className="space-y-1.5">
+                        {Object.entries(driverRentSummary).map(([curr, data]) => (
+                          <div key={curr} className="flex justify-between items-center text-[11px]">
+                            <span className="font-semibold text-slate-800 flex items-center gap-1">
+                              <span className="px-1 py-0.2 rounded bg-amber-100 text-amber-900 font-mono text-[9.5px] font-bold">
+                                {curr}
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-sans">({data.count} trucks)</span>
+                            </span>
+                            <span className="font-mono font-bold text-amber-800 shrink-0">
+                              {data.amount.toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                        {Object.keys(driverRentSummary).length === 0 && (
+                          <span className="text-[11px] text-slate-400 italic">No driver rent recorded</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -4393,7 +4667,7 @@ export function SavedBolReport({
                 </div>
               )}
               <DetailedReportTable
-                documents={documents}
+                documents={baseData}
                 filteredDocuments={filteredData}
                 overviewKpis={overviewKpis}
                 selectedDocIds={selectedIds}

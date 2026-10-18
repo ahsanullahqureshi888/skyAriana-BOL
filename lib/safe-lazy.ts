@@ -31,7 +31,7 @@ async function loadWithRetry(
   importer: () => Promise<any>,
   maxRetries: number = 2,
   moduleName: string = "Module",
-  timeoutMs: number = 30000
+  timeoutMs: number = 45000
 ): Promise<any> {
   let lastError: any = null
 
@@ -54,9 +54,9 @@ async function loadWithRetry(
         errorMsg.includes("CSS chunk") ||
         errorMsg.includes("Failed to fetch dynamically imported module")
 
-      if (attempt < maxRetries && isChunkError) {
-        // Retry chunk loading after 500ms exponential backoff
-        await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)))
+      if (attempt < maxRetries) {
+        // Retry chunk loading after exponential backoff
+        await new Promise((resolve) => setTimeout(resolve, isChunkError ? 800 * (attempt + 1) : 300))
       }
     }
   }
@@ -81,7 +81,7 @@ export function safeLazy<T = any>(
   importer: () => Promise<any>,
   options: SafeLazyOptions = {}
 ): () => Promise<{ default: React.ComponentType<any> }> {
-  const { moduleName = "Application View", maxRetries = 2, timeoutMs = 30000 } = options
+  const { moduleName = "Application View", maxRetries = 2, timeoutMs = 45000 } = options
 
   return async () => {
     try {
@@ -104,8 +104,18 @@ export function safeLazy<T = any>(
             const freshMod = await loadWithRetry(importer, maxRetries, moduleName, timeoutMs)
             const FreshComp = extractComponent(freshMod)
             setResolvedComponent(() => FreshComp)
-          } catch (retryErr) {
+          } catch (retryErr: any) {
             console.error(`[safeLazy] Retry failed for module "${moduleName}":`, retryErr)
+            const errMsg = String(retryErr?.message || retryErr || "")
+            const isChunk =
+              retryErr?.name === "ChunkLoadError" ||
+              errMsg.includes("Loading chunk") ||
+              errMsg.includes("Failed to load chunk") ||
+              errMsg.includes("_next/static/chunks")
+            if (typeof window !== "undefined" && isChunk) {
+              window.location.reload()
+              return
+            }
             setCurrentError(retryErr)
           } finally {
             setIsRetrying(false)
@@ -142,7 +152,9 @@ export function createSafeModule<T = any>(
   importer: () => Promise<any>,
   options?: { timeoutMs?: number; maxRetries?: number }
 ) {
-  const timeout = options?.timeoutMs ?? 6000
+  const isDev = process.env.NODE_ENV !== "production"
+  const defaultTimeout = isDev ? 45000 : 15000
+  const timeout = options?.timeoutMs ?? defaultTimeout
   return dynamic(
     safeLazy(importer, { moduleName, timeoutMs: timeout, maxRetries: options?.maxRetries ?? 2 }),
     {

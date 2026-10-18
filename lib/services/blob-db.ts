@@ -9,7 +9,17 @@ interface MemoryCacheEntry {
   timestamp: number
 }
 
+const MAX_CACHE_ENTRIES = 100
 const fileCache = new Map<string, MemoryCacheEntry>()
+
+function setBoundedCache(key: string, entry: MemoryCacheEntry): void {
+  if (fileCache.size >= MAX_CACHE_ENTRIES && !fileCache.has(key)) {
+    const oldestKey = fileCache.keys().next().value
+    if (oldestKey) fileCache.delete(oldestKey)
+  }
+  fileCache.set(key, entry)
+}
+
 const fileOperations = new Map<string, Promise<void>>()
 
 function queueFileOperation<T>(filePath: string, operation: () => Promise<T>): Promise<T> {
@@ -94,7 +104,7 @@ export async function readJsonFile<T>(filePath: string, fallback: T): Promise<T>
         const response = await fetch(file.url, { cache: "no-store" })
         if (response.ok) {
           const parsed = (await response.json()) as T
-          fileCache.set(`blob:${blobName}`, { mtimeMs: Date.now(), data: parsed, timestamp: Date.now() })
+          setBoundedCache(`blob:${blobName}`, { mtimeMs: Date.now(), data: parsed, timestamp: Date.now() })
           return structuredClone(parsed)
         }
       }
@@ -136,7 +146,7 @@ export async function readJsonFile<T>(filePath: string, fallback: T): Promise<T>
           return structuredClone(fallback)
         }
       }
-      fileCache.set(filePath, { mtimeMs: stat.mtimeMs, data: parsed, timestamp: Date.now() })
+      setBoundedCache(filePath, { mtimeMs: stat.mtimeMs, data: parsed, timestamp: Date.now() })
       return structuredClone(parsed)
     }
   } catch (error) {
@@ -147,7 +157,7 @@ export async function readJsonFile<T>(filePath: string, fallback: T): Promise<T>
         const raw = await fs.promises.readFile(bakPath, "utf-8")
         if (raw && raw.trim()) {
           const parsed = JSON.parse(raw) as T
-          return parsed
+          return structuredClone(parsed)
         }
       }
     } catch (_) {}
@@ -167,7 +177,7 @@ export async function readJsonFile<T>(filePath: string, fallback: T): Promise<T>
         let parsed: T
         try {
           parsed = JSON.parse(raw) as T
-          fileCache.set(tmpPath, { mtimeMs: stat.mtimeMs, data: parsed, timestamp: Date.now() })
+          setBoundedCache(tmpPath, { mtimeMs: stat.mtimeMs, data: parsed, timestamp: Date.now() })
           return structuredClone(parsed)
         } catch {}
       }
@@ -184,7 +194,6 @@ async function writeJsonFileUnqueued<T>(filePath: string, value: T): Promise<voi
   const fileName = path.basename(filePath)
   const blobName = `databases/${fileName.replace(/^\.+/, "")}`
   const jsonStr = JSON.stringify(value, null, 2)
-  // Cache exactly what was serialized, without retaining the caller's references.
   const persistedValue: unknown = JSON.parse(jsonStr)
 
   let persisted = false
@@ -195,7 +204,7 @@ async function writeJsonFileUnqueued<T>(filePath: string, value: T): Promise<voi
     persisted = true
     try {
       const stat = await fs.promises.stat(filePath)
-      fileCache.set(filePath, { mtimeMs: stat.mtimeMs, data: persistedValue, timestamp: Date.now() })
+      setBoundedCache(filePath, { mtimeMs: stat.mtimeMs, data: persistedValue, timestamp: Date.now() })
     } catch (_) {}
   } catch (error) {
     // 2. Fallback to writing to os.tmpdir() (Vercel serverless writable path)
@@ -204,7 +213,7 @@ async function writeJsonFileUnqueued<T>(filePath: string, value: T): Promise<voi
       await atomicWriteFile(tmpPath, jsonStr)
       persisted = true
       const stat = await fs.promises.stat(tmpPath)
-      fileCache.set(tmpPath, { mtimeMs: stat.mtimeMs, data: persistedValue, timestamp: Date.now() })
+      setBoundedCache(tmpPath, { mtimeMs: stat.mtimeMs, data: persistedValue, timestamp: Date.now() })
     } catch (tmpErr) {
       console.error(`[blob-db] Failed to write ${fileName} to local & tmp database:`, tmpErr)
     }
@@ -220,7 +229,7 @@ async function writeJsonFileUnqueued<T>(filePath: string, value: T): Promise<voi
       })
       persisted = true
       const nowMs = Date.now()
-      fileCache.set(`blob:${blobName}`, { mtimeMs: nowMs, data: persistedValue, timestamp: nowMs })
+      setBoundedCache(`blob:${blobName}`, { mtimeMs: nowMs, data: persistedValue, timestamp: nowMs })
     } catch (error) {
       console.error(`[blob-db] Failed to write ${fileName} to Vercel Blob:`, error)
     }
@@ -234,7 +243,7 @@ async function writeJsonFileUnqueued<T>(filePath: string, value: T): Promise<voi
 }
 
 export async function writeJsonFile<T>(filePath: string, value: T): Promise<void> {
-  const snapshot: T = JSON.parse(JSON.stringify(value))
+  const snapshot: T = structuredClone(value)
   return queueFileOperation(filePath, () => writeJsonFileUnqueued(filePath, snapshot))
 }
 
@@ -255,5 +264,9 @@ export async function mutateJsonFile<T>(
   })
 }
 
-
-
+/**
+ * Purges all in-memory file caches. Essential after restore operations or disaster recovery.
+ */
+export function clearBlobDbCache(): void {
+  fileCache.clear()
+}

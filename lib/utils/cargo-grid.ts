@@ -23,7 +23,9 @@ export interface CargoTotals {
 
 export type CargoDensityTier = "normal" | "compact" | "dense" | "ultra"
 
-const UNIT_ONLY_REGEX = /^(?:kgs?|cartons?|ctns?|cnts?|bags?|pkgs?|boxes|pcs|lbs?|tonnes?|tons?|cbm|mtrs?)$/i
+const CARGO_UNIT_OR_CURRENCY_REGEX =
+  /^(?:kgs?|cartons?|ctns?|cnts?|bags?|pkgs?|boxes|pcs|lbs?|tonnes?|tons?|cbm|mtrs?|usd|afn|eur|aed|inr|pkr|gbp|\$|€|£|usd\/kg|\$\/kg|\/kg|\/kgs)$/i
+const CURRENCY_REGEX = /^(?:USD|AFN|EUR|AED|INR|PKR|GBP|\$|€|£)$/i
 
 export function cleanText(value?: string | null): string {
   if (!value) return ""
@@ -51,9 +53,10 @@ export function splitMultiCargoItems(val?: string | null): string[] {
   // Step 2: Split each chunk further by dash followed by digit, or space-dash-space, slash, or comma preceded by letter/unit
   const parts: string[] = []
   for (let chunk of raw) {
-    // Normalize typos like "17.30 - KGS" -> "17.30 KGS" or "18.00-KGS" -> "18.00 KGS"
-    chunk = chunk.replace(/(\d+(?:\.\d+)?)\s*[-–—]\s*([A-Za-z]+)/g, (m, g1, g2) => {
-      if (UNIT_ONLY_REGEX.test(g2)) return `${g1} ${g2}`
+    // Normalize typos/spacings like "17.30 - KGS" -> "17.30 KGS", "2.50 - USD" -> "2.50 USD", "6.50 -USD" -> "6.50 USD"
+    // Note: Use letter-based unit match ([A-Za-z]+|\/kgs?)\b so leading $ of next item (e.g. "0.00 - $15") is never consumed
+    chunk = chunk.replace(/(\d+(?:\.\d+)?)\s*[-–—]\s*([A-Za-z]+|\/kgs?)\b/g, (m, g1, g2) => {
+      if (CARGO_UNIT_OR_CURRENCY_REGEX.test(g2)) return `${g1} ${g2}`
       return m
     })
 
@@ -70,7 +73,7 @@ export function splitMultiCargoItems(val?: string | null): string[] {
     for (const p of sub) {
       if (/\s+[-–—]\s+/.test(p)) {
         const hyphenParts = p.split(/\s+[-–—]\s+/).map((s) => s.trim()).filter(Boolean)
-        if (!hyphenParts.some((s) => UNIT_ONLY_REGEX.test(s))) {
+        if (!hyphenParts.some((s) => CARGO_UNIT_OR_CURRENCY_REGEX.test(s))) {
           parts.push(...hyphenParts)
           continue
         }
@@ -83,20 +86,31 @@ export function splitMultiCargoItems(val?: string | null): string[] {
   let cleaned = parts
     .map((p) =>
       p
-        .replace(/(\d+(?:\.\d+)?)\s*[-–—]\s*([A-Za-z]+)/g, (m, g1, g2) => {
-          if (UNIT_ONLY_REGEX.test(g2)) return `${g1} ${g2}`
+        .replace(/(\d+(?:\.\d+)?)\s*[-–—]\s*([A-Za-z]+|\/kgs?)\b/g, (m, g1, g2) => {
+          if (CARGO_UNIT_OR_CURRENCY_REGEX.test(g2)) return `${g1} ${g2}`
           return m
         })
         .trim()
     )
     .filter(Boolean)
 
-  // Step 4: If the last part is a solitary currency word (USD, AFN, etc.) and preceding parts are numbers, merge it
-  const currencyRegex = /^(USD|AFN|EUR|AED|INR|PKR|\$)$/i
-  if (cleaned.length > 1 && currencyRegex.test(cleaned[cleaned.length - 1])) {
+  // Step 4: Handle solitary currencies or trailing currencies across numeric parts
+  // e.g. ["3.50", "3.25", "6.35", "USD"] -> ["3.50 USD", "3.25 USD", "6.35 USD"]
+  // e.g. ["3.50", "3.25", "6.35 USD"] -> ["3.50 USD", "3.25 USD", "6.35 USD"]
+  if (cleaned.length > 1 && CURRENCY_REGEX.test(cleaned[cleaned.length - 1])) {
     const cur = cleaned.pop()!.toUpperCase()
     cleaned = cleaned.map((p) => (/^[0-9.,]+$/.test(p) ? `${p} ${cur}` : p))
+  } else if (cleaned.length > 1) {
+    const lastPart = cleaned[cleaned.length - 1]
+    const curMatch = lastPart.match(/\b(USD|AFN|EUR|AED|INR|PKR|GBP)\b/i)
+    if (curMatch) {
+      const cur = curMatch[1].toUpperCase()
+      cleaned = cleaned.map((p) => (/^[0-9.,]+$/.test(p) ? `${p} ${cur}` : p))
+    }
   }
+
+  // Step 5: Filter out any solitary unit or currency tokens that have no numbers
+  cleaned = cleaned.filter((p) => !CARGO_UNIT_OR_CURRENCY_REGEX.test(p))
 
   return cleaned
 }
@@ -186,31 +200,17 @@ export function parseSyncedCargoItems(formData: Partial<BillOfLadingFormData>): 
     hasAnyCargo ? 1 : 0
   )
 
-  const items: SyncedCargoItem[] = []
-  for (let i = 0; i < maxItems; i++) {
-    items.push({
-      id: `cargo-row-${i}`,
-      packageText: pkgParts[i] || (i === 0 ? cleanText(formData.number_of_packages) : ""),
-      netPerCarton: netCtnParts[i] || (i === 0 ? cleanText(formData.kgs_per_carton) : ""),
-      grossPerCarton: grossCtnParts[i] || (i === 0 ? cleanText(formData.gross_weight_per_carton) : ""),
-      netWeight: netWtParts[i] || (i === 0 ? cleanText(formData.net_weight) : ""),
-      grossWeight: grossWtParts[i] || (i === 0 ? cleanText(formData.gross_weight) : ""),
-      rate: rateParts[i] || (i === 0 ? cleanText(formData.rate_per_kgs) : ""),
-      goodsValue: valParts[i] || (i === 0 ? cleanText(formData.goods_value) : ""),
-    })
-  }
+  // Single-item fallback totals if multi-split sum was 0
+  const singlePkg = parseCargoTotal([cleanText(formData.number_of_packages)])
+  const singleNet = parseCargoTotal([cleanText(formData.net_weight)])
+  const singleGross = parseCargoTotal([cleanText(formData.gross_weight)])
+  const singleVal = parseCargoTotal([cleanText(formData.goods_value)])
 
   // Calculate totals across ALL items in shipment
   const pkgTotal = parseCargoTotal(pkgParts)
   const netWtTotal = parseCargoTotal(netWtParts)
   const grossWtTotal = parseCargoTotal(grossWtParts)
   const valTotal = parseCargoTotal(valParts)
-
-  // Single-item fallback totals if multi-split sum was 0
-  const singlePkg = parseCargoTotal([cleanText(formData.number_of_packages)])
-  const singleNet = parseCargoTotal([cleanText(formData.net_weight)])
-  const singleGross = parseCargoTotal([cleanText(formData.gross_weight)])
-  const singleVal = parseCargoTotal([cleanText(formData.goods_value)])
 
   const totals: CargoTotals = {
     totalPackages: pkgTotal.sum > 0 ? pkgTotal.sum : singlePkg.sum,
@@ -220,6 +220,67 @@ export function parseSyncedCargoItems(formData: Partial<BillOfLadingFormData>): 
     weightUnit: netWtTotal.unit || grossWtTotal.unit || singleNet.unit || singleGross.unit || "KG",
     totalGoodsValue: valTotal.sum > 0 ? valTotal.sum : singleVal.sum,
     currency: valTotal.unit || singleVal.unit || "USD",
+  }
+
+  const items: SyncedCargoItem[] = []
+  for (let i = 0; i < maxItems; i++) {
+    // 1. Packages
+    const itemPkg = pkgParts[i] || (i === 0 ? cleanText(formData.number_of_packages) : "")
+
+    // 2. Net & Gross Carton Weights: if single carton weight given, reuse across all rows
+    let itemNetPerCarton = netCtnParts[i] || ""
+    if (!itemNetPerCarton && netCtnParts.length === 1 && maxItems > 1) {
+      itemNetPerCarton = netCtnParts[0]
+    } else if (!itemNetPerCarton && i === 0) {
+      itemNetPerCarton = cleanText(formData.kgs_per_carton)
+    }
+
+    let itemGrossPerCarton = grossCtnParts[i] || ""
+    if (!itemGrossPerCarton && grossCtnParts.length === 1 && maxItems > 1) {
+      itemGrossPerCarton = grossCtnParts[0]
+    } else if (!itemGrossPerCarton && i === 0) {
+      itemGrossPerCarton = cleanText(formData.gross_weight_per_carton)
+    }
+
+    // 3. Weights
+    const itemNetWeight = netWtParts[i] || (i === 0 ? cleanText(formData.net_weight) : "")
+    const itemGrossWeight = grossWtParts[i] || (i === 0 ? cleanText(formData.gross_weight) : "")
+
+    // 4. Rate: if single rate provided for multi-item cargo, apply across all rows
+    let itemRate = rateParts[i] || ""
+    if (!itemRate && rateParts.length === 1 && maxItems > 1) {
+      itemRate = rateParts[0]
+    } else if (!itemRate && i === 0) {
+      itemRate = cleanText(formData.rate_per_kgs)
+    }
+
+    // 5. Goods Value
+    let itemGoodsValue = valParts[i] || (i === 0 ? cleanText(formData.goods_value) : "")
+
+    // Smart Rate Auto-Recovery:
+    // If rate is missing or invalid (no digits) but goodsValue and netWeight (or grossWeight) exist:
+    if ((!itemRate || !/\d/.test(itemRate)) && itemGoodsValue && (itemNetWeight || itemGrossWeight)) {
+      const valNum = parseFloat(itemGoodsValue.replace(/,/g, "").match(/\d+(?:\.\d+)?/)?.[0] || "0")
+      const wtNum = parseFloat(
+        (itemNetWeight || itemGrossWeight).replace(/,/g, "").match(/\d+(?:\.\d+)?/)?.[0] || "0"
+      )
+      if (valNum > 0 && wtNum > 0) {
+        const inferredRate = (valNum / wtNum).toFixed(2)
+        const cur = totals.currency || "USD"
+        itemRate = `${inferredRate} ${cur}`
+      }
+    }
+
+    items.push({
+      id: `cargo-row-${i}`,
+      packageText: itemPkg,
+      netPerCarton: itemNetPerCarton,
+      grossPerCarton: itemGrossPerCarton,
+      netWeight: itemNetWeight,
+      grossWeight: itemGrossWeight,
+      rate: itemRate,
+      goodsValue: itemGoodsValue,
+    })
   }
 
   return { items, totals, maxItems }

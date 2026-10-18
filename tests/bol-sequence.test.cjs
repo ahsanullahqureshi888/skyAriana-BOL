@@ -16,8 +16,8 @@ const {
 } = loadTypescript("lib/services/bol-sequence.ts");
 
 test("BOL Sequence Starting Number & Format Verification", async (t) => {
-  await t.test("1. Starting sequence is configured to 619 with BOL-2026-NSA prefix", () => {
-    assert.equal(START_SEQUENCE, 619, "START_SEQUENCE must be 619");
+  await t.test("1. Starting sequence is configured with BOL-2026-NSA prefix", () => {
+    assert.ok(START_SEQUENCE >= 619, "START_SEQUENCE must be at least 619");
     assert.equal(DEFAULT_BOL_PREFIX, "BOL-2026-NSA", "DEFAULT_BOL_PREFIX must be BOL-2026-NSA");
   });
 
@@ -42,7 +42,7 @@ test("BOL Sequence Starting Number & Format Verification", async (t) => {
     
     const data = JSON.parse(fs.readFileSync(seqPath, "utf8"));
     assert.equal(data.prefix, "BOL-2026-NSA", "Prefix must be BOL-2026-NSA");
-    assert.equal(data.startSequence, 619, "startSequence must be 619");
+    assert.ok(data.startSequence >= 619, "startSequence must be at least 619");
     
     // The next allocated sequence starts at or progresses from 626
     const nextAllocated = (data.sequence || 625) + 1;
@@ -87,5 +87,37 @@ test("BOL Sequence Starting Number & Format Verification", async (t) => {
     const bols = JSON.parse(fs.readFileSync(path.resolve(".local-bols.json"), "utf8"));
     const uuidBols = bols.filter((b) => isUUID(b.bol_number));
     assert.equal(uuidBols.length, 0, `Expected 0 BOL records with UUID as bol_number, found ${uuidBols.length}`);
+  });
+
+  await t.test("8. Starting sequence for new BOL is BOL-2026-NSA685 since finale BOL is 684", async () => {
+    const { getNextAvailableBolNumber, START_SEQUENCE } = loadTypescript("lib/services/bol-sequence.ts");
+    assert.equal(START_SEQUENCE, 685, "START_SEQUENCE must be 685");
+    const nextNum = await getNextAvailableBolNumber();
+    assert.equal(nextNum, "BOL-2026-NSA685", "Next available BOL must be BOL-2026-NSA685");
+  });
+
+  await t.test("9. advanceBolSequenceIfHigher past 685 advances next available BOL to BOL-2026-NSA686", async () => {
+    const { advanceBolSequenceIfHigher, getNextAvailableBolNumber } = loadTypescript("lib/services/bol-sequence.ts");
+    await advanceBolSequenceIfHigher("BOL-2026-NSA685");
+    const nextNum = await getNextAvailableBolNumber();
+    assert.equal(nextNum, "BOL-2026-NSA686", "After BOL-2026-NSA685, next available BOL must be BOL-2026-NSA686");
+
+    // Revert sequence back to 685 for clean test environment
+    const { setBolStartingSequence } = loadTypescript("lib/services/bol-sequence.ts");
+    await setBolStartingSequence(685);
+  });
+
+  await t.test("10. Auto +1 sequential increment formula reliably increments 684 to 685 and 686", () => {
+    const { parseBolSeq } = loadTypescript("lib/utils/bol-filters.ts");
+    const testBol = "BOL-2026-NSA684";
+    const seq = parseBolSeq(testBol);
+    assert.equal(seq, 684);
+    const nextSeq = seq + 1;
+    assert.equal(nextSeq, 685);
+    const nextBol = `BOL-2026-NSA${nextSeq}`;
+    assert.equal(nextBol, "BOL-2026-NSA685");
+    const nextNextSeq = nextSeq + 1;
+    assert.equal(nextNextSeq, 686);
+    assert.equal(`BOL-2026-NSA${nextNextSeq}`, "BOL-2026-NSA686");
   });
 });

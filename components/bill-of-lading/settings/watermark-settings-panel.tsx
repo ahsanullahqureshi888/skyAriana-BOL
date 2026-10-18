@@ -417,7 +417,7 @@ export function WatermarkSettingsPanel({
                   onSelectWatermark(item)
                 }
               }}
-              className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-all duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-all duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 [content-visibility:auto] [contain-intrinsic-size:160px] ${
                 isSelected
                   ? 'border-2 border-blue-600 bg-blue-50/50 dark:border-blue-500 dark:bg-blue-950/30 shadow-md ring-2 ring-blue-500/20'
                   : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 dark:hover:border-blue-500 hover:shadow-md'

@@ -56,7 +56,13 @@ export function BolQuickView({
 
   const isShipperRtl = isRtlText(doc.shipper_name)
   const isConsigneeRtl = isRtlText(doc.consignee_name)
-  const isNotifyRtl = isRtlText(doc.notify_party_name)
+  const notifyPartyText = (doc.notify_party_name || doc.notify_party || (doc as any).notifyParty || "").trim()
+  const notifyAddressText = (doc.notify_party_address || (doc as any).notifyAddress || "").trim()
+  const isNotifyRtl = isRtlText(notifyPartyText)
+  const isNotifySame = !notifyPartyText ||
+    notifyPartyText.toUpperCase() === "SAME" ||
+    notifyPartyText.toUpperCase() === "SAME AS CONSIGNEE" ||
+    (doc.consignee_name && notifyPartyText.toLowerCase() === doc.consignee_name.toLowerCase())
 
   const truckText = extractTruckNo(doc) || doc.truck_number || "—"
   const invText = extractInvoiceNo(doc) || doc.invoice_no || (doc as any).invoice_number || "—"
@@ -418,7 +424,7 @@ export function BolQuickView({
                         <td className="py-2 px-2 text-right text-slate-400">—</td>
                         <td className="py-2 px-2 text-right font-bold text-amber-600 dark:text-amber-400">{doc.net_weight || "—"}</td>
                         <td className="py-2 px-2 text-right text-slate-700 dark:text-slate-300">{doc.gross_weight || "—"}</td>
-                        <td className="py-2 px-2 text-right text-slate-600 dark:text-slate-400">{doc.rate_per_kg || (doc as any).rate || "—"}</td>
+                        <td className="py-2 px-2 text-right text-slate-600 dark:text-slate-400">{doc.rate_per_kgs || doc.rate_per_kg || (doc as any).rate || "—"}</td>
                         <td className="py-2 px-2.5 text-right font-bold text-emerald-600 dark:text-emerald-400">{doc.goods_value || "—"}</td>
                       </tr>
                     )}
@@ -507,13 +513,21 @@ export function BolQuickView({
                   <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400">Notify Party</span>
                   <span className="text-[10px] text-slate-400 font-mono">Role: Notice</span>
                 </div>
-                <p className={`font-bold text-slate-900 dark:text-white text-sm ${isNotifyRtl ? "text-right font-[vazirmatn]" : ""}`} dir={isNotifyRtl ? "rtl" : "ltr"}>
-                  {doc.notify_party_name || "SAME AS CONSIGNEE"}
-                </p>
-                {doc.notify_party_address && (
-                  <p className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
-                    {doc.notify_party_address}
+                {isNotifySame ? (
+                  <p className="font-medium text-slate-400 italic text-sm">
+                    SAME AS CONSIGNEE
                   </p>
+                ) : (
+                  <>
+                    <p className={`font-bold text-slate-900 dark:text-white text-sm ${isNotifyRtl ? "text-right font-[vazirmatn]" : ""}`} dir={isNotifyRtl ? "rtl" : "ltr"}>
+                      {notifyPartyText}
+                    </p>
+                    {notifyAddressText && (
+                      <p className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
+                        {notifyAddressText}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             </div>

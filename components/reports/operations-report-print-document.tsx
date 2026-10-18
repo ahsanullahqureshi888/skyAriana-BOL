@@ -20,9 +20,13 @@ export function OperationsReportPrintDocument({ report }: OperationsReportPrintD
         {/* Header */}
         <div className="flex justify-between items-start border-b-2 border-primary/40 pb-4 mb-6">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded bg-primary text-primary-foreground flex items-center justify-center font-bold text-base">
-                SA
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center p-1 shrink-0 overflow-hidden shadow-xs">
+                <img
+                  src="/images/aq-companies-punisher-logo.png"
+                  alt="AQ Companies"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
                 <div>

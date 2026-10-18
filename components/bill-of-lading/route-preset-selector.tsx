@@ -19,8 +19,13 @@ import {
   Box,
   Search,
   CheckCircle2,
+  Navigation,
+  MapPin,
+  Compass,
 } from "lucide-react"
 import { toast } from "sonner"
+import { parseLogisticsRoute } from "@/lib/utils/transit-route-parser"
+
 
 export interface RouteOption {
   text: string
@@ -38,6 +43,7 @@ export interface RouteGroup {
   badgeColor: string
   pillActiveColor: string
   pillHoverColor: string
+  accentBorder?: string
   options: RouteOption[]
 }
 
@@ -45,11 +51,28 @@ const ROUTE_GROUPS: RouteGroup[] = [
   {
     id: "dogharoun",
     label: "دوغارون",
-    sublabel: "Dogharoun — Iran/Khorasan (Full Way Reefer & Switch B/L)",
+    sublabel: "مرز دوغارون خراسان (ترانزیت ایران و امارات)",
     badgeColor: "border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-800 dark:bg-sky-950/60 dark:text-sky-300",
     pillActiveColor: "border-sky-600 bg-sky-600 text-white shadow-xs",
     pillHoverColor: "border-sky-200 bg-white text-sky-950 hover:border-sky-400 hover:bg-sky-50/70 dark:bg-slate-900 dark:border-slate-800 dark:text-sky-200",
+    accentBorder: "border-r-4 border-r-sky-500",
     options: [
+      {
+        text: "🗺️از دوغارون با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva).",
+        origin: "دوغارون",
+        destination: "نهاوا شیوا (Nhava Sheva)",
+        containerType: "mixed",
+        isSwitchBl: true,
+        switchLocation: "دبی / جبل علی",
+      },
+      {
+        text: "از دوغارون با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva)",
+        origin: "دوغارون",
+        destination: "نهاوا شیوا (Nhava Sheva)",
+        containerType: "mixed",
+        isSwitchBl: true,
+        switchLocation: "دبی / جبل علی",
+      },
       {
         text: "از دوغارون کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در دبی / جبل علی (Full Way Reefer)",
         origin: "دوغارون",
@@ -151,11 +174,43 @@ const ROUTE_GROUPS: RouteGroup[] = [
   {
     id: "switch-bl",
     label: "🔄 سوییچ بی ال",
-    sublabel: "Switch B/L Dedicated — Transshipment Hubs",
+    sublabel: "هاب‌های سوییچ بارنامه (دبی، جبل علی، بندرعباس، چابهار)",
     badgeColor: "border-purple-300 bg-purple-100 text-purple-900 dark:border-purple-800 dark:bg-purple-950/60 dark:text-purple-300",
     pillActiveColor: "border-purple-600 bg-purple-600 text-white shadow-xs",
     pillHoverColor: "border-purple-200 bg-white text-purple-900 hover:border-purple-400 hover:bg-purple-50/70 dark:bg-slate-900 dark:border-slate-800 dark:text-purple-300",
     options: [
+      {
+        text: "🗺️از دوغارون با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva).",
+        origin: "دوغارون",
+        destination: "نهاوا شیوا (Nhava Sheva)",
+        containerType: "mixed",
+        isSwitchBl: true,
+        switchLocation: "دبی / جبل علی",
+      },
+      {
+        text: "🗺️از نیمروز با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva).",
+        origin: "نیمروز",
+        destination: "نهاوا شیوا (Nhava Sheva)",
+        containerType: "mixed",
+        isSwitchBl: true,
+        switchLocation: "دبی / جبل علی",
+      },
+      {
+        text: "🗺️از اسلام قلعه با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva).",
+        origin: "اسلام قلعه",
+        destination: "نهاوا شیوا (Nhava Sheva)",
+        containerType: "mixed",
+        isSwitchBl: true,
+        switchLocation: "دبی / جبل علی",
+      },
+      {
+        text: "از دوغارون با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva)",
+        origin: "دوغارون",
+        destination: "نهاوا شیوا (Nhava Sheva)",
+        containerType: "mixed",
+        isSwitchBl: true,
+        switchLocation: "دبی / جبل علی",
+      },
       {
         text: "از دوغارون کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در دبی / جبل علی (Full Way Reefer)",
         origin: "دوغارون",
@@ -373,11 +428,27 @@ const ROUTE_GROUPS: RouteGroup[] = [
   {
     id: "islam-qala",
     label: "اسلام قلعه",
-    sublabel: "Islam Qala — Herat Border",
+    sublabel: "مرز اسلام قلعه هرات (ترانزیت بندرعباس، ترکیه و اروپا)",
     badgeColor: "border-blue-300 bg-blue-100 text-blue-900 dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300",
     pillActiveColor: "border-blue-600 bg-blue-600 text-white shadow-xs",
     pillHoverColor: "border-blue-200 bg-white text-blue-900 hover:border-blue-400 hover:bg-blue-50/70 dark:bg-slate-900 dark:border-slate-800 dark:text-blue-300",
     options: [
+      {
+        text: "🗺️از اسلام قلعه با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva).",
+        origin: "اسلام قلعه",
+        destination: "نهاوا شیوا (Nhava Sheva)",
+        containerType: "mixed",
+        isSwitchBl: true,
+        switchLocation: "دبی / جبل علی",
+      },
+      {
+        text: "از اسلام قلعه با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva)",
+        origin: "اسلام قلعه",
+        destination: "نهاوا شیوا (Nhava Sheva)",
+        containerType: "mixed",
+        isSwitchBl: true,
+        switchLocation: "دبی / جبل علی",
+      },
       {
         text: "از اسلام قلعه تمام مسیر کانتینر یخچالی (Full Way Reefer)",
         origin: "اسلام قلعه",
@@ -437,11 +508,27 @@ const ROUTE_GROUPS: RouteGroup[] = [
   {
     id: "nimroz",
     label: "نیمروز",
-    sublabel: "Nimroz — Iran/Sistan Border (Full Way Reefer & Switch B/L)",
+    sublabel: "مرز نیمروز سیستان (ترانزیت ایران، چابهار و دبی)",
     badgeColor: "border-rose-300 bg-rose-100 text-rose-900 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300",
     pillActiveColor: "border-rose-600 bg-rose-600 text-white shadow-xs",
     pillHoverColor: "border-rose-200 bg-white text-rose-900 hover:border-rose-400 hover:bg-rose-50/70 dark:bg-slate-900 dark:border-slate-800 dark:text-rose-300",
     options: [
+      {
+        text: "🗺️از نیمروز با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva).",
+        origin: "نیمروز",
+        destination: "نهاوا شیوا (Nhava Sheva)",
+        containerType: "mixed",
+        isSwitchBl: true,
+        switchLocation: "دبی / جبل علی",
+      },
+      {
+        text: "از نیمروز با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva)",
+        origin: "نیمروز",
+        destination: "نهاوا شیوا (Nhava Sheva)",
+        containerType: "mixed",
+        isSwitchBl: true,
+        switchLocation: "دبی / جبل علی",
+      },
       {
         text: "از نیمروز تمام مسیر کانتینر یخچالی (Full Way Reefer)",
         origin: "نیمروز",
@@ -567,7 +654,7 @@ const ROUTE_GROUPS: RouteGroup[] = [
   {
     id: "torghundi",
     label: "تورغندی",
-    sublabel: "Torghundi — Turkmenistan",
+    sublabel: "مرز تورغندی (ترانزیت ترکمنستان و بندرعباس)",
     badgeColor: "border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300",
     pillActiveColor: "border-emerald-600 bg-emerald-600 text-white shadow-xs",
     pillHoverColor: "border-emerald-200 bg-white text-emerald-900 hover:border-emerald-400 hover:bg-emerald-50/70 dark:bg-slate-900 dark:border-slate-800 dark:text-emerald-300",
@@ -603,7 +690,7 @@ const ROUTE_GROUPS: RouteGroup[] = [
   {
     id: "hairatan",
     label: "حیرتان",
-    sublabel: "Hairatan — Uzbekistan",
+    sublabel: "مرز حیرتان (ترانزیت ازبکستان و بندرعباس)",
     badgeColor: "border-indigo-300 bg-indigo-100 text-indigo-900 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300",
     pillActiveColor: "border-indigo-600 bg-indigo-600 text-white shadow-xs",
     pillHoverColor: "border-indigo-200 bg-white text-indigo-900 hover:border-indigo-400 hover:bg-indigo-50/70 dark:bg-slate-900 dark:border-slate-800 dark:text-indigo-300",
@@ -639,7 +726,7 @@ const ROUTE_GROUPS: RouteGroup[] = [
   {
     id: "spin-boldak",
     label: "سپین بولدک",
-    sublabel: "Spin Boldak — Pakistan Border",
+    sublabel: "مرز سپین بولدک (ترانزیت پاکستان، کراچی و جبل علی)",
     badgeColor: "border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
     pillActiveColor: "border-amber-600 bg-amber-600 text-white shadow-xs",
     pillHoverColor: "border-amber-200 bg-white text-amber-900 hover:border-amber-400 hover:bg-amber-50/70 dark:bg-slate-900 dark:border-slate-800 dark:text-amber-300",
@@ -682,6 +769,78 @@ const ROUTE_GROUPS: RouteGroup[] = [
   },
 ]
 
+interface RouteDisplayParts {
+  mainText: string
+  parenNote: string | null
+  trailingDot: boolean
+  hasEmoji: boolean
+}
+
+function parseRouteDisplay(text: string): RouteDisplayParts {
+  const hasEmoji = text.startsWith("🗺️")
+  const strippedText = hasEmoji ? text.replace(/^🗺️\s*/, "") : text
+
+  const parenMatch = strippedText.match(/\s*(\([^)]+\))\s*(\.?)$/)
+  let mainText = strippedText
+  let parenNote: string | null = null
+  let trailingDot = false
+
+  if (parenMatch) {
+    parenNote = parenMatch[1].trim()
+    trailingDot = parenMatch[2] === "."
+    mainText = strippedText.substring(0, parenMatch.index).trim()
+  }
+
+  return { mainText, parenNote, trailingDot, hasEmoji }
+}
+
+function renderIsolatedRouteText(
+  mainText: string,
+  parenNote: string | null,
+  isActive: boolean,
+  trailingDot: boolean = false
+) {
+  const parts = mainText.split(/(B\/L)/g)
+  const isPersianNote = parenNote ? /[\u0600-\u06FF]/.test(parenNote) : false
+
+  return (
+    <>
+      {parts.map((p, idx) => {
+        if (p === "B/L") {
+          return (
+            <span
+              key={`bl-${idx}`}
+              dir="ltr"
+              className="inline-block whitespace-nowrap font-sans font-black px-0.5"
+            >
+              B/L
+            </span>
+          )
+        }
+        return <span key={`txt-${idx}`}>{p}</span>
+      })}
+
+      {parenNote && (
+        <>
+          {" "}
+          <span
+            className={`inline-block whitespace-nowrap font-bold mr-1 px-1.5 py-0.5 rounded-md text-[11px] align-middle shadow-2xs ${
+              isActive
+                ? "bg-white/20 text-white border border-white/30"
+                : "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-200/90 dark:border-slate-700"
+            }`}
+            dir={isPersianNote ? "rtl" : "ltr"}
+            style={{ unicodeBidi: "isolate" }}
+          >
+            {parenNote}
+          </span>
+          {trailingDot && <span className="font-black">.</span>}
+        </>
+      )}
+    </>
+  )
+}
+
 interface RoutePresetSelectorProps {
   value: string
   onChange: (newValue: string) => void
@@ -689,9 +848,54 @@ interface RoutePresetSelectorProps {
 
 export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProps) {
   const [selectedGroup, setSelectedGroup] = useState<string>("all")
-  const [containerFilter, setContainerFilter] = useState<"all" | "full_reefer" | "reefer" | "dry" | "switch_only">("all")
+  const [containerFilter, setContainerFilter] = useState<"all" | "full_reefer" | "reefer" | "mixed" | "dry" | "switch_only">("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [hasCopied, setHasCopied] = useState(false)
+
+  // Total count of all preset route options
+  const totalOptionsCount = useMemo(() => {
+    return ROUTE_GROUPS.reduce((acc, g) => acc + g.options.length, 0)
+  }, [])
+
+  // Options pool for the active station (or all)
+  const stationPool = useMemo(() => {
+    if (selectedGroup === "all") {
+      return ROUTE_GROUPS.flatMap((g) => g.options)
+    }
+    const group = ROUTE_GROUPS.find((g) => g.id === selectedGroup)
+    return group ? group.options : []
+  }, [selectedGroup])
+
+  // Dynamic counts for each container type filter
+  const filterCounts = useMemo(() => {
+    let fullReefer = 0
+    let switchOnly = 0
+    let mixed = 0
+    let reefer = 0
+    let dry = 0
+
+    for (const opt of stationPool) {
+      if (opt.containerType === "full_reefer") fullReefer++
+      if (opt.isSwitchBl) switchOnly++
+      if (opt.containerType === "mixed") mixed++
+      if (opt.containerType === "reefer" || opt.containerType === "full_reefer") reefer++
+      if (opt.containerType === "dry") dry++
+    }
+
+    return {
+      all: stationPool.length,
+      fullReefer,
+      switchOnly,
+      mixed,
+      reefer,
+      dry,
+    }
+  }, [stationPool])
+
+  // Parse structured logistics route
+  const parsedRoute = useMemo(() => {
+    return parseLogisticsRoute(value)
+  }, [value])
 
   // Detect whether current route text currently includes Switch B/L
   const hasSwitchBl = useMemo(() => {
@@ -704,6 +908,18 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
     if (!value) return false
     return /تمام\s*مسیر\s*(کانتینر\s*)?یخچالی/i.test(value) || /full\s*way\s*reefer/i.test(value)
   }, [value])
+
+  // Detect whether current route is mixed (Dry -> Reefer)
+  const isMixedRoute = useMemo(() => {
+    if (!value) return false
+    return (value.includes("معمولی") || /dry/i.test(value)) && (value.includes("یخچالی") || /reefer/i.test(value))
+  }, [value])
+
+  // Detect Destination
+  const detectedDestination = useMemo(() => {
+    if (!value) return null
+    return parsedRoute.destinationBadge || null
+  }, [value, parsedRoute])
 
   const handleCopy = () => {
     if (!value) return
@@ -755,6 +971,26 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
     }
   }
 
+  const handleToggleNhavaSheva = () => {
+    const destFragment = "، و مقصد نهایی: نهاوا شیوا (Nhava Sheva)."
+    if (value.includes("نهاوا شیوا")) {
+      // Remove destination
+      const cleaned = value
+        .replace(/(?:،\s*)?(?:و\s+)?مقصد\s*(?:نهایی)?[:\s]+نهاوا شیوا\s*(?:\([^)]*\))?[\.\s]*/gi, "")
+        .trim()
+      onChange(cleaned)
+      toast.info("مقصد نهاوا شیوا حذف شد")
+    } else {
+      if (!value.trim()) {
+        onChange("مقصد نهایی: نهاوا شیوا (Nhava Sheva).")
+      } else {
+        const clean = value.replace(/[\.\s]+$/, "")
+        onChange(`${clean}${destFragment}`)
+      }
+      toast.success("مقصد نهاوا شیوا (Nhava Sheva) اضافه شد!")
+    }
+  }
+
   // Filter options based on active station, container filter, and search
   const displayedGroups = useMemo(() => {
     let groups = ROUTE_GROUPS
@@ -772,6 +1008,8 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
           filtered = filtered.filter((o) => o.containerType === "full_reefer")
         } else if (containerFilter === "reefer") {
           filtered = filtered.filter((o) => o.containerType === "reefer" || o.containerType === "full_reefer")
+        } else if (containerFilter === "mixed") {
+          filtered = filtered.filter((o) => o.containerType === "mixed")
         } else if (containerFilter === "dry") {
           filtered = filtered.filter((o) => o.containerType === "dry")
         } else if (containerFilter === "switch_only") {
@@ -783,7 +1021,14 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
             (o) =>
               o.text.toLowerCase().includes(query) ||
               o.origin.toLowerCase().includes(query) ||
-              o.destination.toLowerCase().includes(query)
+              o.destination.toLowerCase().includes(query) ||
+              (o.switchLocation && o.switchLocation.toLowerCase().includes(query)) ||
+              (query.includes("دوغارون") && o.origin.includes("دوغارون")) ||
+              (query.includes("یخچال") && (o.containerType === "reefer" || o.containerType === "full_reefer" || o.containerType === "mixed")) ||
+              (query.includes("معمول") && (o.containerType === "dry" || o.containerType === "mixed")) ||
+              (query.includes("سوییچ") && o.isSwitchBl) ||
+              ((query.includes("هند") || query.includes("nhava") || query.includes("sheva") || query.includes("نهاوا")) &&
+                (o.destination.toLowerCase().includes("nhava") || o.destination.includes("نهاوا") || o.text.includes("نهاوا")))
           )
         }
 
@@ -804,13 +1049,25 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
           {isFullWayReefer && (
             <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300 bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950/70 px-2.5 py-0.5 text-[11px] font-bold text-cyan-900 dark:text-cyan-300">
               <Snowflake className="h-3 w-3 text-cyan-600 animate-pulse" />
-              تمام مسیر یخچالی (Full Way Reefer)
+              <span dir="rtl" style={{ unicodeBidi: "isolate" }}>تمام مسیر یخچالی (Full Way Reefer)</span>
             </span>
           )}
           {hasSwitchBl && (
             <span className="inline-flex items-center gap-1 rounded-full border border-purple-300 bg-purple-100 dark:border-purple-800 dark:bg-purple-950/70 px-2.5 py-0.5 text-[11px] font-bold text-purple-900 dark:text-purple-300">
               <RefreshCw className="h-3 w-3 text-purple-600" />
-              سوییچ B/L فعال
+              <span dir="rtl" style={{ unicodeBidi: "isolate" }}>سوییچ B/L فعال</span>
+            </span>
+          )}
+          {isMixedRoute && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 dark:border-amber-800 dark:bg-amber-950/70 px-2.5 py-0.5 text-[11px] font-bold text-amber-900 dark:text-amber-300">
+              <Box className="h-3 w-3 text-amber-600" />
+              <span dir="rtl" style={{ unicodeBidi: "isolate" }}>معمولی ← یخچالی (ترکیبی)</span>
+            </span>
+          )}
+          {detectedDestination && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/70 px-2.5 py-0.5 text-[11px] font-bold text-emerald-900 dark:text-emerald-300">
+              <Navigation className="h-3 w-3 text-emerald-600" />
+              <span dir="rtl" style={{ unicodeBidi: "isolate" }}>مقصد: {detectedDestination}</span>
             </span>
           )}
         </div>
@@ -864,30 +1121,102 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
         />
       </div>
 
-      {/* PROMINENT SWITCH B/L & FULL WAY REEFER ACTION BAR */}
-      <div className="rounded-xl border border-sky-200/90 dark:border-sky-900/70 bg-gradient-to-r from-sky-50/80 via-white to-purple-50/80 dark:from-sky-950/40 dark:via-slate-900 dark:to-purple-950/40 p-2.5 shadow-2xs space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2" dir="rtl">
-          {/* Section Heading with properly isolated LTR parenthetical text to fix colon direction */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+      {/* Live Visual Route Breakdown Banner */}
+      {parsedRoute.isStructured && (
+        <div className="rounded-xl border border-sky-200/80 dark:border-sky-800/60 bg-gradient-to-r from-sky-50/70 via-indigo-50/40 to-emerald-50/60 dark:from-sky-950/40 dark:via-indigo-950/30 dark:to-emerald-950/40 p-2.5 flex flex-wrap items-center gap-2 text-xs font-[vazirmatn] shadow-2xs" dir="rtl">
+          <div className="flex items-center gap-1 font-black text-sky-900 dark:text-sky-300 shrink-0">
+            <Compass className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+            <span>گام‌های تفکیکی مسیر:</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 flex-1">
+            {parsedRoute.legs.map((leg, idx) => (
+              <React.Fragment key={idx}>
+                {idx > 0 && (
+                  <span className="text-slate-400 font-bold px-0.5">➔</span>
+                )}
+                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-bold shadow-2xs ${
+                  leg.isReefer
+                    ? "bg-cyan-50 dark:bg-cyan-950/60 border-cyan-300 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200"
+                    : "bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-200"
+                }`}>
+                  {leg.isReefer ? <Snowflake className="h-3 w-3 text-cyan-500 shrink-0" /> : <Box className="h-3 w-3 text-amber-600 shrink-0" />}
+                  <span className="font-black">{leg.origin}</span>
+                  {leg.containerType && (
+                    <span className="opacity-80 text-[10px]">({leg.containerType})</span>
+                  )}
+                </span>
+              </React.Fragment>
+            ))}
+            {parsedRoute.switchBlBadge && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 dark:bg-purple-950/60 border border-purple-300 dark:border-purple-800 text-[11px] font-bold text-purple-900 dark:text-purple-200 shadow-2xs">
+                <RefreshCw className="h-3 w-3 text-purple-600 shrink-0" />
+                <span dir="rtl" style={{ unicodeBidi: "isolate" }}>{parsedRoute.switchBlBadge}</span>
+              </span>
+            )}
+            {parsedRoute.destinationBadge && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-[11px] font-black text-emerald-900 dark:text-emerald-200 shadow-2xs">
+                <MapPin className="h-3 w-3 text-emerald-600 shrink-0" />
+                <span dir="rtl" style={{ unicodeBidi: "isolate" }}>مقصد نهایی: {parsedRoute.destinationBadge}</span>
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* PROMINENT SWITCH B/L & COMPLETE ROUTE ACTION BAR */}
+      <div className="rounded-2xl border border-sky-200/90 dark:border-sky-900/70 bg-gradient-to-r from-sky-50/80 via-white to-purple-50/80 dark:from-sky-950/40 dark:via-slate-900 dark:to-purple-950/40 p-3 shadow-2xs space-y-2.5" dir="rtl">
+        {/* Section Heading */}
+        <div className="flex items-center justify-between border-b border-sky-100 dark:border-slate-800 pb-1.5 flex-wrap gap-2">
+          <div className="flex items-center gap-1.5">
             <span className="p-1 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-900/60 dark:text-sky-300">
               <Sparkles className="h-3.5 w-3.5" />
             </span>
             <span className="font-[vazirmatn] text-xs font-black text-slate-900 dark:text-slate-100">
-              گزینه‌های سریع مسیر و سوییچ بارنامه:
+              میانبرهای سریع مسیر و بارنامه سوییچ
             </span>
             <span dir="ltr" className="text-[10px] font-bold text-slate-500 dark:text-slate-400 font-sans">
               (Quick Route & Switch B/L Modifiers)
             </span>
           </div>
+          <span className="text-[10px] text-slate-400 font-sans font-bold">انتخاب فوری ۱-کلیک</span>
+        </div>
 
-          {/* Action Chips */}
+        {/* Row 1: Complete Logistics Routes (مسیرهای کامل ۱-کلیک) */}
+        <div className="space-y-1">
+          <div className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+            <Route className="h-3 w-3 text-sky-600" />
+            <span>مسیرهای پرکاربرد ترانزیتی:</span>
+          </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            {/* Primary: From Dogharoun Full Way Reefer */}
+            {/* Dogharoun -> Nhava Sheva */}
+            <button
+              type="button"
+              onClick={() => {
+                const targetText = "🗺️از دوغارون با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva)."
+                onChange(targetText)
+                toast.success("مسیر دوغارون به نهاوا شیوا (معمولی ➔ یخچالی با سوییچ دبی) اعمال شد!")
+              }}
+              className={`rounded-lg border px-2.5 py-1 text-xs font-[vazirmatn] font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 ${
+                value.includes("دوغارون") && value.includes("نهاوا شیوا")
+                  ? "bg-emerald-600 border-emerald-600 text-white shadow-emerald-200"
+                  : "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-200"
+              }`}
+              title="اعمال سریع: از دوغارون با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva)"
+            >
+              <Navigation className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>
+                {value.includes("دوغارون") && value.includes("نهاوا شیوا")
+                  ? "✓ دوغارون ➔ نهاوا شیوا (سوییچ دبی)"
+                  : "🗺️ دوغارون ➔ نهاوا شیوا (سوییچ دبی)"}
+              </span>
+            </button>
+
+            {/* Dogharoun Full Way Reefer */}
             <button
               type="button"
               onClick={() => handleToggleFullWayReefer("دوغارون")}
               className={`rounded-lg border px-2.5 py-1 text-xs font-[vazirmatn] font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1 ${
-                value.includes("از دوغارون تمام مسیر کانتینر یخچالی") || (value.includes("دوغارون") && isFullWayReefer && !value.includes("با سوییچ بی ال در دبی"))
+                value.includes("از دوغارون تمام مسیر کانتینر یخچالی") || (value.includes("دوغارون") && isFullWayReefer && !value.includes("با سوییچ بی ال در دبی") && !value.includes("نهاوا شیوا"))
                   ? "bg-sky-600 border-sky-600 text-white shadow-sky-200"
                   : "bg-sky-50 hover:bg-sky-100 border-sky-300 dark:border-sky-800 dark:bg-sky-950/80 text-sky-900 dark:text-sky-200"
               }`}
@@ -896,12 +1225,12 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
               <Snowflake className="h-3.5 w-3.5 text-cyan-500 shrink-0" />
               <span>
                 {value.includes("از دوغارون تمام مسیر کانتینر یخچالی")
-                  ? "✓ دوغارون تمام مسیر یخچالی"
-                  : "❄️ دوغارون تمام مسیر یخچالی (Full Way Reefer)"}
+                  ? "✓ دوغارون تمام یخچالی"
+                  : "❄️ دوغارون تمام یخچالی (Full Reefer)"}
               </span>
             </button>
 
-            {/* Direct: From Dogharoun Reefer to Dubai via Switch BL (User exact sentence) */}
+            {/* Dogharoun to Dubai Switch BL */}
             <button
               type="button"
               onClick={() => {
@@ -914,42 +1243,46 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
                   ? "bg-purple-700 border-purple-700 text-white shadow-purple-200"
                   : "bg-purple-50 hover:bg-purple-100 border-purple-300 dark:border-purple-800 dark:bg-purple-950/70 text-purple-950 dark:text-purple-200"
               }`}
-              title="اعمال سریع: از دوغارون کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در دبی / جبل علی (Full Way Reefer)"
+              title="اعمال سریع: از دوغارون به دبی با سوییچ B/L"
             >
-              <Snowflake className="h-3.5 w-3.5 text-cyan-500 shrink-0" />
+              <RefreshCw className="h-3.5 w-3.5 text-purple-600 shrink-0" />
               <span>
                 {value === "از دوغارون کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در دبی / جبل علی (Full Way Reefer)"
-                  ? "✓ دوغارون به دبی با سوییچ B/L (Full Reefer)"
-                  : "❄️ دوغارون به دبی با سوییچ B/L (Full Reefer)"}
+                  ? "✓ دوغارون ➔ دبی (سوییچ B/L)"
+                  : "❄️ دوغارون ➔ دبی (سوییچ B/L)"}
               </span>
             </button>
 
-            {/* Primary: From Nimroz Full Way Reefer */}
+            {/* Nimroz -> Nhava Sheva */}
             <button
               type="button"
-              onClick={() => handleToggleFullWayReefer("نیمروز")}
-              className={`rounded-lg border px-2.5 py-1 text-xs font-[vazirmatn] font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1 ${
-                value.includes("از نیمروز تمام مسیر کانتینر یخچالی") || (value.includes("نیمروز") && isFullWayReefer)
-                  ? "bg-rose-600 border-rose-600 text-white shadow-rose-200"
-                  : "bg-rose-50 hover:bg-rose-100 border-rose-300 dark:border-rose-800 dark:bg-rose-950/80 text-rose-900 dark:text-rose-200"
+              onClick={() => {
+                const targetText = "🗺️از نیمروز با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva)."
+                onChange(targetText)
+                toast.success("مسیر نیمروز به نهاوا شیوا (معمولی ➔ یخچالی با سوییچ دبی) اعمال شد!")
+              }}
+              className={`rounded-lg border px-2.5 py-1 text-xs font-[vazirmatn] font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1.5 ${
+                value.includes("نیمروز") && value.includes("نهاوا شیوا")
+                  ? "bg-emerald-600 border-emerald-600 text-white shadow-emerald-200"
+                  : "bg-emerald-50 hover:bg-emerald-100 border-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-200"
               }`}
-              title="اعمال مستقیم مسیر تمام یخچالی از نیمروز"
+              title="اعمال سریع: از نیمروز با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva)"
             >
-              <Snowflake className="h-3.5 w-3.5 text-cyan-500 shrink-0" />
+              <Navigation className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>
-                {value.includes("از نیمروز تمام مسیر کانتینر یخچالی")
-                  ? "✓ نیمروز تمام مسیر یخچالی"
-                  : "❄️ نیمروز تمام مسیر یخچالی (Full Way Reefer)"}
+                {value.includes("نیمروز") && value.includes("نهاوا شیوا")
+                  ? "✓ نیمروز ➔ نهاوا شیوا (سوییچ دبی)"
+                  : "🗺️ نیمروز ➔ نهاوا شیوا (سوییچ دبی)"}
               </span>
             </button>
 
-            {/* Direct: From Nimroz Dry to Bandar Abbas Reefer with Switch BL at Dubai (User requested exact sentence) */}
+            {/* Nimroz Dry -> Reefer Switch BL */}
             <button
               type="button"
               onClick={() => {
                 const targetText = "از نیمروز کانتینر معمولی از بندرعباس کانتینر یخچالی (با سوییچ بی ال در دبی / جبل علی)"
                 onChange(targetText)
-                toast.success("مسیر نیمروز معمولی ← یخچالی با سوییچ B/L در دبی اعمال شد!")
+                toast.success("مسیر نیمروز معمولی ➔ یخچالی با سوییچ B/L در دبی اعمال شد!")
               }}
               className={`rounded-lg border px-2.5 py-1 text-xs font-[vazirmatn] font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1 ${
                 value === "از نیمروز کانتینر معمولی از بندرعباس کانتینر یخچالی (با سوییچ بی ال در دبی / جبل علی)"
@@ -961,9 +1294,51 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
               <RefreshCw className="h-3.5 w-3.5 text-amber-600 shrink-0" />
               <span>
                 {value === "از نیمروز کانتینر معمولی از بندرعباس کانتینر یخچالی (با سوییچ بی ال در دبی / جبل علی)"
-                  ? "✓ نیمروز به دبی سوییچ B/L (معمولی ← یخچالی)"
-                  : "📦 نیمروز به دبی سوییچ B/L (معمولی ← ❄️ یخچالی)"}
+                  ? "✓ نیمروز ➔ دبی (معمولی ➔ یخچالی)"
+                  : "📦 نیمروز ➔ دبی (معمولی ➔ ❄️ یخچالی)"}
               </span>
+            </button>
+
+            {/* Nimroz Full Way Reefer */}
+            <button
+              type="button"
+              onClick={() => handleToggleFullWayReefer("نیمروز")}
+              className={`rounded-lg border px-2.5 py-1 text-xs font-[vazirmatn] font-black transition-all cursor-pointer shadow-2xs flex items-center gap-1 ${
+                value.includes("از نیمروز تمام مسیر کانتینر یخچالی") || (value.includes("نیمروز") && isFullWayReefer && !value.includes("نهاوا شیوا"))
+                  ? "bg-rose-600 border-rose-600 text-white shadow-rose-200"
+                  : "bg-rose-50 hover:bg-rose-100 border-rose-300 dark:border-rose-800 dark:bg-rose-950/80 text-rose-900 dark:text-rose-200"
+              }`}
+              title="اعمال مستقیم مسیر تمام یخچالی از نیمروز"
+            >
+              <Snowflake className="h-3.5 w-3.5 text-cyan-500 shrink-0" />
+              <span>
+                {value.includes("از نیمروز تمام مسیر کانتینر یخچالی")
+                  ? "✓ نیمروز تمام یخچالی"
+                  : "❄️ نیمروز تمام یخچالی (Full Reefer)"}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Row 2: Smart Modifiers (افزودن و تغییر سوییچ B/L، مقصد، نوع کانتینر) */}
+        <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+          <div className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+            <Sparkles className="h-3 w-3 text-purple-600" />
+            <span>تغییرات و افزودنی‌های سریع:</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* Switch B/L at Dubai */}
+            <button
+              type="button"
+              onClick={() => handleToggleSwitchBl("دبی / جبل علی")}
+              className={`rounded-lg border px-2.5 py-1 text-xs font-[vazirmatn] font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1 ${
+                hasSwitchBl && value.includes("دبی")
+                  ? "bg-purple-600 border-purple-600 text-white"
+                  : "bg-white dark:bg-slate-800 border-purple-300 dark:border-purple-700 text-purple-900 dark:text-purple-200 hover:bg-purple-100/70"
+              }`}
+            >
+              <RefreshCw className="h-3 w-3" />
+              <span>{hasSwitchBl && value.includes("دبی") ? "✓ سوییچ B/L جبل علی" : "+ سوییچ B/L جبل علی"}</span>
             </button>
 
             {/* Switch B/L at Bandar Abbas */}
@@ -977,21 +1352,7 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
               }`}
             >
               <RefreshCw className="h-3 w-3" />
-              <span>{hasSwitchBl && value.includes("بندرعباس") ? "✓ سوییچ بی ال بندرعباس" : "+ سوییچ بی ال بندرعباس"}</span>
-            </button>
-
-            {/* Switch B/L at Dubai / Jebel Ali */}
-            <button
-              type="button"
-              onClick={() => handleToggleSwitchBl("دبی / جبل علی")}
-              className={`rounded-lg border px-2.5 py-1 text-xs font-[vazirmatn] font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1 ${
-                hasSwitchBl && value.includes("دبی")
-                  ? "bg-purple-600 border-purple-600 text-white"
-                  : "bg-white dark:bg-slate-800 border-purple-300 dark:border-purple-700 text-purple-900 dark:text-purple-200 hover:bg-purple-100/70"
-              }`}
-            >
-              <RefreshCw className="h-3 w-3" />
-              <span>{hasSwitchBl && value.includes("دبی") ? "✓ سوییچ بی ال جبل علی" : "+ سوییچ بی ال جبل علی"}</span>
+              <span>{hasSwitchBl && value.includes("بندرعباس") ? "✓ سوییچ B/L بندرعباس" : "+ سوییچ B/L بندرعباس"}</span>
             </button>
 
             {/* Switch B/L at Chabahar */}
@@ -1005,10 +1366,25 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
               }`}
             >
               <RefreshCw className="h-3 w-3" />
-              <span>{hasSwitchBl && value.includes("چابهار") ? "✓ سوییچ بی ال چابهار" : "+ سوییچ بی ال چابهار"}</span>
+              <span>{hasSwitchBl && value.includes("چابهار") ? "✓ سوییچ B/L چابهار" : "+ سوییچ B/L چابهار"}</span>
             </button>
 
-            {/* Append Fragments */}
+            {/* Destination Nhava Sheva */}
+            <button
+              type="button"
+              onClick={handleToggleNhavaSheva}
+              className={`rounded-lg border px-2.5 py-1 text-xs font-[vazirmatn] font-bold transition-all cursor-pointer shadow-2xs flex items-center gap-1 ${
+                value.includes("نهاوا شیوا")
+                  ? "bg-emerald-600 border-emerald-600 text-white"
+                  : "bg-white dark:bg-slate-800 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-50"
+              }`}
+              title="افزودن یا حذف مقصد نهایی نهاوا شیوا هند"
+            >
+              <MapPin className="h-3 w-3 text-emerald-600 shrink-0" />
+              <span>{value.includes("نهاوا شیوا") ? "✓ مقصد: نهاوا شیوا" : "+ مقصد: نهاوا شیوا (Nhava Sheva)"}</span>
+            </button>
+
+            {/* Container Reefer */}
             <button
               type="button"
               onClick={() => handleAppendFragment("کانتینر یخچالی")}
@@ -1018,6 +1394,7 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
               <span>+ یخچالی (Reefer)</span>
             </button>
 
+            {/* Container Dry */}
             <button
               type="button"
               onClick={() => handleAppendFragment("کانتینر معمولی")}
@@ -1044,7 +1421,8 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-50"
               }`}
             >
-              همه مرزها ({ROUTE_GROUPS.length})
+              <span>همه مرزها</span>
+              <span className="text-[10px] opacity-75 font-mono mr-1">({totalOptionsCount})</span>
             </button>
             {ROUTE_GROUPS.map((g) => (
               <button
@@ -1098,7 +1476,7 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
                 : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900"
             }`}
           >
-            همه
+            همه ({filterCounts.all})
           </button>
           <button
             type="button"
@@ -1109,8 +1487,8 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
                 : "bg-sky-50 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 hover:bg-sky-100"
             }`}
           >
-            <Snowflake className="h-3 w-3" />
-            <span>❄️ تمام مسیر یخچالی (Full Reefer)</span>
+            <Snowflake className="h-3 w-3 text-cyan-500" />
+            <span>❄️ تمام مسیر یخچالی ({filterCounts.fullReefer})</span>
           </button>
           <button
             type="button"
@@ -1121,8 +1499,20 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
                 : "bg-purple-50 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 hover:bg-purple-100"
             }`}
           >
-            <RefreshCw className="h-3 w-3" />
-            <span>🔄 فقط سوییچ B/L</span>
+            <RefreshCw className="h-3 w-3 text-purple-600" />
+            <span>🔄 فقط سوییچ B/L ({filterCounts.switchOnly})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setContainerFilter("mixed")}
+            className={`px-2.5 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+              containerFilter === "mixed"
+                ? "bg-amber-600 text-white shadow-2xs"
+                : "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 hover:bg-amber-100"
+            }`}
+          >
+            <Box className="h-3 w-3 text-amber-600" />
+            <span>📦 معمولی ➔ ❄️ یخچالی ({filterCounts.mixed})</span>
           </button>
           <button
             type="button"
@@ -1133,8 +1523,8 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
                 : "bg-cyan-50 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-300 hover:bg-cyan-100"
             }`}
           >
-            <Snowflake className="h-3 w-3" />
-            <span>یخچالی</span>
+            <Snowflake className="h-3 w-3 text-cyan-600" />
+            <span>یخچالی ({filterCounts.reefer})</span>
           </button>
           <button
             type="button"
@@ -1145,36 +1535,39 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
                 : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
             }`}
           >
-            <Box className="h-3 w-3" />
-            <span>معمولی</span>
+            <Box className="h-3 w-3 text-slate-500" />
+            <span>معمولی ({filterCounts.dry})</span>
           </button>
         </div>
       </div>
 
       {/* Grouped Preset Route Buttons Grid */}
-      <div className="space-y-3.5 max-h-[380px] overflow-y-auto pr-1" dir="rtl">
+      <div className="space-y-4 max-h-[460px] overflow-y-auto pr-1.5 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700" dir="rtl">
         {displayedGroups.length === 0 ? (
-          <div className="p-6 text-center rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 font-[vazirmatn] text-sm">
+          <div className="p-8 text-center rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-slate-500 font-[vazirmatn] text-sm">
             مسیر منطبق با فیلتر انتخابی پیدا نشد. لطفاً فیلتر را تغییر دهید.
           </div>
         ) : (
           displayedGroups.map((group) => (
-            <div key={group.id} className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white/80 dark:bg-slate-900/70 p-3 shadow-2xs space-y-2">
-              {/* Group Header */}
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-1.5">
+            <div key={group.id} className="rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 shadow-2xs overflow-hidden">
+              {/* Sticky Station Group Header */}
+              <div className="sticky top-0 z-10 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-xs px-3.5 py-2 border-b border-slate-200/80 dark:border-slate-800 flex items-center justify-between shadow-2xs">
                 <div className="flex items-center gap-2">
-                  <span className={`rounded-full border px-2.5 py-0.5 font-[vazirmatn] text-xs font-black ${group.badgeColor}`}>
+                  <span className={`rounded-full border px-2.5 py-0.5 font-[vazirmatn] text-xs font-black shadow-2xs ${group.badgeColor}`}>
                     {group.label}
                   </span>
                   <span className="text-[11px] font-semibold text-slate-500 font-sans">{group.sublabel}</span>
                 </div>
-                <span className="text-[10px] text-slate-400 font-mono font-bold">{group.options.length} مسیر آماده</span>
+                <span className="text-[10px] text-slate-400 font-mono font-bold bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                  {group.options.length} مسیر آماده
+                </span>
               </div>
 
               {/* Options Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
                 {group.options.map((option) => {
-                  const isActive = value === option.text
+                  const isActive = Boolean(value === option.text || (value && option.text && value.trim() === option.text.trim()))
+                  const { mainText, parenNote, trailingDot, hasEmoji } = parseRouteDisplay(option.text)
 
                   return (
                     <button
@@ -1184,59 +1577,107 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
                         onChange(option.text)
                         toast.success(`مسیر "${option.text}" انتخاب شد`)
                       }}
-                      className={`group/btn relative rounded-xl border p-2.5 font-[vazirmatn] text-xs font-bold leading-relaxed transition-all cursor-pointer text-right flex flex-col justify-between gap-1.5 ${
+                      className={`group/btn relative rounded-xl border p-3 font-[vazirmatn] text-xs font-bold leading-relaxed transition-all cursor-pointer text-right flex flex-col justify-between gap-2 shadow-2xs ${
                         isActive
                           ? group.pillActiveColor
                           : group.pillHoverColor
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <span className="block text-[13px] font-black">{option.text}</span>
+                      {/* Card Header: Breadcrumb Route + Active Checkmark */}
+                      <div className="flex items-center justify-between gap-1.5 border-b border-black/5 dark:border-white/10 pb-1.5 w-full">
+                        <div className="flex items-center gap-1 text-[10px] font-sans font-bold opacity-80 truncate">
+                          <span>{option.origin}</span>
+                          <span className="text-[9px] opacity-60">➔</span>
+                          <span>بندرعباس</span>
+                          {option.destination && option.destination !== "بندرعباس" && option.destination !== "مقصد نهایی" && (
+                            <>
+                              <span className="text-[9px] opacity-60">➔</span>
+                              <span className="truncate max-w-[140px] font-black">{option.destination}</span>
+                            </>
+                          )}
                         </div>
-                        {isActive && (
-                          <span className="h-5 w-5 rounded-full bg-white/20 text-white flex items-center justify-center shrink-0">
-                            <Check className="h-3 w-3 stroke-[3]" />
+                        {isActive ? (
+                          <span className="h-4 w-4 rounded-full bg-white text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs">
+                            <Check className="h-2.5 w-2.5 stroke-[3]" />
+                          </span>
+                        ) : (
+                          <span className="text-[10px] opacity-40 group-hover/btn:opacity-80 transition-opacity">
+                            انتخاب
                           </span>
                         )}
                       </div>
 
-                      {/* Metadata Badges */}
-                      <div className="flex flex-wrap items-center gap-1 text-[10px] font-sans">
+                      {/* Card Body: Isolated Persian Route Text */}
+                      <div className="flex-1 w-full text-right">
+                        <span className="block text-[13px] font-black leading-snug">
+                          {hasEmoji && <span className="ml-1 text-base">🗺️</span>}
+                          {renderIsolatedRouteText(mainText, parenNote, isActive, trailingDot)}
+                        </span>
+                      </div>
+
+                      {/* Card Footer: Metadata Badges (Persian-First & Bidi Safe) */}
+                      <div className="flex flex-wrap items-center gap-1 text-[10px] font-sans pt-1 border-t border-black/5 dark:border-white/10 w-full">
                         {option.containerType === "full_reefer" && (
-                          <span className={`px-1.5 py-0.5 rounded font-black flex items-center gap-0.5 ${
-                            isActive ? "bg-white/25 text-white" : "bg-sky-100 text-sky-900 border border-sky-300 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800"
+                          <span className={`px-1.5 py-0.5 rounded font-black flex items-center gap-1 ${
+                            isActive
+                              ? "bg-white/20 text-white border border-white/30"
+                              : "bg-sky-100 text-sky-900 border border-sky-300 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800"
                           }`}>
-                            <Snowflake className="h-2.5 w-2.5 text-cyan-500" />
-                            Full Way Reefer (تمام یخچالی)
+                            <Snowflake className="h-2.5 w-2.5 text-cyan-400" />
+                            <span>تمام مسیر یخچالی</span>
+                            <span className="text-[9px] font-sans opacity-85" dir="ltr" style={{ unicodeBidi: "isolate" }}>(Full Reefer)</span>
                           </span>
                         )}
                         {option.isSwitchBl && (
-                          <span className={`px-1.5 py-0.5 rounded font-bold ${
-                            isActive ? "bg-white/25 text-white" : "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                          <span className={`px-1.5 py-0.5 rounded font-bold flex items-center gap-1 ${
+                            isActive
+                              ? "bg-white/20 text-white border border-white/30"
+                              : "bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-200 border border-purple-200 dark:border-purple-800"
                           }`}>
-                            🔄 Switch B/L {option.switchLocation ? `(${option.switchLocation})` : ""}
-                          </span>
-                        )}
-                        {option.containerType === "reefer" && (
-                          <span className={`px-1.5 py-0.5 rounded font-bold ${
-                            isActive ? "bg-white/25 text-white" : "bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300"
-                          }`}>
-                            ❄️ Reefer
-                          </span>
-                        )}
-                        {option.containerType === "dry" && (
-                          <span className={`px-1.5 py-0.5 rounded font-bold ${
-                            isActive ? "bg-white/25 text-white" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                          }`}>
-                            📦 Dry
+                            <RefreshCw className="h-2.5 w-2.5 text-purple-600" />
+                            <span>سوییچ B/L</span>
+                            {option.switchLocation && (
+                              <span className="opacity-90">({option.switchLocation})</span>
+                            )}
                           </span>
                         )}
                         {option.containerType === "mixed" && (
-                          <span className={`px-1.5 py-0.5 rounded font-bold ${
-                            isActive ? "bg-white/25 text-white" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                          <span className={`px-1.5 py-0.5 rounded font-bold flex items-center gap-1 ${
+                            isActive
+                              ? "bg-white/20 text-white border border-white/30"
+                              : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-200 dark:border-amber-800"
                           }`}>
-                            📦 معمولی ← ❄️ یخچالی
+                            <span>📦 معمولی ← ❄️ یخچالی</span>
+                          </span>
+                        )}
+                        {option.containerType === "reefer" && (
+                          <span className={`px-1.5 py-0.5 rounded font-bold flex items-center gap-1 ${
+                            isActive
+                              ? "bg-white/20 text-white border border-white/30"
+                              : "bg-cyan-100 text-cyan-900 dark:bg-cyan-950 dark:text-cyan-200 border border-cyan-200 dark:border-cyan-800"
+                          }`}>
+                            <Snowflake className="h-2.5 w-2.5 text-cyan-600" />
+                            <span>یخچالی (Reefer)</span>
+                          </span>
+                        )}
+                        {option.containerType === "dry" && (
+                          <span className={`px-1.5 py-0.5 rounded font-bold flex items-center gap-1 ${
+                            isActive
+                              ? "bg-white/20 text-white border border-white/30"
+                              : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                          }`}>
+                            <Box className="h-2.5 w-2.5 text-slate-500" />
+                            <span>معمولی (Dry)</span>
+                          </span>
+                        )}
+                        {option.destination && option.destination !== "بندرعباس" && option.destination !== "مقصد نهایی" && (
+                          <span className={`px-1.5 py-0.5 rounded font-bold flex items-center gap-1 ${
+                            isActive
+                              ? "bg-white/20 text-white border border-white/30"
+                              : "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800"
+                          }`}>
+                            <Navigation className="h-2.5 w-2.5 text-emerald-600" />
+                            <span>مقصد: {option.destination}</span>
                           </span>
                         )}
                       </div>
@@ -1251,3 +1692,4 @@ export function RoutePresetSelector({ value, onChange }: RoutePresetSelectorProp
     </div>
   )
 }
+

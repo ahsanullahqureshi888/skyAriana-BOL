@@ -26,6 +26,7 @@ import {
   Repeat,
   Snowflake,
   Compass,
+  Receipt,
 } from "lucide-react"
 import { parseLogisticsRoute } from "@/lib/utils/transit-route-parser"
 import {
@@ -386,7 +387,7 @@ function renderLineContent(line: string, forceLTR = false) {
   if (isPureNumericPhone) {
     return (
       <span
-        className="block font-mono font-bold text-blue-950 tracking-wider text-[8.8pt] leading-tight text-left"
+        className="block font-mono font-bold text-blue-950 tracking-wider text-[10.5pt] leading-tight text-left"
         dir="ltr"
         style={{ direction: "ltr", unicodeBidi: "isolate" }}
       >
@@ -419,7 +420,7 @@ function renderLineContent(line: string, forceLTR = false) {
                     {pair.label}
                   </span>
                   <span className="text-slate-400 font-black text-[8.2pt]">:</span>
-                  <span className="font-mono font-bold text-blue-950 tracking-tight text-[8.5pt]" dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
+                  <span className="font-mono font-bold text-blue-950 tracking-tight text-[9.8pt]" dir="ltr" style={{ direction: "ltr", unicodeBidi: "isolate" }}>
                     {pair.number}
                   </span>
                 </span>
@@ -685,9 +686,24 @@ function DetailCard({
   if (!hasValue(value)) return null
 
   const isUltra = compact || densityTier === "ultra"
+  const isCompactTier = densityTier === "compact"
   const theme = (highlightColor || '').toLowerCase()
   const isRedHighlight = theme === "red"
   const isGreenHighlight = theme === "green"
+
+  const phoneBadgeClass = isUltra ? "w-5.5 h-5.5" : isCompactTier ? "w-6.5 h-6.5" : "w-7.5 h-7.5"
+  const phoneIconClass = isUltra ? "h-3 w-3" : isCompactTier ? "h-3.5 w-3.5" : "h-4 w-4"
+
+  const getPhoneFontSize = (lineStr: string) => {
+    const len = lineStr.trim().length
+    if (len <= 22) {
+      return isUltra ? "text-[13pt]" : isCompactTier ? "text-[15pt]" : "text-[17pt]"
+    }
+    if (len <= 34) {
+      return isUltra ? "text-[11.5pt]" : isCompactTier ? "text-[13.5pt]" : "text-[15pt]"
+    }
+    return isUltra ? "text-[10pt]" : isCompactTier ? "text-[11.5pt]" : "text-[13pt]"
+  }
 
   const lines = cleanText(value).split("\n").map((l) => l.trim()).filter(Boolean)
 
@@ -778,18 +794,18 @@ function DetailCard({
       </div>
 
       {/* Body Lines */}
-      <div className="flex flex-col gap-0.6">
+      <div className="flex flex-col gap-0.8">
         {lines.map((line, idx) => {
           const totalDigits = line.replace(/\D/g, "").length
 
-          // Check pure numeric phone
+          // Check pure numeric phone (including multiple numbers separated by slash or pipe)
           const isPurePhone =
-            /^[\d\s\+\-\(\)\/\.]{7,50}$/.test(line.trim()) && totalDigits >= 5 && !/[a-zA-Z\u0600-\u06FF]/.test(line)
+            /^[\d\s\+\-\(\)\/\.\|]{7,60}$/.test(line.trim()) && totalDigits >= 5 && !/[a-zA-Z\u0600-\u06FF]/.test(line)
           if (isPurePhone) {
             return (
-              <div key={idx} className="flex items-center gap-1.5 my-0.1" dir="ltr">
+              <div key={idx} className="flex items-center gap-1.5 my-0.2" dir="ltr">
                 <div
-                  className={`w-3.5 h-3.5 rounded-full ${
+                  className={`${phoneBadgeClass} rounded-full ${
                     isRedHighlight
                       ? "bg-rose-100/90 border-rose-200/90 text-rose-700"
                       : isGreenHighlight
@@ -797,9 +813,9 @@ function DetailCard({
                       : "bg-blue-100/90 border-blue-200/90 text-blue-700"
                   } border flex items-center justify-center shrink-0 shadow-2xs`}
                 >
-                  <Phone className="h-2 w-2" />
+                  <Phone className={phoneIconClass} />
                 </div>
-                <span className={`font-mono ${isUltra ? "text-[8pt]" : "text-[8.6pt]"} font-extrabold text-slate-950 tracking-tight leading-snug`}>
+                <span className={`font-mono ${getPhoneFontSize(line)} font-black text-slate-950 tracking-tight leading-none whitespace-nowrap`}>
                   {line}
                 </span>
               </div>
@@ -835,11 +851,11 @@ function DetailCard({
             return (
               <div
                 key={idx}
-                className="flex items-center gap-1.5 flex-wrap my-0.1"
+                className="flex items-center gap-1.5 flex-wrap my-0.2"
                 dir={hasRTLText(pair.label) ? "rtl" : "ltr"}
               >
                 <div
-                  className={`w-3.5 h-3.5 rounded-full ${
+                  className={`${phoneBadgeClass} rounded-full ${
                     isRedHighlight
                       ? "bg-rose-100/90 border-rose-200/90 text-rose-700"
                       : isGreenHighlight
@@ -847,18 +863,18 @@ function DetailCard({
                       : "bg-blue-100/90 border-blue-200/90 text-blue-700"
                   } border flex items-center justify-center shrink-0 shadow-2xs`}
                 >
-                  <Phone className="h-2 w-2" />
+                  <Phone className={phoneIconClass} />
                 </div>
                 <span
                   className={`${
                     hasRTLText(pair.label)
-                      ? `persian-text font-[vazirmatn] ${isUltra ? "text-[6.2pt]" : "text-[6.8pt]"} font-bold`
-                      : `font-sans ${isUltra ? "text-[6pt]" : "text-[6.4pt]"} font-semibold`
+                      ? `persian-text font-[vazirmatn] ${isUltra ? "text-[6.8pt]" : "text-[7.6pt]"} font-bold`
+                      : `font-sans ${isUltra ? "text-[6.6pt]" : "text-[7.4pt]"} font-semibold`
                   } text-slate-800`}
                 >
                   {pair.label}:
                 </span>
-                <span className={`font-mono ${isUltra ? "text-[8pt]" : "text-[8.6pt]"} font-extrabold text-slate-950 tracking-tight`} dir="ltr">
+                <span className={`font-mono ${getPhoneFontSize(pair.number)} font-black text-slate-950 tracking-tight whitespace-nowrap`} dir="ltr">
                   {pair.number}
                 </span>
               </div>
@@ -870,9 +886,9 @@ function DetailCard({
           const hasPhoneDigits = totalDigits >= 5 && !/[a-zA-Z]/.test(line) && !isLinePersian
 
           return (
-            <div key={idx} className="flex items-start gap-1.5 my-0.1" dir={isLinePersian ? "rtl" : "ltr"}>
+            <div key={idx} className="flex items-start gap-1.5 my-0.2" dir={isLinePersian ? "rtl" : "ltr"}>
               <div
-                className={`w-3.5 h-3.5 mt-0.2 rounded-full ${
+                className={`${hasPhoneDigits ? phoneBadgeClass : (isUltra ? "w-3.5 h-3.5" : "w-4 h-4")} mt-0.2 rounded-full ${
                   isRedHighlight
                     ? "bg-rose-100/90 border-rose-200/90 text-rose-700"
                     : isGreenHighlight
@@ -881,18 +897,18 @@ function DetailCard({
                 } border flex items-center justify-center shrink-0 shadow-2xs`}
               >
                 {hasPhoneDigits ? (
-                  <Phone className="h-2 w-2" />
+                  <Phone className={phoneIconClass} />
                 ) : (
-                  <UserRound className="h-1.8 w-1.8" />
+                  <UserRound className={isUltra ? "h-1.8 w-1.8" : "h-2 w-2"} />
                 )}
               </div>
               <span
                 className={`${
                   isLinePersian
-                    ? `persian-text bol-persian-text font-[vazirmatn] ${isUltra ? "text-[6.4pt]" : "text-[6.8pt]"} font-bold`
+                    ? `persian-text bol-persian-text font-[vazirmatn] ${isUltra ? "text-[7.4pt]" : isCompactTier ? "text-[8.2pt]" : "text-[9pt]"} font-extrabold`
                     : hasPhoneDigits
-                    ? `font-mono ${isUltra ? "text-[8pt]" : "text-[8.6pt]"} font-extrabold text-slate-950 tracking-tight`
-                    : `font-sans ${isUltra ? "text-[6.2pt]" : "text-[6.5pt]"} font-bold`
+                    ? `font-mono ${getPhoneFontSize(line)} font-black text-slate-950 tracking-tight leading-none whitespace-nowrap`
+                    : `font-sans ${isUltra ? "text-[6.4pt]" : "text-[7pt]"} font-bold`
                 } text-slate-800 leading-snug`}
               >
                 {line}
@@ -1790,7 +1806,7 @@ function formatPackagesValue(val?: string | null, densityTier = "normal"): React
   const parts = splitMultiCargoItems(text)
 
   if (parts.length <= 1) {
-    const fontCls = getNumericFontClass(text, isUltra ? "text-[8.5pt]" : "text-[9.8pt]")
+    const fontCls = getNumericFontClass(text, isUltra ? "text-[10.5pt]" : isCompact ? "text-[12.2pt]" : "text-[13.8pt]")
     return (
       <span className={`font-mono font-black ${fontCls} text-slate-950 text-center leading-snug tracking-tight inline-block`}>
         {text}
@@ -1800,13 +1816,13 @@ function formatPackagesValue(val?: string | null, densityTier = "normal"): React
 
   const { sum, unit } = parseCargoTotal(parts)
   const maxLen = Math.max(...parts.map((p) => p.length))
-  let itemFontClass = isUltra ? "text-[6.2pt]" : "text-[7.8pt]"
+  let itemFontClass = isUltra ? "text-[7.2pt]" : "text-[8.8pt]"
   if (parts.length >= 5 || maxLen > 25) {
-    itemFontClass = isUltra ? "text-[5.4pt]" : "text-[6.4pt]"
+    itemFontClass = isUltra ? "text-[6.2pt]" : "text-[7.4pt]"
   } else if (parts.length >= 4) {
-    itemFontClass = isUltra ? "text-[5.8pt]" : "text-[7pt]"
+    itemFontClass = isUltra ? "text-[6.6pt]" : "text-[8pt]"
   } else if (parts.length >= 3 || maxLen > 18) {
-    itemFontClass = isUltra ? "text-[6pt]" : "text-[7.4pt]"
+    itemFontClass = isUltra ? "text-[6.8pt]" : "text-[8.4pt]"
   }
 
   return (
@@ -1823,8 +1839,8 @@ function formatPackagesValue(val?: string | null, densityTier = "normal"): React
       </div>
       {sum > 0 && (
         <div className={`w-full ${isUltra ? "pt-0.3 px-1 py-0.2" : "pt-0.5 px-1.5 py-0.3"} border-t border-blue-100 flex items-center justify-center gap-1 bg-blue-50/90 rounded border border-blue-200 shadow-2xs`}>
-          <span className={`${isUltra ? "text-[5.2pt]" : "text-[6pt]"} font-black text-blue-700 tracking-wider uppercase shrink-0`}>TOTAL:</span>
-          <span className={`font-mono font-black ${isUltra ? "text-[7.6pt]" : "text-[8.5pt]"} text-blue-950 whitespace-nowrap keep-all direction-ltr unicode-isolate inline-block`}>
+          <span className={`${isUltra ? "text-[5.6pt]" : "text-[6.8pt]"} font-black text-blue-700 tracking-wider uppercase shrink-0`}>TOTAL:</span>
+          <span className={`font-mono font-black ${isUltra ? "text-[8.8pt]" : "text-[10.4pt]"} text-blue-950 whitespace-nowrap keep-all direction-ltr unicode-isolate inline-block`}>
             {sum.toLocaleString()} {unit || "CTNS"}
           </span>
         </div>
@@ -1978,10 +1994,11 @@ function CargoRow({
   const isUltra = densityTier === "ultra"
   const isCompact = densityTier === "compact" || isUltra
 
-  const qtyFont = isUltra ? "text-[7.8pt]" : isCompact ? "text-[8.4pt]" : "text-[9pt]"
-  const commFont = isUltra ? "text-[6pt]" : isCompact ? "text-[6.5pt]" : "text-[7pt]"
-  const valFont = isUltra ? "text-[7.2pt]" : isCompact ? "text-[7.8pt]" : "text-[8.4pt]"
-  const subLabelFont = isUltra ? "text-[4.8pt]" : "text-[5.2pt]"
+  const packageQtyFont = isUltra ? "text-[10.5pt]" : isCompact ? "text-[12.2pt]" : "text-[13.8pt]"
+  const qtyFont = isUltra ? "text-[9.5pt]" : isCompact ? "text-[11pt]" : "text-[12.4pt]"
+  const commFont = isUltra ? "text-[7.4pt]" : isCompact ? "text-[8.2pt]" : "text-[9pt]"
+  const valFont = isUltra ? "text-[7.8pt]" : isCompact ? "text-[8.6pt]" : "text-[9.4pt]"
+  const subLabelFont = isUltra ? "text-[5.2pt]" : "text-[5.8pt]"
 
   // Separate quantity from commodity in packageText
   const pkgClean = cleanText(item.packageText)
@@ -2016,7 +2033,7 @@ function CargoRow({
                   #{itemNumber}
                 </span>
               )}
-              <span className={`font-mono font-black ${qtyFont} text-slate-950 whitespace-nowrap keep-all direction-ltr unicode-isolate`}>
+              <span className={`font-mono font-black ${packageQtyFont} text-slate-950 whitespace-nowrap keep-all direction-ltr unicode-isolate leading-tight`}>
                 {qtyPart || pkgClean}
               </span>
             </div>
@@ -2098,38 +2115,60 @@ function CargoRow({
         className="rounded-lg border border-slate-200/90 bg-white flex flex-col items-center justify-center overflow-hidden min-h-[24px] shadow-2xs"
         style={cellBoxStyle}
       >
-        {hasValue(item.rate) && hasValue(item.goodsValue) ? (
-          <div className="flex flex-col justify-center items-center w-full gap-0.3 my-auto">
-            <div className="flex items-center justify-between w-full px-1.5 py-0.2 rounded bg-slate-50 border border-slate-200/80">
-              <span className={`${subLabelFont} font-black uppercase text-slate-600 tracking-tight shrink-0`}>RATE</span>
-              <span className={`font-mono font-bold ${valFont} text-slate-900 whitespace-nowrap keep-all direction-ltr unicode-isolate`}>
-                {item.rate}
-              </span>
-            </div>
-            <div className="flex items-center justify-between w-full px-1.5 py-0.2 rounded bg-emerald-50/90 border border-emerald-200/90">
-              <span className={`${subLabelFont} font-black uppercase text-emerald-800 tracking-tight shrink-0`}>VALUE</span>
-              <span className={`font-mono font-black ${valFont} text-emerald-950 whitespace-nowrap keep-all direction-ltr unicode-isolate`}>
-                {item.goodsValue}
-              </span>
-            </div>
-          </div>
-        ) : hasValue(item.goodsValue) ? (
-          <div className="flex items-center justify-between w-full px-1.5 py-0.3 rounded bg-emerald-50/90 border border-emerald-200/90 my-auto">
-            <span className={`${subLabelFont} font-black uppercase text-emerald-800 tracking-tight shrink-0`}>VALUE</span>
-            <span className={`font-mono font-black ${qtyFont} text-emerald-950 whitespace-nowrap keep-all direction-ltr unicode-isolate`}>
-              {item.goodsValue}
-            </span>
-          </div>
-        ) : hasValue(item.rate) ? (
-          <div className="flex items-center justify-between w-full px-1.5 py-0.3 rounded bg-slate-50 border border-slate-200/80 my-auto">
-            <span className={`${subLabelFont} font-black uppercase text-slate-600 tracking-tight shrink-0`}>RATE</span>
-            <span className={`font-mono font-bold ${qtyFont} text-slate-900 whitespace-nowrap keep-all direction-ltr unicode-isolate`}>
-              {item.rate}
-            </span>
-          </div>
-        ) : (
-          <span className="text-slate-400 font-bold my-auto">—</span>
-        )}
+        {(() => {
+          const hasRate = hasValue(item.rate) && /\d/.test(item.rate)
+          const hasGoodsVal = hasValue(item.goodsValue) && /\d/.test(item.goodsValue)
+
+          // Format bare numeric rate like "2.50" -> "2.50 USD"
+          const displayRate = hasRate
+            ? /^\s*[$€£]?\s*[\d.,]+\s*$/.test(item.rate.trim())
+              ? `${item.rate.trim()} USD`
+              : item.rate
+            : ""
+
+          if (hasRate && hasGoodsVal) {
+            return (
+              <div className="flex flex-col justify-center items-center w-full gap-0.3 my-auto">
+                <div className="flex items-center justify-between w-full px-1.5 py-0.2 rounded bg-slate-50 border border-slate-200/80">
+                  <span className={`${subLabelFont} font-black uppercase text-slate-600 tracking-tight shrink-0`}>RATE</span>
+                  <span className={`font-mono font-bold ${valFont} text-slate-900 whitespace-nowrap keep-all direction-ltr unicode-isolate`}>
+                    {displayRate}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between w-full px-1.5 py-0.2 rounded bg-emerald-50/90 border border-emerald-200/90">
+                  <span className={`${subLabelFont} font-black uppercase text-emerald-800 tracking-tight shrink-0`}>VALUE</span>
+                  <span className={`font-mono font-black ${valFont} text-emerald-950 whitespace-nowrap keep-all direction-ltr unicode-isolate`}>
+                    {item.goodsValue}
+                  </span>
+                </div>
+              </div>
+            )
+          }
+
+          if (hasGoodsVal) {
+            return (
+              <div className="flex items-center justify-between w-full px-1.5 py-0.3 rounded bg-emerald-50/90 border border-emerald-200/90 my-auto">
+                <span className={`${subLabelFont} font-black uppercase text-emerald-800 tracking-tight shrink-0`}>VALUE</span>
+                <span className={`font-mono font-black ${qtyFont} text-emerald-950 whitespace-nowrap keep-all direction-ltr unicode-isolate`}>
+                  {item.goodsValue}
+                </span>
+              </div>
+            )
+          }
+
+          if (hasRate) {
+            return (
+              <div className="flex items-center justify-between w-full px-1.5 py-0.3 rounded bg-slate-50 border border-slate-200/80 my-auto">
+                <span className={`${subLabelFont} font-black uppercase text-slate-600 tracking-tight shrink-0`}>RATE</span>
+                <span className={`font-mono font-bold ${qtyFont} text-slate-900 whitespace-nowrap keep-all direction-ltr unicode-isolate`}>
+                  {displayRate}
+                </span>
+              </div>
+            )
+          }
+
+          return <span className="text-slate-400 font-bold my-auto">—</span>
+        })()}
       </div>
     </div>
   )
@@ -2147,8 +2186,8 @@ function CargoTotalsRow({
   const isUltra = densityTier === "ultra"
   const isCompact = densityTier === "compact" || isUltra
 
-  const totalValFont = isUltra ? "text-[7.2pt]" : isCompact ? "text-[7.8pt]" : "text-[8.4pt]"
-  const subLabelFont = isUltra ? "text-[4.8pt]" : "text-[5.2pt]"
+  const totalValFont = isUltra ? "text-[9.5pt]" : isCompact ? "text-[11.2pt]" : "text-[12.5pt]"
+  const subLabelFont = isUltra ? "text-[5.6pt]" : isCompact ? "text-[6.2pt]" : "text-[6.8pt]"
 
   return (
     <div
@@ -3135,45 +3174,83 @@ function CargoDescriptionBlock({
 
       {/* Meta Chips Row */}
       {metaLines.length > 0 && (
-        <div className={`flex flex-wrap items-center gap-1.5 ${itemLines.length > 0 ? "mb-0.8 pt-0.2" : ""}`}>
+        <div className={`flex flex-wrap items-center gap-1.5 ${itemLines.length > 0 ? "mb-1 pt-0.2" : ""}`}>
           {metaLines.map((meta, idx) => {
             const isTransitDate = meta.type === "transit_date" || /date/i.test(meta.label || "")
             const isInvoice = meta.type === "invoice" || /inv/i.test(meta.label || "")
             const isTc = meta.type === "tc_no" || /tc/i.test(meta.label || "")
             const isHs = meta.type === "hs_code" || /hs/i.test(meta.label || "")
 
+            const chipTheme = isTransitDate
+              ? {
+                  border: "border-blue-200/90",
+                  bg: "bg-blue-50/95",
+                  labelColor: "text-blue-700",
+                  valColor: "text-blue-950",
+                  icon: <CalendarDays className="h-3 w-3 text-blue-600 shrink-0" />,
+                }
+              : isInvoice
+              ? {
+                  border: "border-emerald-200/90",
+                  bg: "bg-emerald-50/95",
+                  labelColor: "text-emerald-700",
+                  valColor: "text-emerald-950",
+                  icon: <Receipt className="h-3 w-3 text-emerald-600 shrink-0" />,
+                }
+              : isTc
+              ? {
+                  border: "border-purple-200/90",
+                  bg: "bg-purple-50/95",
+                  labelColor: "text-purple-700",
+                  valColor: "text-purple-950",
+                  icon: <ShieldCheck className="h-3 w-3 text-purple-600 shrink-0" />,
+                }
+              : isHs
+              ? {
+                  border: "border-amber-200/90",
+                  bg: "bg-amber-50/95",
+                  labelColor: "text-amber-700",
+                  valColor: "text-amber-950",
+                  icon: <FileText className="h-3 w-3 text-amber-600 shrink-0" />,
+                }
+              : {
+                  border: "border-slate-200/90",
+                  bg: "bg-slate-50/95",
+                  labelColor: "text-slate-700",
+                  valColor: "text-slate-950",
+                  icon: <FileText className="h-3 w-3 text-slate-500 shrink-0" />,
+                }
+
             return (
               <div
                 key={idx}
-                className={`inline-flex items-center gap-1 rounded border ${
-                  isTransitDate
-                    ? "border-blue-300 bg-blue-100/80 text-blue-950"
-                    : isInvoice
-                    ? "border-emerald-300 bg-emerald-100/80 text-emerald-950"
-                    : isTc
-                    ? "border-purple-300 bg-purple-100/80 text-purple-950"
-                    : "border-slate-300 bg-slate-100/80 text-slate-900"
-                } ${isUltra ? "px-1.2 py-0.2 text-[5.8pt]" : "px-1.8 py-0.2 text-[6.4pt]"} font-black leading-tight shadow-sm`}
+                className={`inline-flex items-center gap-1.5 rounded-md border ${chipTheme.border} ${chipTheme.bg} ${
+                  isUltra ? "px-2 py-0.4" : isCompact ? "px-2.5 py-0.5" : "px-3 py-0.6"
+                } leading-tight shadow-2xs`}
+                style={{
+                  fontFamily: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                }}
               >
+                {chipTheme.icon}
                 {meta.label && (
                   <span
-                    className={`${
-                      isTransitDate
-                        ? "text-blue-800"
-                        : isInvoice
-                        ? "text-emerald-800"
-                        : isTc
-                        ? "text-purple-800"
-                        : "text-slate-700"
-                    } font-black uppercase text-[5.2pt] md:text-[5.8pt] tracking-wider shrink-0`}
+                    className={`${chipTheme.labelColor} font-black uppercase ${
+                      isUltra ? "text-[6.8pt]" : isCompact ? "text-[7.4pt]" : "text-[8pt]"
+                    } tracking-wider shrink-0`}
                   >
                     {meta.label}:
                   </span>
                 )}
                 <span
-                  className="font-mono font-black direction-ltr unicode-isolate whitespace-nowrap"
+                  className={`font-black ${
+                    isUltra ? "text-[8pt]" : isCompact ? "text-[8.8pt]" : "text-[9.5pt]"
+                  } ${chipTheme.valColor} tracking-tight whitespace-nowrap direction-ltr unicode-isolate`}
                   dir="ltr"
-                  style={{ direction: "ltr", unicodeBidi: "isolate" }}
+                  style={{
+                    direction: "ltr",
+                    unicodeBidi: "isolate",
+                    fontFamily: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                  }}
                 >
                   {meta.value}
                 </span>
@@ -3203,12 +3280,12 @@ function CargoDescriptionBlock({
           {itemLines.map((item, idx) => {
             const fontClass =
               itemLines.length >= 8 || isUltra
-                ? "text-[6.8pt]"
+                ? "text-[7.6pt]"
                 : itemLines.length >= 5
-                ? "text-[7.2pt]"
+                ? "text-[8.4pt]"
                 : isCompact
-                ? "text-[7.8pt]"
-                : "text-[8.2pt]"
+                ? "text-[9pt]"
+                : "text-[9.8pt]"
 
             // Parse rate if present (e.g. "@ 3.50 $" or "@3.50$")
             const atMatch = item.text.match(/^(.+?)\s*(@\s*[$€£AFN]*\s*[\d,]+(?:\.\d+)?\s*[$€£AFN]*)\s*$/i)
@@ -3218,35 +3295,45 @@ function CargoDescriptionBlock({
             return (
               <div
                 key={idx}
-                className={`rounded-lg bg-white/60 border border-slate-200/80 ${
-                  isUltra ? "px-1.5 py-0.5" : "px-2 py-0.6"
-                } flex items-center justify-between gap-1.5 shadow-sm overflow-hidden`}
+                className={`rounded-lg bg-white/90 border border-blue-100/90 ${
+                  isUltra ? "px-2 py-0.6" : isCompact ? "px-2.5 py-0.8" : "px-3 py-1"
+                } flex items-center justify-between gap-2 shadow-2xs overflow-hidden`}
               >
-                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   {itemLines.length > 1 ? (
-                    <span className="text-[5.8pt] font-black text-blue-900 bg-blue-100 px-1.2 py-0.2 rounded-sm border border-blue-200 shrink-0 shadow-sm">
+                    <span className="text-[6.2pt] font-black text-blue-900 bg-blue-100/80 px-1.5 py-0.3 rounded border border-blue-200 shrink-0 shadow-2xs">
                       #{idx + 1}
                     </span>
                   ) : (
-                    <span className="text-blue-600 font-black text-[10pt] shrink-0 leading-none mr-0.5">•</span>
+                    <div className="w-5 h-5 rounded-md bg-blue-50 border border-blue-200/80 flex items-center justify-center shrink-0 shadow-2xs">
+                      <Package className="h-3 w-3 text-blue-600" />
+                    </div>
                   )}
                   <span
                     className={`${
                       item.isRTL
-                        ? "font-[vazirmatn] text-right font-bold text-slate-900"
-                        : "font-sans font-bold text-slate-900 text-left direction-ltr unicode-isolate"
-                    } ${fontClass} leading-tight tracking-tight break-words whitespace-normal`}
+                        ? "font-[vazirmatn] text-right font-extrabold text-slate-900"
+                        : "font-black text-slate-950 text-left direction-ltr unicode-isolate"
+                    } ${fontClass} leading-snug tracking-tight break-words whitespace-normal`}
                     dir={item.isRTL ? "rtl" : "ltr"}
                     style={{
                       direction: item.isRTL ? "rtl" : "ltr",
                       unicodeBidi: "isolate",
+                      fontFamily: item.isRTL
+                        ? undefined
+                        : "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
                     }}
                   >
                     {mainText}
                   </span>
                 </div>
                 {rateText && (
-                  <span className="font-mono font-black text-emerald-800 bg-emerald-50/90 px-1 py-0.1 rounded border border-emerald-200/70 text-[5.8pt] shrink-0 whitespace-nowrap shadow-2xs">
+                  <span
+                    className="font-black text-emerald-900 bg-emerald-100/90 px-1.8 py-0.4 rounded border border-emerald-300/80 text-[6.8pt] shrink-0 whitespace-nowrap shadow-2xs"
+                    style={{
+                      fontFamily: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+                    }}
+                  >
                     {rateText}
                   </span>
                 )}
@@ -3647,7 +3734,39 @@ function CargoRouteNoteBanner({
         dir="rtl"
         style={{ direction: "rtl", unicodeBidi: "isolate" }}
       >
-        {cargoRouteNote}
+        {(() => {
+          // Isolate English parenthetical phrases and B/L so print engines never flip parentheses
+          const parts = cargoRouteNote.split(/(\([^)]+\)|B\/L)/g)
+          return parts.map((part, idx) => {
+            if (part === "B/L") {
+              return (
+                <span
+                  key={idx}
+                  dir="ltr"
+                  style={{ unicodeBidi: "isolate", display: "inline-block" }}
+                  className="font-sans font-black px-0.5"
+                >
+                  B/L
+                </span>
+              )
+            }
+            if (part.startsWith("(") && part.endsWith(")")) {
+              const inner = part.slice(1, -1)
+              const isPersian = /[\u0600-\u06FF]/.test(inner)
+              return (
+                <span
+                  key={idx}
+                  className="inline-block whitespace-nowrap"
+                  dir={isPersian ? "rtl" : "ltr"}
+                  style={{ unicodeBidi: "isolate" }}
+                >
+                  {part}
+                </span>
+              )
+            }
+            return <span key={idx}>{part}</span>
+          })
+        })()}
       </div>
     </div>
   )

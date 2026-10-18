@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-08-31T11:37:30.284900",
+  "workspace": "D:\\skybalam-26-bol-V3.2\\skybalam-26-bol-V3.2",
+  "status": "PASS",
+  "total_issues": 0,
+  "files_checked": {
+    ".local-bols.json": {
+      "total_records": 59,
+      "unique_bol_ids": 59
+    },
+    ".local-account-ledgers.json": {
+      "total_accounts": 11,
+      "total_entries": 73,
+      "balance_discrepancies": 0
+    },
+    ".local-bol-account-ledgers.json": {
+      "total_companies": 41,
+      "total_records": 47
+    },
+    ".local-invoices.json": {
+      "total_invoices": 3
+    }
+  },
+  "issues": [],
+  "summary": {}
+}

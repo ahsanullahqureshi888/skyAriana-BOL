@@ -93,7 +93,10 @@ const AUDIT_RULES: FieldAuditRule[] = [
     field: "notify_party_name",
     label: "Notify Party",
     severity: "optional",
-    validator: (d) => Boolean(d.notify_party_name && d.notify_party_name.trim()),
+    validator: (d) => {
+      const np = d.notify_party_name || d.notify_party || (d as any).notifyParty
+      return Boolean(np && String(np).trim())
+    },
   },
   {
     field: "invoice_no",
@@ -262,8 +265,8 @@ export function detectPossibleDuplicates(docs: SavedDocument[]): PossibleDuplica
   // 4. Same Shipper + Consignee + Date
   const tripMap = new Map<string, SavedDocument[]>()
   for (const doc of docs) {
-    const s = (doc.shipper_name || "").trim().toLowerCase()
-    const c = (doc.consignee_name || "").trim().toLowerCase()
+    const s = String(doc.shipper_name || "").trim().toLowerCase()
+    const c = String(doc.consignee_name || "").trim().toLowerCase()
     const d = normalizeDate(doc.issue_date || doc.created_at)
     if (!s || !c || !d) continue
 

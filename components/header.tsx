@@ -1,7 +1,7 @@
 "use client"
 
 import Image from 'next/image'
-import { useRef, useState, useMemo } from 'react'
+import { useRef, useState, useMemo, startTransition } from 'react'
 import { QuickShipmentModal } from '@/components/shipments/quick-shipment-modal'
 import {
   LogOut,
@@ -52,6 +52,7 @@ import { Button } from '@/components/ui/button'
 import { useApp } from '@/lib/app-context'
 import { HeaderCloudSyncButton } from '@/components/sync/header-cloud-sync-button'
 import { ServerStatusPill } from '@/components/server/server-status-pill'
+import { HeaderProtectionPill } from '@/components/backup/header-protection-pill'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { NotificationBell } from '@/components/notifications/notification-bell'
 import { GlobalSearch } from '@/components/global-search'
@@ -442,14 +443,23 @@ export function Header({ title, subtitle }: HeaderProps) {
   const handleNavigate = (modId: any) => {
     if (view === modId) return
     previousView.current = view
-    setView(modId)
+    // Defer state transition out of Radix UI's synchronous ReactDOM.flushSync discrete event loop (< 16ms INP)
+    setTimeout(() => {
+      startTransition(() => {
+        setView(modId)
+      })
+    }, 0)
   }
 
   const handleCreateNewBol = () => {
-    setView('bol')
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('skybol:new-bol'))
-    }
+    setTimeout(() => {
+      startTransition(() => {
+        setView('bol')
+      })
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('skybol:new-bol'))
+      }
+    }, 0)
   }
 
   return (
@@ -1467,12 +1477,13 @@ export function Header({ title, subtitle }: HeaderProps) {
             </div>
 
             {/* Quick Action (+ New) Multi-Drop Button */}
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
+                  type="button"
                   variant="default"
                   size="sm"
-                  className="hidden md:inline-flex h-7.5 gap-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-[11.5px] font-bold text-white shadow-xs cursor-pointer px-2 shrink-0 whitespace-nowrap"
+                  className="hidden md:inline-flex h-7.5 gap-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-[11.5px] font-bold text-white shadow-xs cursor-pointer px-2 shrink-0 whitespace-nowrap active:scale-[0.98]"
                   title="Create New Document or Record"
                 >
                   <Plus className="h-3.5 w-3.5 shrink-0" />
@@ -1559,6 +1570,11 @@ export function Header({ title, subtitle }: HeaderProps) {
             {/* Server Status Pill (Visible on 2xl+, hidden on laptop to preserve space) */}
             <div className="hidden 2xl:block shrink-0">
               <ServerStatusPill onOpenSettings={() => handleNavigate('settings')} />
+            </div>
+
+            {/* Data Protection Pill */}
+            <div className="hidden sm:block shrink-0">
+              <HeaderProtectionPill onOpenBackupCenter={() => handleNavigate('data-protection')} />
             </div>
 
             {/* Cloud Sync Button */}

@@ -43,13 +43,15 @@
 }
 
 /* Custom Scrollbar Utilities */
-.no-scrollbar::-webkit-scrollbar {
+.no-scrollbar::-webkit-scrollbar,
+.a4-preview-toolbar::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
 }
 
-.no-scrollbar {
+.no-scrollbar,
+.a4-preview-toolbar {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
 }
@@ -6869,6 +6871,57 @@
   max-height: 100% !important;
   min-height: 0 !important;
   flex: 1 1 0% !important;
+}
+
+/* Explicit scroll ownership & smooth vertical scrolling for System Settings */
+[data-main-workspace="true"]:has([data-settings-view="true"]) {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 0 !important;
+  flex: 1 1 0% !important;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+}
+
+[data-main-workspace="true"]:has([data-settings-view="true"]) > div {
+  height: auto !important;
+  max-height: none !important;
+  min-height: 100% !important;
+  flex: 1 1 auto !important;
+}
+
+/* Ergonomic, high-contrast draggable scrollbar for Master Viewport */
+[data-main-workspace="true"] {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59, 130, 246, 0.45) transparent;
+}
+[data-main-workspace="true"]::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+[data-main-workspace="true"]::-webkit-scrollbar-track {
+  background: transparent;
+}
+[data-main-workspace="true"]::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.35);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+[data-main-workspace="true"]::-webkit-scrollbar-thumb:hover {
+  background: rgba(37, 99, 235, 0.7);
+}
+.dark [data-main-workspace="true"]::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.dark [data-main-workspace="true"]::-webkit-scrollbar-thumb:hover {
+  background: rgba(96, 165, 250, 0.8);
 }
 
 /* Preview dimensions never participate in document layout or PDF capture. */

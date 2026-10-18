@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import fs from "node:fs/promises"
+import fsSync from "node:fs"
 import { getDataPath } from "@/lib/server-paths"
 import { readJsonFile } from "@/lib/services/blob-db"
-import { generateRestorePreview, restoreDatabaseArchiveBuffer } from "@/lib/backup/restore-backup"
+import {
+  analyzeAndDryRunRestore,
+  executeAQRestore,
+  rollbackRestore,
+} from "@/lib/backup/central-backup-service"
 import type { BackupItem } from "@/lib/backup/backup-types"
 
 export const dynamic = "force-dynamic"
@@ -14,41 +19,65 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}))
     const action = body.action || "execute"
     const backupId = body.backupId
+    const filePath = body.filePath
 
-    if (!backupId) {
-      return NextResponse.json(
-        { success: false, error: "backupId is required" },
-        { status: 400 }
-      )
+    // Rollback action
+    if (action === "rollback") {
+      const restoreId = body.restoreId
+      if (!restoreId) {
+        return NextResponse.json({ success: false, error: "restoreId is required for rollback" }, { status: 400 })
+      }
+      const rollbackRes = await rollbackRestore(restoreId, body.actor || "Admin")
+      if (!rollbackRes.success) {
+        return NextResponse.json({ success: false, error: rollbackRes.error }, { status: 400 })
+      }
+      return NextResponse.json({ success: true, rolledBackToSnapshot: rollbackRes.rolledBackToSnapshot })
     }
 
-    const catalog = await readJsonFile<BackupItem[]>(BACKUPS_CATALOG_FILE, [])
-    const backup = catalog.find((b) => b.id === backupId)
-
-    if (!backup) {
-      return NextResponse.json(
-        { success: false, error: `Backup with ID ${backupId} not found in catalog` },
-        { status: 404 }
-      )
+    // Locate backup payload
+    let targetPath = filePath
+    if (!targetPath && backupId) {
+      const catalog = await readJsonFile<BackupItem[]>(BACKUPS_CATALOG_FILE, [])
+      const backup = catalog.find((b) => b.id === backupId)
+      if (backup && fsSync.existsSync(backup.filePath)) {
+        targetPath = backup.filePath
+      } else {
+        return NextResponse.json({ success: false, error: `Backup with ID ${backupId} not found on disk` }, { status: 404 })
+      }
     }
 
-    const archiveBuffer = await fs.readFile(backup.filePath)
-
-    if (action === "preview") {
-      const preview = await generateRestorePreview(archiveBuffer, backup.fileName)
-      return NextResponse.json({ success: true, preview })
+    if (!targetPath && !body.rawContent) {
+      return NextResponse.json({ success: false, error: "backupId, filePath, or rawContent is required" }, { status: 400 })
     }
 
-    // Execution
-    const mode = body.mode === "merge" ? "merge" : "replace"
-    const actor = body.actor || "Admin"
+    const payload = body.rawContent || (await fs.readFile(targetPath))
+
+    // DRY RUN / PREVIEW
+    if (action === "preview" || action === "dry_run") {
+      const dryRunResult = await analyzeAndDryRunRestore(payload, {
+        selectedModules: body.selectedModules,
+      })
+      return NextResponse.json({
+        success: dryRunResult.success,
+        preview: dryRunResult,
+      })
+    }
+
+    // EXECUTION
+    const mode = body.mode === "replace" ? "replace" : body.mode === "selective" ? "selective" : "merge"
+    const actor = body.actor || "Admin User"
     const note = body.note || ""
+    const confirmationText = body.confirmationText || ""
+    const selectedModules = body.selectedModules
+    const conflictResolutions = body.conflictResolutions
 
-    const result = await restoreDatabaseArchiveBuffer({
-      archiveBuffer,
+    const result = await executeAQRestore(payload, {
       mode,
       actor,
       note,
+      confirmationText,
+      selectedModules,
+      conflictResolutions,
     })
 
     if (!result.success) {
@@ -58,7 +87,7 @@ export async function POST(req: NextRequest) {
           error: result.error,
           rolledBack: result.rolledBack,
           warnings: result.warnings,
-          preRestoreBackupFile: result.preRestoreBackupFile,
+          preRestoreBackupFile: result.preRestoreSnapshotFile,
         },
         { status: 500 }
       )

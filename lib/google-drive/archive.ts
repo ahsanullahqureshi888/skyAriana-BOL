@@ -57,7 +57,9 @@ export function createZipArchive(entries: ArchiveEntry[]): Buffer {
     const rawData = Buffer.isBuffer(rawPayload)
       ? rawPayload
       : Buffer.from(rawPayload || "", "utf8")
-    const cleanPath = String(rawPath).replace(/\\/g, "/").replace(/^\/+/, "")
+    const cleanPath = (entryAny.preserveRawPath || entryAny.rawPath)
+      ? String(rawPath)
+      : String(rawPath).replace(/\\/g, "/").replace(/^\/+/, "")
     const pathBuffer = Buffer.from(cleanPath, "utf8")
 
     const compressedData = zlib.deflateRawSync(rawData, { level: 9 })
@@ -120,11 +122,35 @@ export function createZipArchive(entries: ArchiveEntry[]): Buffer {
   return Buffer.concat([...localHeadersAndData, centralDirBuffer, eocd])
 }
 
+export interface ZipExtractionOptions {
+  maxTotalUncompressedSize?: number
+  maxFilesCount?: number
+  maxSingleFileSize?: number
+  maxCompressionRatio?: number
+  allowExecutables?: boolean
+}
+
+export const DEFAULT_ZIP_LIMITS = {
+  maxTotalUncompressedSize: 500 * 1024 * 1024, // 500 MB
+  maxFilesCount: 5000,
+  maxSingleFileSize: 100 * 1024 * 1024, // 100 MB
+  maxCompressionRatio: 100, // 100:1 ratio limit
+}
+
+const FORBIDDEN_EXTENSIONS = new Set([
+  ".exe", ".bat", ".cmd", ".ps1", ".sh", ".vbs", ".js", ".mjs", ".cjs",
+  ".com", ".scr", ".msi", ".dll", ".wsf", ".hta", ".cpl", ".pif", ".reg"
+])
+
 /**
  * Extracts files from a ZIP archive buffer.
- * Includes zip-slip path traversal sanitization and CRC32 verification.
+ * Includes zip-slip path traversal sanitization, resource exhaustion guards (ZIP bomb),
+ * script/executable rejection, and CRC32 verification.
  */
-export function extractZipArchive(zipBuffer: Buffer): Map<string, Buffer> {
+export function extractZipArchive(
+  zipBuffer: Buffer,
+  options: ZipExtractionOptions = {}
+): Map<string, Buffer> {
   const result = new Map<string, Buffer>()
 
   // Locate End of Central Directory (EOCD)
@@ -142,6 +168,18 @@ export function extractZipArchive(zipBuffer: Buffer): Map<string, Buffer> {
 
   const totalEntries = zipBuffer.readUInt16LE(eocdOffset + 10)
   const centralDirOffset = zipBuffer.readUInt32LE(eocdOffset + 16)
+
+  const maxFiles = options.maxFilesCount ?? DEFAULT_ZIP_LIMITS.maxFilesCount
+  if (totalEntries > maxFiles) {
+    throw new Error(
+      `Suspicious archive: Entry count (${totalEntries}) exceeds maximum safety limit (${maxFiles})`
+    )
+  }
+
+  let totalExtractedBytes = 0
+  const maxTotalBytes = options.maxTotalUncompressedSize ?? DEFAULT_ZIP_LIMITS.maxTotalUncompressedSize
+  const maxSingleBytes = options.maxSingleFileSize ?? DEFAULT_ZIP_LIMITS.maxSingleFileSize
+  const maxRatio = options.maxCompressionRatio ?? DEFAULT_ZIP_LIMITS.maxCompressionRatio
 
   let cdPointer = centralDirOffset
   for (let i = 0; i < totalEntries; i++) {
@@ -161,10 +199,56 @@ export function extractZipArchive(zipBuffer: Buffer): Map<string, Buffer> {
     const rawPath = zipBuffer.toString("utf8", cdPointer + 46, cdPointer + 46 + nameLength)
     cdPointer += 46 + nameLength + extraLength + commentLength
 
-    // Sanitize path against directory traversal
+    // 1. PATH TRAVERSAL GUARDS (ZIP-Slip, drive letters, UNC, null bytes)
+    if (rawPath.includes("\0")) {
+      throw new Error(`Suspicious archive entry path (Null byte detected): ${rawPath}`)
+    }
+    if (/^[a-zA-Z]:/.test(rawPath)) {
+      throw new Error(`Suspicious archive entry path (Drive letter detected): ${rawPath}`)
+    }
+    if (/^[/\\]{2}/.test(rawPath)) {
+      throw new Error(`Suspicious archive entry path (UNC path detected): ${rawPath}`)
+    }
+    if (rawPath.startsWith("/") || rawPath.startsWith("\\")) {
+      throw new Error(`Suspicious archive entry path (Absolute path detected): ${rawPath}`)
+    }
+    if (rawPath.includes("..") || rawPath.includes("../") || rawPath.includes("..\\")) {
+      throw new Error(`Suspicious archive entry path (Directory traversal attack detected): ${rawPath}`)
+    }
+
     const normalized = rawPath.replace(/\\/g, "/").replace(/^\/+/, "")
     if (normalized.includes("..") || normalized.startsWith("/")) {
       throw new Error(`Suspicious archive entry path (Directory traversal attack detected): ${rawPath}`)
+    }
+
+    // 2. EXECUTABLE & SCRIPT REJECTION (Req 9: Backup files are DATA only)
+    const extMatch = normalized.match(/\.([a-zA-Z0-9]+)$/)
+    const ext = extMatch ? `.${extMatch[1].toLowerCase()}` : ""
+    if (!options.allowExecutables && FORBIDDEN_EXTENSIONS.has(ext)) {
+      throw new Error(
+        `Security violation: Archive contains forbidden executable or script file "${normalized}" (${ext}). Backups may only contain data.`
+      )
+    }
+
+    // 3. ZIP BOMB / RESOURCE EXHAUSTION GUARDS (Req 11)
+    if (uncompressedSize > maxSingleBytes) {
+      throw new Error(
+        `Archive entry "${normalized}" uncompressed size (${uncompressedSize} bytes) exceeds maximum limit (${maxSingleBytes} bytes)`
+      )
+    }
+    if (compressedSize > 0 && uncompressedSize > 1024 * 1024) {
+      const ratio = uncompressedSize / compressedSize
+      if (ratio > maxRatio) {
+        throw new Error(
+          `Potential ZIP bomb detected: compression ratio for "${normalized}" is ${ratio.toFixed(1)}:1 (exceeds limit ${maxRatio}:1)`
+        )
+      }
+    }
+    totalExtractedBytes += uncompressedSize
+    if (totalExtractedBytes > maxTotalBytes) {
+      throw new Error(
+        `Total uncompressed archive size (${totalExtractedBytes} bytes) exceeds maximum safety limit (${maxTotalBytes} bytes)`
+      )
     }
 
     // Read local header to find data start
@@ -187,6 +271,14 @@ export function extractZipArchive(zipBuffer: Buffer): Map<string, Buffer> {
 
     if (crc32(extracted) !== expectedCrc) {
       throw new Error(`CRC-32 checksum mismatch for extracted file: ${normalized}`)
+    }
+
+    // 4. UNTRUSTED SVG SCRIPT INSPECTION
+    if (ext === ".svg") {
+      const text = extracted.toString("utf8")
+      if (/<script/i.test(text) || /javascript:/i.test(text) || /onload\s*=/i.test(text) || /onerror\s*=/i.test(text)) {
+        throw new Error(`Security violation: Untrusted SVG in archive entry "${normalized}" contains embedded script execution.`)
+      }
     }
 
     result.set(normalized, extracted)

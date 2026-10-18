@@ -8,7 +8,7 @@ import fsSync from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import os from 'node:os'
-import { getDataPath, getUploadPath } from '@/lib/server-paths'
+import { getDataPath, getUploadPath, getBackupRoot, getRecoveryDir } from '@/lib/server-paths'
 import { readJsonFile, writeJsonFile, mutateJsonFile } from '@/lib/services/blob-db'
 import { validateLedgerInvariance } from '@/lib/services/ledger-sync-utils'
 import { getDatabaseRevision, incrementDatabaseRevision } from '@/lib/backup/revision'
@@ -158,8 +158,8 @@ export const CANONICAL_TABLES = [
 
 const BACKUP_CATALOG_FILE = getDataPath('.local-backups-catalog.json')
 const RECOVERY_CONFIG_FILE = getDataPath('.local-recovery-config.json')
-const BACKUPS_DIR = path.join(process.cwd(), 'data', 'backups')
-const RECOVERY_DIR = path.join(process.cwd(), 'data', 'recovery')
+const BACKUPS_DIR = getBackupRoot()
+const RECOVERY_DIR = getRecoveryDir()
 
 const DEFAULT_CONFIG: DisasterRecoveryConfig = {
   autoBackupEnabled: true,
@@ -852,14 +852,22 @@ export async function runDeepDatabaseHealthScan(): Promise<DeepHealthReport> {
     await fs.writeFile(testFile, 'ok', 'utf8')
     await fs.unlink(testFile)
   } catch (err: any) {
-    databaseWritable = false
-    issues.push({
-      severity: 'CRITICAL',
-      module: 'Storage Engine',
-      message: 'Database storage directory is NOT writable.',
-      details: err.message,
-      repairable: false,
-    })
+    // In serverless environments (Vercel / AWS Lambda), the deployment root is read-only.
+    // The storage engine (blob-db) writes to os.tmpdir() and synchronizes with cloud storage.
+    try {
+      const testTmp = path.join(os.tmpdir(), '.test-write-safety.tmp')
+      await fs.writeFile(testTmp, 'ok', 'utf8')
+      await fs.unlink(testTmp)
+    } catch (tmpErr: any) {
+      databaseWritable = false
+      issues.push({
+        severity: 'CRITICAL',
+        module: 'Storage Engine',
+        message: 'Database storage directory is NOT writable.',
+        details: err.message,
+        repairable: false,
+      })
+    }
   }
 
   // 3. Accounting Invariant Check

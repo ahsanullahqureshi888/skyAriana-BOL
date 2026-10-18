@@ -977,7 +977,7 @@ export async function getReceivablesAgingReport(
   const customerMap = new Map<string, { name: string; currency: string; invoices: InvoiceRecord[] }>()
 
   for (const inv of invoices) {
-    const cust = (inv.buyer_name || inv.consignee || "Unknown Customer").trim()
+    const cust = String(inv.buyer_name || inv.consignee || "Unknown Customer").trim()
     const curr = (inv.currency || "USD").toUpperCase()
     const key = `${cust}:::${curr}`
     if (!customerMap.has(key)) {
@@ -1125,7 +1125,7 @@ export async function getPayablesAgingReport(
   const supplierMap = new Map<string, { id: string; name: string; currency: string; bills: typeof bills }>()
 
   for (const b of bills) {
-    const supp = (b.supplierName || "Carrier").trim()
+    const supp = String(b.supplierName || "Carrier").trim()
     const curr = (b.currency || "USD").toUpperCase()
     const key = `${supp}:::${curr}`
     if (!supplierMap.has(key)) {
@@ -1421,7 +1421,7 @@ export async function getCustomerProfitabilityReport(
   const customerMap = new Map<string, CustomerProfitabilityRow>()
 
   for (const bol of bols) {
-    const cust = (bol.shipper_name || bol.shipper || "Default Client").trim()
+    const cust = String(bol.shipper_name || bol.shipper || "Default Client").trim()
     const custId = `cust-${cust.toLowerCase().replace(/[^a-z0-9]/g, "-")}`
 
     if (!customerMap.has(custId)) {

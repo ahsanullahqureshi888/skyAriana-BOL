@@ -196,7 +196,8 @@ export function AIAssistantSettingsTab() {
               onChange={(e) => setConfig({ ...config, model: e.target.value })}
               className="w-full h-10 px-3 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
             >
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recommended)</option>
+              <option value="gemini-flash-latest">Gemini Flash Latest (Recommended)</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
               <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
               <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
             </select>
@@ -213,7 +214,7 @@ export function AIAssistantSettingsTab() {
               type="password"
               value={apiKeyInput}
               onChange={(e) => setApiKeyInput(e.target.value)}
-              placeholder="AIzaSy..."
+              placeholder="AQ... or AIzaSy..."
               className="w-full h-10 px-3 pr-10 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
             />
             <Key className="w-4 h-4 text-slate-400 absolute right-3 top-3 pointer-events-none" />

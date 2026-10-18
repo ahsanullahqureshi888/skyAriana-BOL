@@ -125,3 +125,31 @@ export interface NotificationMetrics {
   resolvedToday: number
   byCategory: Partial<Record<NotificationCategory, number>>
 }
+
+export function getDefaultNotificationSettings(userId: string): UserNotificationSettings {
+  return {
+    userId,
+    desktopEnabled: false,
+    soundLevel: 'critical_only',
+    quietHoursEnabled: false,
+    quietHoursStart: '22:00',
+    quietHoursEnd: '07:00',
+    allowCriticalInQuietHours: true,
+    categories: {
+      OPERATIONS: 'all',
+      TRACKING: 'all',
+      BOOKING: 'all',
+      CONTAINER: 'all',
+      VESSEL: 'all',
+      DOCUMENTS: 'all',
+      COMPLIANCE: 'all',
+      FINANCE: 'all',
+      WORKFLOW: 'all',
+      CUSTOMER_PORTAL: 'all',
+      BACKUP: 'important_only',
+      SYNC: 'important_only',
+      SYSTEM: 'important_only',
+    },
+    updatedAt: new Date().toISOString(),
+  }
+}

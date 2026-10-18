@@ -1,7 +1,7 @@
 "use client"
 
-import React, { memo } from "react"
-import { Clock, ArrowRight, Boxes, Truck, Pencil, FolderArchive, FileDown, Loader2 } from "lucide-react"
+import React, { memo, startTransition } from "react"
+import { Clock, ArrowRight, Boxes, Truck, Pencil, FolderArchive, FileDown, Loader2, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { cleanBolNumber, isUUID } from "@/lib/utils/bol-filters"
@@ -34,6 +34,7 @@ export interface SavedDocumentData {
   cargo_description?: string
   commodity?: string
   pdf_url?: string | null
+  pdf_status?: "ready" | "outdated" | "none" | string
   status?: string
 }
 
@@ -42,6 +43,7 @@ export interface RecentBolCardProps {
   onEdit: () => void
   onFiles: () => void
   onPdf: () => void
+  onPreview?: () => void
   onCardClick?: () => void
   isDownloadingPdf?: boolean
   isSelected?: boolean
@@ -286,6 +288,7 @@ export const RecentBolCard = memo(function RecentBolCard({
   onEdit,
   onFiles,
   onPdf,
+  onPreview,
   onCardClick,
   isDownloadingPdf = false,
   isSelected = false,
@@ -301,15 +304,22 @@ export const RecentBolCard = memo(function RecentBolCard({
   const truck = parseTruckDetails(doc)
   const rent = parseRentDetails(doc)
 
-  const handleCardClick = () => {
-    if (onCardClick) {
-      onCardClick()
-    }
+  const handleCardClick = (e?: React.MouseEvent) => {
+    e?.preventDefault()
+    e?.stopPropagation()
+    startTransition(() => {
+      if (onCardClick) {
+        onCardClick()
+      } else if (onEdit) {
+        onEdit()
+      }
+    })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault()
+      e.stopPropagation()
       handleCardClick()
     }
   }
@@ -434,19 +444,44 @@ export const RecentBolCard = memo(function RecentBolCard({
       </div>
 
       {/* Action Buttons (Strictly aligned bottom row) */}
-      <div className="mt-auto pt-2.5 border-t border-slate-100 dark:border-slate-800/70 grid grid-cols-3 gap-1.5 sm:gap-2">
+      <div className="mt-auto pt-2.5 border-t border-slate-100 dark:border-slate-800/70 grid grid-cols-4 gap-1 sm:gap-1.5">
         <Button
           type="button"
           size="sm"
           onClick={(e) => {
+            e.preventDefault()
             e.stopPropagation()
-            onEdit()
+            startTransition(() => {
+              onEdit()
+            })
           }}
-          className="h-8.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-xs cursor-pointer shadow-xs transition-all flex items-center justify-center px-1"
+          className="h-8.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 font-black text-[11px] sm:text-xs cursor-pointer shadow-xs transition-[color,background-color,border-color,transform] flex items-center justify-center px-1"
           title="Edit Bill of Lading"
         >
-          <Pencil className="w-3 h-3 mr-1 shrink-0" />
-          <span>Edit</span>
+          <Pencil className="w-3 h-3 mr-0.5 sm:mr-1 shrink-0" />
+          <span className="truncate">Edit</span>
+        </Button>
+
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            startTransition(() => {
+              if (onPreview) {
+                onPreview()
+              } else if (onCardClick) {
+                onCardClick()
+              }
+            })
+          }}
+          className="h-8.5 rounded-xl border-blue-200 dark:border-blue-800 bg-blue-50/70 dark:bg-blue-950/40 hover:bg-blue-100 text-blue-900 dark:text-blue-300 font-bold text-[11px] sm:text-xs cursor-pointer active:scale-95 transition-[color,background-color,border-color,transform] flex items-center justify-center px-1"
+          title="Preview A4 Document"
+        >
+          <Eye className="w-3 h-3 mr-0.5 sm:mr-1 text-blue-700 dark:text-blue-400 shrink-0" />
+          <span className="truncate">Preview</span>
         </Button>
 
         <Button
@@ -455,13 +490,15 @@ export const RecentBolCard = memo(function RecentBolCard({
           variant="outline"
           onClick={(e) => {
             e.stopPropagation()
-            onFiles()
+            startTransition(() => {
+              onFiles()
+            })
           }}
-          className="h-8.5 rounded-xl border-cyan-300 dark:border-cyan-800 bg-cyan-50/70 dark:bg-cyan-950/40 hover:bg-cyan-100 text-cyan-900 dark:text-cyan-300 font-bold text-xs cursor-pointer active:scale-95 transition-all flex items-center justify-center px-1"
+          className="h-8.5 rounded-xl border-cyan-300 dark:border-cyan-800 bg-cyan-50/70 dark:bg-cyan-950/40 hover:bg-cyan-100 text-cyan-900 dark:text-cyan-300 font-bold text-[11px] sm:text-xs cursor-pointer active:scale-95 transition-[color,background-color,border-color,transform] flex items-center justify-center px-1"
           title="Digital Shipment Files & Attachments"
         >
-          <FolderArchive className="w-3 h-3 mr-1 text-cyan-700 dark:text-cyan-400 shrink-0" />
-          <span>Files</span>
+          <FolderArchive className="w-3 h-3 mr-0.5 sm:mr-1 text-cyan-700 dark:text-cyan-400 shrink-0" />
+          <span className="truncate">Files</span>
         </Button>
 
         <Button
@@ -471,17 +508,26 @@ export const RecentBolCard = memo(function RecentBolCard({
           disabled={isDownloadingPdf}
           onClick={(e) => {
             e.stopPropagation()
-            onPdf()
+            startTransition(() => {
+              onPdf()
+            })
           }}
-          className="h-8.5 rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs cursor-pointer active:scale-95 transition-all flex items-center justify-center px-1"
-          title="Download or Print BOL PDF"
+          className={cn(
+            "h-8.5 rounded-xl border font-bold text-[11px] sm:text-xs cursor-pointer active:scale-95 transition-[color,background-color,border-color,transform] flex items-center justify-center px-1",
+            doc.pdf_status === "missing"
+              ? "border-rose-300 dark:border-rose-700 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 text-rose-900 dark:text-rose-300 shadow-2xs"
+              : doc.pdf_status === "outdated"
+              ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 text-amber-900 dark:text-amber-300 shadow-2xs"
+              : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200"
+          )}
+          title={doc.pdf_status === "missing" ? "Physical PDF missing — Click to Regenerate" : doc.pdf_status === "outdated" ? "Document updated since PDF generation — PDF Outdated" : "Download or Print BOL PDF"}
         >
           {isDownloadingPdf ? (
-            <Loader2 className="w-3 h-3 mr-1 animate-spin text-slate-600" />
+            <Loader2 className="w-3 h-3 mr-0.5 sm:mr-1 animate-spin text-slate-600" />
           ) : (
-            <FileDown className="w-3 h-3 mr-1 text-slate-700 dark:text-slate-300 shrink-0" />
+            <FileDown className={cn("w-3 h-3 mr-0.5 sm:mr-1 shrink-0", doc.pdf_status === "missing" ? "text-rose-600 dark:text-rose-400" : doc.pdf_status === "outdated" ? "text-amber-600 dark:text-amber-400" : "text-slate-700 dark:text-slate-300")} />
           )}
-          <span>PDF</span>
+          <span className="truncate">{doc.pdf_status === "missing" ? "Missing" : doc.pdf_status === "outdated" ? "Outdated" : "PDF"}</span>
         </Button>
       </div>
     </div>

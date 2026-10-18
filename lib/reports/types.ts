@@ -9,6 +9,8 @@ export interface SavedDocument {
   shipper_name: string
   consignee_name: string
   notify_party_name?: string
+  notify_party?: string
+  notifyParty?: string
   truck_number?: string
   driver_name?: string
   driver_father_name?: string

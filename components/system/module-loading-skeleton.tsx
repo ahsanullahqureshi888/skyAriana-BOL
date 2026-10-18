@@ -56,8 +56,12 @@ export function ModuleLoadingSkeleton({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Stage 3: 5+ seconds — Replace spinner with recovery card
-  if (secondsElapsed >= 5) {
+  const isDev = process.env.NODE_ENV !== "production"
+  const stage3Threshold = isDev ? 20 : 8
+  const stage2Threshold = isDev ? 5 : 2
+
+  // Stage 3: Delayed — Replace spinner with recovery card
+  if (secondsElapsed >= stage3Threshold) {
     return (
       <div className="w-full min-h-[60vh] flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
         <div className="w-full max-w-md bg-slate-900/95 border border-amber-500/40 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl text-center space-y-5">
@@ -133,8 +137,8 @@ export function ModuleLoadingSkeleton({
     )
   }
 
-  // Stage 2: 2 - 5 seconds — Warning indicator
-  if (secondsElapsed >= 2) {
+  // Stage 2: Warning indicator
+  if (secondsElapsed >= stage2Threshold) {
     return (
       <div className="w-full min-h-[50vh] flex flex-col items-center justify-center p-8 space-y-4 animate-in fade-in duration-150">
         <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center animate-pulse">

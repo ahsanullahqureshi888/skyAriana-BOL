@@ -1,0 +1,177 @@
+- generic [ref=e19]:
+  - complementary [ref=e20]:
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - img "Sky Ariana Logo" [ref=e23]
+        - generic [ref=e24]:
+          - generic [ref=e25]: SKY ARIANA
+          - generic [ref=e26]: IMPORT & EXPORT
+      - button "Collapse sidebar" [ref=e27] [cursor=pointer]
+    - navigation [ref=e30]:
+      - link "Dashboard" [ref=e31] [cursor=pointer]:
+        - /url: /
+      - link "Invoices" [ref=e38] [cursor=pointer]:
+        - /url: /invoices
+      - link "Customers" [ref=e43] [cursor=pointer]:
+        - /url: /customers
+      - link "Products & Services" [ref=e50] [cursor=pointer]:
+        - /url: /products
+      - link "Company Settings" [ref=e56] [cursor=pointer]:
+        - /url: /settings
+      - link "Backup & Restore" [ref=e61] [cursor=pointer]:
+        - /url: /backups
+      - link "Activity History" [ref=e67] [cursor=pointer]:
+        - /url: /logs
+    - button "Logout" [ref=e74] [cursor=pointer]
+  - generic [ref=e79]:
+    - banner [ref=e80]:
+      - generic [ref=e82]:
+        - img "Sky Ariana & Balam Bar Baran" [ref=e83]
+        - generic [ref=e84]:
+          - text: Business Operations
+          - heading "SKY ARIANA & BALAM BAR BARAN" [level=1] [ref=e85]
+      - generic [ref=e86]:
+        - generic [ref=e87]:
+          - button "Switch Language" [ref=e88] [cursor=pointer]
+          - combobox [ref=e92] [cursor=pointer]:
+            - option "English (EN)" [selected]
+            - option "فارسی (FA)"
+            - option "پښتو (PS)"
+        - generic [ref=e93]:
+          - generic [ref=e94]:
+            - generic [ref=e95]: Admin User
+            - generic [ref=e96]: Admin
+          - generic "Admin User (Admin)" [ref=e97]: AU
+    - main [ref=e98]:
+      - generic [ref=e99]:
+        - generic [ref=e101]:
+          - generic [ref=e102]: OVERVIEW
+          - heading "Dashboard" [level=1] [ref=e103]
+          - paragraph [ref=e104]: Welcome back to your Sky Ariana commercial invoice workspace.
+        - generic [ref=e105]:
+          - article [ref=e106]:
+            - generic [ref=e111]:
+              - generic [ref=e112]: Total Invoices
+              - strong [ref=e113]: "1"
+              - generic [ref=e114]: All generated invoices
+          - article [ref=e115]:
+            - generic [ref=e120]:
+              - generic [ref=e121]: Paid Invoices
+              - strong [ref=e122]: "0"
+              - generic [ref=e123]: Fully cleared documents
+          - article [ref=e124]:
+            - generic [ref=e128]:
+              - generic [ref=e129]: Unpaid Invoices
+              - strong [ref=e130]: "0"
+              - generic [ref=e131]: Awaiting client payments
+          - article [ref=e132]:
+            - generic [ref=e137]:
+              - generic [ref=e138]: Partially Paid
+              - strong [ref=e139]: "1"
+              - generic [ref=e140]: Deposits or milestone paid
+          - article [ref=e141]:
+            - generic [ref=e145]:
+              - generic [ref=e146]: Overdue Invoices
+              - strong [ref=e147]: "1"
+              - generic [ref=e148]: Passed payment due dates
+          - article [ref=e149]:
+            - generic [ref=e153]:
+              - generic [ref=e154]: Total Invoiced
+              - strong [ref=e155]: $115,000.00
+              - generic [ref=e156]: Grand sum of all invoices
+          - article [ref=e157]:
+            - generic [ref=e161]:
+              - generic [ref=e162]: Amount Received
+              - strong [ref=e163]: $19,200.00
+              - generic [ref=e164]: Total cash received
+          - article [ref=e165]:
+            - generic [ref=e169]:
+              - generic [ref=e170]: Outstanding Balance
+              - strong [ref=e171]: $95,800.00
+              - generic [ref=e172]: Remaining outstanding
+        - generic [ref=e173]:
+          - generic [ref=e174]:
+            - generic [ref=e175]:
+              - generic [ref=e176]:
+                - heading "Recent Invoices" [level=3] [ref=e177]
+                - link "View All" [ref=e178] [cursor=pointer]:
+                  - /url: /invoices
+              - table [ref=e182]:
+                - rowgroup [ref=e183]:
+                  - row [ref=e184]:
+                    - columnheader "Invoice No" [ref=e185]
+                    - columnheader "Customer" [ref=e186]
+                    - columnheader "Grand Total" [ref=e187]
+                    - columnheader "Status" [ref=e188]
+                - rowgroup [ref=e189]:
+                  - row [ref=e190]:
+                    - cell [ref=e191]:
+                      - link "INV-SABBB-2026-001" [ref=e192] [cursor=pointer]:
+                        - /url: /invoices/1
+                    - cell "WAVELON IMPEX" [ref=e193]
+                    - cell "USD 115,000.00" [ref=e194]
+                    - cell "partial" [ref=e195]
+            - generic [ref=e197]:
+              - heading "Recent Activity" [level=3] [ref=e199]
+              - generic [ref=e200]:
+                - generic [ref=e201]:
+                  - generic [ref=e202]: 03:37 PM
+                  - generic [ref=e203]: "Admin User User logged in: admin@skyariana.com"
+                - generic [ref=e204]:
+                  - generic [ref=e205]: 03:32 PM
+                  - generic [ref=e206]: "Admin User User logged in: admin@skyariana.com"
+                - generic [ref=e207]:
+                  - generic [ref=e208]: 03:29 PM
+                  - generic [ref=e209]: "Admin User User logged in: admin@skyariana.com"
+                - generic [ref=e210]:
+                  - generic [ref=e211]: 03:17 PM
+                  - generic [ref=e212]: "Admin User User logged in: admin@skyariana.com"
+                - generic [ref=e213]:
+                  - generic [ref=e214]: 03:13 PM
+                  - generic [ref=e215]: "Admin User User logged in: admin@skyariana.com"
+                - generic [ref=e216]:
+                  - generic [ref=e217]: 01:11 PM
+                  - generic [ref=e218]: "Admin User User logged in: admin@skyariana.com"
+                - generic [ref=e219]:
+                  - generic [ref=e220]: 12:48 PM
+                  - generic [ref=e221]: "Admin User User logged in: admin@skyariana.com"
+                - generic [ref=e222]:
+                  - generic [ref=e223]: 06:25 AM
+                  - generic [ref=e224]: "Admin User Invoice updated: INV-SABBB-2026-001"
+                - generic [ref=e225]:
+                  - generic [ref=e226]: 10:47 PM
+                  - generic [ref=e227]: "Admin User Invoice updated: INV-SABBB-2026-001"
+                - generic [ref=e228]:
+                  - generic [ref=e229]: 10:47 PM
+                  - generic [ref=e230]: "Admin User User logged in: admin@skyariana.com"
+          - generic [ref=e231]:
+            - generic [ref=e232]:
+              - heading "Quick Actions" [level=3] [ref=e234]
+              - generic [ref=e235]:
+                - link "Create New Invoice" [ref=e236] [cursor=pointer]:
+                  - /url: /invoices/create
+                - link "Manage Customers" [ref=e239] [cursor=pointer]:
+                  - /url: /customers
+                - link "Backup / Database Tools" [ref=e245] [cursor=pointer]:
+                  - /url: /backups
+            - generic [ref=e250]:
+              - generic [ref=e251]:
+                - heading "New Customers" [level=3] [ref=e252]
+                - link "View All" [ref=e253] [cursor=pointer]:
+                  - /url: /customers
+              - generic [ref=e256]:
+                - generic [ref=e257]:
+                  - generic [ref=e258]:
+                    - generic [ref=e259]: TIYA GOODS WHOLESALERS L.L.C
+                    - generic [ref=e260]: Account No :- 0333580516001
+                  - generic [ref=e261]: UAE
+                - generic [ref=e262]:
+                  - generic [ref=e263]:
+                    - generic [ref=e264]: SKY ARIANA LTD
+                    - generic [ref=e265]: SIRAJ AHMAD ALOKO
+                  - generic [ref=e266]: AFGHANISTAN
+                - generic [ref=e267]:
+                  - generic [ref=e268]:
+                    - generic [ref=e269]: WAVELON IMPEX
+                    - generic [ref=e270]: Purchasing Director
+                  - generic [ref=e271]: India

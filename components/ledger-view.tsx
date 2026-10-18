@@ -45,6 +45,7 @@ import { LedgerEntry } from '@/lib/types'
 import { EditLedgerEntryDialog } from '@/components/edit-ledger-entry-dialog'
 import Image from 'next/image'
 import { SupportedCurrency, CURRENCY_CONFIGS, convertFromUSD, formatCurrencyAmount, exportToUtf8CSV } from '@/lib/utils/currency'
+import { AccountLedgerDocument, buildLedgerPdfFileName, calculateLedgerTotals } from '@/components/ledger/account-ledger-document'
 
 // Column mapping type
 interface ColumnMapping {
@@ -180,6 +181,9 @@ export const LedgerView = memo(function LedgerView() {
   const [filterType, setFilterType] = useState<'all' | 'debit' | 'credit' | 'surrender' | 'driverRent'>('all')
   const [previewOrientation, setPreviewOrientation] = useState<'landscape' | 'portrait'>('landscape')
   const [previewZoom, setPreviewZoom] = useState<number>(100)
+  const [printTarget, setPrintTarget] = useState<'current-view' | 'full-ledger'>('current-view')
+  const [previewScope, setPreviewScope] = useState<'current-view' | 'full-ledger'>('current-view')
+  const [previewFitMode, setPreviewFitMode] = useState<'fit-page' | 'fit-width' | '100%'>('fit-page')
   const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('USD')
   const [mobileViewMode, setMobileViewMode] = useState<'cards' | 'table'>('cards')
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving'>('saved')
@@ -324,10 +328,12 @@ export const LedgerView = memo(function LedgerView() {
   const [printError, setPrintError] = useState<string | null>(null)
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false)
   const [isExportingPDF, setIsExportingPDF] = useState(false)
+  const [isDirectPrinting, setIsDirectPrinting] = useState(false)
 
   // Automatic beforeprint and afterprint listener for Ctrl+P / browser print
   useEffect(() => {
     const handleBeforePrint = () => {
+      setIsDirectPrinting(true)
       document.body.classList.add('ledger-landscape-active')
       document.documentElement.classList.add('ledger-landscape-active')
       document.body.setAttribute('data-print-mode', 'ledger-landscape')
@@ -426,6 +432,7 @@ export const LedgerView = memo(function LedgerView() {
     }
 
     const handleAfterPrint = () => {
+      setIsDirectPrinting(false)
       document.body.classList.remove('ledger-landscape-active')
       document.documentElement.classList.remove('ledger-landscape-active')
       document.body.removeAttribute('data-print-mode')
@@ -445,230 +452,7 @@ export const LedgerView = memo(function LedgerView() {
     }
   }, [])
 
-  const triggerDirectPrint = useCallback((orientation: 'landscape' | 'portrait' = 'landscape') => {
-    // Check if there's content to print
-    if (!currentCompany || currentCompany.ledgerEntries.length === 0) {
-      setPrintError('No ledger entries to print. Add some entries first.')
-      setTimeout(() => setPrintError(null), 5000)
-      return
-    }
-
-    const isLandscape = orientation === 'landscape'
-    const pageSize = isLandscape ? 'A4 landscape' : 'A4 portrait'
-    const pageMargin = isLandscape ? '4mm 5mm' : '5mm 5mm'
-
-    // 1. Inject dynamic style tag to guarantee browser print engine uses correct dimensions
-    const existingStyle = document.getElementById('sky-ledger-dynamic-print-style')
-    if (existingStyle) existingStyle.remove()
-
-    const styleEl = document.createElement('style')
-    styleEl.id = 'sky-ledger-dynamic-print-style'
-    styleEl.innerHTML = `
-      @page {
-        size: ${pageSize};
-        margin: ${pageMargin};
-      }
-      @page :first {
-        margin-top: 4mm;
-      }
-      @media print {
-        @page {
-          size: ${pageSize};
-          margin: ${pageMargin};
-        }
-        html, body {
-          background: #ffffff !important;
-          width: 100% !important;
-          max-width: 100% !important;
-          min-width: 100% !important;
-          height: auto !important;
-          min-height: 0 !important;
-          max-height: none !important;
-          overflow: visible !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-        .ledger-print-root, #sky-ledger-print-root {
-          display: block !important;
-          visibility: visible !important;
-          opacity: 1 !important;
-          position: static !important;
-          width: 100% !important;
-          max-width: 100% !important;
-          min-width: 100% !important;
-          height: auto !important;
-          overflow: visible !important;
-          page-break-inside: auto !important;
-          break-inside: auto !important;
-          background: #ffffff !important;
-          box-shadow: none !important;
-          border: none !important;
-          margin: 0 !important;
-          padding: 0 !important;
-        }
-        .ledger-print-table {
-          display: table !important;
-          width: 100% !important;
-          max-width: 100% !important;
-          min-width: 100% !important;
-          table-layout: fixed !important;
-          border-collapse: collapse !important;
-          page-break-inside: auto !important;
-          break-inside: auto !important;
-          margin: 0 !important;
-        }
-        .ledger-print-table thead {
-          display: table-header-group !important;
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-        }
-        .ledger-print-table tbody {
-          display: table-row-group !important;
-          page-break-inside: auto !important;
-          break-inside: auto !important;
-        }
-        .ledger-print-table tr {
-          display: table-row !important;
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-        }
-        .print-header {
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-          margin-bottom: 0 !important;
-        }
-        .totals-row, .driver-rent-banner, .print-signatures, .print-footer {
-          page-break-inside: avoid !important;
-          break-inside: avoid !important;
-        }
-      }
-    `
-    document.head.appendChild(styleEl)
-
-    // 2. Set mode markers on body and html
-    const modeAttr = isLandscape ? 'ledger-landscape' : 'ledger-portrait'
-    if (isLandscape) {
-      document.body.classList.add('ledger-landscape-active')
-      document.documentElement.classList.add('ledger-landscape-active')
-    } else {
-      document.body.classList.remove('ledger-landscape-active')
-      document.documentElement.classList.remove('ledger-landscape-active')
-    }
-    document.body.setAttribute('data-print-mode', modeAttr)
-    document.documentElement.setAttribute('data-print-mode', modeAttr)
-    document.body.setAttribute('data-print-active', 'ledger')
-    document.documentElement.setAttribute('data-print-active', 'ledger')
-
-    const cleanup = () => {
-      document.body.classList.remove('ledger-landscape-active')
-      document.documentElement.classList.remove('ledger-landscape-active')
-      document.body.removeAttribute('data-print-mode')
-      document.documentElement.removeAttribute('data-print-mode')
-      document.body.removeAttribute('data-print-active')
-      document.documentElement.removeAttribute('data-print-active')
-      const el = document.getElementById('sky-ledger-dynamic-print-style')
-      if (el) el.remove()
-      window.removeEventListener('afterprint', cleanup)
-    }
-
-    window.addEventListener('afterprint', cleanup, { once: true })
-
-    // 3. Trigger native print with slight delay for DOM reflow
-    setTimeout(() => {
-      window.print()
-    }, 60)
-  }, [currentCompany])
-
-  const handlePrint = useCallback(() => {
-    triggerDirectPrint()
-  }, [triggerDirectPrint])
-
-  const handleExportLandscapePDF = async () => {
-    if (!currentCompany || currentCompany.ledgerEntries.length === 0) {
-      setPrintError('No ledger entries to export.')
-      setTimeout(() => setPrintError(null), 4000)
-      return
-    }
-
-    setIsExportingPDF(true)
-    try {
-      if (typeof document !== 'undefined' && document.fonts) {
-        try {
-          await document.fonts.ready
-        } catch {}
-      }
-
-      // Cooperative yield to ensure UI loader renders
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      const printContainer = document.querySelector('#sky-ledger-print-root') || document.querySelector('.ledger-print-root')
-      if (!printContainer) throw new Error('Print container not found')
-
-      const { toCanvas } = await import('html-to-image')
-      const { jsPDF } = await import('jspdf')
-
-      const canvas = await toCanvas(printContainer as HTMLElement, {
-        pixelRatio: 2.8, // ~270 DPI high-definition sharpness for complex financial tables
-        quality: 1.0,
-        skipFonts: true,
-        backgroundColor: '#ffffff',
-        style: {
-          transform: 'none',
-          margin: '0',
-          boxShadow: 'none',
-          opacity: '1',
-          visibility: 'visible',
-          fontFamily: "'NotoNaskhArabic', 'Vazirmatn', Tahoma, Arial, sans-serif",
-          WebkitFontSmoothing: 'antialiased',
-          MozOsxFontSmoothing: 'grayscale',
-          textRendering: 'optimizeLegibility',
-        } as any,
-      })
-
-      // Cooperative yield between rasterization and PDF generation
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.99)
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4',
-      })
-
-      const pdfWidth = 297
-      const pdfHeight = 210
-      const imgProps = pdf.getImageProperties(imgData)
-      const canvasHeightMM = (imgProps.height * pdfWidth) / imgProps.width
-
-      let heightLeft = canvasHeightMM
-      let position = 0
-
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'SLOW')
-      heightLeft -= pdfHeight
-
-      while (heightLeft > 0) {
-        position = heightLeft - canvasHeightMM
-        pdf.addPage()
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'SLOW')
-        heightLeft -= pdfHeight
-      }
-
-      // Final yield before save
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      const compName = currentCompany?.name || 'Company'
-      const fileName = `${compName.replace(/[^a-z0-9]/gi, '_')}_Account_Ledger_${new Date().toISOString().split('T')[0]}.pdf`
-      pdf.save(fileName)
-    } catch (err) {
-      console.error('Failed to export PDF:', err)
-      setPrintError('Failed to generate PDF. You can use the Print button to Save as PDF.')
-      setTimeout(() => setPrintError(null), 5000)
-    } finally {
-      setIsExportingPDF(false)
-    }
-  }
+  // Print, PDF export, and Preview handlers are defined below after filteredEntries computation.
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -1259,6 +1043,251 @@ export const LedgerView = memo(function LedgerView() {
     0
   )
 
+  const printEntries = useMemo(() => {
+    if (printTarget === 'full-ledger') {
+      return allCompanyEntries
+    }
+    return filteredEntries
+  }, [printTarget, allCompanyEntries, filteredEntries])
+
+  const previewEntries = useMemo(() => {
+    if (previewScope === 'full-ledger') {
+      return allCompanyEntries
+    }
+    return filteredEntries
+  }, [previewScope, allCompanyEntries, filteredEntries])
+
+  const currentFilterLabel = useMemo(() => {
+    const parts: string[] = []
+    if (filterType === 'debit') parts.push('Debits (Shipments)')
+    else if (filterType === 'credit') parts.push('Credits (Payments)')
+    else if (filterType === 'surrender') parts.push('Surrendered B/L')
+    else if (filterType === 'driverRent') parts.push('With Driver Rent (AFN)')
+    if (deferredSearchTerm.trim()) {
+      parts.push(`Search: "${deferredSearchTerm.trim()}"`)
+    }
+    return parts.length > 0 ? parts.join(' • ') : undefined
+  }, [filterType, deferredSearchTerm])
+
+  const activeDateRange = useMemo(() => {
+    if (startDate || endDate) {
+      return { start: startDate, end: endDate }
+    }
+    return undefined
+  }, [startDate, endDate])
+
+  const isCurrentlyFiltered = useMemo(() => {
+    return filterType !== 'all' || !!deferredSearchTerm.trim() || !!startDate || !!endDate
+  }, [filterType, deferredSearchTerm, startDate, endDate])
+
+  const triggerDirectPrint = useCallback((target: 'current-view' | 'full-ledger' = 'current-view', orientation: 'landscape' | 'portrait' = 'landscape') => {
+    if (!currentCompany || currentCompany.ledgerEntries.length === 0) {
+      setPrintError('No ledger entries to print. Add some entries first.')
+      setTimeout(() => setPrintError(null), 5000)
+      return
+    }
+
+    setIsDirectPrinting(true)
+    setPrintTarget(target)
+    const isLandscape = orientation === 'landscape'
+    const pageSize = isLandscape ? 'A4 landscape' : 'A4 portrait'
+    const pageMargin = isLandscape ? '6mm 8mm' : '8mm 8mm'
+
+    const existingStyle = document.getElementById('sky-ledger-dynamic-print-style')
+    if (existingStyle) existingStyle.remove()
+
+    const styleEl = document.createElement('style')
+    styleEl.id = 'sky-ledger-dynamic-print-style'
+    styleEl.innerHTML = `
+      @page {
+        size: ${pageSize};
+        margin: ${pageMargin};
+      }
+      @page :first {
+        margin-top: ${isLandscape ? '5mm' : '7mm'};
+      }
+      @media print {
+        @page {
+          size: ${pageSize};
+          margin: ${pageMargin};
+        }
+        html, body {
+          background: #ffffff !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 100% !important;
+          height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .ledger-print-root, #sky-ledger-print-root {
+          display: block !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          position: static !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 100% !important;
+          height: auto !important;
+          overflow: visible !important;
+          page-break-inside: auto !important;
+          break-inside: auto !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          border: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .account-ledger-print-root {
+          width: 100% !important;
+          max-width: 100% !important;
+          box-shadow: none !important;
+          border: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          background: #ffffff !important;
+        }
+        .ledger-print-table {
+          display: table !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 100% !important;
+          table-layout: fixed !important;
+          border-collapse: collapse !important;
+          page-break-inside: auto !important;
+          break-inside: auto !important;
+          margin: 0 !important;
+        }
+        .ledger-print-table thead {
+          display: table-header-group !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+        .ledger-print-table tbody {
+          display: table-row-group !important;
+          page-break-inside: auto !important;
+          break-inside: auto !important;
+        }
+        .ledger-print-table tr {
+          display: table-row !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+        .print-header {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          margin-bottom: 0 !important;
+        }
+        .statement-meta-banner, .totals-row, .driver-rent-banner, .print-signatures, .print-footer {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+      }
+    `
+    document.head.appendChild(styleEl)
+
+    const modeAttr = isLandscape ? 'ledger-landscape' : 'ledger-portrait'
+    if (isLandscape) {
+      document.body.classList.add('ledger-landscape-active')
+      document.documentElement.classList.add('ledger-landscape-active')
+    } else {
+      document.body.classList.remove('ledger-landscape-active')
+      document.documentElement.classList.remove('ledger-landscape-active')
+    }
+    document.body.setAttribute('data-print-mode', modeAttr)
+    document.documentElement.setAttribute('data-print-mode', modeAttr)
+    document.body.setAttribute('data-print-active', 'ledger')
+    document.documentElement.setAttribute('data-print-active', 'ledger')
+
+    const cleanup = () => {
+      setIsDirectPrinting(false)
+      document.body.classList.remove('ledger-landscape-active')
+      document.documentElement.classList.remove('ledger-landscape-active')
+      document.body.removeAttribute('data-print-mode')
+      document.documentElement.removeAttribute('data-print-mode')
+      document.body.removeAttribute('data-print-active')
+      document.documentElement.removeAttribute('data-print-active')
+      const el = document.getElementById('sky-ledger-dynamic-print-style')
+      if (el) el.remove()
+      window.removeEventListener('afterprint', cleanup)
+    }
+
+    window.addEventListener('afterprint', cleanup, { once: true })
+
+    setTimeout(() => {
+      window.print()
+    }, 150)
+  }, [currentCompany])
+
+  const handlePrint = useCallback(() => {
+    triggerDirectPrint('current-view', 'landscape')
+  }, [triggerDirectPrint])
+
+  const handleExportLandscapePDF = useCallback(async (target: 'current-view' | 'full-ledger' = 'current-view') => {
+    if (!currentCompany || currentCompany.ledgerEntries.length === 0) {
+      setPrintError('No ledger entries to export.')
+      setTimeout(() => setPrintError(null), 4000)
+      return
+    }
+
+    const targetEntries = target === 'full-ledger' ? currentCompany.ledgerEntries : filteredEntries
+    if (targetEntries.length === 0) {
+      setPrintError('No ledger entries match the selected filter.')
+      setTimeout(() => setPrintError(null), 4000)
+      return
+    }
+
+    setIsExportingPDF(true)
+    setPrintTarget(target)
+
+    const isFiltered = target === 'current-view' && (filterType !== 'all' || !!deferredSearchTerm.trim() || !!startDate || !!endDate)
+    const dateRangeObj = target === 'current-view' && (startDate || endDate) ? { start: startDate, end: endDate } : undefined
+    const fileName = buildLedgerPdfFileName(currentCompany.name, dateRangeObj, isFiltered)
+
+    try {
+      if (typeof document !== 'undefined' && document.fonts) {
+        try {
+          await document.fonts.ready
+        } catch {}
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 150))
+
+      // 1. Electron Native PDF Generator (Vector, Searchable, Selectable)
+      const skyDesktop = typeof window !== 'undefined' ? (window as any).skyDesktop : undefined
+      if (skyDesktop?.exportPageToPdf) {
+        const filePath = await skyDesktop.exportPageToPdf(fileName)
+        if (filePath) {
+          toast.success('Ledger PDF saved successfully!', {
+            description: filePath.split(/[/\\]/).pop(),
+            duration: 7000,
+            action: {
+              label: 'Open File',
+              onClick: () => skyDesktop?.openFile?.(filePath),
+            },
+          })
+        }
+        return
+      }
+
+      // 2. Browser Environment Fallback: Vector-quality print-to-PDF via system dialog
+      const originalTitle = document.title
+      document.title = fileName.replace(/\.pdf$/i, '')
+      triggerDirectPrint(target, 'landscape')
+      setTimeout(() => {
+        document.title = originalTitle
+      }, 4000)
+    } catch (err) {
+      console.error('Failed to export PDF:', err)
+      setPrintError('Could not create Ledger PDF. Please use the Print button to Save as PDF.')
+      setTimeout(() => setPrintError(null), 5000)
+    } finally {
+      setIsExportingPDF(false)
+    }
+  }, [currentCompany, filteredEntries, filterType, deferredSearchTerm, startDate, endDate, triggerDirectPrint])
+
   const handleExportExcel = async () => {
     // If large ledger (> 250 rows), attempt background worker streaming to eliminate UI thread latency
     if (filteredEntries.length > 250) {
@@ -1637,7 +1666,7 @@ export const LedgerView = memo(function LedgerView() {
                 <FileText className="h-4 w-4 text-blue-600" />
                 Export CSV (.csv)
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportLandscapePDF} className="gap-2 cursor-pointer hover:bg-emerald-50 font-semibold rounded-xl p-2 text-rose-700 text-xs sm:text-sm">
+              <DropdownMenuItem onClick={() => handleExportLandscapePDF('current-view')} className="gap-2 cursor-pointer hover:bg-emerald-50 font-semibold rounded-xl p-2 text-rose-700 text-xs sm:text-sm">
                 <Download className="h-4 w-4 text-rose-600" />
                 Export PDF (A4 Landscape)
               </DropdownMenuItem>
@@ -1664,13 +1693,16 @@ export const LedgerView = memo(function LedgerView() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Print & Preview Button Group with Multi-Orientation Dropdown */}
+          {/* Print & Preview Button Group with Multi-Action Dropdown */}
           <Button
             type="button"
             variant="outline"
             className="flex-1 sm:flex-initial gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl h-10 sm:h-12 px-3 sm:px-4 bg-white/80 hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-sm transition-all text-xs sm:text-sm cursor-pointer"
-            onClick={() => setIsPrintPreviewOpen(true)}
-            title="Open Live Print Preview with Zoom & Orientation Options"
+            onClick={() => {
+              setPreviewScope('current-view')
+              setIsPrintPreviewOpen(true)
+            }}
+            title="Open Live Print Preview with Zoom & Fit Options"
           >
             <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
             <span>Preview</span>
@@ -1681,8 +1713,8 @@ export const LedgerView = memo(function LedgerView() {
               <Button
                 type="button"
                 className="h-10 sm:h-12 px-3.5 sm:px-4 rounded-r-none bg-blue-900 hover:bg-blue-950 text-white font-bold text-xs sm:text-sm gap-1.5 cursor-pointer"
-                onClick={() => triggerDirectPrint('landscape')}
-                title="Direct Print Statement (A4 Landscape - Recommended)"
+                onClick={() => triggerDirectPrint('current-view', 'landscape')}
+                title="Print Current View (A4 Landscape - Visible Entries Only)"
               >
                 <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-400" />
                 <span>Print</span>
@@ -1691,53 +1723,71 @@ export const LedgerView = memo(function LedgerView() {
                 <Button
                   type="button"
                   className="h-10 sm:h-12 px-2 rounded-l-none border-l border-blue-800 bg-blue-900 hover:bg-blue-950 text-white text-xs cursor-pointer"
-                  title="Print & Export Options"
+                  title="Print & PDF Export Options"
                 >
                   <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
             </div>
-            <DropdownMenuContent align="end" className="w-64 p-1.5 text-xs">
+            <DropdownMenuContent align="end" className="w-72 p-1.5 text-xs">
               <DropdownMenuItem
                 className="cursor-pointer font-bold gap-2 py-2"
-                onClick={() => triggerDirectPrint('landscape')}
+                onClick={() => triggerDirectPrint('current-view', 'landscape')}
               >
                 <Printer className="h-4 w-4 text-blue-600" />
                 <div className="flex flex-col">
-                  <span>Print A4 Landscape (Recommended)</span>
-                  <span className="text-[10px] text-slate-500 font-normal">Full 14-column layout, edge-to-edge</span>
+                  <span>Print Current View ({filteredEntries.length})</span>
+                  <span className="text-[10px] text-slate-500 font-normal">Prints active filter / visible rows only</span>
                 </div>
               </DropdownMenuItem>
+
               <DropdownMenuItem
                 className="cursor-pointer font-bold gap-2 py-2"
-                onClick={() => triggerDirectPrint('portrait')}
+                onClick={() => triggerDirectPrint('full-ledger', 'landscape')}
               >
-                <Printer className="h-4 w-4 text-slate-600" />
+                <Printer className="h-4 w-4 text-indigo-600" />
                 <div className="flex flex-col">
-                  <span>Print A4 Portrait</span>
-                  <span className="text-[10px] text-slate-500 font-normal">Vertical format</span>
+                  <span>Print Full Ledger ({currentCompany.ledgerEntries.length})</span>
+                  <span className="text-[10px] text-slate-500 font-normal">Prints all 35 transactions in full</span>
                 </div>
               </DropdownMenuItem>
+
               <DropdownMenuItem
                 className="cursor-pointer font-bold gap-2 py-2"
-                onClick={() => setIsPrintPreviewOpen(true)}
+                onClick={() => handleExportLandscapePDF('current-view')}
+              >
+                <Download className="h-4 w-4 text-emerald-600" />
+                <div className="flex flex-col">
+                  <span>Save Current View as PDF</span>
+                  <span className="text-[10px] text-slate-500 font-normal">Searchable vector PDF of visible rows</span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                className="cursor-pointer font-bold gap-2 py-2"
+                onClick={() => handleExportLandscapePDF('full-ledger')}
+              >
+                <Download className="h-4 w-4 text-teal-600" />
+                <div className="flex flex-col">
+                  <span>Save Full Ledger as PDF</span>
+                  <span className="text-[10px] text-slate-500 font-normal">Full statement PDF ({currentCompany.ledgerEntries.length} entries)</span>
+                </div>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                className="cursor-pointer font-bold gap-2 py-2"
+                onClick={() => {
+                  setPreviewScope('current-view')
+                  setIsPrintPreviewOpen(true)
+                }}
               >
                 <Eye className="h-4 w-4 text-amber-600" />
                 <div className="flex flex-col">
                   <span>Live Print Preview</span>
-                  <span className="text-[10px] text-slate-500 font-normal">Inspect pages before printing</span>
+                  <span className="text-[10px] text-slate-500 font-normal">Inspect A4 landscape page stack & totals</span>
                 </div>
               </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer font-bold gap-2 py-2"
-                onClick={handleExportLandscapePDF}
-              >
-                <Download className="h-4 w-4 text-emerald-600" />
-                <div className="flex flex-col">
-                  <span>Export Statement PDF</span>
-                  <span className="text-[10px] text-slate-500 font-normal">Download landscape PDF file</span>
-                </div>
-              </DropdownMenuItem>
+
               <DropdownMenuItem
                 className="cursor-pointer font-bold gap-2 py-2"
                 onClick={handleExportExcel}
@@ -2940,466 +2990,173 @@ export const LedgerView = memo(function LedgerView() {
           <p className="text-blue-600">MOB: +93 700 939 365, +93711 4355 29</p>
         </div>
 
-        {/* Print Table - Rendered via React Portal directly on document.body */}
-        <LedgerPrintPortal>
-          <div data-print-root="true" className="print-container print-wrapper ledger-print-root" style={{ position: 'relative', background: '#ffffff', width: '100%', maxWidth: '100%', boxSizing: 'border-box', border: '1px solid #bfdbfe', borderRadius: '4px', overflow: 'visible' }}>
-            {/* Background Watermark Image if set in settings */}
-            {getLedgerSettings().backgroundImage && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img 
-                src={getLedgerSettings().backgroundImage} 
-                alt="Background Watermark" 
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  opacity: 0.07,
-                  pointerEvents: 'none',
-                  zIndex: 0,
-                }}
-              />
-            )}
-
-            {/* Content Container */}
-            <div style={{ position: 'relative', zIndex: 1, width: '100%' }}>
-              {/* Print Header with Logo and Info - Matching Screen UI Exactly */}
-              <div className="print-header" style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'flex-start', 
-                padding: '8px 16px',
-                borderBottom: '1.5px solid #bfdbfe',
-                background: 'linear-gradient(to right, rgba(239, 246, 255, 0.8), rgba(255, 255, 255, 0.6), rgba(239, 246, 255, 0.8))',
-              }}>
-                {/* Left Side - Account/Shipper Info */}
-                <div style={{ flex: '1', textAlign: 'left' }}>
-                  <p style={{ fontSize: '7.8pt', color: '#2563eb', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>ACCOUNT LEDGER</p>
-                  <p style={{ fontSize: '13pt', fontWeight: '800', color: '#1e3a8a', marginBottom: '1px', lineHeight: '1.15' }}>{currentCompany.name}</p>
-                  <p style={{ fontSize: '7.2pt', color: '#3b82f6', fontWeight: '500' }}>Account Holder / Shipper</p>
-                  <p style={{ fontSize: '7.2pt', color: '#1d4ed8', marginTop: '4px', fontWeight: '600' }}>
-                    {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                  </p>
-                </div>
-
-                {/* Center - Logo and Company Name */}
-                <div style={{ flex: '1', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src={getLedgerSettings().logoUrl || getLedgerSettings().companyLogo || "/logo.png"} 
-                    alt="SKY ARIANA Logo" 
-                    className="print-logo"
-                    style={{ 
-                      height: '46px', 
-                      maxWidth: '140px', 
-                      objectFit: 'contain',
-                      marginBottom: '2px',
-                      display: 'inline-block'
-                    }} 
-                  />
-                  <p style={{ fontSize: '13pt', fontWeight: '800', color: '#1e40af', marginBottom: '0px', lineHeight: '1.1' }}>SKY ARIANA</p>
-                  <p style={{ fontSize: '7.2pt', color: '#2563eb', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: '700' }}>Transport & Logistics</p>
-                </div>
-
-                {/* Right Side - Company Address */}
-                <div style={{ flex: '1', textAlign: 'right' }}>
-                  <p style={{ fontSize: '7.8pt', fontWeight: '700', color: '#1d4ed8', marginBottom: '2px' }}>AFGHANISTAN OFFICE</p>
-                  <p style={{ fontSize: '6.5pt', color: '#2563eb', lineHeight: '1.3' }}>
-                    2nd Floor, 16 No. Office,<br />
-                    Shahidano Chowk, Etimad Rahmi Market,<br />
-                    Kandahar, Afghanistan
-                  </p>
-                  <p style={{ fontSize: '6.5pt', color: '#3b82f6', marginTop: '3px' }}>
-                    Tel: +93 700 939 365<br />
-                    info@skyariana.com
-                  </p>
-                  <p style={{ fontSize: '6pt', color: '#60a5fa', marginTop: '2px' }}>Licence: 2401-2198</p>
-                </div>
-              </div>
-
-              {/* Table - Exact 14 Columns summing to 100% */}
-              <table className="ledger-print-table" style={{ width: '100%', minWidth: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', margin: '0' }}>
-                <thead>
-                  <tr style={{ background: 'linear-gradient(to right, #dbeafe 0%, #eff6ff 50%, #ffffff 100%)' }}>
-                    <th style={{ width: '3.0%', border: '1px solid #93c5fd', padding: '3.5px 1px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>S.NO</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>شمېره</div>
-                    </th>
-                    <th style={{ width: '6.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>نېټه / تاریخ</div>
-                    </th>
-                    <th style={{ width: '14.0%', border: '1px solid #93c5fd', padding: '3.5px 2px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>SHIPPER / Description</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>لیږدونکی / تفصیل</div>
-                    </th>
-                    <th style={{ width: '5.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>INV.NO</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>انوایس</div>
-                    </th>
-                    <th style={{ width: '6.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE-OF-SHIP</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د بار نېټه</div>
-                    </th>
-                    <th style={{ width: '7.0%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BARNAMEH</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بارنامه</div>
-                    </th>
-                    <th style={{ width: '7.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>B/L NO</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بی ال</div>
-                    </th>
-                    <th style={{ width: '8.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONTAINER</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د کانټینر شمېره</div>
-                    </th>
-                    <th style={{ width: '12.5%', border: '1px solid #93c5fd', padding: '3.5px 2px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONSIGNEE</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د مال وصول کوونکی</div>
-                    </th>
-                    <th style={{ width: '9.0%', border: '1px solid #93c5fd', padding: '3.5px 2px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>QUANTITY / GOODS</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د توکو بسته بندي</div>
-                    </th>
-                    <th style={{ width: '8.0%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DRIVER FREIGHT</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>کرایه موتر / درایور</div>
-                    </th>
-                    <th style={{ width: '5.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#dc2626', whiteSpace: 'nowrap' }}>DEBIT</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#dc2626', direction: 'rtl', whiteSpace: 'nowrap' }}>د پور حساب</div>
-                    </th>
-                    <th style={{ width: '5.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#059669', whiteSpace: 'nowrap' }}>CREDIT</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#059669', direction: 'rtl', whiteSpace: 'nowrap' }}>ترلاسه شوی</div>
-                    </th>
-                    <th style={{ width: '5.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                      <div className="header-en" style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BALANCE</div>
-                      <div className="header-ps" style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>(USD) بیلانس</div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredEntries.map((entry: LedgerEntry, idx: number) => {
-                    const isCredit = entry.credit > 0;
-                    return (
-                    <tr 
-                      key={entry.id}
-                      className={isCredit ? 'credit-row' : ''}
-                      style={{ 
-                        height: '21px', 
-                        pageBreakInside: 'avoid', 
-                        breakInside: 'avoid',
-                        backgroundColor: isCredit ? '#ecfdf5' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc')
-                      }}
-                    >
-                      <td style={{ fontWeight: 700, color: isCredit ? '#065f46' : '#1e40af', textAlign: 'center', fontSize: '7.5pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '3px 1px' }}>{entry.sNo}</td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '7pt', fontFamily: 'monospace', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.date}</td>
-                      <td style={{ textAlign: 'left', paddingLeft: '4px', paddingRight: '2px', fontWeight: isCredit ? 700 : 500, fontSize: '7pt', lineHeight: '1.2', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#0f172a' }}>
-                        {isCredit ? (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                            <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981', flexShrink: 0 }}></span>
-                            <span>{entry.shipperDescription || 'RECEIVING MONEY'}</span>
-                          </span>
-                        ) : entry.shipperDescription}
-                      </td>
-                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.invoiceNo}</td>
-                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '7pt', fontFamily: 'monospace', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.dateOfShip}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold', fontFamily: 'monospace', color: '#1e3a8a', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', backgroundColor: isCredit ? '#ecfdf5' : '#ffffff' }}>{entry.barnamehNo || ''}</td>
-                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
-                          <span style={{ color: isCredit ? '#064e3b' : '#1e3a8a', fontWeight: '700' }}>{entry.billOfLanding || '—'}</span>
-                          {entry.surrenderedBL && (
-                            <span style={{ 
-                              border: '1px solid #059669',
-                              color: '#059669',
-                              padding: '0.5px 3.5px',
-                              fontSize: '5.2pt',
-                              fontWeight: '800',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.04em',
-                              backgroundColor: '#ecfdf5',
-                              borderRadius: '2px',
-                              whiteSpace: 'nowrap',
-                              lineHeight: '1.1',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '2px'
-                            }}>
-                              <span>✓</span>
-                              <span>Surrender</span>
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'center', fontSize: '7pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px' }}>
-                          {entry.containerType && (
-                            <span style={{ 
-                              display: 'inline-block',
-                              padding: '0.5px 3.5px', 
-                              borderRadius: '3px', 
-                              fontSize: '5.8pt', 
-                              fontWeight: '800', 
-                              backgroundColor: '#dbeafe', 
-                              color: '#1e3a8a', 
-                              border: '1px solid #93c5fd',
-                              lineHeight: '1.1',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {entry.containerType}
-                            </span>
-                          )}
-                          <span style={{ fontFamily: 'monospace', fontWeight: '800', fontSize: '7pt', color: '#0f172a', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
-                            {entry.containerNo || (entry.containerType ? "" : "—")}
-                          </span>
-                          {entry.containerDetails && (
-                            <span style={{ 
-                              fontSize: '5.2pt', 
-                              fontWeight: '600',
-                              color: '#065f46', 
-                              backgroundColor: '#ecfdf5', 
-                              border: '1px solid #a7f3d0', 
-                              borderRadius: '2px', 
-                              padding: '0.5px 3px', 
-                              maxWidth: '110px', 
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              lineHeight: '1.1'
-                            }}>
-                              {entry.containerDetails}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'left', paddingLeft: '4px', paddingRight: '2px', fontSize: '7pt', lineHeight: '1.2', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.consignee}</td>
-                      <td style={{ textAlign: 'left', paddingLeft: '4px', paddingRight: '2px', fontSize: '7pt', lineHeight: '1.2', fontWeight: 600, border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.quantity}</td>
-                      <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '7pt', backgroundColor: '#fffdf5', lineHeight: '1.2', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', fontFamily: 'monospace' }}>
-                        {entry.driverFreight && entry.driverFreight.trim() !== ''
-                          ? entry.driverFreight
-                          : ''}
-                      </td>
-                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe' }}>
-                        {entry.debit > 0 ? formatCurrency(entry.debit) : ''}
-                      </td>
-                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#047857', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#a7f3d0' : '#ffffff' }}>
-                        {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
-                      </td>
-                      <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: isCredit ? '#064e3b' : '#1e3a8a', fontFamily: 'monospace', fontSize: '7.2pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#d1fae5' : '#eff6ff' }}>
-                        {entry.debit > 0 || entry.credit > 0 ? formatCurrency(entry.balance) : ''}
-                      </td>
-                    </tr>
-                  );
-                  })}
-                  {/* Empty rows only if very few entries (< 8) to fill single-sheet view cleanly without creating extra blank pages */}
-                  {filteredEntries.length < 8 && Array.from({ length: 8 - filteredEntries.length }).map((_, idx) => (
-                    <tr key={`empty-${idx}`} style={{ height: '19px', pageBreakInside: 'avoid', breakInside: 'avoid', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                      <td style={{ textAlign: 'center', color: '#1e40af', fontSize: '7pt', border: '1px solid #bfdbfe' }}>{filteredEntries.length + idx + 1}</td>
-                      <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ border: '1px solid #bfdbfe' }}></td>
-                      <td style={{ textAlign: 'right', paddingRight: '4px', color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7pt', border: '1px solid #bfdbfe' }}>$0</td>
-                    </tr>
-                  ))}
-                  {/* Totals row */}
-                  <tr className="totals-row" style={{ height: '24px', pageBreakInside: 'avoid', breakInside: 'avoid', background: 'linear-gradient(to right, #dbeafe 0%, #eff6ff 50%, #ffffff 100%)' }}>
-                    <td colSpan={10} style={{ textAlign: 'right', fontWeight: 900, color: '#1e3a8a', fontSize: '8pt', paddingRight: '8px', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>TOTAL:</td>
-                    <td style={{ textAlign: 'center', fontWeight: 800, color: '#92400e', backgroundColor: '#fef3c7', fontSize: '7.2pt', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe', fontFamily: 'monospace' }}>{formatAFN(totalDriverRentAFN)}</td>
-                    <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: '#dc2626', fontFamily: 'monospace', fontSize: '7.2pt', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>{formatCurrency(totalDebit)}</td>
-                    <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: '#059669', fontFamily: 'monospace', fontSize: '7.2pt', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>{formatCurrency(totalCredit)}</td>
-                    <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7.5pt', backgroundColor: '#dbeafe', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>{formatCurrency(finalBalance)}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Driver Rent Summary Highlight Banner - Exact Same as Screen UI */}
-              <div style={{ 
-                margin: '6px 12px', 
-                padding: '6px 12px', 
-                background: 'linear-gradient(to right, rgba(245, 158, 11, 0.15), rgba(234, 179, 8, 0.1), rgba(245, 158, 11, 0.15))', 
-                border: '1px solid rgba(252, 211, 77, 0.8)', 
-                borderRadius: '8px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                pageBreakInside: 'avoid',
-                breakInside: 'avoid'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#f59e0b', color: '#0f172a', fontWeight: '900', fontSize: '8pt', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    AFN
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '7.8pt', fontWeight: '800', color: '#0f172a' }}>
-                        DRIVER RENT TOTAL (مجموع کرایه درایوران)
-                      </span>
-                      <span style={{ backgroundColor: '#f59e0b', color: '#0f172a', fontWeight: '900', fontSize: '6pt', padding: '1px 5px', borderRadius: '9999px', textTransform: 'uppercase' }}>
-                        افغانی
-                      </span>
-                    </div>
-                    <p style={{ fontSize: '6.5pt', fontWeight: '600', color: '#334155', margin: '1px 0 0 0' }}>
-                      Combined freight rent total for drivers calculated across active ledger entries
-                    </p>
-                  </div>
-                </div>
-                <span style={{ fontSize: '9.5pt', fontWeight: '900', color: '#78350f', backgroundColor: '#ffffff', border: '1px solid #fcd34d', padding: '3px 10px', borderRadius: '6px', fontFamily: 'monospace' }}>
-                  {formatAFN(totalDriverRentAFN)}
-                </span>
-              </div>
-
-              {/* Official Signature & Stamp Section */}
-              <div className="print-signatures" style={{ 
-                marginTop: '6px', 
-                marginBottom: '6px',
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'flex-end',
-                padding: '0 16px',
-                pageBreakInside: 'avoid',
-                breakInside: 'avoid'
-              }}>
-                <div style={{ textAlign: 'center', width: '28%' }}>
-                  <div style={{ borderBottom: '1.5px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
-                  <p style={{ fontSize: '7.2pt', fontWeight: '800', color: '#1e3a8a' }}>PREPARED BY / ترتیب کوونکی</p>
-                  <p style={{ fontSize: '6pt', color: '#64748b' }}>Accountant Signature</p>
-                </div>
-                <div style={{ textAlign: 'center', width: '28%' }}>
-                  <div style={{ borderBottom: '1.5px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
-                  <p style={{ fontSize: '7.2pt', fontWeight: '800', color: '#1e3a8a' }}>CHECKED BY / کتونکی</p>
-                  <p style={{ fontSize: '6pt', color: '#64748b' }}>Auditor Approval</p>
-                </div>
-                <div style={{ textAlign: 'center', width: '32%' }}>
-                  <div style={{ border: '1.5px dashed #93c5fd', borderRadius: '6px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f7ff', marginBottom: '2px' }}>
-                    <span style={{ fontSize: '6.5pt', color: '#3b82f6', fontWeight: '700', letterSpacing: '0.04em' }}>[ OFFICIAL COMPANY STAMP ]</span>
-                  </div>
-                  <p style={{ fontSize: '7.2pt', fontWeight: '800', color: '#1e3a8a' }}>AUTHORIZED STAMP & SIGNATURE</p>
-                  <p style={{ fontSize: '6pt', color: '#64748b' }}>د منلو امضا او ټاپه</p>
-                </div>
-              </div>
-
-              {/* Print Footer - Exact Matching Screen UI */}
-              <div className="print-footer" style={{ 
-                padding: '8px 16px', 
-                borderTop: '1px solid rgba(191, 219, 254, 0.8)',
-                textAlign: 'center',
-                background: 'linear-gradient(to right, rgba(239, 246, 255, 0.7), rgba(255, 255, 255, 0.7), rgba(239, 246, 255, 0.7))',
-                pageBreakInside: 'avoid',
-                breakInside: 'avoid'
-              }}>
-                <p style={{ fontSize: '6.8pt', color: '#1e40af', fontWeight: '700', margin: '0 0 1px 0' }}>info@skyariana.com, transport@skyariana.com</p>
-                <p style={{ fontSize: '6.5pt', color: '#2563eb', margin: '0 0 3px 0' }}>MOB: +93 700 939 365, +93711 4355 29</p>
-                <p style={{ fontSize: '6.8pt', fontWeight: '800', color: '#1e3a8a', margin: '0 0 1px 0' }}>AFGHANISTAN OFFICE</p>
-                <p style={{ fontSize: '6.2pt', color: '#1d4ed8', margin: '0 0 1px 0' }}>2nd FLOOR, 16 NO. OFFICE, SHAHIDANO, CHOWK, ETIMAD RAHMI MARKET , KANDAHAR, AFGHANISTAN.</p>
-                <p style={{ fontSize: '6pt', color: '#2563eb', margin: '0' }}>LICENCE NUMBER: 2401-2198</p>
-              </div>
-            </div>
-          </div>
-        </LedgerPrintPortal>
+        {/* Print Table - Rendered via React Portal directly on document.body ONLY during active printing or PDF generation */}
+        {(isDirectPrinting || isExportingPDF) && (
+          <LedgerPrintPortal>
+            <AccountLedgerDocument
+              accountName={currentCompany.name}
+              entries={printEntries}
+              statementDate={new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+              dateRange={printTarget === 'current-view' && (startDate || endDate) ? { start: startDate, end: endDate } : undefined}
+              filterLabel={printTarget === 'current-view' ? currentFilterLabel : undefined}
+              isFiltered={printTarget === 'current-view' && isCurrentlyFiltered}
+              currency={selectedCurrency}
+              companySettings={getLedgerSettings()}
+              orientation="landscape"
+              mode="print"
+            />
+          </LedgerPrintPortal>
+        )}
 
         {/* Live A4 Landscape Print Preview Dialog */}
         <Dialog open={isPrintPreviewOpen} onOpenChange={setIsPrintPreviewOpen}>
-          <DialogContent className="max-w-6xl max-h-[92vh] flex flex-col p-0 overflow-hidden bg-slate-900/95 border-slate-700 text-white">
-            <DialogHeader className="px-6 py-4 border-b border-slate-800 flex flex-row items-center justify-between">
+          <DialogContent className="max-w-[96vw] xl:max-w-7xl max-h-[94vh] flex flex-col p-0 overflow-hidden bg-slate-900 border-slate-700 text-white shadow-2xl">
+            <DialogHeader className="px-5 py-3 border-b border-slate-800 flex flex-row items-center justify-between gap-3 shrink-0 bg-slate-900/90 backdrop-blur-md">
               <div>
-                <DialogTitle className="text-lg font-bold flex items-center gap-2.5 text-white">
-                  <Printer className="h-5 w-5 text-amber-400" />
-                  Account Ledger Print Preview
+                <DialogTitle className="text-base font-bold flex items-center gap-2 text-white">
+                  <Printer className="h-4.5 w-4.5 text-amber-400" />
+                  <span>Account Ledger Print Preview</span>
                 </DialogTitle>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  A4 Landscape (297mm × 210mm) • {currentCompany.name} • {filteredEntries.length} Active Entries
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  A4 Landscape (297mm × 210mm) • {currentCompany.name} • {previewEntries.length} {previewScope === 'full-ledger' ? 'Total' : 'Filtered'} Entries
                 </p>
               </div>
+
+              {/* Preview Controls Toolbar */}
               <div className="flex flex-wrap items-center gap-2">
-                {/* Orientation Switcher */}
+                {/* Scope Switcher: Current View vs Full Ledger */}
                 <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700">
                   <button
                     type="button"
-                    onClick={() => setPreviewOrientation('landscape')}
+                    onClick={() => setPreviewScope('current-view')}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      previewOrientation === 'landscape'
+                      previewScope === 'current-view'
                         ? 'bg-blue-600 text-white shadow-xs'
                         : 'text-slate-400 hover:text-white'
                     }`}
-                    title="A4 Landscape (Standard 14-column layout)"
+                    title="Preview currently filtered entries"
                   >
-                    Landscape (A4)
+                    Current View ({filteredEntries.length})
                   </button>
                   <button
                     type="button"
-                    onClick={() => setPreviewOrientation('portrait')}
+                    onClick={() => setPreviewScope('full-ledger')}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      previewOrientation === 'portrait'
+                      previewScope === 'full-ledger'
                         ? 'bg-blue-600 text-white shadow-xs'
                         : 'text-slate-400 hover:text-white'
                     }`}
-                    title="A4 Portrait (Compact layout)"
+                    title="Preview all entries in account ledger"
                   >
-                    Portrait
+                    Full Ledger ({currentCompany.ledgerEntries.length})
                   </button>
                 </div>
 
-                {/* Zoom Controls */}
+                {/* Fit Mode Switcher */}
                 <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-700">
                   <button
                     type="button"
-                    onClick={() => setPreviewZoom(z => Math.max(50, z - 10))}
+                    onClick={() => {
+                      setPreviewFitMode('fit-page');
+                      setPreviewZoom(70);
+                    }}
+                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      previewFitMode === 'fit-page'
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Fit Page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewFitMode('fit-width');
+                      setPreviewZoom(88);
+                    }}
+                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      previewFitMode === 'fit-width'
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Fit Width
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewFitMode('100%');
+                      setPreviewZoom(100);
+                    }}
+                    className={`px-2 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      previewFitMode === '100%'
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    100%
+                  </button>
+                </div>
+
+                {/* Zoom +/- Controls */}
+                <div className="flex items-center gap-0.5 bg-slate-800 p-1 rounded-xl border border-slate-700">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewFitMode('100%');
+                      setPreviewZoom(z => Math.max(40, z - 10));
+                    }}
                     className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-700 cursor-pointer"
                     title="Zoom Out"
                   >
                     <ZoomOut className="h-3.5 w-3.5" />
                   </button>
-                  <span className="text-[11px] font-mono font-bold text-slate-200 px-1 min-w-[40px] text-center">
+                  <span className="text-[11px] font-mono font-bold text-slate-200 px-1 min-w-[38px] text-center">
                     {previewZoom}%
                   </span>
                   <button
                     type="button"
-                    onClick={() => setPreviewZoom(z => Math.min(150, z + 10))}
+                    onClick={() => {
+                      setPreviewFitMode('100%');
+                      setPreviewZoom(z => Math.min(160, z + 10));
+                    }}
                     className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-700 cursor-pointer"
                     title="Zoom In"
                   >
                     <ZoomIn className="h-3.5 w-3.5" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewZoom(100)}
-                    className="text-[10px] text-slate-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-slate-700 cursor-pointer font-bold"
-                    title="Reset Zoom to 100%"
-                  >
-                    Reset
-                  </button>
                 </div>
 
+                {/* Page Indicator */}
+                <div className="bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-300">
+                  {previewEntries.length <= 16 ? '1 Page' : `${Math.ceil(previewEntries.length / 18)} Pages (Est.)`}
+                </div>
+
+                {/* PDF and Print Action Buttons */}
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={handleExportLandscapePDF}
+                  onClick={() => handleExportLandscapePDF(previewScope)}
                   disabled={isExportingPDF}
-                  className="gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border-emerald-500/40 text-emerald-300 font-bold cursor-pointer"
+                  className="gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border-emerald-500/40 text-emerald-300 font-bold cursor-pointer h-8 text-xs"
                 >
                   {isExportingPDF ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                  <span>Export PDF</span>
+                  <span>Save PDF</span>
                 </Button>
                 <Button
                   type="button"
                   size="sm"
                   onClick={() => {
-                    setIsPrintPreviewOpen(false)
-                    setTimeout(() => triggerDirectPrint(previewOrientation), 120)
+                    setIsPrintPreviewOpen(false);
+                    setTimeout(() => triggerDirectPrint(previewScope, previewOrientation), 120);
                   }}
-                  className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md shadow-blue-600/30 cursor-pointer"
+                  className="gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-md shadow-blue-600/30 cursor-pointer h-8 text-xs"
                 >
                   <Printer className="h-3.5 w-3.5 text-amber-300" />
                   <span>Print Document</span>
@@ -3407,357 +3164,35 @@ export const LedgerView = memo(function LedgerView() {
               </div>
             </DialogHeader>
 
-            <div className="flex-1 overflow-auto p-6 bg-slate-950 flex justify-center items-start">
-              {/* Scaled A4 Landscape Sheet Preview Container */}
-              <div 
-                className="bg-white text-slate-950 p-0 rounded-lg shadow-2xl border border-blue-200 overflow-hidden relative transition-all"
+            {/* Single Scroll Owner Viewport */}
+            <div className="preview-viewport flex-1 overflow-y-auto overflow-x-auto p-4 sm:p-8 bg-slate-950 flex justify-center items-start">
+              {/* Screen-Only Scaled Wrapper */}
+              <div
+                className="screen-ledger-preview-wrapper transition-transform duration-150 shadow-2xl rounded-sm"
                 style={{
-                  width: previewOrientation === 'landscape' ? '1100px' : '780px',
-                  maxWidth: '100%',
                   transform: previewZoom !== 100 ? `scale(${previewZoom / 100})` : 'none',
                   transformOrigin: 'top center',
+                  marginBottom: previewZoom > 100 ? `${(previewZoom - 100) * 8}px` : '32px',
                 }}
               >
-                {/* Background Watermark Image if set in settings */}
-                {getLedgerSettings().backgroundImage && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img 
-                    src={getLedgerSettings().backgroundImage} 
-                    alt="Background Watermark" 
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      opacity: 0.07,
-                      pointerEvents: 'none',
-                      zIndex: 0,
-                    }}
-                  />
-                )}
-
-                <div style={{ position: 'relative', zIndex: 1 }}>
-                  {/* Header */}
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'flex-start', 
-                    padding: '8px 16px',
-                    borderBottom: '1.5px solid #bfdbfe',
-                    background: 'linear-gradient(to right, rgba(239, 246, 255, 0.8), rgba(255, 255, 255, 0.6), rgba(239, 246, 255, 0.8))',
-                  }}>
-                    <div style={{ flex: '1', textAlign: 'left' }}>
-                      <p style={{ fontSize: '7.8pt', color: '#2563eb', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px' }}>ACCOUNT LEDGER</p>
-                      <p style={{ fontSize: '13pt', fontWeight: '800', color: '#1e3a8a', marginBottom: '1px', lineHeight: '1.15' }}>{currentCompany.name}</p>
-                      <p style={{ fontSize: '7.2pt', color: '#3b82f6', fontWeight: '500' }}>Account Holder / Shipper</p>
-                      <p style={{ fontSize: '7.2pt', color: '#1d4ed8', marginTop: '4px', fontWeight: '600' }}>
-                        {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                      </p>
-                    </div>
-                    <div style={{ flex: '1', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img 
-                        src={getLedgerSettings().logoUrl || getLedgerSettings().companyLogo || "/logo.png"} 
-                        alt="SKY ARIANA Logo" 
-                        style={{ height: '46px', maxWidth: '140px', objectFit: 'contain', marginBottom: '2px', display: 'inline-block' }} 
-                      />
-                      <p style={{ fontSize: '13pt', fontWeight: '800', color: '#1e40af', marginBottom: '0px', lineHeight: '1.1' }}>SKY ARIANA</p>
-                      <p style={{ fontSize: '7.2pt', color: '#2563eb', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: '700' }}>Transport & Logistics</p>
-                    </div>
-                    <div style={{ flex: '1', textAlign: 'right' }}>
-                      <p style={{ fontSize: '7.8pt', fontWeight: '700', color: '#1d4ed8', marginBottom: '2px' }}>AFGHANISTAN OFFICE</p>
-                      <p style={{ fontSize: '6.5pt', color: '#2563eb', lineHeight: '1.3' }}>
-                        2nd Floor, 16 No. Office,<br />
-                        Shahidano Chowk, Etimad Rahmi Market,<br />
-                        Kandahar, Afghanistan
-                      </p>
-                      <p style={{ fontSize: '6.5pt', color: '#3b82f6', marginTop: '3px' }}>
-                        Tel: +93 700 939 365<br />
-                        info@skyariana.com
-                      </p>
-                      <p style={{ fontSize: '6pt', color: '#60a5fa', marginTop: '2px' }}>Licence: 2401-2198</p>
-                    </div>
-                  </div>
-
-                  {/* Table */}
-                  <table style={{ width: '100%', minWidth: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', margin: '0' }}>
-                    <thead>
-                      <tr style={{ background: 'linear-gradient(to right, #dbeafe 0%, #eff6ff 50%, #ffffff 100%)' }}>
-                        <th style={{ width: '3.0%', border: '1px solid #93c5fd', padding: '3.5px 1px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>S.NO</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>شمېره</div>
-                        </th>
-                        <th style={{ width: '6.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>نېټه / تاریخ</div>
-                        </th>
-                        <th style={{ width: '14.0%', border: '1px solid #93c5fd', padding: '3.5px 2px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>SHIPPER / Description</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>لیږدونکی / تفصیل</div>
-                        </th>
-                        <th style={{ width: '5.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>INV.NO</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>انوایس</div>
-                        </th>
-                        <th style={{ width: '6.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DATE-OF-SHIP</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د بار نېټه</div>
-                        </th>
-                        <th style={{ width: '7.0%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BARNAMEH</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بارنامه</div>
-                        </th>
-                        <th style={{ width: '7.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>B/L NO</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>بی ال</div>
-                        </th>
-                        <th style={{ width: '8.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONTAINER</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د کانټینر شمېره</div>
-                        </th>
-                        <th style={{ width: '12.5%', border: '1px solid #93c5fd', padding: '3.5px 2px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>CONSIGNEE</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د مال وصول کوونکی</div>
-                        </th>
-                        <th style={{ width: '9.0%', border: '1px solid #93c5fd', padding: '3.5px 2px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>QUANTITY / GOODS</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>د توکو بسته بندي</div>
-                        </th>
-                        <th style={{ width: '8.0%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>DRIVER FREIGHT</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>کرایه موتر / درایور</div>
-                        </th>
-                        <th style={{ width: '5.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#dc2626', whiteSpace: 'nowrap' }}>DEBIT</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#dc2626', direction: 'rtl', whiteSpace: 'nowrap' }}>د پور حساب</div>
-                        </th>
-                        <th style={{ width: '5.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#059669', whiteSpace: 'nowrap' }}>CREDIT</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#059669', direction: 'rtl', whiteSpace: 'nowrap' }}>ترلاسه شوی</div>
-                        </th>
-                        <th style={{ width: '5.5%', border: '1px solid #93c5fd', padding: '3.5px 1.5px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '7.5pt', fontWeight: 800, color: '#1e3a8a', whiteSpace: 'nowrap' }}>BALANCE</div>
-                          <div style={{ fontSize: '5.5pt', fontWeight: 600, color: '#2563eb', direction: 'rtl', whiteSpace: 'nowrap' }}>(USD) بیلانس</div>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredEntries.map((entry: LedgerEntry, idx: number) => {
-                        const isCredit = entry.credit > 0;
-                        return (
-                        <tr 
-                          key={entry.id}
-                          style={{ 
-                            height: '21px',
-                            backgroundColor: isCredit ? '#ecfdf5' : (idx % 2 === 0 ? '#ffffff' : '#f8fafc')
-                          }}
-                        >
-                          <td style={{ fontWeight: 700, color: isCredit ? '#065f46' : '#1e40af', textAlign: 'center', fontSize: '7pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1px' }}>{entry.sNo}</td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '7pt', fontFamily: 'monospace', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.date}</td>
-                          <td style={{ textAlign: 'left', paddingLeft: '4px', paddingRight: '2px', fontWeight: isCredit ? 700 : 500, fontSize: '7pt', lineHeight: '1.2', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#0f172a' }}>
-                            {isCredit ? (
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                <span style={{ display: 'inline-block', width: '5px', height: '5px', borderRadius: '50%', backgroundColor: '#10b981', flexShrink: 0 }}></span>
-                                <span>{entry.shipperDescription || 'RECEIVING MONEY'}</span>
-                              </span>
-                            ) : entry.shipperDescription}
-                          </td>
-                          <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 700, fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.invoiceNo}</td>
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap', fontSize: '7pt', fontFamily: 'monospace', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.dateOfShip}</td>
-                          <td style={{ textAlign: 'center', fontWeight: 'bold', fontFamily: 'monospace', color: '#1e3a8a', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', backgroundColor: isCredit ? '#ecfdf5' : '#ffffff' }}>{entry.barnamehNo || ''}</td>
-                          <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1px' }}>
-                              <span style={{ color: isCredit ? '#064e3b' : '#1e3a8a', fontWeight: '700' }}>{entry.billOfLanding || '—'}</span>
-                              {entry.surrenderedBL && (
-                                <span style={{ 
-                                  border: '1px solid #059669',
-                                  color: '#059669',
-                                  padding: '0.5px 3.5px',
-                                  fontSize: '5.2pt',
-                                  fontWeight: '800',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.04em',
-                                  backgroundColor: '#ecfdf5',
-                                  borderRadius: '2px',
-                                  whiteSpace: 'nowrap',
-                                  lineHeight: '1.1',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '2px'
-                                }}>
-                                  <span>✓</span>
-                                  <span>Surrender</span>
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td style={{ textAlign: 'center', fontSize: '7pt', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', color: isCredit ? '#064e3b' : '#1e3a8a' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px' }}>
-                              {entry.containerType && (
-                                <span style={{ 
-                                  display: 'inline-block',
-                                  padding: '0.5px 3.5px', 
-                                  borderRadius: '3px', 
-                                  fontSize: '5.8pt', 
-                                  fontWeight: '800', 
-                                  backgroundColor: '#dbeafe', 
-                                  color: '#1e3a8a', 
-                                  border: '1px solid #93c5fd',
-                                  lineHeight: '1.1',
-                                  whiteSpace: 'nowrap'
-                                }}>
-                                  {entry.containerType}
-                                </span>
-                              )}
-                              <span style={{ fontFamily: 'monospace', fontWeight: '800', fontSize: '7pt', color: '#0f172a', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
-                                {entry.containerNo || (entry.containerType ? "" : "—")}
-                              </span>
-                              {entry.containerDetails && (
-                                <span style={{ 
-                                  fontSize: '5.2pt', 
-                                  fontWeight: '600',
-                                  color: '#065f46', 
-                                  backgroundColor: '#ecfdf5', 
-                                  border: '1px solid #a7f3d0', 
-                                  borderRadius: '2px', 
-                                  padding: '0.5px 3px', 
-                                  maxWidth: '110px', 
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  lineHeight: '1.1'
-                                }}>
-                                  {entry.containerDetails}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td style={{ textAlign: 'left', paddingLeft: '4px', paddingRight: '2px', fontSize: '7pt', lineHeight: '1.2', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.consignee}</td>
-                          <td style={{ textAlign: 'left', paddingLeft: '4px', paddingRight: '2px', fontSize: '7pt', lineHeight: '1.2', fontWeight: 600, border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', color: isCredit ? '#064e3b' : '#1e3a8a' }}>{entry.quantity}</td>
-                          <td style={{ textAlign: 'center', fontWeight: '700', color: '#92400e', fontSize: '7pt', backgroundColor: '#fffdf5', lineHeight: '1.2', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', padding: '2px 1.5px', fontFamily: 'monospace' }}>
-                            {entry.driverFreight && entry.driverFreight.trim() !== ''
-                              ? entry.driverFreight
-                              : ''}
-                          </td>
-                          <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#dc2626', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe' }}>
-                            {entry.debit > 0 ? formatCurrency(entry.debit) : ''}
-                          </td>
-                          <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 700, color: '#047857', fontFamily: 'monospace', fontSize: '7pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#a7f3d0' : '#ffffff' }}>
-                            {entry.credit > 0 ? formatCurrency(entry.credit) : ''}
-                          </td>
-                          <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: isCredit ? '#064e3b' : '#1e3a8a', fontFamily: 'monospace', fontSize: '7.2pt', whiteSpace: 'nowrap', border: isCredit ? '1px solid #a7f3d0' : '1px solid #bfdbfe', backgroundColor: isCredit ? '#d1fae5' : '#eff6ff' }}>
-                            {entry.debit > 0 || entry.credit > 0 ? formatCurrency(entry.balance) : ''}
-                          </td>
-                        </tr>
-                      );
-                      })}
-                      {/* Empty rows only if very few entries (< 8) to fill single-sheet view cleanly without creating extra blank pages */}
-                      {filteredEntries.length < 8 && Array.from({ length: 8 - filteredEntries.length }).map((_, idx) => (
-                        <tr key={`empty-${idx}`} style={{ height: '19px', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                          <td style={{ textAlign: 'center', color: '#1e40af', fontSize: '7pt', border: '1px solid #bfdbfe' }}>{filteredEntries.length + idx + 1}</td>
-                          <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ border: '1px solid #bfdbfe' }}></td>
-                          <td style={{ textAlign: 'right', paddingRight: '4px', color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7pt', border: '1px solid #bfdbfe' }}>$0</td>
-                        </tr>
-                      ))}
-                      {/* Totals row */}
-                      <tr style={{ height: '24px', background: 'linear-gradient(to right, #dbeafe 0%, #eff6ff 50%, #ffffff 100%)' }}>
-                        <td colSpan={10} style={{ textAlign: 'right', fontWeight: 900, color: '#1e3a8a', fontSize: '8pt', paddingRight: '8px', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>TOTAL:</td>
-                        <td style={{ textAlign: 'center', fontWeight: 800, color: '#92400e', backgroundColor: '#fef3c7', fontSize: '7.2pt', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe', fontFamily: 'monospace' }}>{formatAFN(totalDriverRentAFN)}</td>
-                        <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: '#dc2626', fontFamily: 'monospace', fontSize: '7.2pt', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>{formatCurrency(totalDebit)}</td>
-                        <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 800, color: '#059669', fontFamily: 'monospace', fontSize: '7.2pt', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>{formatCurrency(totalCredit)}</td>
-                        <td style={{ textAlign: 'right', paddingRight: '4px', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', fontSize: '7.5pt', backgroundColor: '#dbeafe', borderTop: '2px solid #1e40af', borderBottom: '2px solid #1e40af', borderLeft: '1px solid #bfdbfe', borderRight: '1px solid #bfdbfe' }}>{formatCurrency(finalBalance)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  {/* Driver Rent Summary Highlight Banner */}
-                  <div style={{ 
-                    margin: '6px 12px', 
-                    padding: '6px 12px', 
-                    background: 'linear-gradient(to right, rgba(245, 158, 11, 0.15), rgba(234, 179, 8, 0.1), rgba(245, 158, 11, 0.15))', 
-                    border: '1px solid rgba(252, 211, 77, 0.8)', 
-                    borderRadius: '8px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#f59e0b', color: '#0f172a', fontWeight: '900', fontSize: '8pt', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        AFN
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '7.8pt', fontWeight: '800', color: '#0f172a' }}>
-                            DRIVER RENT TOTAL (مجموع کرایه درایوران)
-                          </span>
-                          <span style={{ backgroundColor: '#f59e0b', color: '#0f172a', fontWeight: '900', fontSize: '6pt', padding: '1px 5px', borderRadius: '9999px', textTransform: 'uppercase' }}>
-                            افغانی
-                          </span>
-                        </div>
-                        <p style={{ fontSize: '6.5pt', fontWeight: '600', color: '#334155', margin: '1px 0 0 0' }}>
-                          Combined freight rent total for drivers calculated across active ledger entries
-                        </p>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '9.5pt', fontWeight: '900', color: '#78350f', backgroundColor: '#ffffff', border: '1px solid #fcd34d', padding: '3px 10px', borderRadius: '6px', fontFamily: 'monospace' }}>
-                      {formatAFN(totalDriverRentAFN)}
-                    </span>
-                  </div>
-
-                  {/* Signatures */}
-                  <div style={{ 
-                    marginTop: '6px', 
-                    marginBottom: '6px',
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'flex-end',
-                    padding: '0 16px'
-                  }}>
-                    <div style={{ textAlign: 'center', width: '28%' }}>
-                      <div style={{ borderBottom: '1.5px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
-                      <p style={{ fontSize: '7.2pt', fontWeight: '800', color: '#1e3a8a' }}>PREPARED BY / ترتیب کوونکی</p>
-                      <p style={{ fontSize: '6pt', color: '#64748b' }}>Accountant Signature</p>
-                    </div>
-                    <div style={{ textAlign: 'center', width: '28%' }}>
-                      <div style={{ borderBottom: '1.5px solid #94a3b8', height: '22px', marginBottom: '2px' }}></div>
-                      <p style={{ fontSize: '7.2pt', fontWeight: '800', color: '#1e3a8a' }}>CHECKED BY / کتونکی</p>
-                      <p style={{ fontSize: '6pt', color: '#64748b' }}>Auditor Approval</p>
-                    </div>
-                    <div style={{ textAlign: 'center', width: '32%' }}>
-                      <div style={{ border: '1.5px dashed #93c5fd', borderRadius: '6px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f7ff', marginBottom: '2px' }}>
-                        <span style={{ fontSize: '6.5pt', color: '#3b82f6', fontWeight: '700', letterSpacing: '0.04em' }}>[ OFFICIAL COMPANY STAMP ]</span>
-                      </div>
-                      <p style={{ fontSize: '7.2pt', fontWeight: '800', color: '#1e3a8a' }}>AUTHORIZED STAMP & SIGNATURE</p>
-                      <p style={{ fontSize: '6pt', color: '#64748b' }}>د منلو امضا او ټاپه</p>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div style={{ 
-                    padding: '8px 16px', 
-                    borderTop: '1px solid rgba(191, 219, 254, 0.8)',
-                    textAlign: 'center',
-                    background: 'linear-gradient(to right, rgba(239, 246, 255, 0.7), rgba(255, 255, 255, 0.7), rgba(239, 246, 255, 0.7))',
-                  }}>
-                    <p style={{ fontSize: '6.8pt', color: '#1e40af', fontWeight: '700', margin: '0 0 1px 0' }}>info@skyariana.com, transport@skyariana.com</p>
-                    <p style={{ fontSize: '6.5pt', color: '#2563eb', margin: '0 0 3px 0' }}>MOB: +93 700 939 365, +93711 4355 29</p>
-                    <p style={{ fontSize: '6.8pt', fontWeight: '800', color: '#1e3a8a', margin: '0 0 1px 0' }}>AFGHANISTAN OFFICE</p>
-                    <p style={{ fontSize: '6.2pt', color: '#1d4ed8', margin: '0 0 1px 0' }}>2nd FLOOR, 16 NO. OFFICE, SHAHIDANO, CHOWK, ETIMAD RAHMI MARKET , KANDAHAR, AFGHANISTAN.</p>
-                    <p style={{ fontSize: '6pt', color: '#2563eb', margin: '0' }}>LICENCE NUMBER: 2401-2198</p>
-                  </div>
-                </div>
+                {/* Canonical Unscaled Document */}
+                <AccountLedgerDocument
+                  accountName={currentCompany.name}
+                  entries={previewEntries}
+                  statementDate={new Date().toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                  dateRange={previewScope === 'current-view' && (startDate || endDate) ? { start: startDate, end: endDate } : undefined}
+                  filterLabel={previewScope === 'current-view' ? currentFilterLabel : undefined}
+                  isFiltered={previewScope === 'current-view' && isCurrentlyFiltered}
+                  currency={selectedCurrency}
+                  companySettings={getLedgerSettings()}
+                  orientation={previewOrientation}
+                  mode="preview"
+                />
               </div>
             </div>
           </DialogContent>

@@ -18,8 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { UserNotificationSettings } from '@/lib/types/notification'
-import { getDefaultNotificationSettings } from '@/lib/notifications/notification-service'
+import { UserNotificationSettings, getDefaultNotificationSettings } from '@/lib/types/notification'
 import { Bell, Volume2, Moon, Monitor, Check, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 

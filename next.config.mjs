@@ -1,5 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import os from 'node:os'
+import path from 'node:path'
 
 const localDevOrigins = ['127.0.0.1', 'localhost']
 try {
@@ -16,13 +17,12 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  turbopack: {},
   webpack: (config, { dev, isServer }) => {
     if (dev) {
       config.cache = {
         type: 'filesystem',
       };
-    } else {
-      config.cache = false;
     }
     if (!isServer) {
       config.resolve.fallback = {
@@ -57,7 +57,7 @@ const nextConfig = {
   ])),
   distDir: process.env.SKY_NEXT_DIST_DIR || '.next',
   output: process.env.SKY_STANDALONE === '1' || Boolean(process.env.SKY_NEXT_DIST_DIR) ? 'standalone' : undefined,
-  outputFileTracingRoot: fileURLToPath(new URL('.', import.meta.url)),
+  outputFileTracingRoot: path.resolve(process.cwd()),
   reactStrictMode: true,
   poweredByHeader: false,
   typescript: {

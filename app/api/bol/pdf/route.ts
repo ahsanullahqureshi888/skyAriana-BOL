@@ -5,6 +5,7 @@ import * as localStorage from "@/lib/services/local-storage-service"
 import fs from "fs"
 import path from "path"
 import { getUploadPath } from "@/lib/server-paths"
+import { logBolLifecycleAudit } from "@/lib/services/bol-audit-service"
 
 const LOCAL_PDF_UPLOAD_DIR = getUploadPath("bol-pdfs")
 const LOCAL_PDF_PUBLIC_PREFIX = "/uploads/bol-pdfs"
@@ -141,16 +142,30 @@ export async function POST(request: NextRequest) {
       console.error("Supabase error updating BOL with PDF URL:", updateError)
     }
 
-    if (updateError || !updated) {
-      try {
-        await localStorage.updateLocalBOL(bolId, {
+    try {
+      await localStorage.updateLocalBOL(bolId, {
+        pdf_url: pdfUrl,
+        pdf_uploaded_at: new Date().toISOString(),
+        pdf_status: "ready",
+      })
+      if (bolNumber && bolNumber !== bolId) {
+        await localStorage.updateLocalBOL(bolNumber, {
           pdf_url: pdfUrl,
           pdf_uploaded_at: new Date().toISOString(),
+          pdf_status: "ready",
         })
-      } catch (localError) {
-        console.error("Failed to update local BOL with PDF metadata:", localError)
       }
+    } catch (localError) {
+      console.error("Failed to update local BOL with PDF metadata:", localError)
     }
+
+    void logBolLifecycleAudit({
+      action: "FILE_ATTACHED",
+      entityId: bolId,
+      bolNumber,
+      actor: user?.email || "user",
+      metadata: { pdfUrl, fileName, storage: storageTarget },
+    })
 
     return NextResponse.json({
       success: true,
@@ -158,6 +173,7 @@ export async function POST(request: NextRequest) {
         id: updated?.id ?? bolId,
         bolNumber: updated?.bol_number ?? bolNumber,
         pdfUrl,
+        pdf_status: "ready",
         uploadedAt: updated?.pdf_uploaded_at ?? new Date().toISOString(),
         storage: storageTarget,
       },
@@ -177,16 +193,22 @@ export async function POST(request: NextRequest) {
 // GET: List all PDF documents
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    let user: any = null
+    let supabase: any = null
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      try {
+        supabase = await createClient()
+        const { data } = await supabase.auth.getUser()
+        user = data?.user || null
+      } catch (err) {
+        console.warn("[v0] Supabase auth check error:", err)
+      }
     }
 
     const { searchParams } = new URL(request.url)
-    const action = searchParams.get("action")
-    const bolId = searchParams.get("bolId")
+    const action = searchParams.get("action") || (searchParams.get("download") === "true" ? "download" : null)
+    const bolId = searchParams.get("bolId") || searchParams.get("bol_id")
 
     if (action === "list") {
       const blobToken = getBlobToken()
@@ -220,40 +242,67 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === "download" && bolId) {
-      const { data, error } = await supabase
-        .from("bill_of_lading")
-        .select("id, bol_number, pdf_url")
-        .eq("id", bolId)
-        .single()
+      let resolvedPdfUrl: string | null = null
+      let resolvedBolNumber = bolId
 
-      if (error || !data?.pdf_url) {
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from("bill_of_lading")
+            .select("id, bol_number, pdf_url")
+            .eq("id", bolId)
+            .single()
+          if (!error && data?.pdf_url) {
+            resolvedPdfUrl = data.pdf_url
+            resolvedBolNumber = data.bol_number || bolId
+          }
+        } catch {}
+      }
+
+      if (!resolvedPdfUrl) {
         const localBol = await localStorage.getLocalBOL(bolId)
         if (localBol?.pdf_url) {
-          return NextResponse.json({
-            success: true,
-            data: {
-              bolNumber: localBol.bol_number || localBol.id || bolId,
-              pdfUrl: localBol.pdf_url,
-            },
-          })
+          resolvedPdfUrl = localBol.pdf_url
+          resolvedBolNumber = localBol.bol_number || localBol.id || bolId
         }
       }
 
-      if (error || !data) {
+      if (!resolvedPdfUrl) {
         return NextResponse.json(
           {
             success: false,
+            status: "none",
             error: "PDF not found for this document",
           },
           { status: 404 }
         )
       }
 
+      // Physical file existence check for local storage
+      if (resolvedPdfUrl.startsWith(LOCAL_PDF_PUBLIC_PREFIX)) {
+        const relativeFileName = decodeURIComponent(resolvedPdfUrl.slice(LOCAL_PDF_PUBLIC_PREFIX.length + 1))
+        const localPath = path.resolve(LOCAL_PDF_UPLOAD_DIR, relativeFileName)
+        if (!fs.existsSync(localPath)) {
+          // File missing! Mark pdf_status: "missing"
+          await localStorage.updateLocalBOL(bolId, { pdf_status: "missing" })
+          return NextResponse.json(
+            {
+              success: false,
+              status: "missing",
+              pdf_status: "missing",
+              error: "Physical PDF file missing from storage.",
+              canRegenerate: true,
+            },
+            { status: 404 }
+          )
+        }
+      }
+
       return NextResponse.json({
         success: true,
         data: {
-          bolNumber: data.bol_number,
-          pdfUrl: data.pdf_url,
+          bolNumber: resolvedBolNumber,
+          pdfUrl: resolvedPdfUrl,
         },
       })
     }
@@ -353,10 +402,19 @@ export async function DELETE(request: NextRequest) {
       await localStorage.updateLocalBOL(bolId, {
         pdf_url: null,
         pdf_uploaded_at: null,
+        pdf_status: "none",
       })
     } catch (localUpdateError) {
       console.error("Failed to clear local PDF metadata:", localUpdateError)
     }
+
+    void logBolLifecycleAudit({
+      action: "FILE_DELETED",
+      entityId: bolId,
+      bolNumber: bolId,
+      actor: user?.email || "user",
+      metadata: { deletedPdfUrl: pdfUrl },
+    })
 
     return NextResponse.json({
       success: true,

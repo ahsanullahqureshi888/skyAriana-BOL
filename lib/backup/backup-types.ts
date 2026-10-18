@@ -15,6 +15,8 @@ export type BackupType =
   | "PRE_REPAIR_SAFETY"
   | "MANUAL"
   | "EMERGENCY"
+  | "INCREMENTAL"
+  | "SNAPSHOT"
 
 export type BackupStatus =
   | "CREATING"

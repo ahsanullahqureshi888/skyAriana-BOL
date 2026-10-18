@@ -22,7 +22,7 @@ export function parseWeight(val: unknown): number {
     if (parts.length > 1) {
       let total = 0
       for (const p of parts) {
-        const m = p.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/)
+        const m = p.replace(/,/g, "").match(/-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/)
         if (m) {
           const num = parseFloat(m[0])
           if (!isNaN(num) && isFinite(num)) total += num
@@ -33,7 +33,7 @@ export function parseWeight(val: unknown): number {
   }
 
   // Match the first valid numeric group with optional decimals and commas
-  const match = str.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/)
+  const match = str.replace(/,/g, "").match(/-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/)
   if (!match) return 0
 
   const decomposed = decomposeConcatenatedNumber(match[0], "weight")
@@ -294,11 +294,29 @@ export function extractCleanCommodity(description?: string | null): string {
   let text = description.trim()
   if (!text) return "General Cargo"
 
-  // Take the first line or primary description segment
-  const firstLine = text.split("\n")[0].trim()
+  // Filter out cargo particulars / header metadata lines
+  const lines = text.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean)
+  const candidateLine =
+    lines.find((l) => {
+      const u = l.toUpperCase()
+      if (
+        u.includes("CONTAINER & CARGO") ||
+        u.includes("CARGO PARTICULARS") ||
+        u.includes("DOCUMENT & SHIPPING") ||
+        u.includes("SHIPPING DETAILS")
+      )
+        return false
+      if (u.startsWith("TRANSIT DATE:") || u.startsWith("BORDER:") || u.startsWith("HS CODE:")) return false
+      if (u.startsWith("INVOICE NO:") || u.startsWith("INV NO:") || u.startsWith("TRUCK NO:")) return false
+      return true
+    }) ||
+    lines[0] ||
+    ""
 
-  // Clean known prefixes like "1. 1476 CTNS - " or "1476 CTNS OF "
-  let cleaned = firstLine
+  // Clean known prefixes like "1. 1476 CTNS - " or "• Description: "
+  let cleaned = candidateLine
+    .replace(/^[•*·\-🥬📦│\s]+/, "")
+    .replace(/^(?:Description|Cargo):\s*/i, "")
     .replace(/^\d+[\.\)]\s*/, "") // Strip leading numbering
     .replace(/^\d+[\s,-]*(?:CTNS|CARTONS|BAGS|PKGS|PACKAGES|BOXES)[\s,-]*(?:OF)?\s*/i, "")
     .replace(/\bRAISNIS\b/gi, "RAISINS")
@@ -308,10 +326,20 @@ export function extractCleanCommodity(description?: string | null): string {
     .replace(/["']/g, "")
     .trim()
 
-  // Remove trailing dashes, commas, colons
-  cleaned = cleaned.replace(/^[-,:\s]+|[-,:\s]+$/g, "").trim()
+  // Remove trailing dashes, commas, colons, pipes
+  cleaned = cleaned.replace(/^[-|,:;\s]+|[-|,:;\s]+$/g, "").trim()
 
-  if (!cleaned) return "General Cargo"
+  if (
+    !cleaned ||
+    cleaned === "|" ||
+    cleaned.startsWith("|") ||
+    /^(?:TRANSIT DATE|HS CODE|AFGHAN TC|INVOICE NO)\b/i.test(cleaned) ||
+    /^[|│\s]*(?:📅|📄|🧾)/.test(cleaned) ||
+    cleaned.includes("Transit Date:") ||
+    cleaned.includes("HS CODE:")
+  ) {
+    return "General Cargo"
+  }
 
   // Standardize common commodities
   const upper = cleaned.toUpperCase()
@@ -335,13 +363,14 @@ export function extractInvoiceNo(doc: any): string {
 }
 
 export function extractTruckNo(doc: any): string {
-  if (doc.truck_number && doc.truck_number.trim()) return doc.truck_number.trim()
+  const truckNum = String(doc?.truck_number ?? "").trim()
+  if (truckNum) return truckNum
   const texts = [
-    doc.cargo_description,
-    doc.goods_description,
-    doc.description_of_goods,
-    doc.remarks,
-  ].filter(Boolean).join(" ")
+    doc?.cargo_description,
+    doc?.goods_description,
+    doc?.description_of_goods,
+    doc?.remarks,
+  ].filter(Boolean).map(String).join(" ")
   const match = texts.match(/(?:truck|lorry|vehicle|موتر)\s*(?:no|number|#)?\s*[:#-]?\s*([A-Z0-9][A-Z0-9/-]+)/i)
   return match?.[1]?.trim() || ""
 }
@@ -375,11 +404,11 @@ export function extractBolRoute(doc: any): BolRouteInfo {
   // 1. Direct explicit routes array (highest fidelity multi-modal stops)
   if (Array.isArray(doc.routes) && doc.routes.length > 0) {
     const validStops = doc.routes
-      .filter((r: any) => r && (r.location?.trim() || r.locationPersian?.trim()))
+      .filter((r: any) => r && (String(r.location ?? "").trim() || String(r.locationPersian ?? "").trim()))
       .sort((a: any, b: any) => (a.stopOrder || 0) - (b.stopOrder || 0))
 
     if (validStops.length >= 2) {
-      const stopNames = validStops.map((s: any) => (s.location || s.locationPersian || "").trim())
+      const stopNames = validStops.map((s: any) => String(s.location ?? s.locationPersian ?? "").trim())
       const origin = stopNames[0]
       const destination = stopNames[stopNames.length - 1]
       const intermediate = stopNames.slice(1, -1)
@@ -402,7 +431,7 @@ export function extractBolRoute(doc: any): BolRouteInfo {
         stopsCount: validStops.length,
       }
     } else if (validStops.length === 1) {
-      const singleLoc = (validStops[0].location || validStops[0].locationPersian || "").trim()
+      const singleLoc = String(validStops[0].location ?? validStops[0].locationPersian ?? "").trim()
       return {
         display: singleLoc,
         shortDisplay: singleLoc,
@@ -418,7 +447,7 @@ export function extractBolRoute(doc: any): BolRouteInfo {
   }
 
   // 2. Cargo route note (common Afghan transit preset & custom corridor text)
-  const routeNote = (doc.cargo_route_note || "").trim()
+  const routeNote = String(doc.cargo_route_note || "").trim()
   if (routeNote) {
     const isPersian = isRtlText(routeNote)
 
@@ -438,7 +467,7 @@ export function extractBolRoute(doc: any): BolRouteInfo {
     else if (routeNote.includes("مرسین")) seaPort = "Mersin"
     else if (routeNote.includes("چابهار")) seaPort = "Chabahar"
 
-    const destPort = (doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || "").trim()
+    const destPort = String(doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || "").trim()
 
     let shortStr = routeNote
     if (borderCrossing && seaPort) {
@@ -462,9 +491,9 @@ export function extractBolRoute(doc: any): BolRouteInfo {
   }
 
   // 3. Port of Loading / Discharge / Delivery
-  const pol = (doc.port_of_loading || "").trim()
-  const pod = (doc.port_of_discharge || "").trim()
-  const podDeliv = (doc.place_of_delivery || "").trim()
+  const pol = String(doc.port_of_loading || "").trim()
+  const pod = String(doc.port_of_discharge || "").trim()
+  const podDeliv = String(doc.place_of_delivery || "").trim()
 
   if (pol && pod) {
     const hasThird = podDeliv && podDeliv.toLowerCase() !== pod.toLowerCase()
@@ -496,8 +525,8 @@ export function extractBolRoute(doc: any): BolRouteInfo {
   }
 
   // 4. Origin & Destination country declarations
-  const origCountry = (doc.origin_country || "").trim()
-  const destCountry = (doc.destination_country || "").trim()
+  const origCountry = String(doc.origin_country || "").trim()
+  const destCountry = String(doc.destination_country || "").trim()
   if (origCountry || destCountry) {
     const orig = origCountry || "Afghanistan"
     const dest = destCountry || "International"
@@ -511,8 +540,8 @@ export function extractBolRoute(doc: any): BolRouteInfo {
   }
 
   // 5. Intelligent corridor synthesis from truck province and consignee destination
-  const truck = (doc.truck_number || "").trim()
-  const cName = (doc.consignee_name || "").toUpperCase()
+  const truck = String(doc.truck_number || "").trim()
+  const cName = String(doc.consignee_name || "").toUpperCase()
   const hasConsignee = cName && cName !== "MISSING" && cName !== "NO CONSIGNEE"
   const isIndianConsignee =
     cName.includes("INDIA") ||

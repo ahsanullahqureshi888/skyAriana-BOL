@@ -8,6 +8,7 @@ import {
   NotificationMetrics,
   NotificationCategory,
   NotificationSeverity,
+  getDefaultNotificationSettings,
 } from '@/lib/types/notification'
 import { User } from '@/lib/types'
 
@@ -36,33 +37,7 @@ function isAdminAuthorized(role?: string): boolean {
   return r === 'admin' || r === 'superadmin'
 }
 
-export function getDefaultNotificationSettings(userId: string): UserNotificationSettings {
-  return {
-    userId,
-    desktopEnabled: false,
-    soundLevel: 'critical_only',
-    quietHoursEnabled: false,
-    quietHoursStart: '22:00',
-    quietHoursEnd: '07:00',
-    allowCriticalInQuietHours: true,
-    categories: {
-      OPERATIONS: 'all',
-      TRACKING: 'all',
-      BOOKING: 'all',
-      CONTAINER: 'all',
-      VESSEL: 'all',
-      DOCUMENTS: 'all',
-      COMPLIANCE: 'all',
-      FINANCE: 'all',
-      WORKFLOW: 'all',
-      CUSTOMER_PORTAL: 'all',
-      BACKUP: 'important_only',
-      SYNC: 'important_only',
-      SYSTEM: 'important_only',
-    },
-    updatedAt: new Date().toISOString(),
-  }
-}
+export { getDefaultNotificationSettings } from '@/lib/types/notification'
 
 /**
  * Retrieves all events visible to the given user, joined with their individual delivery state.

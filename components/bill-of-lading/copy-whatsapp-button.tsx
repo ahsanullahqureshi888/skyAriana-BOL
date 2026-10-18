@@ -103,7 +103,7 @@ export function CopyWhatsAppButton({ bol }: { bol: BillOfLadingFormData }) {
         <Button
           type="button" size="sm" variant="outline" onClick={() => void handleCopy("update")}
           disabled={status === "copying"}
-          className="h-8 px-2.5 rounded-r-none border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-800 font-bold text-xs cursor-pointer gap-1.5"
+          className="h-7.5 px-2.5 rounded-r-none border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-800 font-bold text-xs cursor-pointer gap-1.5"
           title="Copy shipment update as WhatsApp message"
           aria-label="Copy shipment update as WhatsApp message"
         >
@@ -115,7 +115,7 @@ export function CopyWhatsAppButton({ bol }: { bol: BillOfLadingFormData }) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button type="button" size="sm" variant="outline" disabled={status === "copying"}
-              className="h-8 w-7 p-0 rounded-l-none border-l-0 border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-800 cursor-pointer"
+              className="h-7.5 w-7 p-0 rounded-l-none border-l-0 border-emerald-200 bg-white hover:bg-emerald-50 text-emerald-800 cursor-pointer"
               title="WhatsApp message options" aria-label="WhatsApp message options">
               <ChevronDown className="h-3.5 w-3.5" />
             </Button>

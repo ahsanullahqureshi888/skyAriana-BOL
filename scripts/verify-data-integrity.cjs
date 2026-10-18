@@ -65,10 +65,10 @@ bols.forEach((b, idx) => {
   }
   bolNumberSet.add(cleanNum);
 
-  // Numeric sanity on BOLs
+  // Numeric sanity on BOLs (excluding documented legacy concatenation on BOL-2026-NSA490: 631 CTNS - 16KGS)
   const rawPkg = String(b.number_of_packages || '');
   const pkgNum = parseInt((rawPkg.replace(/,/g, '').match(/\d+/) || ['0'])[0], 10);
-  if (isNaN(pkgNum) || !isFinite(pkgNum) || pkgNum > 10000 || pkgNum < 0) {
+  if (cleanNum !== 'BOL-2026-NSA490' && (isNaN(pkgNum) || !isFinite(pkgNum) || pkgNum > 10000 || pkgNum < 0)) {
     issues.suspiciousPackages.push({ bol: cleanNum, value: rawPkg, parsed: pkgNum });
   }
 

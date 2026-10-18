@@ -1,0 +1,6 @@
+### Error
+Error: Tool "browser_evaluate" does not handle the modal state.
+### Page
+- Page URL: http://127.0.0.1:5173/invoices/create
+### Modal state
+- ["beforeunload" dialog with message ""]: can be handled by dialog-accept or dialog-dismiss

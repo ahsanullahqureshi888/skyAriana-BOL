@@ -22,22 +22,50 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { DOCUMENT_BACKGROUNDS } from "@/lib/document-backgrounds"
-const A4Preview = dynamic(() => import("./a4-preview").then((m) => m.A4Preview), {
-  loading: () => (
-    <div className="flex flex-col items-center justify-center p-12 space-y-4">
-      <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      <p className="text-sm font-medium text-slate-600">Loading document preview…</p>
-    </div>
-  ),
-  ssr: false,
-})
+
+const safeChunkDynamic = <T,>(loader: () => Promise<T>): (() => Promise<T>) => {
+  return () =>
+    loader().catch((err) => {
+      if (typeof window !== "undefined") {
+        const msg = String(err?.message || err || "")
+        if (
+          err?.name === "ChunkLoadError" ||
+          msg.includes("Loading chunk") ||
+          msg.includes("Failed to load chunk") ||
+          msg.includes("_next/static/chunks")
+        ) {
+          console.warn("[bol-editor] Stale chunk detected, refreshing page...", err)
+          const lastReload = Number(sessionStorage.getItem("sky_chunk_reload") || "0")
+          const now = Date.now()
+          if (now - lastReload > 15000) {
+            sessionStorage.setItem("sky_chunk_reload", String(now))
+            window.location.reload()
+          }
+        }
+      }
+      throw err
+    })
+}
+
+const A4Preview = dynamic(
+  safeChunkDynamic(() => import("./a4-preview").then((m) => m.A4Preview)),
+  {
+    loading: () => (
+      <div className="flex flex-col items-center justify-center p-12 space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <p className="text-sm font-medium text-slate-600">Loading document preview…</p>
+      </div>
+    ),
+    ssr: false,
+  }
+)
 import { A4PreviewToolbar } from "./a4-preview-toolbar"
 import { useA4PreviewScale, A4_WIDTH_PX, A4_HEIGHT_PX, resetAllParentScrolls } from "./use-a4-preview-scale"
 import { parseSyncedCargoItems, shouldSplitToPage2 } from "@/lib/utils/cargo-grid"
 import { CopyWhatsAppButton } from "./copy-whatsapp-button"
-const PrintSafeBOL = dynamic(() => import("./print-safe-bol"), { ssr: false })
+const PrintSafeBOL = dynamic(safeChunkDynamic(() => import("./print-safe-bol")), { ssr: false })
 import { BillOfLadingFormData, initialFormData, RouteStop, AFGHANISTAN_DOCUMENT_OPTIONS, DOCUMENT_CATEGORIES, AfghanistanDocumentDetail, type DocumentCategory, NOTE_THEMES, type NoteTheme, CARGO_ROUTE_NOTE_OPTIONS } from "@/lib/types/bill-of-lading"
-import { isUUID, cleanBolNumber } from "@/lib/utils/bol-filters"
+import { isUUID, cleanBolNumber, normalizeBolRecord, parseBolSeq } from "@/lib/utils/bol-filters"
 import { ArrowLeft, Printer, Save, FileText, Eye, Plus, Loader2, Calendar, Truck, MapPin, Trash2, ArrowRight, Package, Edit3, ImageIcon, Upload, RotateCcw, ScrollText, Check, Download, Building2, Phone, Mail, Ship, Plane, Train, AlertCircle, User, Bell, Globe, Shield, Leaf, Heart, Scale, Bookmark, BookmarkPlus, X, IdCard, Car, Landmark, ShieldCheck, Receipt, List, ChevronDown, ChevronUp, Info, CheckCircle2, Circle, Sparkles, Copy, Box, ArrowLeftRight, Zap, Calculator, Sliders, SlidersHorizontal, Layers, Keyboard, Cloud, DownloadCloud, UploadCloud, RefreshCw, FileSpreadsheet, Coins, Hash, MoreHorizontal, Palette, ZoomIn, ZoomOut, Maximize2, Minimize2, FolderArchive, Search, Snowflake } from "lucide-react"
 import { formatPersianDate, getDualDates } from "@/lib/utils/persian-date"
 import {
@@ -55,22 +83,53 @@ import {
   type ShippingDocumentKind,
   type StickerLayout,
 } from "@/lib/utils/shipping-documents"
-const PackingListPdfPage = dynamic(() => import("./shipping-documents").then((m) => m.PackingListPdfPage), { ssr: false })
-const StickerPdfPage = dynamic(() => import("./shipping-documents").then((m) => m.StickerPdfPage), { ssr: false })
+const PackingListPdfPage = dynamic(
+  safeChunkDynamic(() => import("./shipping-documents/packing-list-pdf-page").then((m) => m.PackingListPdfPage)),
+  { ssr: false }
+)
+const StickerPdfPage = dynamic(
+  safeChunkDynamic(() => import("./shipping-documents/sticker-pdf-page").then((m) => m.StickerPdfPage)),
+  { ssr: false }
+)
 import { AfghanTruckPlate } from "@/components/ui/afghan-truck-plate"
 import { RoutePresetSelector } from "./route-preset-selector"
 import { ShipmentFilesSkeleton } from "./shipment-files-skeleton"
-const SavedDocuments = dynamic(() => import("./saved-documents").then(m => m.SavedDocuments), { loading: () => <p role="status" className="p-6 text-sm text-slate-600">Loading saved BOLs…</p> })
-const LedgerView = dynamic(() => import("@/components/ledger-view").then(m => m.LedgerView), { loading: () => <p role="status" className="p-6 text-sm text-slate-600">Loading account ledger…</p> })
-const BolFilesAttachmentsTab = dynamic(() => import("./bol-files-attachments-tab").then(m => m.BolFilesAttachmentsTab), { loading: () => <div className="p-4 sm:p-6"><ShipmentFilesSkeleton /></div> })
+const SavedDocuments = dynamic(
+  safeChunkDynamic(() => import("./saved-documents").then((m) => m.SavedDocuments)),
+  {
+    loading: () => <p role="status" className="p-6 text-sm text-slate-600">Loading saved BOLs…</p>,
+    ssr: false,
+  }
+)
+const LedgerView = dynamic(
+  safeChunkDynamic(() => import("@/components/ledger-view").then((m) => m.LedgerView)),
+  {
+    loading: () => <p role="status" className="p-6 text-sm text-slate-600">Loading account ledger…</p>,
+    ssr: false,
+  }
+)
+const BolFilesAttachmentsTab = dynamic(
+  safeChunkDynamic(() => import("./bol-files-attachments-tab").then((m) => m.BolFilesAttachmentsTab)),
+  {
+    loading: () => <div className="p-4 sm:p-6"><ShipmentFilesSkeleton /></div>,
+    ssr: false,
+  }
+)
 import { getFinancialsMap, saveFinancialsForEntry } from "@/lib/services/ledger-sync-utils"
 import { findDuplicatePartyCandidates } from "@/lib/utils/duplicate-prevention"
 import { PrintOptionsDialog, type PrintOptions } from "@/components/print-options-dialog"
-const BackgroundGallery = dynamic(() => import("./background-gallery").then(m => m.BackgroundGallery), { ssr: false })
-const BolSettingsCenter = dynamic(() => import("./settings/bol-settings-center").then(m => m.BolSettingsCenter), { ssr: false })
-const ShippingDocumentCenter = dynamic(() => import("./shipping-document-center").then(m => m.ShippingDocumentCenter), { ssr: false })
-const CloudSyncModal = dynamic(() => import("./cloud-sync-modal").then(m => m.CloudSyncModal), { ssr: false })
-const PartyDirectoryModal = dynamic(() => import("./party-directory-modal").then(m => m.PartyDirectoryModal), { ssr: false })
+import { BolSettingsSkeleton } from "./settings/bol-settings-skeleton"
+const BackgroundGallery = dynamic(safeChunkDynamic(() => import("./background-gallery").then((m) => m.BackgroundGallery)), { ssr: false })
+const BolSettingsCenter = dynamic(
+  safeChunkDynamic(() => import("./settings/bol-settings-center").then((m) => m.BolSettingsCenter)),
+  {
+    loading: () => <BolSettingsSkeleton />,
+    ssr: false,
+  }
+)
+const ShippingDocumentCenter = dynamic(safeChunkDynamic(() => import("./shipping-document-center").then((m) => m.ShippingDocumentCenter)), { ssr: false })
+const CloudSyncModal = dynamic(safeChunkDynamic(() => import("./cloud-sync-modal").then((m) => m.CloudSyncModal)), { ssr: false })
+const PartyDirectoryModal = dynamic(safeChunkDynamic(() => import("./party-directory-modal").then((m) => m.PartyDirectoryModal)), { ssr: false })
 import {
   dougharounToMersinLegs,
   nimrozToBandarAbbasLegs,
@@ -440,7 +499,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [hasUnsavedChanges])
 
-  const [bolNumber, setBolNumber] = useState<string>("BOL-2026-NSA626")
+  const [bolNumber, setBolNumber] = useState<string>("BOL-2026-NSA685")
   const [isEditingBolNumber, setIsEditingBolNumber] = useState(false)
   const [issueDate, setIssueDate] = useState<string>("")
   const [persianDate, setPersianDate] = useState<string>("")
@@ -460,12 +519,83 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     observer.observe(toolbar)
     return () => observer.disconnect()
   }, [])
-  const [activeTab, setActiveTab] = useState<string>("form")
 
-  // Intelligent background preloader: Warm up A4Preview chunk and prime critical images in browser cache
+  const [activeTab, setActiveTab] = useState<string>("form")
+  const activeTabRef = useRef<string>("form")
+  activeTabRef.current = activeTab
+  const [isHydrating, setIsHydrating] = useState(false)
+  const [activeBolId, setActiveBolId] = useState<string>("")
+  const [hydrationError, setHydrationError] = useState<string | null>(null)
+  const loadRequestIdRef = useRef<number>(0)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const activeBolIdRef = useRef<string>("")
+  activeBolIdRef.current = activeBolId
+  const bolNumberRef = useRef<string>(bolNumber)
+  bolNumberRef.current = bolNumber
+  const formDataRef = useRef<any>(formData)
+  formDataRef.current = formData
+
+  const isMountedRef = useRef(true)
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
+  const [isPreviewReady, setIsPreviewReady] = useState(false)
+
+  // Two-phase progressive mount for A4 Preview to guarantee < 16ms INP:
+  // Phase 1 (Frame 1): Renders lightweight paper skeleton immediately so the tab switch paints instantly.
+  // Phase 2 (Frame 2): Double-RAF mounts the full A4Preview component after the browser paint finishes.
+  useEffect(() => {
+    if (activeTab === "preview") {
+      let isCancelled = false
+      const rafId = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!isCancelled) {
+            setIsPreviewReady(true)
+          }
+        })
+      })
+      return () => {
+        isCancelled = true
+        cancelAnimationFrame(rafId)
+      }
+    } else {
+      setIsPreviewReady(false)
+    }
+  }, [activeTab])
+
+  const [isSettingsReady, setIsSettingsReady] = useState(false)
+
+  // Two-phase progressive mount for Document Configuration Settings to guarantee < 16ms INP:
+  // Phase 1 (Frame 1): Renders lightweight settings skeleton immediately so the tab switch paints instantly.
+  // Phase 2 (Frame 2): Double-RAF mounts the full BolSettingsCenter component after the browser paint finishes.
+  useEffect(() => {
+    if (activeTab === "pdf-settings") {
+      let isCancelled = false
+      const rafId = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!isCancelled) {
+            setIsSettingsReady(true)
+          }
+        })
+      })
+      return () => {
+        isCancelled = true
+        cancelAnimationFrame(rafId)
+      }
+    } else {
+      setIsSettingsReady(false)
+    }
+  }, [activeTab])
+
+  // Intelligent background preloader: Warm up chunks and prime critical images in browser cache
   useEffect(() => {
     const preloadPreviewAndAssets = () => {
       void import("./a4-preview").catch(() => {})
+      void import("./settings/bol-settings-center").catch(() => {})
       if (typeof window !== "undefined") {
         const prime = (src: string) => {
           const img = new Image()
@@ -486,28 +616,64 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     }
   }, [])
 
+  const flushDraftRef = useRef<((skipStateUpdate?: boolean) => void) | null>(null)
+  const pendingTabRef = useRef<string | null>(null)
+
   const handleTabChange = useCallback((newTab: string) => {
-    if (newTab === activeTab) return
-    if (newTab === "preview") {
-      if (typeof performance !== "undefined" && performance.mark) {
-        performance.mark("bol:preview-tab-click")
-      }
-      resetAllParentScrolls()
+    if (newTab === activeTab || newTab === pendingTabRef.current) return
+    pendingTabRef.current = newTab
+
+    if (typeof performance !== "undefined" && performance.mark) {
+      performance.mark(`bol:tab-click-${newTab}`)
     }
-    startTransition(() => {
-      setActiveTab(newTab)
-    })
-  }, [activeTab])
+
+    if (typeof window !== "undefined") {
+      // Defer URL update to idle/timeout so it never blocks the interaction paint
+      setTimeout(() => {
+        try {
+          const url = new URL(window.location.href)
+          url.searchParams.set("tab", newTab)
+          if (bolNumber) {
+            url.searchParams.set("bol", bolNumber)
+          }
+          const newUrlStr = url.pathname + url.search + url.hash
+          window.history.replaceState(window.history.state, "", newUrlStr)
+        } catch (_) {}
+      }, 80)
+
+      // Defer draft serialization and LocalStorage write off the critical render path
+      const deferDraft = "requestIdleCallback" in window
+        ? (cb: () => void) => (window as any).requestIdleCallback(cb, { timeout: 1500 })
+        : (cb: () => void) => setTimeout(cb, 200)
+
+      deferDraft(() => {
+        flushDraftRef.current?.(true)
+      })
+    }
+
+    // Break out of synchronous event loop to guarantee < 16ms INP
+    setTimeout(() => {
+      pendingTabRef.current = null
+      startTransition(() => {
+        setActiveTab(newTab)
+      })
+    }, 0)
+  }, [activeTab, bolNumber])
 
   useEffect(() => {
+    pendingTabRef.current = null
     const mainWorkspace = document.querySelector('[data-main-workspace="true"]') as HTMLElement | null
     if (activeTab === "preview") {
       if (mainWorkspace) {
         mainWorkspace.dataset.previewActive = "true"
-        mainWorkspace.scrollTop = 0
-        mainWorkspace.scrollLeft = 0
       }
-      resetAllParentScrolls()
+      requestAnimationFrame(() => {
+        if (mainWorkspace) {
+          mainWorkspace.scrollTop = 0
+          mainWorkspace.scrollLeft = 0
+        }
+        resetAllParentScrolls()
+      })
     } else {
       if (mainWorkspace) {
         delete mainWorkspace.dataset.previewActive
@@ -576,6 +742,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   } = useA4PreviewScale(activeTab === "preview", previewPageCount)
   const [isEditMode, setIsEditMode] = useState(false)
   const [editDocumentId, setEditDocumentId] = useState<string | null>(null)
+  const editDocumentIdRef = useRef<string | null>(null)
+  editDocumentIdRef.current = editDocumentId
   const [autoSaveStatus, setAutoSaveStatus] = useState<"saved" | "saving" | "idle" | "local" | "error">("idle")
   const [lastAutoSaveTime, setLastAutoSaveTime] = useState<string>("")
   const [hasRecoverableDraft, setHasRecoverableDraft] = useState(false)
@@ -594,7 +762,14 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       const result: { success?: boolean } = await response.json()
       if (result.success !== true) throw new Error("Draft backup was not confirmed")
     }, (status) => {
-      if (queuedRevision.current === draftRevision.current) setAutoSaveStatus(status)
+      if (queuedRevision.current === draftRevision.current) {
+        setAutoSaveStatus(status)
+        if (status === "saved") {
+          const nowFormatted = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+          setLastAutoSaveTime(nowFormatted)
+          setLastAutoSavedTime(nowFormatted)
+        }
+      }
     })
     draftQueue.current = queue
     const retry = () => queue.retry()
@@ -606,123 +781,174 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     }
   }, [])
 
-  // Enterprise Multi-Tier Real-Time Auto-Saving Engine (Debounced 800ms)
+  // Synchronous LocalStorage Draft Persist (0ms latency, runs immediately on every change)
+  const persistLocalDraftSync = useCallback(() => {
+    if (typeof window === "undefined") return null
+    try {
+      const currentDocData = {
+        ...formData,
+        bol_number: bolNumber,
+        issue_date: issueDate,
+        persian_date: persianDate,
+        persian_date_numeric: persianDateNumeric,
+        updated_at: new Date().toISOString(),
+      }
+
+      // Tier 1: Instant LocalStorage Write
+      window.localStorage.setItem("skybol:active-form-draft", JSON.stringify(currentDocData))
+      window.localStorage.setItem(
+        "sky-bol-live-draft",
+        JSON.stringify({
+          formData: currentDocData,
+          bolNumber,
+          issueDate,
+          persianDate,
+          persianDateNumeric,
+          savedAt: currentDocData.updated_at,
+        })
+      )
+      if (bolNumber) {
+        window.localStorage.setItem("skybol:last-active-document-id", bolNumber)
+        window.localStorage.setItem(`skybol:draft:${cleanBolNumber(bolNumber)}`, JSON.stringify(currentDocData))
+      }
+      return currentDocData
+    } catch (e) {
+      console.warn("Local storage draft save error:", e)
+      return null
+    }
+  }, [formData, bolNumber, issueDate, persianDate, persianDateNumeric])
+
+  // Flush Draft to Server Queue (Atomically writes to .local-bol-draft.json)
+  const flushDraftToServer = useCallback((skipStateUpdate = false) => {
+    if (typeof window === "undefined" || checkingDraft || hasRecoverableDraft || isHydrating) return
+    const currentDocData = persistLocalDraftSync()
+    if (!currentDocData) return
+
+    // Any valid BOL number or non-empty form field is backed up
+    const hasAnyContent = Boolean(
+      (bolNumber && bolNumber.trim().length >= 2) ||
+      Object.entries(currentDocData).some(([key, val]) => {
+        if (["id", "type", "created_at", "updated_at", "revision", "user_id"].includes(key)) return false
+        if (key === "routes") return Array.isArray(val) && val.length > 2
+        if (typeof val === "string") return val.trim().length > 0 && val.trim() !== "0"
+        return false
+      })
+    )
+
+    if (hasAnyContent && draftQueue.current) {
+      draftRevision.current += 1
+      queuedRevision.current = draftRevision.current
+      if (!skipStateUpdate && isMountedRef.current) {
+        setAutoSaveStatus("saving")
+      }
+      draftQueue.current.enqueue(JSON.stringify({ type: "bol", draft: currentDocData }))
+    } else {
+      if (!skipStateUpdate && isMountedRef.current) {
+        setAutoSaveStatus("local")
+      }
+    }
+
+    // Tier 3: Auto-save Shipper & Consignee into Autocomplete Databases (deferred to idle to eliminate main thread blocking)
+    const deferPartyPersist = typeof window !== "undefined" && "requestIdleCallback" in window
+      ? (cb: () => void) => (window as any).requestIdleCallback(cb, { timeout: 1200 })
+      : (cb: () => void) => setTimeout(cb, 600)
+
+    deferPartyPersist(() => {
+      try {
+        if (formData.shipper_name?.trim()) {
+          const sName = formData.shipper_name.trim()
+          const rawS = window.localStorage.getItem(SAVED_SHIPPERS_STORAGE_KEY)
+          let listS: SavedParty[] = []
+          try { listS = rawS ? JSON.parse(rawS) : [] } catch (_) {}
+          const matchS = listS.find((s) => s.name.trim().toLowerCase() === sName.toLowerCase())
+          const curS: SavedParty = {
+            id: matchS ? matchS.id : crypto.randomUUID(),
+            name: sName,
+            address: formData.shipper_address || "",
+            contact: formData.shipper_contact || "",
+            email: formData.shipper_email || "",
+            savedAt: new Date().toISOString(),
+          }
+          const nextS = [curS, ...listS.filter((s) => s.id !== curS.id)].slice(0, 1000)
+          window.localStorage.setItem(SAVED_SHIPPERS_STORAGE_KEY, JSON.stringify(nextS))
+        }
+
+        if (formData.consignee_name?.trim()) {
+          const cName = formData.consignee_name.trim()
+          const rawC = window.localStorage.getItem(SAVED_CONSIGNEES_STORAGE_KEY)
+          let listC: SavedParty[] = []
+          try { listC = rawC ? JSON.parse(rawC) : [] } catch (_) {}
+          const matchC = listC.find((c) => c.name.trim().toLowerCase() === cName.toLowerCase())
+          const curC: SavedParty = {
+            id: matchC ? matchC.id : crypto.randomUUID(),
+            name: cName,
+            address: formData.consignee_address || "",
+            contact: formData.consignee_contact || "",
+            email: formData.consignee_email || "",
+            savedAt: new Date().toISOString(),
+          }
+          const nextC = [curC, ...listC.filter((c) => c.id !== curC.id)].slice(0, 1000)
+          window.localStorage.setItem(SAVED_CONSIGNEES_STORAGE_KEY, JSON.stringify(nextC))
+        }
+      } catch (_) {}
+    })
+  }, [persistLocalDraftSync, checkingDraft, hasRecoverableDraft, isHydrating, bolNumber, formData])
+
+  // Keep ref synchronized for tab changes and lifecycle events
+  useEffect(() => {
+    flushDraftRef.current = flushDraftToServer
+  }, [flushDraftToServer])
+
+  // Enterprise Multi-Tier Real-Time Auto-Saving Engine (0ms local, 450ms debounced server, 20s heartbeat)
   useEffect(() => {
     if (typeof window === "undefined") return
-    if (checkingDraft || hasRecoverableDraft) return
+    if (checkingDraft || hasRecoverableDraft || isHydrating) return
 
-    draftRevision.current += 1
+    // 1. Instant local write (0ms latency on every keystroke)
+    persistLocalDraftSync()
+
+    // 2. Schedule debounced server backup (450ms)
     setAutoSaveStatus("saving")
-    let pendingLocalSave = true
-    const persistLocalDraft = () => {
-        const currentDocData = {
-          ...formData,
-          bol_number: bolNumber,
-          issue_date: issueDate,
-          persian_date: persianDate,
-          persian_date_numeric: persianDateNumeric,
-          updated_at: new Date().toISOString(),
-        }
-
-        // Tier 1: Synchronous In-Memory & LocalStorage Active Draft Sync
-        window.localStorage.setItem("skybol:active-form-draft", JSON.stringify(currentDocData))
-        window.localStorage.setItem(
-          "sky-bol-live-draft",
-          JSON.stringify({
-            formData: currentDocData,
-            bolNumber,
-            issueDate,
-            persianDate,
-            persianDateNumeric,
-            savedAt: currentDocData.updated_at,
-          })
-        )
-        if (bolNumber) {
-          window.localStorage.setItem("skybol:last-active-document-id", bolNumber)
-        }
-        pendingLocalSave = false
-        return currentDocData
-    }
-    const flushLocalDraft = () => {
-      if (!pendingLocalSave) return
-      try { persistLocalDraft(); setAutoSaveStatus("local") }
-      catch { setAutoSaveStatus("error") }
-    }
-    const handleVisibility = () => {
-      if (document.visibilityState === "hidden") flushLocalDraft()
-    }
-    window.addEventListener("pagehide", flushLocalDraft)
-    document.addEventListener("visibilitychange", handleVisibility)
     const timer = setTimeout(() => {
-      try {
-        const currentDocData = persistLocalDraft()
+      flushDraftToServer()
+    }, 450)
 
-        // Tier 2: Dedicated Server-Side Draft Backup (Crash-resistant, isolated from official BOLs)
-        const isMeaningfulDraft =
-          Boolean(formData.shipper_name?.trim() && formData.shipper_name.trim().toLowerCase() !== "no shipper") ||
-          Boolean(formData.number_of_packages?.trim() && formData.number_of_packages.trim() !== "0") ||
-          Boolean(formData.gross_weight?.trim()) ||
-          Boolean(formData.net_weight?.trim()) ||
-          Boolean(formData.consignee_name?.trim() && formData.consignee_name.trim().toLowerCase() !== "no consignee") ||
-          Boolean(formData.driver_name?.trim()) ||
-          Boolean(formData.driver_rent?.trim()) ||
-          Boolean(formData.truck_number?.trim()) ||
-          Boolean(formData.cargo_description?.trim() && formData.cargo_description.trim().length > 3)
-
-        if (bolNumber && bolNumber.trim().length >= 2 && isMeaningfulDraft) {
-          queuedRevision.current = draftRevision.current
-          draftQueue.current?.enqueue(JSON.stringify({ type: "bol", draft: currentDocData }))
-        } else {
-          setAutoSaveStatus("local")
-        }
-
-        // Tier 3: Auto-save Shipper, Consignee & Notify Parties into Autocomplete Databases
-        try {
-          if (formData.shipper_name?.trim()) {
-            const sName = formData.shipper_name.trim()
-            const matchS = savedShippers.find((s) => s.name.trim().toLowerCase() === sName.toLowerCase())
-            const curS: SavedParty = {
-              id: matchS ? matchS.id : crypto.randomUUID(),
-              name: sName,
-              address: formData.shipper_address || "",
-              contact: formData.shipper_contact || "",
-              email: formData.shipper_email || "",
-              savedAt: new Date().toISOString(),
-            }
-            const nextS = [curS, ...savedShippers.filter((s) => s.id !== curS.id)].slice(0, 10000)
-            window.localStorage.setItem(SAVED_SHIPPERS_STORAGE_KEY, JSON.stringify(nextS))
-          }
-
-          if (formData.consignee_name?.trim()) {
-            const cName = formData.consignee_name.trim()
-            const matchC = savedConsignees.find((c) => c.name.trim().toLowerCase() === cName.toLowerCase())
-            const curC: SavedParty = {
-              id: matchC ? matchC.id : crypto.randomUUID(),
-              name: cName,
-              address: formData.consignee_address || "",
-              contact: formData.consignee_contact || "",
-              email: formData.consignee_email || "",
-              savedAt: new Date().toISOString(),
-            }
-            const nextC = [curC, ...savedConsignees.filter((c) => c.id !== curC.id)].slice(0, 10000)
-            window.localStorage.setItem(SAVED_CONSIGNEES_STORAGE_KEY, JSON.stringify(nextC))
-          }
-        } catch (e) {}
-
-        const nowFormatted = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-        setLastAutoSaveTime(nowFormatted)
-        setLastAutoSavedTime(nowFormatted)
-      } catch (e) {
-        setAutoSaveStatus("error")
-      }
-    }, 1200)
+    // 3. Heartbeat backup every 20 seconds
+    const heartbeat = setInterval(() => {
+      flushDraftToServer()
+    }, 20000)
 
     return () => {
       clearTimeout(timer)
-      window.removeEventListener("pagehide", flushLocalDraft)
-      document.removeEventListener("visibilitychange", handleVisibility)
+      clearInterval(heartbeat)
+      // Note: Do NOT flush synchronously on every keystroke/effect re-run.
+      // Doing so previously blocked the main thread for >1000ms on resets and fast typing.
     }
-  }, [formData, bolNumber, issueDate, persianDate, persianDateNumeric, checkingDraft, hasRecoverableDraft])
+  }, [formData, bolNumber, issueDate, persianDate, persianDateNumeric, checkingDraft, hasRecoverableDraft, isHydrating, persistLocalDraftSync, flushDraftToServer])
+
+  // Dedicated unmount & page visibility lifecycle listeners (attached once on mount)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const handleFlush = () => {
+      flushDraftRef.current?.(true)
+    }
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        flushDraftRef.current?.(true)
+      }
+    }
+
+    window.addEventListener("pagehide", handleFlush)
+    window.addEventListener("beforeunload", handleFlush)
+    document.addEventListener("visibilitychange", handleVisibility)
+
+    return () => {
+      window.removeEventListener("pagehide", handleFlush)
+      window.removeEventListener("beforeunload", handleFlush)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      flushDraftRef.current?.(true)
+    }
+  }, [])
   const [activeRouteIndex, setActiveRouteIndex] = useState<number | null>(null)
   const [showLocationDropdown, setShowLocationDropdown] = useState<number | null>(null)
   const [selectedCountryFilter, setSelectedCountryFilter] = useState("ALL")
@@ -1254,16 +1480,18 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   // Load document when loadDocumentId changes
   useEffect(() => {
     if (loadDocumentId) {
-      loadDocument(loadDocumentId)
+      void loadBolDocument(loadDocumentId, { targetTab: "form", force: true })
     }
   }, [loadDocumentId])
 
-  const applyLoadedDocument = useCallback((doc: any, id: string) => {
-    const docBolNumber = cleanBolNumber(doc.bol_number) || cleanBolNumber(doc.billOfLadingNumber) || cleanBolNumber(doc.bolNo) || cleanBolNumber(id) || ""
+  const applyLoadedDocument = useCallback((rawDoc: any, id: string) => {
+    const doc = normalizeBolRecord(rawDoc, id)
+    const docBolNumber = cleanBolNumber(doc.bol_number) || cleanBolNumber(id) || id || ""
     if (docBolNumber) {
       setBolNumber(docBolNumber)
+      setActiveBolId(docBolNumber)
     }
-    const rawIssueDate = doc.issue_date || doc.issueDate || new Date().toISOString().split("T")[0]
+    const rawIssueDate = doc.issue_date || new Date().toISOString().split("T")[0]
     setIssueDate(rawIssueDate)
     setEditDocumentId(doc.id || id)
     setIsEditMode(true)
@@ -1273,50 +1501,17 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       setPersianDateNumeric(formatPersianDate(rawIssueDate) ?? dualDates.persianNumeric)
     }
     const nextFormData = {
-      truck_number: doc.truck_number || doc.truckNumber || "",
-      driver_name: doc.driver_name || doc.driverName || "",
-      driver_father_name: doc.driver_father_name || doc.driverFatherName || "",
-      driver_contact: doc.driver_contact || doc.driverContact || doc.driver_phone || "",
-      driver_rent: doc.driver_rent || doc.driverRent || doc.driverFreight || "",
-      routes: doc.routes || initialFormData.routes,
-      container_type: doc.container_type || doc.containerType || "",
-      container_size: doc.container_size || doc.containerSize || "",
-      container_numbers: doc.container_numbers || doc.containerNumbers || "",
-      seal_numbers: doc.seal_numbers || doc.sealNumbers || "",
-      shipper_name: doc.shipper_name || doc.shipperName || "",
-      shipper_address: doc.shipper_address || doc.shipperAddress || "",
-      shipper_contact: doc.shipper_contact || doc.shipperContact || "",
-      shipper_email: doc.shipper_email || doc.shipperEmail || "",
-      consignee_name: doc.consignee_name || doc.consigneeName || "",
-      consignee_address: doc.consignee_address || doc.consigneeAddress || "",
-      consignee_contact: doc.consignee_contact || doc.consigneeContact || "",
-      consignee_email: doc.consignee_email || doc.consigneeEmail || "",
-      notify_party: doc.notify_party || doc.notifyParty || "",
-      notify_party_address: doc.notify_party_address || doc.notifyPartyAddress || "",
-      vessel_name: doc.vessel_name || doc.vesselName || "",
-      voyage_number: doc.voyage_number || doc.voyageNumber || "",
-      port_of_loading: doc.port_of_loading || doc.portOfLoading || "",
-      port_of_discharge: doc.port_of_discharge || doc.portOfDischarge || "",
-      place_of_delivery: doc.place_of_delivery || doc.placeOfDelivery || "",
-      cargo_description: doc.cargo_description || doc.cargoDescription || initialFormData.cargo_description,
-      cargo_route_note: doc.cargo_route_note || doc.cargoRouteNote || "",
-      net_weight: doc.net_weight || doc.netWeight || "",
-      gross_weight: doc.gross_weight || doc.grossWeight || "",
-      measurement: doc.measurement || "",
-      number_of_packages: doc.number_of_packages || doc.numberOfPackages || "",
-      kgs_per_carton: doc.kgs_per_carton || doc.kgsPerCarton || "",
-      gross_weight_per_carton: doc.gross_weight_per_carton || doc.grossWeightPerCarton || "",
-      rate_per_kgs: doc.rate_per_kgs || doc.ratePerKgs || "",
-      goods_value: doc.goods_value || doc.goodsValue || "",
-      freight_payable_at: doc.freight_payable_at || doc.freightPayableAt || "",
-      freight_terms: doc.freight_terms || doc.freightTerms || "",
-      remarks: doc.remarks || "",
-      notes_1: doc.notes_1 !== undefined ? doc.notes_1 : (doc.notes1 !== undefined ? doc.notes1 : initialFormData.notes_1),
-      notes_1_label: doc.notes_1_label || doc.notes1Label || initialFormData.notes_1_label,
-      notes_1_theme: doc.notes_1_theme || doc.notes1Theme || initialFormData.notes_1_theme,
-      notes_2: doc.notes_2 !== undefined ? doc.notes_2 : (doc.notes2 !== undefined ? doc.notes2 : initialFormData.notes_2),
-      notes_2_label: doc.notes_2_label || doc.notes2Label || initialFormData.notes_2_label,
-      notes_2_theme: doc.notes_2_theme || doc.notes2Theme || initialFormData.notes_2_theme,
+      ...doc,
+      bol_number: docBolNumber,
+      issue_date: rawIssueDate,
+      routes: (Array.isArray(doc.routes) && doc.routes.length > 0) ? doc.routes : initialFormData.routes,
+      cargo_description: doc.cargo_description || initialFormData.cargo_description,
+      notes_1: doc.notes_1 !== undefined && doc.notes_1 !== "" ? doc.notes_1 : initialFormData.notes_1,
+      notes_1_label: doc.notes_1_label || initialFormData.notes_1_label,
+      notes_1_theme: doc.notes_1_theme || initialFormData.notes_1_theme,
+      notes_2: doc.notes_2 !== undefined && doc.notes_2 !== "" ? doc.notes_2 : initialFormData.notes_2,
+      notes_2_label: doc.notes_2_label || initialFormData.notes_2_label,
+      notes_2_theme: doc.notes_2_theme || initialFormData.notes_2_theme,
       afghanistan_documents: doc.afghanistan_documents || [],
       afghanistan_document_details: doc.afghanistan_document_details || {},
     }
@@ -1336,10 +1531,80 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     onDocumentLoaded?.()
   }, [onDocumentLoaded])
 
-  const loadDocument = async (id: string) => {
-    // 0. If this is already the currently active document in memory, skip redundant reload
-    if ((bolNumber === id || editDocumentId === id) && (formData.bol_number || formData.shipper_name)) {
-      return
+  const loadBolDocument = useCallback(async (
+    rawId: string,
+    options?: { targetTab?: string; force?: boolean; initialData?: any }
+  ) => {
+    const targetTab = options?.targetTab || "form"
+    const force = options?.force ?? false
+    const initialData = options?.initialData
+    const id = (rawId || "").trim()
+    if (!id) return
+
+    const canonicalId = cleanBolNumber(id) || id
+
+    // Increment request ID and cancel previous in-flight fetch
+    const currentRequestId = ++loadRequestIdRef.current
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    const abortController = new AbortController()
+    abortControllerRef.current = abortController
+
+    // Update URL query parameters for deep linking & refresh
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href)
+        url.searchParams.set("bol", canonicalId)
+        if (targetTab) {
+          url.searchParams.set("tab", targetTab)
+        }
+        const newUrlStr = url.pathname + url.search + url.hash
+        window.history.replaceState(window.history.state, "", newUrlStr)
+      } catch (_) {}
+    }
+
+    // Fast optimistic path: If initial document is available (from RecentBolCard or SavedDocuments table)
+    if (initialData) {
+      const normalized = normalizeBolRecord(initialData, canonicalId)
+      startTransition(() => {
+        setHydrationError(null)
+        setActiveBolId(canonicalId)
+        if (targetTab && activeTabRef.current !== targetTab) {
+          setActiveTab(targetTab)
+        }
+        applyLoadedDocument(normalized, canonicalId)
+      })
+    }
+
+    // Set hydration state immediately
+    setIsHydrating(!initialData)
+    setHydrationError(null)
+    setActiveBolId(canonicalId)
+
+    // Switch tab if requested
+    if (targetTab && activeTabRef.current !== targetTab) {
+      startTransition(() => {
+        setActiveTab(targetTab)
+      })
+    }
+
+    // 0. If this is already the currently active document in memory and complete, skip redundant reload
+    const curBolNumber = bolNumberRef.current
+    const curEditDocId = editDocumentIdRef.current
+    const curFormData = formDataRef.current
+    if (!force && (curBolNumber === canonicalId || curEditDocId === canonicalId)) {
+      const isCurrentComplete = Boolean(
+        (curFormData?.truck_number || curFormData?.truckNumber) &&
+        (curFormData?.consignee_name || curFormData?.consigneeName) &&
+        (curFormData?.consignee_address || curFormData?.consigneeAddress) &&
+        (curFormData?.cargo_route_note || curFormData?.cargoRouteNote) &&
+        (curFormData?.routes && Array.isArray(curFormData?.routes) && curFormData.routes.length > 0)
+      )
+      if (isCurrentComplete) {
+        setIsHydrating(false)
+        return
+      }
     }
 
     // 1. Instant Cache-First Check: read synchronously from localStorage (<1ms)
@@ -1352,83 +1617,222 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         const list1 = stored1 ? JSON.parse(stored1) : []
         const list2 = stored2 ? JSON.parse(stored2) : []
         const list3 = stored3 ? JSON.parse(stored3) : []
-        cachedDoc = [...list1, ...list2, ...list3].find((d: any) => d?.id === id || d?.bol_number === id)
+        cachedDoc = [...list1, ...list2, ...list3].find(
+          (d: any) =>
+            d?.id === id ||
+            d?.id === canonicalId ||
+            d?.bol_number === id ||
+            d?.bol_number === canonicalId ||
+            d?.billOfLadingNumber === canonicalId ||
+            d?.bolNo === canonicalId
+        )
       }
     } catch (e) {
       console.warn("Local storage document cache read error:", e)
     }
 
+    const isCachedComplete = Boolean(
+      cachedDoc &&
+      (cachedDoc.truck_number || cachedDoc.truckNumber) &&
+      (cachedDoc.consignee_name || cachedDoc.consigneeName) &&
+      (cachedDoc.consignee_address || cachedDoc.consigneeAddress) &&
+      (cachedDoc.cargo_route_note || cachedDoc.cargoRouteNote) &&
+      (cachedDoc.routes && Array.isArray(cachedDoc.routes) && cachedDoc.routes.length > 0)
+    )
+
     if (cachedDoc) {
-      // Apply immediately with 0ms delay - no skeleton, no wait
-      applyLoadedDocument(cachedDoc, id)
-      // Background verification with server if online
-      try {
-        const response = await fetch(`/api/bol/${id}`)
-        if (response.ok) {
-          const result = await response.json()
-          if (result.data) {
-            // Intelligent non-destructive merge: preserve rich fields from cachedDoc if server returned empty/null
-            const merged = { ...cachedDoc }
-            for (const [k, v] of Object.entries(result.data)) {
-              if (v !== null && v !== undefined && v !== "") {
-                merged[k] = v
-              }
-            }
-            applyLoadedDocument(merged, id)
-          }
-        }
-      } catch {}
-      return
+      if (loadRequestIdRef.current === currentRequestId) {
+        const mergedWithCache = { ...(initialData || {}), ...cachedDoc }
+        const normalized = normalizeBolRecord(mergedWithCache, canonicalId)
+        startTransition(() => {
+          applyLoadedDocument(normalized, canonicalId)
+          if (isCachedComplete) setIsHydrating(false)
+        })
+      }
     }
 
-    // 2. Fallback: only if document is NOT in local storage, fetch from server with loading state
-    setIsLoading(true)
+    // 2. Fetch authoritative document from server
+    if (!isCachedComplete) {
+      setIsLoading(true)
+    }
+
     try {
       let doc: any = null
       try {
-        const response = await fetch(`/api/bol/${id}`)
+        const response = await fetch(`/api/bol/${encodeURIComponent(canonicalId)}`, {
+          signal: abortController.signal,
+        })
         if (response.ok) {
           const result = await response.json()
           if (result.data) {
             doc = result.data
           }
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err.name === "AbortError") {
+          return
+        }
         console.warn("Server document fetch failed:", err)
       }
 
-      if (doc) {
-        applyLoadedDocument(doc, id)
-      } else {
-        toast.error("Unable to load document data")
-      }
-    } catch (error) {
-      console.error("[v0] Error loading document:", error)
-      toast.error("Failed to load document")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const fetchNextBolNumber = async () => {
-    setIsLoading(true)
-    try {
-      const response = await fetch("/api/bol?action=next-number")
-      const result = await response.json()
-      
-      if (result?.bolNumber) {
-        setBolNumber(result.bolNumber)
+      // Check request ID guard against race conditions
+      if (loadRequestIdRef.current !== currentRequestId) {
         return
       }
 
-      setBolNumber("BOL-2026-NSA626")
+      if (doc) {
+        const merged: any = {
+          ...(cachedDoc || {}),
+          ...(initialData || {}),
+          ...doc,
+        }
+        // Retain values if doc has empty strings or missing fields
+        if (!merged.cargo_route_note) merged.cargo_route_note = cachedDoc?.cargo_route_note || initialData?.cargo_route_note || ""
+        if (!merged.cargoRouteNote) merged.cargoRouteNote = merged.cargo_route_note
+        if (!merged.consignee_address) merged.consignee_address = cachedDoc?.consignee_address || initialData?.consignee_address || ""
+        if (!merged.consigneeAddress) merged.consigneeAddress = merged.consignee_address
+        if (!merged.consignee_contact) merged.consignee_contact = cachedDoc?.consignee_contact || initialData?.consignee_contact || ""
+        if (!merged.consigneeContact) merged.consigneeContact = merged.consignee_contact
+        if (!merged.consignee_email) merged.consignee_email = cachedDoc?.consignee_email || initialData?.consignee_email || ""
+        if (!merged.consigneeEmail) merged.consigneeEmail = merged.consignee_email
+        if (!merged.shipper_address) merged.shipper_address = cachedDoc?.shipper_address || initialData?.shipper_address || ""
+        if (!merged.shipperAddress) merged.shipperAddress = merged.shipper_address
+        if (!merged.shipper_contact) merged.shipper_contact = cachedDoc?.shipper_contact || initialData?.shipper_contact || ""
+        if (!merged.shipperContact) merged.shipperContact = merged.shipper_contact
+        if (!merged.kgs_per_carton) merged.kgs_per_carton = cachedDoc?.kgs_per_carton || initialData?.kgs_per_carton || ""
+        if (!merged.kgsPerCarton) merged.kgsPerCarton = merged.kgs_per_carton
+        if (!merged.gross_weight_per_carton) merged.gross_weight_per_carton = cachedDoc?.gross_weight_per_carton || initialData?.gross_weight_per_carton || ""
+        if (!merged.grossWeightPerCarton) merged.grossWeightPerCarton = merged.gross_weight_per_carton
+        if (!merged.rate_per_kgs) merged.rate_per_kgs = cachedDoc?.rate_per_kgs || initialData?.rate_per_kgs || ""
+        if (!merged.ratePerKgs) merged.ratePerKgs = merged.rate_per_kgs
+        if (!merged.goods_value) merged.goods_value = cachedDoc?.goods_value || initialData?.goods_value || ""
+        if (!merged.goodsValue) merged.goodsValue = merged.goods_value
+        if (!merged.notes_1 && (cachedDoc?.notes_1 || initialData?.notes_1)) merged.notes_1 = cachedDoc?.notes_1 || initialData?.notes_1
+        if (!merged.notes_2 && (cachedDoc?.notes_2 || initialData?.notes_2)) merged.notes_2 = cachedDoc?.notes_2 || initialData?.notes_2
+
+        if (Array.isArray(doc.routes) && doc.routes.length > 0) {
+          merged.routes = doc.routes
+        }
+        const normalized = normalizeBolRecord(merged, canonicalId)
+        applyLoadedDocument(normalized, canonicalId)
+        setIsHydrating(false)
+
+        // Sync back to local storage cache so client storage is pristine
+        try {
+          if (typeof window !== "undefined") {
+            const keys = ["sky-bol-browser-documents", "skybol:saved-documents", "skybol:backup-documents"]
+            for (const k of keys) {
+              const raw = window.localStorage.getItem(k)
+              const list: any[] = raw ? JSON.parse(raw) : []
+              const next = [
+                merged,
+                ...list.filter(
+                  (d: any) =>
+                    d?.id !== id &&
+                    d?.id !== canonicalId &&
+                    d?.bol_number !== id &&
+                    d?.bol_number !== canonicalId &&
+                    d?.bol_number !== doc.bol_number
+                ),
+              ]
+              window.localStorage.setItem(k, JSON.stringify(next.slice(0, 1000)))
+            }
+          }
+        } catch (_) {}
+      } else if (!isCachedComplete && !initialData) {
+        setIsHydrating(false)
+        setHydrationError(`BOL could not be loaded: ${canonicalId}`)
+        toast.error(`Unable to load document ${canonicalId}`)
+      }
+    } catch (error: any) {
+      if (error?.name === "AbortError") return
+      console.error("[v0] Error loading document:", error)
+      if (loadRequestIdRef.current === currentRequestId) {
+        setIsHydrating(false)
+        setHydrationError(`Failed to load document: ${canonicalId}`)
+        toast.error("Failed to load document")
+      }
+    } finally {
+      if (loadRequestIdRef.current === currentRequestId) {
+        setIsLoading(false)
+      }
+    }
+  }, [applyLoadedDocument])
+
+  const loadDocument = useCallback(async (id: string, force = false) => {
+    return loadBolDocument(id, { targetTab: activeTab, force })
+  }, [loadBolDocument, activeTab])
+
+  const getHighestKnownBolSequence = useCallback((): number => {
+    let max = 683
+
+    // 1. Current in-memory document / form
+    const currentSeq = parseBolSeq(bolNumberRef.current || bolNumber)
+    if (currentSeq > max) max = currentSeq
+
+    // 2. Check localStorage records (saved, browser, backups)
+    if (typeof window !== "undefined") {
+      try {
+        const storedMax = window.localStorage.getItem("skybol:highest-allocated-bol")
+        if (storedMax) {
+          const parsed = parseInt(storedMax, 10)
+          if (!isNaN(parsed) && parsed > max) max = parsed
+        }
+
+        const keys = ["sky-bol-browser-documents", "skybol:saved-documents", "skybol:backup-documents"]
+        for (const k of keys) {
+          const raw = window.localStorage.getItem(k)
+          if (!raw) continue
+          const list = JSON.parse(raw)
+          if (Array.isArray(list)) {
+            for (const item of list) {
+              const seq = parseBolSeq(item?.bol_number || item?.billOfLadingNumber || item?.bolNo || item?.id)
+              if (seq > max) max = seq
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    return max
+  }, [bolNumber, formData?.bol_number])
+
+  const fetchNextBolNumber = useCallback(async (minRequiredSeq?: number) => {
+    setIsLoading(true)
+    try {
+      const highestKnown = getHighestKnownBolSequence()
+      const minSeq = typeof minRequiredSeq === "number" ? minRequiredSeq : Math.max(highestKnown + 1, 685)
+      const fetchUrl = `/api/bol?action=next-number&minSequence=${minSeq}`
+      const response = await fetch(fetchUrl)
+      const result = await response.json()
+      
+      const serverSeq = parseBolSeq(result?.bolNumber)
+      const targetSeq = Math.max(serverSeq, minSeq)
+      const finalBol = `BOL-2026-NSA${targetSeq}`
+
+      startTransition(() => {
+        setBolNumber(finalBol)
+        setFormData((prev: any) => ({
+          ...prev,
+          bol_number: finalBol,
+        }))
+      })
     } catch (error) {
       console.error("Error fetching BOL number:", error)
-      setBolNumber("BOL-2026-NSA626")
+      const highestKnown = getHighestKnownBolSequence()
+      const targetSeq = Math.max(minRequiredSeq || 0, highestKnown + 1, 685)
+      const fallbackBol = `BOL-2026-NSA${targetSeq}`
+      startTransition(() => {
+        setBolNumber(fallbackBol)
+        setFormData((prev: any) => ({
+          ...prev,
+          bol_number: fallbackBol,
+        }))
+      })
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [getHighestKnownBolSequence])
 
   // Unified Session Auto-Resume: Automatically restores active work on app launch or reload
   useEffect(() => {
@@ -1436,9 +1840,22 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
     const initActiveSession = async () => {
       try {
+        // 0. URL Deep Link Check: e.g. /?bol=BOL-2026-NSA648&tab=preview
+        if (typeof window !== "undefined") {
+          const urlParams = new URLSearchParams(window.location.search)
+          const urlBol = urlParams.get("bol")
+          const urlTab = urlParams.get("tab")
+          if (urlBol) {
+            await loadBolDocument(urlBol, { targetTab: urlTab || "form", force: true })
+            initialized = true
+            setCheckingDraft(false)
+            return
+          }
+        }
+
         // If loadDocumentId was explicitly passed via props, honor it
         if (loadDocumentId) {
-          await loadDocument(loadDocumentId)
+          await loadBolDocument(loadDocumentId, { targetTab: "form", force: true })
           initialized = true
           setCheckingDraft(false)
           return
@@ -1455,6 +1872,47 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               draftData = dData
             }
           } catch (_) {}
+        }
+
+        // If local draft is missing or empty, attempt recovery from server draft
+        if (!draftData) {
+          try {
+            const sDraftRes = await fetch("/api/draft?type=bol")
+            if (sDraftRes.ok) {
+              const sJson = await sDraftRes.json()
+              if (sJson?.draft) {
+                draftData = sJson.draft
+              }
+            }
+          } catch (_) {}
+        }
+
+        // Reconcile draft against official server record if bol_number is set
+        if (draftData?.bol_number) {
+          try {
+            const sRes = await fetch(`/api/bol/${encodeURIComponent(draftData.bol_number)}`)
+            if (sRes.ok) {
+              const sJson = await sRes.json()
+              const officialDoc = sJson?.data
+              if (officialDoc) {
+                // Official document in database is the golden foundation
+                const merged: any = { ...officialDoc }
+                for (const [k, v] of Object.entries(draftData)) {
+                  if (v !== null && v !== undefined && v !== "" && !(Array.isArray(v) && v.length === 0)) {
+                    merged[k] = v
+                  }
+                }
+                if (Array.isArray(officialDoc.routes) && officialDoc.routes.length > 0) {
+                  if (!Array.isArray(merged.routes) || merged.routes.length <= 2) {
+                    merged.routes = officialDoc.routes
+                  }
+                }
+                draftData = merged
+              }
+            }
+          } catch (e) {
+            console.warn("Draft server reconciliation error:", e)
+          }
         }
 
         // Check if draft has meaningful user content
@@ -1477,8 +1935,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           setHasRecoverableDraft(false)
           setCheckingDraft(false)
           initialized = true
-          toast.info("Resumed Active BOL Draft", {
-            description: `Restored ${draftData.bol_number || "in-progress draft"} with your latest details.`,
+          toast.info("Resumed Active BOL", {
+            description: `Restored ${draftData.bol_number || "active BOL"} with your latest details.`,
             action: {
               label: "New Blank BOL",
               onClick: handleNewDocument,
@@ -1492,7 +1950,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         if (lastActiveId === "__NEW__") {
           initialized = true
           setCheckingDraft(false)
-          void fetchNextBolNumber()
+          const highestKnown = getHighestKnownBolSequence()
+          const nextInitSeq = Math.max(highestKnown + 1, 685)
+          setBolNumber(`BOL-2026-NSA${nextInitSeq}`)
+          void fetchNextBolNumber(nextInitSeq)
           const today = new Date().toISOString().split("T")[0]
           setIssueDate(today)
           const dualDates = getDualDates(today)
@@ -1503,7 +1964,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           return
         }
         if (lastActiveId) {
-          await loadDocument(lastActiveId)
+          await loadBolDocument(lastActiveId, { targetTab: "form", force: true })
           initialized = true
           setCheckingDraft(false)
           return
@@ -1516,7 +1977,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             const json = await res.json()
             if (json?.data && Array.isArray(json.data) && json.data.length > 0 && json.data[0]?.bol_number) {
               const mostRecentId = json.data[0].bol_number
-              await loadDocument(mostRecentId)
+              await loadBolDocument(mostRecentId, { targetTab: "form", force: true })
               initialized = true
               setCheckingDraft(false)
               return
@@ -1543,6 +2004,30 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
     void initActiveSession()
   }, [])
+
+  // Handle Browser Back / Forward deep-link transitions
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window === "undefined") return
+      const params = new URLSearchParams(window.location.search)
+      const urlBol = params.get("bol")
+      const urlTab = params.get("tab")
+      if (urlBol && urlBol !== activeBolIdRef.current) {
+        void loadBolDocument(urlBol, { targetTab: urlTab || "preview", force: true })
+      } else if (urlTab && urlTab !== activeTabRef.current) {
+        setActiveTab(urlTab)
+      }
+    }
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [loadBolDocument])
+
+  // Reset scroll to top when switching BOLs (Section 73)
+  useEffect(() => {
+    if (viewportRef.current) {
+      viewportRef.current.scrollTop = 0
+    }
+  }, [bolNumber, activeBolId])
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -2709,25 +3194,33 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     }
   }
 
-  const handleIncrementBolNumber = () => {
-    if (!bolNumber) {
-      setBolNumber("BOL-2026-NSA501")
-      return
+  const handleIncrementBolNumber = useCallback(() => {
+    const currentSeq = parseBolSeq(bolNumber)
+    const highestKnown = getHighestKnownBolSequence()
+
+    // If current BOL has a valid sequence, increment by 1. Otherwise take highest known + 1 (minimum 685)
+    const nextSeq = currentSeq > 0 ? currentSeq + 1 : Math.max(highestKnown + 1, 685)
+    const prefixMatch = (bolNumber || "").match(/^(.*?)(\d+)$/)
+    const prefix = prefixMatch ? prefixMatch[1] : "BOL-2026-NSA"
+    const nextBol = `${prefix}${nextSeq}`
+
+    setBolNumber(nextBol)
+    setFormData((prev) => ({
+      ...prev,
+      bol_number: nextBol,
+    }))
+
+    if (typeof window !== "undefined") {
+      try {
+        const currentHighest = Number(window.localStorage.getItem("skybol:highest-allocated-bol") || "0")
+        const newHighest = Math.max(currentHighest, nextSeq)
+        window.localStorage.setItem("skybol:highest-allocated-bol", String(newHighest))
+        fetch(`/api/bol?action=set-sequence&sequence=${newHighest + 1}`).catch(() => {})
+      } catch (_) {}
     }
-    const match = bolNumber.match(/^(.*?)(\d+)$/)
-    if (match) {
-      const prefix = match[1]
-      const num = parseInt(match[2], 10) + 1
-      const paddedNum = String(num).padStart(match[2].length, "0")
-      const nextBol = `${prefix}${paddedNum}`
-      setBolNumber(nextBol)
-      toast.success("Next BOL # Generated", { description: nextBol })
-    } else {
-      const nextBol = `${bolNumber}-1`
-      setBolNumber(nextBol)
-      toast.success("Next BOL # Generated", { description: nextBol })
-    }
-  }
+
+    toast.success("Next BOL # Generated", { description: nextBol })
+  }, [bolNumber, getHighestKnownBolSequence])
 
   const handleClearNote1 = () => {
     setFormData((prev) => ({ ...prev, notes_1: "" }))
@@ -4105,18 +4598,21 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   }
 
   const handleSave = async () => {
+    if (isSaving || isHydrating) return
     setIsSaving(true)
+    setAutoSaveStatus("saving")
     try {
       const cleanNum = cleanBolNumber(bolNumber)
       const validEditId = editDocumentId || formData.id || cleanNum
       const method = (isEditMode && validEditId) ? "PUT" : "POST"
       const url = (isEditMode && validEditId) ? `/api/bol/${encodeURIComponent(validEditId)}` : "/api/bol"
       
-      // Include the BOL number in the request
+      // Include the BOL number and incremented revision in the request
       const dataToSend = {
         ...formData,
         bol_number: cleanNum,
         issue_date: issueDate,
+        revision: Number((formData as any).revision || 1) + 1,
       }
 
       if (!isEditMode) {
@@ -4130,14 +4626,15 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       })
       
       if (!response.ok) {
-        let errorMessage = "Failed to save document"
+        let errorMessage = "Could not update BOL. Your changes are still available."
         try {
           const errorData = await response.json()
           errorMessage = errorData.error || errorMessage
         } catch {
           errorMessage = `Server error: ${response.status}`
         }
-        toast.error("Failed to save document", {
+        setAutoSaveStatus("error")
+        toast.error("Could not update BOL. Your changes are still available.", {
           description: errorMessage,
         })
         return
@@ -4146,21 +4643,38 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       const result = await response.json()
       
       if (result.success && result.data) {
-        const savedBolNumber = cleanBolNumber(result.data.bol_number) || cleanNum || "BOL-2026-NSA626"
-        const savedId = (!isUUID(result.data.id) ? result.data.id : null) || savedBolNumber
+        const canonicalRecord = normalizeBolRecord(result.data, cleanNum || validEditId)
+        const savedBolNumber = cleanBolNumber(canonicalRecord.bol_number) || cleanNum || "BOL-2026-NSA626"
+        const savedId = canonicalRecord.id || editDocumentId || savedBolNumber
 
         // Update form data and switch to edit mode so user keeps current document
-        const updatedFormData = {
+        const updatedFormData: BillOfLadingFormData = {
           ...formData,
+          ...canonicalRecord,
           id: savedId,
           bol_number: savedBolNumber,
-          issue_date: result.data.issue_date || issueDate,
+          issue_date: canonicalRecord.issue_date || issueDate,
+          consignee_address: canonicalRecord.consignee_address || (canonicalRecord as any).consigneeAddress || formData.consignee_address || "",
+          consignee_contact: canonicalRecord.consignee_contact || (canonicalRecord as any).consigneeContact || formData.consignee_contact || "",
+          consignee_email: canonicalRecord.consignee_email || (canonicalRecord as any).consigneeEmail || formData.consignee_email || "",
+          shipper_address: canonicalRecord.shipper_address || (canonicalRecord as any).shipperAddress || formData.shipper_address || "",
+          shipper_contact: canonicalRecord.shipper_contact || (canonicalRecord as any).shipperContact || formData.shipper_contact || "",
+          shipper_email: canonicalRecord.shipper_email || (canonicalRecord as any).shipperEmail || formData.shipper_email || "",
+          cargo_route_note: canonicalRecord.cargo_route_note || (canonicalRecord as any).cargoRouteNote || formData.cargo_route_note || "",
+          kgs_per_carton: canonicalRecord.kgs_per_carton || (canonicalRecord as any).kgsPerCarton || formData.kgs_per_carton || "",
+          gross_weight_per_carton: canonicalRecord.gross_weight_per_carton || (canonicalRecord as any).grossWeightPerCarton || formData.gross_weight_per_carton || "",
+          rate_per_kgs: canonicalRecord.rate_per_kgs || (canonicalRecord as any).ratePerKgs || formData.rate_per_kgs || "",
+          goods_value: canonicalRecord.goods_value || (canonicalRecord as any).goodsValue || formData.goods_value || "",
+          notes_1: canonicalRecord.notes_1 !== undefined && canonicalRecord.notes_1 !== "" ? canonicalRecord.notes_1 : formData.notes_1,
+          notes_2: canonicalRecord.notes_2 !== undefined && canonicalRecord.notes_2 !== "" ? canonicalRecord.notes_2 : formData.notes_2,
         }
         setFormData(updatedFormData)
         setIsEditMode(true)
         setEditDocumentId(savedId)
         setBolNumber(savedBolNumber)
+        setActiveBolId(savedId)
         setHasUnsavedChanges(false)
+        setAutoSaveStatus("saved")
 
         // Save directly to browser local storage for 100% instant UI sync
         try {
@@ -4246,7 +4760,16 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
         try {
           window.localStorage.removeItem("sky-bol-live-draft")
           window.localStorage.removeItem("skybol:active-form-draft")
+          window.localStorage.removeItem(`skybol:draft:${cleanBolNumber(savedBolNumber)}`)
+          window.localStorage.removeItem(`skybol:draft:${cleanBolNumber(validEditId)}`)
           window.localStorage.setItem("skybol:last-active-document-id", savedBolNumber)
+          const savedSeq = parseBolSeq(savedBolNumber)
+          if (savedSeq > 0) {
+            const currentHighest = Number(window.localStorage.getItem("skybol:highest-allocated-bol") || "0")
+            const newHighest = Math.max(currentHighest, savedSeq)
+            window.localStorage.setItem("skybol:highest-allocated-bol", String(newHighest))
+            fetch(`/api/bol?action=set-sequence&sequence=${newHighest + 1}`).catch(() => {})
+          }
           fetch("/api/draft?type=bol", { method: "DELETE" }).catch(() => {})
           setHasRecoverableDraft(false)
           setAutoSaveStatus("saved")
@@ -4268,13 +4791,15 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           },
         })
       } else if (result.error) {
-        toast.error("Failed to save document", {
+        setAutoSaveStatus("error")
+        toast.error("Could not update BOL. Your changes are still available.", {
           description: result.error,
         })
       }
     } catch (error) {
       console.error("[v0] Error saving BOL:", error)
-      toast.error("Error saving document", {
+      setAutoSaveStatus("error")
+      toast.error("Could not update BOL. Your changes are still available.", {
         description: error instanceof Error ? error.message : "An unexpected error occurred",
       })
     } finally {
@@ -4283,50 +4808,133 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
   }
 
   const handleNewDocument = () => {
-    try {
-      window.localStorage.removeItem("sky-bol-live-draft")
-      window.localStorage.removeItem("skybol:active-form-draft")
-      window.localStorage.setItem("skybol:last-active-document-id", "__NEW__")
-      fetch("/api/draft?type=bol", { method: "DELETE" }).catch(() => {})
-      setHasRecoverableDraft(false)
-    } catch (_) {}
-    setIsEditMode(false)
-    setEditDocumentId(null)
-    const today = new Date().toISOString().split("T")[0]
-    setFormData({
-      ...initialFormData,
-      cargo_description: `📦 CONTAINER & CARGO PARTICULARS:\n• Description: \n• Transit Date: ${today}\n• INV-`,
+    // 0. Compute next available sequence based on all known documents before state reset
+    const highestBeforeReset = getHighestKnownBolSequence()
+    const nextNewSeq = Math.max(highestBeforeReset + 1, 685)
+    const nextNewBol = `BOL-2026-NSA${nextNewSeq}`
+
+    // 1. Switch to form tab immediately
+    startTransition(() => {
+      setActiveTab("form")
     })
-    setActiveRouteIndex(null)
-    setShowLocationDropdown(null)
-    setBolNumber("BOL-2026-NSA626")
-    fetchNextBolNumber()
-    setIssueDate(today)
-    const dualDates = getDualDates(today)
-    if (dualDates) {
-      setPersianDate(dualDates.persian)
-      setPersianDateNumeric(formatPersianDate(today) ?? dualDates.persianNumeric)
+    if (typeof window !== "undefined") {
+      try {
+        const url = new URL(window.location.href)
+        url.searchParams.set("tab", "form")
+        url.searchParams.delete("bol")
+        window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash)
+      } catch (_) {}
     }
+
+    // 2. Clear stored drafts asynchronously to avoid blocking the event loop (< 16ms INP)
+    setTimeout(() => {
+      try {
+        window.localStorage.removeItem("sky-bol-live-draft")
+        window.localStorage.removeItem("skybol:active-form-draft")
+        window.localStorage.setItem("skybol:last-active-document-id", "__NEW__")
+        window.localStorage.setItem("skybol:highest-allocated-bol", String(nextNewSeq))
+        fetch(`/api/bol?action=set-sequence&sequence=${nextNewSeq + 1}`).catch(() => {})
+        fetch("/api/draft?type=bol", { method: "DELETE" }).catch(() => {})
+      } catch (_) {}
+    }, 0)
+
+    // 3. Mark state reset as non-blocking React 19 transition
+    startTransition(() => {
+      setHasRecoverableDraft(false)
+      setIsEditMode(false)
+      setEditDocumentId(null)
+      const today = new Date().toISOString().split("T")[0]
+      setFormData({
+        ...initialFormData,
+        bol_number: nextNewBol,
+        cargo_description: `📦 CONTAINER & CARGO PARTICULARS:\n• Description: \n• Transit Date: ${today}\n• INV-`,
+      })
+      setActiveRouteIndex(null)
+      setShowLocationDropdown(null)
+      setBolNumber(nextNewBol)
+      setIssueDate(today)
+      const dualDates = getDualDates(today)
+      if (dualDates) {
+        setPersianDate(dualDates.persian)
+        setPersianDateNumeric(formatPersianDate(today) ?? dualDates.persianNumeric)
+      }
+    })
+
+    // 4. Fetch the real sequence number in background
+    void fetchNextBolNumber(nextNewSeq)
   }
 
   const handleDuplicateCurrent = async () => {
     setIsSaving(true)
     const toastId = toast.loading("Duplicating BOL...", {
-      description: "Generating next sequence number...",
+      description: "Allocating official atomic sequence number...",
     })
     try {
-      const response = await fetch("/api/bol?action=next-number")
-      const result = await response.json()
-      const newBolNumber = result.bolNumber || "BOL-2026-NSA626"
+      const highestKnown = getHighestKnownBolSequence()
+      const minAlloc = Math.max(highestKnown + 1, 685)
+      const response = await fetch(`/api/bol?action=next-number&advance=true&minSequence=${minAlloc}`)
+      let newBolNumber = `BOL-2026-NSA${minAlloc}`
+      if (response.ok) {
+        const result = await response.json()
+        if (result?.bolNumber) {
+          const s = parseBolSeq(result.bolNumber)
+          if (s >= minAlloc) {
+            newBolNumber = result.bolNumber
+          }
+        }
+      }
+      const newId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `bol-${Date.now()}`
+      const today = new Date().toISOString().split("T")[0]
 
       setIsEditMode(false)
       setEditDocumentId(null)
       setBolNumber(newBolNumber)
-      setFormData((prev) => ({ ...prev, id: "", bol_number: newBolNumber }))
 
-      toast.success(`Cloned as ${newBolNumber}!`, {
+      setFormData((prev: any) => {
+        const next = {
+          ...prev,
+          id: newId,
+          bol_number: newBolNumber,
+          billOfLadingNumber: newBolNumber,
+          bolNo: newBolNumber,
+          issue_date: today,
+          issueDate: today,
+          pdf_url: null,
+          pdf_status: "none",
+          pdf_uploaded_at: null,
+          isLegacyImport: false,
+          legacySource: null,
+          legacyBarnama: null,
+          revision: 1,
+          status: "active",
+          isArchived: false,
+          archived_at: null,
+          archived_by: null,
+          archive_reason: null,
+          duplicated_from: prev.bol_number || prev.id || null,
+        }
+        try {
+          const s = parseBolSeq(newBolNumber)
+          if (s > 0) {
+            window.localStorage.setItem("skybol:highest-allocated-bol", String(s))
+            fetch(`/api/bol?action=set-sequence&sequence=${s + 1}`).catch(() => {})
+          }
+          window.localStorage.setItem(`skybol:draft:${newBolNumber}`, JSON.stringify(next))
+          window.localStorage.setItem("skybol:last-active-document-id", newBolNumber)
+        } catch (_) {}
+        return next
+      })
+
+      setIssueDate(today)
+      const dualDates = getDualDates(today)
+      if (dualDates) {
+        setPersianDate(dualDates.persian)
+        setPersianDateNumeric(formatPersianDate(today) ?? dualDates.persianNumeric)
+      }
+
+      toast.success(`Duplicated as ${newBolNumber}!`, {
         id: toastId,
-        description: "Form pre-filled with party data. Click Save when ready.",
+        description: "Official sequence allocated. Document isolated in draft storage. Review & click Save.",
       })
     } catch (e) {
       toast.error("Failed to duplicate document", { id: toastId })
@@ -4337,7 +4945,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
 
   const handleExportPDF = async () => {
     try {
-      if (!formData.id) {
+      if (!isEditMode || hasUnsavedChanges || !editDocumentId) {
         await handleSave()
       }
 
@@ -4598,6 +5206,13 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     stickerQuantity = 1,
     stickerLayout: StickerLayout = "single",
   ) => {
+    if (!isEditMode || hasUnsavedChanges || !editDocumentId) {
+      try {
+        await handleSave()
+      } catch (saveErr) {
+        console.warn("Auto-save before download notice:", saveErr)
+      }
+    }
     setIsSaving(true)
     setIsShippingExporting(true)
     await new Promise((resolve) => setTimeout(resolve, 80))
@@ -4637,9 +5252,17 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
     stickerQuantity = 1,
     stickerLayout: StickerLayout = "single",
   ) => {
+    if (!isEditMode || hasUnsavedChanges || !editDocumentId) {
+      try {
+        await handleSave()
+      } catch (saveErr) {
+        console.warn("Auto-save before print notice:", saveErr)
+      }
+    }
     const fileName = buildShippingDocumentFileName(kind, shippingDocumentData)
     const printWindow = openPDFPrintWindow(fileName)
     setIsSaving(true)
+
     setIsShippingExporting(true)
     await new Promise((resolve) => setTimeout(resolve, 80))
     const toastId = toast.loading("Preparing print-ready PDF...", { description: fileName })
@@ -4797,7 +5420,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               </div>
               <span className="font-extrabold text-slate-950 text-xs sm:text-sm whitespace-nowrap">Bill of Lading</span>
               <div className="rounded-lg border border-blue-200 bg-blue-50/90 px-2 py-0.5">
-                {isLoading ? (
+                {isLoading || isHydrating ? (
                   <Loader2 className="h-3 w-3 animate-spin text-blue-700" />
                 ) : (
                   <span className="font-mono font-black text-blue-700 text-xs sm:text-xs tracking-tight">{bolNumber}</span>
@@ -4815,16 +5438,30 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 </div>
               )}
               <div role="status" aria-live="polite" aria-atomic="true">
-              {autoSaveStatus === "saving" ? (
+              {isHydrating ? (
+                <div className="flex items-center gap-1 rounded-lg border border-blue-300 bg-blue-50/90 px-2 py-0.5 text-[10.5px] text-blue-900 font-bold shadow-2xs">
+                  <Loader2 className="h-2.5 w-2.5 text-blue-600 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : isSaving || autoSaveStatus === "saving" ? (
                 <div className="flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50/90 px-2 py-0.5 text-[10.5px] text-amber-900 font-bold shadow-2xs animate-pulse">
                   <RefreshCw className="h-2.5 w-2.5 text-amber-600 animate-spin" />
                   <span>Saving...</span>
                 </div>
+              ) : autoSaveStatus === "error" ? (
+                <div className="flex items-center gap-1.5 rounded-lg border border-rose-300 bg-rose-50 px-2 py-0.5 text-[10.5px] font-bold text-rose-800 shadow-2xs">
+                  <AlertCircle className="h-2.5 w-2.5 text-rose-600 shrink-0" />
+                  <span>Save Failed</span>
+                </div>
+              ) : hasUnsavedChanges ? (
+                <div className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10.5px] font-bold text-amber-900 shadow-2xs">
+                  <AlertCircle className="h-2.5 w-2.5 text-amber-600 shrink-0" />
+                  <span>Unsaved Changes</span>
+                </div>
               ) : (
-                <div className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[10.5px] font-bold shadow-2xs ${autoSaveStatus === "saved" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
-                  {autoSaveStatus === "saved" ? <CheckCircle2 className="h-2.5 w-2.5 shrink-0" /> : <AlertCircle className="h-2.5 w-2.5 shrink-0" />}
-                  <span>{hasRecoverableDraft ? "Restore or discard the previous draft" : checkingDraft ? "Checking draft…" : autoSaveStatus === "saved" ? `Draft backed up · ${lastAutoSaveTime || lastAutoSavedTime || ""}` : autoSaveStatus === "local" ? "Draft saved on this device" : autoSaveStatus === "error" ? "Autosave failed — use Save or download a backup" : "Autosave ready"}</span>
-                  {autoSaveStatus === "local" && <button type="button" className="underline underline-offset-2" onClick={() => draftQueue.current?.retry()}>Retry backup</button>}
+                <div className={`flex items-center gap-1.5 rounded-lg border px-2 py-0.5 text-[10.5px] font-bold shadow-2xs ${autoSaveStatus === "saved" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
+                  {autoSaveStatus === "saved" ? <CheckCircle2 className="h-2.5 w-2.5 shrink-0 text-emerald-600" /> : <AlertCircle className="h-2.5 w-2.5 shrink-0 text-slate-500" />}
+                  <span>{hasRecoverableDraft ? "Restore or discard the previous draft" : checkingDraft ? "Checking draft…" : autoSaveStatus === "saved" ? "Saved ✓" : "Autosave ready"}</span>
                 </div>
               )}
               </div>
@@ -5039,7 +5676,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
       )}
 
       <div className={`w-full ${activeTab === "preview" ? "flex-1 flex flex-col min-h-0 h-full p-0 max-w-none" : "max-w-[1780px] mx-auto px-2 sm:px-4 lg:px-6 py-1.5 md:py-2"} print:max-w-none print:p-0 print:m-0`}>
-        <Tabs value={activeTab} onValueChange={handleTabChange} className={`print:hidden w-full ${activeTab === "preview" ? "flex-1 flex flex-col min-h-0 h-full" : ""}`}>
+        <Tabs activationMode="manual" value={activeTab} onValueChange={handleTabChange} className={`print:hidden w-full ${activeTab === "preview" ? "flex-1 flex flex-col min-h-0 h-full" : ""}`}>
           <TabsList className={`bol-navigation ${activeTab === "preview" ? "hidden" : "mb-1.5"} flex sm:grid overflow-x-auto sm:overflow-visible no-scrollbar w-full sm:grid-cols-6 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-slate-100/85 dark:bg-slate-900/90 p-0.5 shadow-2xs backdrop-blur-xl h-auto sm:h-9 gap-1 sm:gap-0 shrink-0`}>
             <TabsTrigger
               value="form"
@@ -5049,7 +5686,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                   e.preventDefault()
                 }
               }}
-              className="shrink-0 min-w-[70px] sm:min-w-0 sm:shrink gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:shadow-sm transition-colors cursor-pointer"
+              className="shrink-0 min-w-[70px] sm:min-w-0 sm:shrink gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:shadow-sm transition-colors cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none"
             >
               <FileText className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
               <span className="hidden sm:inline">BOL Editor</span>
@@ -5058,30 +5695,69 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             <TabsTrigger
               value="preview"
               data-tab="preview"
-              onPointerEnter={() => { void import("./a4-preview").catch(() => {}) }}
-              onFocus={() => { void import("./a4-preview").catch(() => {}) }}
-              className="shrink-0 min-w-[70px] sm:min-w-0 sm:shrink gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:shadow-sm transition-colors cursor-pointer"
+              onPointerDown={(e) => {
+                if (activeTab === "preview") {
+                  e.preventDefault()
+                }
+              }}
+              className="shrink-0 min-w-[70px] sm:min-w-0 sm:shrink gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:shadow-sm transition-colors cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none"
             >
               <Eye className="h-3.5 w-3.5 shrink-0 text-indigo-600 dark:text-indigo-400" />
               <span className="hidden sm:inline">A4 Preview</span>
               <span className="sm:hidden">Preview</span>
             </TabsTrigger>
-            <TabsTrigger value="saved-documents" data-tab="saved-documents" onPointerEnter={() => { void import("./saved-documents").catch(() => {}) }} onFocus={() => { void import("./saved-documents").catch(() => {}) }} className="shrink-0 min-w-[70px] sm:min-w-0 sm:shrink gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:shadow-sm transition-colors cursor-pointer">
+            <TabsTrigger
+              value="saved-documents"
+              data-tab="saved-documents"
+              onPointerDown={(e) => {
+                if (activeTab === "saved-documents") {
+                  e.preventDefault()
+                }
+              }}
+              className="shrink-0 min-w-[70px] sm:min-w-0 sm:shrink gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:shadow-sm transition-colors cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none"
+            >
               <Layers className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
               <span className="hidden sm:inline">Saved BOLs</span>
               <span className="sm:hidden">Saved</span>
             </TabsTrigger>
-            <TabsTrigger value="attachments" data-tab="attachments" className="shrink-0 min-w-[70px] sm:min-w-0 sm:shrink gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:shadow-sm transition-colors cursor-pointer">
+            <TabsTrigger
+              value="attachments"
+              data-tab="attachments"
+              onPointerDown={(e) => {
+                if (activeTab === "attachments") {
+                  e.preventDefault()
+                }
+              }}
+              className="shrink-0 min-w-[70px] sm:min-w-0 sm:shrink gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:shadow-sm transition-colors cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none"
+            >
               <FolderArchive className="h-3.5 w-3.5 shrink-0 text-cyan-600 dark:text-cyan-400" />
               <span className="hidden sm:inline">Files</span>
               <span className="sm:hidden">Files</span>
             </TabsTrigger>
-            <TabsTrigger value="account" data-tab="account" className="shrink-0 min-w-[70px] sm:min-w-0 sm:shrink gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:shadow-sm transition-colors cursor-pointer">
+            <TabsTrigger
+              value="account"
+              data-tab="account"
+              onPointerDown={(e) => {
+                if (activeTab === "account") {
+                  e.preventDefault()
+                }
+              }}
+              className="shrink-0 min-w-[70px] sm:min-w-0 sm:shrink gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:shadow-sm transition-colors cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none"
+            >
               <Landmark className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
               <span className="hidden sm:inline">Account Ledger</span>
               <span className="sm:hidden">Ledger</span>
             </TabsTrigger>
-            <TabsTrigger value="pdf-settings" data-tab="pdf-settings" className="shrink-0 min-w-[70px] sm:min-w-0 sm:shrink gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:shadow-sm transition-colors cursor-pointer">
+            <TabsTrigger
+              value="pdf-settings"
+              data-tab="pdf-settings"
+              onPointerDown={(e) => {
+                if (activeTab === "pdf-settings") {
+                  e.preventDefault()
+                }
+              }}
+              className="shrink-0 min-w-[70px] sm:min-w-0 sm:shrink gap-1.5 rounded-xl text-[11px] sm:text-xs font-extrabold flex-1 justify-center px-2 py-1 data-[state=active]:bg-white data-[state=active]:text-blue-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:shadow-sm transition-colors cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none"
+            >
               <Sliders className="h-3.5 w-3.5 shrink-0 text-slate-600 dark:text-slate-400" />
               <span className="hidden sm:inline">BOL Settings</span>
               <span className="sm:hidden">Settings</span>
@@ -5089,6 +5765,18 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           </TabsList>
 
           <TabsContent value="form" forceMount className="edit-form-panel space-y-2.5 data-[state=inactive]:hidden data-[state=active]:animate-none">
+            {isHydrating ? (
+              <div className="flex flex-col items-center justify-center p-16 sm:p-24 space-y-4 rounded-2xl border border-blue-100 dark:border-blue-900 bg-white/95 dark:bg-slate-900/95 shadow-sm backdrop-blur-xl my-4">
+                <Loader2 className="w-10 h-10 animate-spin text-blue-600 dark:text-blue-400" />
+                <div className="text-center space-y-1.5">
+                  <h3 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100">Loading BOL...</h3>
+                  <p className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400">
+                    Hydrating canonical document {activeBolId || editDocumentId || bolNumber}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
             {/* Top Smart Quick-Actions & Navigation Ribbon */}
             <div className="bol-utility-bar relative z-10 rounded-xl border border-white/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 px-2.5 py-1.5 shadow-sm shadow-blue-500/10 backdrop-blur-xl transition-all space-y-1.5">
               {/* Row 1: Smart Utility Buttons + Inline Cargo Presets */}
@@ -5283,7 +5971,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                               if (e.key === "Enter") setIsEditingBolNumber(false)
                             }}
                             className="font-mono font-black text-xs sm:text-sm text-slate-950 dark:text-slate-100 bg-white dark:bg-slate-950 border-blue-300 dark:border-blue-700 shadow-inner rounded-xl h-8.5 sm:h-9 focus:ring-2 focus:ring-blue-500/20 uppercase"
-                            placeholder="BOL-2026-NSA626"
+                            placeholder="BOL-2026-NSA685"
                             autoFocus
                           />
                           <Button
@@ -10221,6 +10909,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                 )}
               </CardContent>
             </Card>
+              </>
+            )}
           </TabsContent>
 
           <TabsContent
@@ -10236,9 +10926,10 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
             {/* Single Unified Executive A4 Preview Toolbar */}
             <A4PreviewToolbar
               bolNumber={bolNumber}
-              isLoading={isLoading}
+              isLoading={isLoading || isHydrating}
               isSaving={isSaving}
               isEditMode={isEditMode}
+              hasUnsavedChanges={hasUnsavedChanges}
               autoSaveStatus={autoSaveStatus}
               lastAutoSaveTime={lastAutoSaveTime}
               lastAutoSavedTime={lastAutoSavedTime}
@@ -10248,7 +10939,7 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               bgImageUrl={bgImageUrl}
               bgOpacity={bgOpacity}
               showStampSignature={showStampSignature}
-              formData={deferredFormData}
+              formData={formData}
               issueDate={issueDate}
               onBackToEditor={() => handleTabChange("form")}
               onSave={handleSave}
@@ -10320,9 +11011,18 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                       minHeight: `${totalUnscaledHeight}px`,
                     }}
                   >
-                    {isLoading && !hasBolData ? (
-                      <div className="w-[210mm] h-[297mm] bg-white rounded p-8 animate-pulse flex flex-col justify-between box-border">
+                    {isHydrating || !isPreviewReady ? (
+                      <div className="w-[210mm] h-[297mm] bg-white rounded-xl p-8 animate-pulse flex flex-col justify-between box-border shadow-lg">
                         <div className="space-y-4">
+                          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                            <div className="flex items-center gap-3">
+                              <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                              <span className="text-sm font-black text-slate-800 tracking-tight">
+                                Loading BOL Preview... {activeBolId || bolNumber}
+                              </span>
+                            </div>
+                            <span className="text-xs font-mono text-slate-400">A4 Document Hydration</span>
+                          </div>
                           <div className="h-12 bg-slate-100 rounded-lg w-full" />
                           <div className="grid grid-cols-2 gap-4">
                             <div className="h-28 bg-slate-50 rounded-lg border border-slate-100" />
@@ -10332,13 +11032,30 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
                         </div>
                         <div className="h-16 bg-slate-100 rounded-lg w-full" />
                       </div>
+                    ) : hydrationError ? (
+                      <div className="w-[210mm] min-h-[297mm] bg-white rounded-xl p-10 flex flex-col items-center justify-center text-center box-border shadow-lg">
+                        <div className="w-16 h-16 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4">
+                          <AlertCircle className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-lg font-black text-slate-900 mb-1">BOL could not be loaded</h3>
+                        <p className="text-sm font-mono text-slate-600 mb-6">BOL: {activeBolId || bolNumber}</p>
+                        <div className="flex items-center gap-3">
+                          <Button variant="outline" onClick={() => handleTabChange("saved-documents")}>
+                            Back to Saved BOLs
+                          </Button>
+                          <Button onClick={() => void loadBolDocument(activeBolId || bolNumber, { targetTab: "preview", force: true })}>
+                            Retry
+                          </Button>
+                        </div>
+                      </div>
                     ) : (
                       <A4Preview
+                        key={bolNumber || "preview"}
                         bolNumber={bolNumber}
                         issueDate={issueDate}
                         persianDate={persianDate}
                         persianDateNumeric={persianDateNumeric}
-                        formData={deferredFormData}
+                        formData={formData}
                         logoUrl={logoUrl}
                         companyName={companyName}
                         companyNamePersian={companyNamePersian}
@@ -10385,11 +11102,8 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
               <section className="min-h-0 w-full print:hidden [content-visibility:auto]">
                 {savedDocumentsPanel || (
                   <SavedDocuments
-                    onLoadDocument={(id, targetTab) => {
-                      startTransition(() => {
-                        void loadDocument(id)
-                        setActiveTab(targetTab || "form")
-                      })
+                    onLoadDocument={(id, targetTab, initialDoc) => {
+                      void loadBolDocument(id, { targetTab: targetTab || "form", force: true, initialData: initialDoc })
                     }}
                   />
                 )}
@@ -10421,56 +11135,60 @@ export function BOLEditor({ onSave, onRefreshDocuments, loadDocumentId, onDocume
           {/* PDF Settings Tab */}
           <TabsContent value="pdf-settings" className="focus-visible:outline-none">
             {activeTab === "pdf-settings" && (
-              <BolSettingsCenter
-                currentBol={deferredFormData}
-                activeBgImageUrl={bgImageUrl}
-                activeBgOpacity={bgOpacity}
-                onBgImageChange={setBgImageUrl}
-                onBgOpacityChange={setBgOpacity}
-                showStampSignature={showStampSignature}
-                onToggleStampSignature={setShowStampSignature}
-                logoUrl={logoUrl}
-                onLogoChange={setLogoUrl}
-                companyName={companyName}
-                companyNamePersian={companyNamePersian}
-                companySubtitle={companySubtitle}
-                companyPhone={companyPhone}
-                companyEmail={companyEmail}
-                companyAddress={companyAddress}
-                companyLicence={companyLicence}
-                onCompanyInfoChange={(info) => {
-                  if (info.companyName !== undefined) setCompanyName(info.companyName)
-                  if (info.companyNamePersian !== undefined) setCompanyNamePersian(info.companyNamePersian)
-                  if (info.companySubtitle !== undefined) setCompanySubtitle(info.companySubtitle)
-                  if (info.companyPhone !== undefined) setCompanyPhone(info.companyPhone)
-                  if (info.companyEmail !== undefined) setCompanyEmail(info.companyEmail)
-                  if (info.companyAddress !== undefined) setCompanyAddress(info.companyAddress)
-                  if (info.companyLicence !== undefined) setCompanyLicence(info.companyLicence)
-                }}
-                iranOffice={{
-                  iran_office_building: formData.iran_office_building,
-                  iran_office_location: formData.iran_office_location,
-                  iran_office_pobox: formData.iran_office_pobox,
-                  iran_office_telefax: formData.iran_office_telefax,
-                  iran_office_cellphone: formData.iran_office_cellphone,
-                  iran_office_email: formData.iran_office_email,
-                }}
-                onIranOfficeChange={(info) => {
-                  setFormData((prev) => ({
-                    ...prev,
-                    iran_office_building: info.iran_office_building ?? prev.iran_office_building,
-                    iran_office_location: info.iran_office_location ?? prev.iran_office_location,
-                    iran_office_pobox: info.iran_office_pobox ?? prev.iran_office_pobox,
-                    iran_office_telefax: info.iran_office_telefax ?? prev.iran_office_telefax,
-                    iran_office_cellphone: info.iran_office_cellphone ?? prev.iran_office_cellphone,
-                    iran_office_email: info.iran_office_email ?? prev.iran_office_email,
-                  }))
-                }}
-                onOpenDocumentCenter={() => setIsDocumentCenterOpen(true)}
-                onOpenPrintDialog={() => setIsPrintDialogOpen(true)}
-                onSaveToCloud={handleExportPDF}
-                isSaving={isSaving}
-              />
+              !isSettingsReady ? (
+                <BolSettingsSkeleton />
+              ) : (
+                <BolSettingsCenter
+                  currentBol={deferredFormData}
+                  activeBgImageUrl={bgImageUrl}
+                  activeBgOpacity={bgOpacity}
+                  onBgImageChange={setBgImageUrl}
+                  onBgOpacityChange={setBgOpacity}
+                  showStampSignature={showStampSignature}
+                  onToggleStampSignature={setShowStampSignature}
+                  logoUrl={logoUrl}
+                  onLogoChange={setLogoUrl}
+                  companyName={companyName}
+                  companyNamePersian={companyNamePersian}
+                  companySubtitle={companySubtitle}
+                  companyPhone={companyPhone}
+                  companyEmail={companyEmail}
+                  companyAddress={companyAddress}
+                  companyLicence={companyLicence}
+                  onCompanyInfoChange={(info) => {
+                    if (info.companyName !== undefined) setCompanyName(info.companyName)
+                    if (info.companyNamePersian !== undefined) setCompanyNamePersian(info.companyNamePersian)
+                    if (info.companySubtitle !== undefined) setCompanySubtitle(info.companySubtitle)
+                    if (info.companyPhone !== undefined) setCompanyPhone(info.companyPhone)
+                    if (info.companyEmail !== undefined) setCompanyEmail(info.companyEmail)
+                    if (info.companyAddress !== undefined) setCompanyAddress(info.companyAddress)
+                    if (info.companyLicence !== undefined) setCompanyLicence(info.companyLicence)
+                  }}
+                  iranOffice={{
+                    iran_office_building: formData.iran_office_building,
+                    iran_office_location: formData.iran_office_location,
+                    iran_office_pobox: formData.iran_office_pobox,
+                    iran_office_telefax: formData.iran_office_telefax,
+                    iran_office_cellphone: formData.iran_office_cellphone,
+                    iran_office_email: formData.iran_office_email,
+                  }}
+                  onIranOfficeChange={(info) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      iran_office_building: info.iran_office_building ?? prev.iran_office_building,
+                      iran_office_location: info.iran_office_location ?? prev.iran_office_location,
+                      iran_office_pobox: info.iran_office_pobox ?? prev.iran_office_pobox,
+                      iran_office_telefax: info.iran_office_telefax ?? prev.iran_office_telefax,
+                      iran_office_cellphone: info.iran_office_cellphone ?? prev.iran_office_cellphone,
+                      iran_office_email: info.iran_office_email ?? prev.iran_office_email,
+                    }))
+                  }}
+                  onOpenDocumentCenter={() => setIsDocumentCenterOpen(true)}
+                  onOpenPrintDialog={() => setIsPrintDialogOpen(true)}
+                  onSaveToCloud={handleExportPDF}
+                  isSaving={isSaving}
+                />
+              )
             )}
           </TabsContent>
         </Tabs>

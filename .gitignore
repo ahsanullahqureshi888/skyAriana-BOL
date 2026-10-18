@@ -32,8 +32,11 @@ __pycache__/
 *.log
 audit_*.json
 validation_report.json
+backend/data/*.db
 backend/data/*.db-shm
 backend/data/*.db-wal
+resources/backend/_internal/data/*.db*
+
 awesome-claude-code-subagents/
 *.exe
 *.dll
@@ -59,6 +62,8 @@ _backend_offline/
 /data/*
 !/data/.local-ledger-system.json
 .local-*.json
+!/data/.local-bol-sequence.json
+!.local-bol-sequence.json
 .local-*.key
 .pre_restore_backup_*.json
 sync_status.json
@@ -79,3 +84,12 @@ test-results/
 *.bak*
 public/uploads/shipments/2026/BOL-TEST-*/
 implementation_plan.md
+*.backup-*
+backups/
+temp/
+coverage/
+*.heapsnapshot
+*.cpuprofile
+*.trace
+bol-software-v-5-3-pro/
+

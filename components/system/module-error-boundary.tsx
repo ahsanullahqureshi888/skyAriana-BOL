@@ -33,6 +33,16 @@ export class ModuleErrorBoundary extends Component<ModuleErrorBoundaryProps, Mod
   }
 
   private handleRetry = () => {
+    const errorMsg = String(this.state.error?.message || "")
+    const isChunk =
+      this.state.error?.name === "ChunkLoadError" ||
+      errorMsg.includes("Loading chunk") ||
+      errorMsg.includes("Failed to load chunk") ||
+      errorMsg.includes("_next/static/chunks")
+    if (isChunk && typeof window !== "undefined") {
+      window.location.reload()
+      return
+    }
     this.setState({ hasError: false, error: null })
     if (this.props.onReset) {
       this.props.onReset()

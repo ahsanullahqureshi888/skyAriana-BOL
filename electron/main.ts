@@ -50,21 +50,22 @@ async function reservePort(): Promise<number> {
 }
 
 async function waitForServer(url: string): Promise<void> {
-  const expiresAt = Date.now() + 45_000
-  const probeUrl = `${url.replace(/\/$/, "")}/api/health`
+  const expiresAt = Date.now() + 60_000
+  const cleanUrl = url.trim().replace(/\/+$/, "")
+  const probeUrl = `${cleanUrl}/api/health`
   while (Date.now() < expiresAt) {
     try {
       const response = await fetch(probeUrl, {
-        signal: AbortSignal.timeout(1500),
+        signal: AbortSignal.timeout(8000),
       })
       if (response.status < 500) {
         logMain(`Probe succeeded at ${probeUrl} with HTTP ${response.status}`)
         return
       }
-    } catch {
-      // Retry during server initialization
+    } catch (err: any) {
+      logMain(`Probe failed at ${probeUrl}: ${err?.stack || err?.message || err}`)
     }
-    await new Promise((resolve) => setTimeout(resolve, 250))
+    await new Promise((resolve) => setTimeout(resolve, 500))
   }
   throw new Error("The bundled application server did not start in time")
 }
@@ -90,7 +91,7 @@ process.on("unhandledRejection", (reason) => {
 async function startApplicationServer(dataDirectory: string): Promise<string> {
   const developmentUrl = process.env.ELECTRON_START_URL
   if (!app.isPackaged) {
-    applicationUrl = developmentUrl || "http://127.0.0.1:3001"
+    applicationUrl = (developmentUrl || "http://127.0.0.1:3001").trim()
     await waitForServer(applicationUrl)
     return applicationUrl
   }

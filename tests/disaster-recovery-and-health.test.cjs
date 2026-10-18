@@ -7,6 +7,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const sandbox = require('./isolated-data.cjs')()
 const loadTypescript = require('./load-typescript.cjs')
 
 // Load modules under test

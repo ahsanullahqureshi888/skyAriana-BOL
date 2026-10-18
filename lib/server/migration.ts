@@ -49,7 +49,7 @@ export async function migrateToLocalServer(actor = "system"): Promise<MigrationR
 
   for (const file of DATA_FILES) {
     const srcPath = getDataPath(file)
-    const destPath = path.join(paths.database, file)
+    const destPath = path.join(/*turbopackIgnore: true*/ paths.database, file)
 
     if (existsSync(srcPath)) {
       try {

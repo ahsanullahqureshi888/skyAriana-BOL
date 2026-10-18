@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import fs from "node:fs/promises"
 import path from "node:path"
+import os from "node:os"
 import crypto from "node:crypto"
-import { validateDatabaseBackupBuffer } from "@/lib/backup/validate-backup"
+import { getBackupRoot } from "@/lib/server-paths"
+import { parseBackupFileContent, analyzeAndDryRunRestore } from "@/lib/backup/central-backup-service"
 import { registerBackupInCatalog } from "@/lib/backup/create-backup"
-import { CURRENT_DATABASE_SCHEMA_VERSION, CURRENT_APPLICATION_VERSION } from "@/lib/backup/backup-manifest"
+import { CURRENT_APPLICATION_VERSION, CURRENT_DATABASE_SCHEMA_VERSION, computeSha256 } from "@/lib/backup/backup-format"
 import type { BackupItem, BackupType } from "@/lib/backup/backup-types"
 
 export const dynamic = "force-dynamic"
@@ -26,52 +28,75 @@ export async function POST(req: NextRequest) {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // Validate archive
-    const validation = validateDatabaseBackupBuffer(buffer)
-    if (!validation.isValid || !validation.manifest) {
+    // Deep content validation (do NOT trust file extension)
+    let parsed
+    try {
+      parsed = await parseBackupFileContent(buffer)
+    } catch (parseErr: any) {
       return NextResponse.json(
         {
           success: false,
-          error: "Uploaded file is not a valid Sky Ariana backup archive: " + validation.errors.join("; "),
-          errors: validation.errors,
+          error: "Uploaded file is not a valid AQ Companies backup file: " + (parseErr.message || String(parseErr)),
         },
         { status: 400 }
       )
     }
 
-    const manifest = validation.manifest
-    const backupDir = path.join(process.cwd(), "data", "backups")
-    await fs.mkdir(backupDir, { recursive: true }).catch(() => {})
+    const dryRun = await analyzeAndDryRunRestore(buffer)
+    if (!dryRun.isCompatible && dryRun.compatibilityStatus === "CORRUPTED") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Uploaded file failed integrity checks: " + dryRun.errors.join("; "),
+          errors: dryRun.errors,
+          warnings: dryRun.warnings,
+        },
+        { status: 400 }
+      )
+    }
 
-    const originalName = file.name || "uploaded-backup.zip"
-    const cleanName = path.basename(originalName).replace(/[^a-zA-Z0-9._-]/g, "_")
-    const finalFileName = cleanName.endsWith(".zip") ? cleanName : `${cleanName}.zip`
+    let backupDir = getBackupRoot()
+    try {
+      await fs.mkdir(backupDir, { recursive: true })
+    } catch {
+      backupDir = path.join(os.tmpdir(), "backups")
+      await fs.mkdir(backupDir, { recursive: true }).catch(() => {})
+    }
+
+    const originalName = file.name || "uploaded-backup"
+    const isZip = parsed.isZip
+    const ext = isZip ? ".zip" : ".json"
+    const baseName = path.basename(originalName).replace(/\.(json|zip)$/i, "").replace(/[^a-zA-Z0-9._-]/g, "_")
+    const finalFileName = `${baseName}${ext}`
     const finalFilePath = path.join(backupDir, finalFileName)
 
-    // Write file atomically
-    const tempPath = path.join(backupDir, `.${finalFileName}.tmp`)
+    // Write file atomically (.tmp -> rename)
+    const tempPath = path.join(backupDir, `.${finalFileName}.tmp.${Date.now()}`)
     await fs.writeFile(tempPath, buffer)
     await fs.rename(tempPath, finalFilePath)
 
+    const backupId = `bkp-upload-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`
+    const fileChecksum = computeSha256(buffer)
+
     const backupItem: BackupItem = {
-      id: manifest.backupId || `bkp-upload-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
+      id: backupId,
       fileName: finalFileName,
       filePath: finalFilePath,
-      type: (manifest.backupType as BackupType) || "MANUAL",
+      type: "MANUAL",
       status: "SUCCESS",
-      verificationStatus: "VERIFIED",
-      createdAt: manifest.createdAt || new Date().toISOString(),
+      verificationStatus: dryRun.checksumValid ? "VERIFIED" : "WARNING" as any,
+      createdAt: dryRun.createdAt || new Date().toISOString(),
       completedAt: new Date().toISOString(),
       createdBy: `${actor} (Uploaded)`,
-      appVersion: manifest.applicationVersion || manifest.appVersion || CURRENT_APPLICATION_VERSION,
-      schemaVersion: manifest.databaseSchemaVersion || manifest.schemaVersion || CURRENT_DATABASE_SCHEMA_VERSION,
-      databaseRevision: manifest.databaseRevision || Date.now(),
+      appVersion: dryRun.applicationVersion || CURRENT_APPLICATION_VERSION,
+      schemaVersion: CURRENT_DATABASE_SCHEMA_VERSION,
+      databaseRevision: Date.now(),
       fileSizeBytes: buffer.length,
-      databaseSizeBytes: Math.round(buffer.length * 0.7),
-      checksum: manifest.compositeChecksum || manifest.checksum || "",
+      databaseSizeBytes: Math.round(buffer.length * 0.8),
+      checksum: fileChecksum,
       protected: false,
       note,
-      recordCounts: validation.recordCounts || manifest.recordCounts || manifest.counts,
+      recordCounts: dryRun.backupRecordCounts,
       storageLocation: "PRIMARY_LOCAL",
     }
 
@@ -80,11 +105,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       backup: backupItem,
-      validation: {
-        isValid: validation.isValid,
-        invarianceValid: validation.invarianceValid,
-        recordCounts: validation.recordCounts,
-      },
+      preview: dryRun,
     })
   } catch (error: any) {
     return NextResponse.json(

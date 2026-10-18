@@ -51,7 +51,7 @@ export function groupShippers(docs: SavedDocument[]): ShipperSummary[] {
   >()
 
   for (const doc of docs) {
-    const name = (doc.shipper_name || "").trim() || "Unspecified Shipper"
+    const name = String(doc.shipper_name || "").trim() || "Unspecified Shipper"
     const key = name.toLowerCase()
 
     if (!map.has(key)) {
@@ -85,18 +85,18 @@ export function groupShippers(docs: SavedDocument[]): ShipperSummary[] {
     }
 
     if (doc.container_numbers) {
-      const cList = doc.container_numbers.split(/[\n,;/]+/).map((c) => c.trim()).filter(Boolean)
+      const cList = String(doc.container_numbers).split(/[\n,;/]+/).map((c) => c.trim()).filter(Boolean)
       cList.forEach((c) => entry.containers.add(c.toUpperCase()))
     }
 
     const routeInfo = extractBolRoute(doc)
-    const dest = (doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || (routeInfo.destination !== "—" ? routeInfo.destination : "")).trim()
+    const dest = String(doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || (routeInfo.destination !== "—" ? routeInfo.destination : "")).trim()
     if (dest) {
       entry.destinations.set(dest, (entry.destinations.get(dest) || 0) + 1)
     }
 
     if (doc.consignee_name) {
-      const c = doc.consignee_name.trim()
+      const c = String(doc.consignee_name).trim()
       if (c) entry.consignees.set(c, (entry.consignees.get(c) || 0) + 1)
     }
 
@@ -178,7 +178,7 @@ export function groupConsignees(docs: SavedDocument[]): ConsigneeSummary[] {
   >()
 
   for (const doc of docs) {
-    const name = (doc.consignee_name || "").trim() || "Unspecified Consignee"
+    const name = String(doc.consignee_name || "").trim() || "Unspecified Consignee"
     const key = name.toLowerCase()
 
     if (!map.has(key)) {
@@ -200,8 +200,8 @@ export function groupConsignees(docs: SavedDocument[]): ConsigneeSummary[] {
 
     const entry = map.get(key)!
     entry.bolCount++
-    if (doc.shipper_name && doc.shipper_name.trim()) {
-      const s = doc.shipper_name.trim()
+    if (doc.shipper_name && String(doc.shipper_name).trim()) {
+      const s = String(doc.shipper_name).trim()
       entry.shippers.set(s, (entry.shippers.get(s) || 0) + 1)
     }
 
@@ -222,12 +222,12 @@ export function groupConsignees(docs: SavedDocument[]): ConsigneeSummary[] {
     }
 
     if (doc.container_numbers) {
-      const cList = doc.container_numbers.split(/[\n,;/]+/).map((c) => c.trim()).filter(Boolean)
+      const cList = String(doc.container_numbers).split(/[\n,;/]+/).map((c) => c.trim()).filter(Boolean)
       cList.forEach((c) => entry.containers.add(c.toUpperCase()))
     }
 
     const routeInfo = extractBolRoute(doc)
-    const dest = (doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || (routeInfo.destination !== "—" ? routeInfo.destination : "")).trim()
+    const dest = String(doc.port_of_discharge || doc.place_of_delivery || doc.destination_country || (routeInfo.destination !== "—" ? routeInfo.destination : "")).trim()
     if (dest) {
       entry.destinations.set(dest, (entry.destinations.get(dest) || 0) + 1)
     }
@@ -311,14 +311,14 @@ export function groupCommodities(docs: SavedDocument[]): CommoditySummary[] {
   for (const doc of docs) {
     const docId = doc.id || doc.bol_number || Math.random().toString()
     const routeInfo = extractBolRoute(doc)
-    const dest = (
+    const dest = String(
       doc.port_of_discharge ||
       doc.place_of_delivery ||
       doc.destination_country ||
       (routeInfo.destination !== "—" ? routeInfo.destination : "")
     ).trim()
-    const shipper = (doc.shipper_name || "").trim()
-    const consignee = (doc.consignee_name || "").trim()
+    const shipper = String(doc.shipper_name || "").trim()
+    const consignee = String(doc.consignee_name || "").trim()
 
     const synced = parseSyncedCargoItems(doc as unknown as Partial<BillOfLadingFormData>)
     const rawDesc = doc.cargo_description || doc.goods_description || doc.description_of_goods || ""
@@ -395,7 +395,7 @@ export function groupCommodities(docs: SavedDocument[]): CommoditySummary[] {
         if (dest) entry.destinations.add(dest)
         if (shipper) entry.shippers.set(shipper, (entry.shippers.get(shipper) || 0) + 1)
         if (consignee) entry.consignees.set(consignee, (entry.consignees.get(consignee) || 0) + 1)
-        if (item.rate && item.rate.trim()) entry.rates.push(item.rate.trim())
+        if (item.rate && String(item.rate).trim()) entry.rates.push(String(item.rate).trim())
       })
     } else {
       // Single cargo item or fallback
@@ -441,8 +441,8 @@ export function groupCommodities(docs: SavedDocument[]): CommoditySummary[] {
       if (dest) entry.destinations.add(dest)
       if (shipper) entry.shippers.set(shipper, (entry.shippers.get(shipper) || 0) + 1)
       if (consignee) entry.consignees.set(consignee, (entry.consignees.get(consignee) || 0) + 1)
-      const r = doc.rate_per_kg || doc.rate_per_kgs
-      if (r && r.trim()) entry.rates.push(r.trim())
+      const r = String(doc.rate_per_kg ?? doc.rate_per_kgs ?? "").trim()
+      if (r) entry.rates.push(r)
     }
   }
 
@@ -610,7 +610,7 @@ export function groupTrucks(docs: SavedDocument[]): TruckSummary[] {
 
   for (const doc of docs) {
     const rawTruck = extractTruckNo(doc) || doc.truck_number || "Unspecified Truck"
-    const truckNumber = rawTruck.trim()
+    const truckNumber = String(rawTruck).trim()
     const key = truckNumber.toLowerCase()
 
     if (!map.has(key)) {
@@ -646,27 +646,27 @@ export function groupTrucks(docs: SavedDocument[]): TruckSummary[] {
     const entry = map.get(key)!
     entry.bolCount++
 
-    if (doc.driver_name && doc.driver_name.trim()) {
-      entry.lastDriver = doc.driver_name.trim()
+    if (doc.driver_name && String(doc.driver_name).trim()) {
+      entry.lastDriver = String(doc.driver_name).trim()
     }
-    if (doc.driver_contact && doc.driver_contact.trim()) {
-      entry.lastDriverPhone = doc.driver_contact.trim()
+    if (doc.driver_contact && String(doc.driver_contact).trim()) {
+      entry.lastDriverPhone = String(doc.driver_contact).trim()
     }
 
     const d = normalizeDate(doc.issue_date || doc.created_at)
     if (d && d.getTime() > entry.lastDateMs) {
       entry.lastDateMs = d.getTime()
       entry.lastShipmentDate = formatDisplayDate(d)
-      if (doc.driver_name && doc.driver_name.trim()) {
-        entry.lastDriver = doc.driver_name.trim()
+      if (doc.driver_name && String(doc.driver_name).trim()) {
+        entry.lastDriver = String(doc.driver_name).trim()
       }
-      if (doc.driver_contact && doc.driver_contact.trim()) {
-        entry.lastDriverPhone = doc.driver_contact.trim()
+      if (doc.driver_contact && String(doc.driver_contact).trim()) {
+        entry.lastDriverPhone = String(doc.driver_contact).trim()
       }
     }
 
-    const rentRaw = doc.driver_rent || doc.driverFreight || ""
-    if (rentRaw.trim()) {
+    const rentRaw = String(doc.driver_rent ?? doc.driverFreight ?? "").trim()
+    if (rentRaw) {
       const { amount, currency } = parseMoney(rentRaw)
       if (amount > 0) {
         entry.totalDriverRent[currency] = (entry.totalDriverRent[currency] || 0) + amount
@@ -685,8 +685,8 @@ export function groupTrucks(docs: SavedDocument[]): TruckSummary[] {
       entry.routesMap.set(routeText, (entry.routesMap.get(routeText) || 0) + 1)
     }
 
-    if (doc.shipper_name && doc.shipper_name.trim()) {
-      const s = doc.shipper_name.trim()
+    if (doc.shipper_name && String(doc.shipper_name).trim()) {
+      const s = String(doc.shipper_name).trim()
       entry.shippers.set(s, (entry.shippers.get(s) || 0) + 1)
     }
   }
@@ -750,8 +750,8 @@ export function groupDestinations(docs: SavedDocument[]): DestinationSummary[] {
   >()
 
   function addLocation(name: string, type: "POL" | "POD" | "Final Destination", doc: SavedDocument) {
-    if (!name || !name.trim()) return
-    const cleanName = name.trim()
+    if (!name || !String(name).trim()) return
+    const cleanName = String(name).trim()
     const key = `${type}::${cleanName.toLowerCase()}`
 
     // Determine country
@@ -798,8 +798,8 @@ export function groupDestinations(docs: SavedDocument[]): DestinationSummary[] {
       entry.goodsValueByCurrency[currency] = (entry.goodsValueByCurrency[currency] || 0) + amount
     }
 
-    if (doc.shipper_name && doc.shipper_name.trim()) {
-      const s = doc.shipper_name.trim()
+    if (doc.shipper_name && String(doc.shipper_name).trim()) {
+      const s = String(doc.shipper_name).trim()
       entry.shippers.set(s, (entry.shippers.get(s) || 0) + 1)
     }
 
@@ -894,7 +894,7 @@ export function groupContainers(docs: SavedDocument[]): {
   }
 
   for (const doc of docs) {
-    const raw = doc.container_numbers || ""
+    const raw = String(doc.container_numbers || "")
     if (!raw.trim()) continue
 
     const tokens = raw
@@ -1023,15 +1023,15 @@ export function groupMonthly(
     }
 
     if (doc.container_numbers) {
-      doc.container_numbers
+      String(doc.container_numbers)
         .split(/[\n,;/]+/)
         .map((c) => c.trim())
         .filter(Boolean)
         .forEach((c) => entry.containers.add(c.toUpperCase()))
     }
 
-    if (doc.shipper_name) entry.shippers.add(doc.shipper_name.trim())
-    if (doc.consignee_name) entry.consignees.add(doc.consignee_name.trim())
+    if (doc.shipper_name) entry.shippers.add(String(doc.shipper_name).trim())
+    if (doc.consignee_name) entry.consignees.add(String(doc.consignee_name).trim())
   }
 
   return Array.from(map.values())
@@ -1082,7 +1082,7 @@ export function calculateFinancialMetrics(docs: SavedDocument[]): FinancialBreak
     }
 
     // Shipper
-    const sName = doc.shipper_name?.trim() || "Unspecified"
+    const sName = String(doc.shipper_name || "").trim() || "Unspecified"
     if (!shipperMap.has(sName)) shipperMap.set(sName, { currencyTotals: {}, bolCount: 0 })
     const sEntry = shipperMap.get(sName)!
     sEntry.bolCount++
@@ -1096,7 +1096,7 @@ export function calculateFinancialMetrics(docs: SavedDocument[]): FinancialBreak
     cEntry.currencyTotals[currency] = (cEntry.currencyTotals[currency] || 0) + amount
 
     // Destination
-    const dest = doc.port_of_discharge?.trim() || doc.place_of_delivery?.trim() || "Unspecified"
+    const dest = String(doc.port_of_discharge || doc.place_of_delivery || "").trim() || "Unspecified"
     if (!destinationMap.has(dest)) destinationMap.set(dest, { currencyTotals: {}, bolCount: 0 })
     const dEntry = destinationMap.get(dest)!
     dEntry.bolCount++
