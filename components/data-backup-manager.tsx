@@ -247,6 +247,56 @@ export function DataBackupManager() {
     }
   }
 
+  const handleExportZip = async () => {
+    try {
+      const toastId = toast.loading("Generating ZIP backup...")
+      const res = await fetch("/api/system/backup")
+      if (!res.ok) throw new Error("Failed to generate backup")
+      
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `Sky-Ariana-Backup-${new Date().toISOString().replace(/[:.]/g, "-")}.zip`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      toast.success("Backup downloaded successfully!", { id: toastId })
+    } catch (e: any) {
+      toast.error(`Download failed: ${e.message}`)
+    }
+  }
+
+  const handleImportZip = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("action", "commit")
+
+    const toastId = toast.loading("Restoring from local ZIP backup...")
+    
+    try {
+      const res = await fetch("/api/system/restore", {
+        method: "POST",
+        body: formData
+      })
+      const data = await res.json()
+
+      if (data.success) {
+        toast.success("Successfully restored system from ZIP backup!", { id: toastId })
+        setTimeout(() => window.location.reload(), 1200)
+      } else {
+        toast.error(`Import failed: ${data.error}`, { id: toastId })
+      }
+    } catch (err: any) {
+      toast.error(`Import failed: ${err.message}`, { id: toastId })
+    }
+    event.target.value = "" // reset
+  }
+
   // Import full system backup from JSON file
   const handleImportFullJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -344,21 +394,6 @@ export function DataBackupManager() {
             <Database className={`h-3.5 w-3.5 mr-1.5 ${isVacuuming ? "animate-spin" : ""}`} />
             {isVacuuming ? "Compacting..." : "Vacuum DB"}
           </Button>
-
-          <Button
-            variant="outline"
-            onClick={handleExportFullJSON}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 text-xs font-bold rounded-xl cursor-pointer"
-          >
-            <Download className="h-3.5 w-3.5 mr-1.5 text-emerald-400" />
-            Export JSON
-          </Button>
-
-          <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold cursor-pointer transition-colors">
-            <Upload className="h-3.5 w-3.5 text-amber-400" />
-            <span>Restore JSON</span>
-            <input type="file" accept=".json" onChange={handleImportFullJSON} className="hidden" />
-          </label>
         </div>
       </div>
 

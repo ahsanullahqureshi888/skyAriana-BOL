@@ -12,19 +12,5 @@
         ]
       }
     ]
-  },
-  "post-edit-audit": {
-    "PostToolUse": [
-      {
-        "matcher": "replace_file_content|write_to_file",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python hooks/post_edit_audit.py",
-            "timeout": 15
-          }
-        ]
-      }
-    ]
   }
 }

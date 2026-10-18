@@ -5,12 +5,16 @@ import { useApp } from "@/lib/app-context"
 import { CURRENT_SYSTEM_VERSION } from "@/lib/config/system-version"
 import { UserRole, User } from "@/lib/types"
 import {
+  LayoutGrid,
+  Search,
+  MonitorSmartphone,
   Users,
   Lock,
   Building2,
   HardDrive,
   Download,
   Shield,
+  Activity,
   UserPlus,
   Trash2,
   CheckCircle2,
@@ -55,14 +59,24 @@ import {
   Compass,
   Maximize2,
   FileSignature,
+  ChevronUp,
 } from "lucide-react"
 import { PWAInstallButton } from "@/components/pwa-install-prompt"
 import { Button } from "@/components/ui/button"
 import { CloudSyncModal } from "@/components/bill-of-lading/cloud-sync-modal"
 import { DataBackupManager } from "@/components/data-backup-manager"
+import { GoogleDriveSyncSettings } from "@/components/sync/google-drive-sync-settings"
+import { RecentlyDeletedView } from "@/components/sync/recently-deleted-view"
+import { ClientPortalTab } from "./settings/client-portal-tab"
+import { UsersPermissionsTab } from "./settings/users-permissions-tab"
+import { ServerModeCard } from "@/components/server/server-mode-card"
+import { ServerConnectionTab } from "./settings/server-connection-tab"
+import { BackupRecoveryView } from "@/components/backup/backup-recovery-view"
+import { AccountingPeriodsSettings } from "./settings/accounting-periods-settings"
+import { AIAssistantSettingsTab } from "./settings/ai-assistant-settings-tab"
+import { PerformanceDiagnosticsTab } from "./settings/performance-diagnostics-tab"
 import {
   COMPANY_STAMP_SIGNATURE_SRC,
-  COMPANY_STAMP_SIGNATURE_DATA_URL,
   DEFAULT_STAMP_CONFIG,
   getStoredCompanyStampConfig,
   saveStoredCompanyStampConfig,
@@ -72,6 +86,7 @@ import {
   getStoredCompanyStampScale,
   type CompanyStampConfig,
 } from "@/lib/company-stamp-data"
+import { COMPANY_STAMP_SIGNATURE_DATA_URL } from "@/lib/company-stamp-fallback"
 import { toast } from "sonner"
 
 // Preset Official Company Stamps and Seals
@@ -122,11 +137,37 @@ const PRESET_SEALS = [
   },
 ]
 
-export type SettingsTab = "users" | "stamp" | "company" | "cloud" | "security" | "updates" | "vault"
+export type SettingsTab = "all" | "users" | "client_portal" | "stamp" | "company" | "cloud" | "security" | "updates" | "vault" | "gdrive" | "deleted" | "server" | "backup_recovery" | "accounting_periods" | "ai_assistant" | "performance"
+
+export interface SettingItem {
+  id: SettingsTab
+  label: string
+  labelFa: string
+  icon: React.ComponentType<{ className?: string }>
+  badge?: string | number
+  badgeColor?: string
+  desc: string
+}
+
+export interface SettingCategory {
+  id: string
+  title: string
+  titleFa: string
+  icon: React.ComponentType<{ className?: string }>
+  items: SettingItem[]
+}
+
+const DEFAULT_BADGE = {
+  label: "Staff User",
+  bg: "bg-slate-100 border-slate-300",
+  text: "text-slate-700 font-bold",
+  icon: "👤",
+  desc: "Internal staff member",
+}
 
 const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; icon: string; desc: string }> = {
   superadmin: {
-    label: "Superadmin",
+    label: "Super Admin",
     bg: "bg-purple-100 border-purple-300",
     text: "text-purple-900 font-extrabold",
     icon: "👑",
@@ -139,22 +180,71 @@ const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; i
     icon: "🛡️",
     desc: "Create and edit Bills of Lading, manage client ledgers and company records",
   },
+  management: {
+    label: "Management",
+    bg: "bg-amber-100 border-amber-300",
+    text: "text-amber-900 font-extrabold",
+    icon: "💎",
+    desc: "Executive dashboards, profit and loss analysis, and high-value approvals",
+  },
+  operations: {
+    label: "Operations",
+    bg: "bg-sky-100 border-sky-300",
+    text: "text-sky-900 font-extrabold",
+    icon: "🚚",
+    desc: "Create and manage Bills of Lading, container tracking and transport routes",
+  },
+  accounting: {
+    label: "Accounting",
+    bg: "bg-emerald-100 border-emerald-300",
+    text: "text-emerald-900 font-extrabold",
+    icon: "💼",
+    desc: "Manage payments, invoices, balances, supplier costs and ledgers",
+  },
   accountant: {
-    label: "Accountant",
+    label: "Accountant (Legacy)",
     bg: "bg-emerald-100 border-emerald-300",
     text: "text-emerald-900 font-extrabold",
     icon: "💼",
     desc: "Manage payments, invoices, balances, and financial transaction statements",
+  },
+  documents: {
+    label: "Documents",
+    bg: "bg-indigo-100 border-indigo-300",
+    text: "text-indigo-900 font-extrabold",
+    icon: "📄",
+    desc: "Prepare and finalize Commercial Invoices, Packing Lists and trade manifests",
+  },
+  tracking: {
+    label: "Tracking",
+    bg: "bg-teal-100 border-teal-300",
+    text: "text-teal-900 font-extrabold",
+    icon: "📍",
+    desc: "Real-time vehicle tracking, border checkpoint milestones and alerts",
+  },
+  data_entry: {
+    label: "Data Entry",
+    bg: "bg-orange-100 border-orange-300",
+    text: "text-orange-900 font-extrabold",
+    icon: "⌨️",
+    desc: "High-speed draft BOL and manifest data entry",
   },
   viewer: {
     label: "Viewer",
     bg: "bg-slate-100 border-slate-300",
     text: "text-slate-700 font-bold",
     icon: "👁️",
-    desc: "Read-only access to view and print Bills of Lading and reports",
+    desc: "Read-only access to view operational information and reports",
+  },
+  client: {
+    label: "Client Portal",
+    bg: "bg-amber-100 border-amber-300",
+    text: "text-amber-900 font-extrabold",
+    icon: "🚢",
+    desc: "Customer portal access scoped to own shipments and released documents",
   },
   shipper: {
-    label: "Shipper",
+    label: "Shipper (Legacy)",
     bg: "bg-amber-100 border-amber-300",
     text: "text-amber-900 font-extrabold",
     icon: "🚢",
@@ -164,7 +254,24 @@ const ROLE_BADGES: Record<UserRole, { label: string; bg: string; text: string; i
 
 export function SettingsView() {
   const { users, addUser, updateUserRole, deleteUser, changePassword, currentUser, isSyncing, syncCloudData, accounts, toggleUserStatus, resetUserPassword, setView } = useApp()
-  const [activeTab, setActiveTab] = useState<SettingsTab>("users")
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    if (typeof window !== "undefined") {
+      const saved = window.localStorage.getItem("skybol:settings-active-tab")
+      if (saved && (saved === "all" || saved === "users" || saved === "client_portal" || saved === "stamp" || saved === "company" || saved === "cloud" || saved === "security" || saved === "updates" || saved === "vault" || saved === "gdrive" || saved === "deleted" || saved === "server" || saved === "backup_recovery" || saved === "accounting_periods" || saved === "ai_assistant" || saved === "performance")) {
+        return saved as SettingsTab
+      }
+    }
+    return "users"
+  })
+  const [settingsSearch, setSettingsSearch] = useState("")
+
+  const handleSelectTab = (tab: SettingsTab) => {
+    setActiveTab(tab)
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("skybol:settings-active-tab", tab)
+    }
+  }
+
   const [isCloudSyncOpen, setIsCloudSyncOpen] = useState(false)
 
   // Storage Analytics & Health Calculation
@@ -264,9 +371,227 @@ export function SettingsView() {
   })
   const [isCompanySaved, setIsCompanySaved] = useState(false)
 
+  // Categorized Settings Architecture
+  const SETTING_CATEGORIES: SettingCategory[] = useMemo(() => [
+    {
+      id: "access",
+      title: "Team & Permissions",
+      titleFa: "کاربران و دسترسی‌ها",
+      icon: Users,
+      items: [
+        {
+          id: "users" as SettingsTab,
+          label: "Staff Users & RBAC",
+          labelFa: "کاربران و نقش‌ها",
+          icon: Users,
+          badge: users.length,
+          badgeColor: "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300",
+          desc: "Role-based access control, permissions and user accounts",
+        },
+        {
+          id: "client_portal" as SettingsTab,
+          label: "Client Portal Access",
+          labelFa: "پورتال مشتریان",
+          icon: MonitorSmartphone,
+          desc: "Customer self-service logins and document tracking scopes",
+        },
+        {
+          id: "security" as SettingsTab,
+          label: "Security & Passwords",
+          labelFa: "امنیت و کلمات عبور",
+          icon: Key,
+          desc: "Update administrator password and security credentials",
+        },
+      ],
+    },
+    {
+      id: "organization",
+      title: "Company & Identity",
+      titleFa: "مشخصات شرکت و مهر",
+      icon: Building2,
+      items: [
+        {
+          id: "company" as SettingsTab,
+          label: "Company Profile & Legal",
+          labelFa: "مشخصات رسمی شرکت",
+          icon: Building2,
+          desc: "Company registration, bilingual names, addresses & phones",
+        },
+        {
+          id: "stamp" as SettingsTab,
+          label: "Stamp & Sign Studio",
+          labelFa: "استودیو مهر و امضا",
+          icon: ShieldCheck,
+          badge: stampConfig.enabled ? "Active" : "Off",
+          badgeColor: stampConfig.enabled ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+          desc: "Official digital seals, live signature canvas & scaling",
+        },
+      ],
+    },
+    {
+      id: "cloud_data",
+      title: "Cloud & Backups",
+      titleFa: "همگام‌سازی و پشتیبان",
+      icon: Cloud,
+      items: [
+        {
+          id: "cloud" as SettingsTab,
+          label: "Multi-Device Cloud Sync",
+          labelFa: "همگام‌سازی ابری",
+          icon: Cloud,
+          desc: "Real-time sync pairing across PCs and mobile devices",
+        },
+        {
+          id: "gdrive" as SettingsTab,
+          label: "Google Drive Backup",
+          labelFa: "گوگل درایو",
+          icon: UploadCloud,
+          desc: "Automated cloud backup to secondary Google Drive storage",
+        },
+        {
+          id: "backup_recovery" as SettingsTab,
+          label: "Enterprise Backup & Health",
+          labelFa: "پشتیبان‌گیری پیشرفته",
+          icon: ShieldCheck,
+          badge: "PRO",
+          badgeColor: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-black",
+          desc: "One-click ZIP archives, encrypted packages & snapshots",
+        },
+        {
+          id: "vault" as SettingsTab,
+          label: "Browser Data Vault",
+          labelFa: "خزانه داده محلی",
+          icon: HardDrive,
+          desc: "Local database quota analytics and JSON export files",
+        },
+        {
+          id: "deleted" as SettingsTab,
+          label: "Trash & Recovery",
+          labelFa: "بازیابی حذف‌شده‌ها",
+          icon: RotateCcw,
+          desc: "Restore accidentally deleted BOLs, accounts and records",
+        },
+      ],
+    },
+    {
+      id: "system",
+      title: "System & Infrastructure",
+      titleFa: "زیرساخت و سیستم",
+      icon: Server,
+      items: [
+        {
+          id: "server" as SettingsTab,
+          label: "LAN Server & Central Node",
+          labelFa: "سرور محلی و شبکه",
+          icon: Server,
+          desc: "Configure local network server endpoint and LAN hub",
+        },
+        {
+          id: "accounting_periods" as SettingsTab,
+          label: "Accounting Periods & Locks",
+          labelFa: "دوره‌های مالی و قفل‌ها",
+          icon: Lock,
+          desc: "Fiscal period closures, locking past entries from edits",
+        },
+        {
+          id: "ai_assistant" as SettingsTab,
+          label: "AI Operations Assistant",
+          labelFa: "دستیار هوش مصنوعی",
+          icon: Sparkles,
+          badge: "NEW",
+          badgeColor: "bg-purple-500/20 text-purple-700 dark:text-purple-300 font-black",
+          desc: "Operational automation rules, prompts and AI assistant",
+        },
+        {
+          id: "performance" as SettingsTab,
+          label: "Performance Diagnostics",
+          labelFa: "تست سرعت و سلامت",
+          icon: Activity,
+          badge: "FAST",
+          badgeColor: "bg-amber-400/20 text-amber-800 dark:text-amber-300 font-black",
+          desc: "Real-time cache health, network latency and DOM metrics",
+        },
+        {
+          id: "updates" as SettingsTab,
+          label: "System Build & Version",
+          labelFa: "نسخه و بروزرسانی",
+          icon: Smartphone,
+          desc: `Release ${CURRENT_SYSTEM_VERSION.version} (${CURRENT_SYSTEM_VERSION.buildNumber})`,
+        },
+      ],
+    },
+  ], [users.length, stampConfig.enabled])
+
+  const currentActiveItem = useMemo(() => {
+    for (const cat of SETTING_CATEGORIES) {
+      const found = cat.items.find(it => it.id === activeTab)
+      if (found) return found
+    }
+    return null
+  }, [SETTING_CATEGORIES, activeTab])
+
+  const filteredCategories = useMemo(() => {
+    if (!settingsSearch.trim()) return SETTING_CATEGORIES
+    const q = settingsSearch.toLowerCase().trim()
+    return SETTING_CATEGORIES.map(cat => ({
+      ...cat,
+      items: cat.items.filter(
+        it =>
+          it.label.toLowerCase().includes(q) ||
+          it.labelFa.includes(q) ||
+          it.desc.toLowerCase().includes(q) ||
+          it.id.toLowerCase().includes(q)
+      ),
+    })).filter(cat => cat.items.length > 0)
+  }, [SETTING_CATEGORIES, settingsSearch])
+
   // System Update Check State
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false)
   const [updateMsg, setUpdateMsg] = useState<string | null>(null)
+  const [showScrollTop, setShowScrollTop] = useState(false)
+
+  // Track scroll position on main workspace to display Quick Scroll-To-Top button
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const mainScroller = document.querySelector('[data-main-workspace="true"]')
+    const handleScroll = () => {
+      const top = mainScroller ? mainScroller.scrollTop : window.scrollY
+      setShowScrollTop(top > 280)
+    }
+    if (mainScroller) {
+      mainScroller.addEventListener("scroll", handleScroll, { passive: true })
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    return () => {
+      if (mainScroller) mainScroller.removeEventListener("scroll", handleScroll)
+      window.removeEventListener("scroll", handleScroll)
+    }
+  }, [])
+
+  const scrollToSection = (sectionId: string) => {
+    if (activeTab !== "all") {
+      setActiveTab("all")
+      setTimeout(() => {
+        const el = document.getElementById(sectionId)
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" })
+        }
+      }, 100)
+      return
+    }
+    const el = document.getElementById(sectionId)
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }
+
+  const scrollToTop = () => {
+    const mainScroller = document.querySelector('[data-main-workspace="true"]')
+    if (mainScroller) {
+      mainScroller.scrollTo({ top: 0, behavior: "smooth" })
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   useEffect(() => {
     setStampConfig(getStoredCompanyStampConfig())
@@ -572,431 +897,367 @@ export function SettingsView() {
   const passStrength = getPasswordStrength(newPassword)
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-2.5 sm:p-4 md:p-6 space-y-4 sm:space-y-6 font-sans">
-      {/* Top Banner - Luxury Glassmorphic Sapphire Theme */}
-      <div className="rounded-3xl border border-blue-200/70 bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-950 p-5 sm:p-7 md:p-8 text-white shadow-2xl shadow-blue-950/30 relative overflow-hidden">
-        {/* Subtle Ambient Background Glows */}
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+    <div data-settings-view="true" className="w-full max-w-[1780px] mx-auto p-2.5 sm:p-4 md:p-6 space-y-5 font-sans select-text touch-auto">
+      {/* Sleek, Luxury Header Bar */}
+      <header className="rounded-3xl border border-slate-200/90 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 p-4 sm:p-5 shadow-lg shadow-slate-200/40 dark:shadow-none backdrop-blur-xl relative overflow-hidden">
+        {/* Subtle Brand Accent Gradient Line */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-900 via-indigo-600 to-amber-500" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
-          <div className="space-y-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[10px] font-black uppercase tracking-widest text-amber-300 shadow-inner">
-                <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                <span>SYSTEM CONTROL PANEL</span>
-              </div>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-[10px] font-black text-emerald-300">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-[10px] font-black uppercase tracking-wider text-blue-900 dark:text-blue-300">
+                <Sliders className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                <span>System Control Panel</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[10px] font-black text-emerald-800 dark:text-emerald-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Cloud Connected</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-mono font-bold text-slate-600 dark:text-slate-400">
+                v{CURRENT_SYSTEM_VERSION.version}
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-blue-100 to-amber-200">
-              System Settings & Management
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+              <span>System Settings & Preferences</span>
+              <span className="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 font-[vazirmatn]" dir="rtl">
+                / تنظیمات جامع سیستم
+              </span>
             </h1>
-            <p className="text-xs sm:text-sm text-blue-200/90 font-[vazirmatn] font-bold" dir="rtl">
-              تنظیمات جامع سیستم، مهر و امضای رسمی، مدیریت کاربران، مشخصات شرکت و همگام‌سازی ابری
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              Enterprise staff permissions, company profile, official seal & digital signature studio, cloud backup & system diagnostics
             </p>
           </div>
 
-          {/* Current User Card */}
-          <div className="flex items-center gap-3.5 bg-white/10 backdrop-blur-xl p-3.5 sm:p-4 rounded-2xl border border-white/20 self-start md:self-auto shadow-lg shadow-black/20">
-            <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 border border-amber-300 shadow-md flex items-center justify-center font-black text-lg sm:text-xl text-amber-950 shrink-0">
-              {currentUser?.name?.charAt(0) || "A"}
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs sm:text-sm font-black text-white truncate">{currentUser?.name || "Administrator"}</div>
-              <div className="text-[10px] text-amber-300 font-mono font-black tracking-wider uppercase mt-0.5">
-                {currentUser?.role || "superadmin"}
+          {/* Current Administrator Chip & Sync Action */}
+          <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => syncCloudData()}
+              disabled={isSyncing}
+              className="gap-2 rounded-2xl border-slate-300 dark:border-slate-700 bg-slate-50/80 hover:bg-slate-100 text-slate-800 dark:text-slate-200 font-bold text-xs h-10 px-3.5 cursor-pointer shadow-2xs transition-all"
+              title="Refresh and synchronize database across devices"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-blue-600 ${isSyncing ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{isSyncing ? "Syncing..." : "Sync Cloud"}</span>
+            </Button>
+
+            <div className="flex items-center gap-3 px-3.5 py-2 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/90 dark:border-slate-700/80 shadow-2xs">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-amber-950 font-black text-sm flex items-center justify-center shadow-xs shrink-0">
+                {currentUser?.name?.charAt(0) || "A"}
               </div>
-              <div className="text-[9px] text-slate-300 font-bold mt-0.5">@{currentUser?.username || "admin"}</div>
+              <div className="min-w-0">
+                <div className="text-xs font-black text-slate-900 dark:text-white truncate max-w-[140px]">
+                  {currentUser?.name || "Administrator"}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] uppercase font-mono font-black text-amber-600 dark:text-amber-400">
+                    {currentUser?.role || "superadmin"}
+                  </span>
+                  <span className="text-[9px] text-slate-400">@{currentUser?.username || "admin"}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Modern Navigation Tabs Bar */}
-      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-white/80 border border-slate-200/80 shadow-md shadow-slate-200/40 backdrop-blur-xl overflow-x-auto scrollbar-none flex-nowrap shrink-0">
-        <button
-          type="button"
-          onClick={() => setActiveTab("users")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === "users"
-              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
-              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          }`}
-        >
-          <Users className="w-4 h-4 text-amber-400" />
-          <span>User Management</span>
-          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${activeTab === "users" ? "bg-white/20 text-white" : "bg-blue-100 text-blue-900"}`}>
-            {users.length}
-          </span>
-        </button>
+      {/* Responsive Mobile / Tablet Category & Item Selector */}
+      <div className="lg:hidden w-full space-y-2.5 bg-white/95 dark:bg-slate-900/95 p-3 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
+        {/* Search Bar for Mobile */}
+        <div className="relative">
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={settingsSearch}
+            onChange={(e) => setSettingsSearch(e.target.value)}
+            placeholder="Search settings (جستجوی تنظیمات)..."
+            className="w-full h-8.5 pl-8.5 pr-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:bg-white text-slate-900 dark:text-white"
+          />
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("stamp")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === "stamp"
-              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
-              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          }`}
-        >
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>Stamp & Signature (مهر و امضا)</span>
-        </button>
+        {/* Horizontal Scrollable Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none touch-pan-x">
+          <button
+            type="button"
+            onClick={() => handleSelectTab("all")}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 whitespace-nowrap cursor-pointer transition-all ${
+              activeTab === "all"
+                ? "bg-blue-900 text-white shadow-xs"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5 text-amber-400" />
+            <span>All in One (همه)</span>
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("company")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === "company"
-              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
-              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          }`}
-        >
-          <Building2 className="w-4 h-4 text-amber-400" />
-          <span>Company Profile (مشخصات شرکت)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("cloud")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === "cloud"
-              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
-              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          }`}
-        >
-          <Cloud className="w-4 h-4 text-blue-400" />
-          <span>Cloud Sync & Backup</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("security")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === "security"
-              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
-              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          }`}
-        >
-          <Key className="w-4 h-4 text-amber-400" />
-          <span>Security & Passwords</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("updates")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === "updates"
-              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
-              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          }`}
-        >
-          <Smartphone className="w-4 h-4 text-emerald-400" />
-          <span>App & System Build</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("vault")}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-            activeTab === "vault"
-              ? "bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-md shadow-blue-950/20"
-              : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          }`}
-        >
-          <HardDrive className="w-4 h-4 text-blue-400" />
-          <span>Data Vault & Snapshots</span>
-        </button>
-      </div>
-
-
-      {/* ========================================================================= */}
-      {/* TAB 1: USER MANAGEMENT                                                    */}
-      {/* ========================================================================= */}
-      {activeTab === "users" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in fade-in duration-300">
-          {/* Add User Card */}
-          <div className="lg:col-span-5 bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-7 space-y-5">
-            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-              <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 shadow-md shadow-blue-950/20">
-                <UserPlus className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Add System User</h3>
-                <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
-                  ایجاد کاربر جدید با سطوح دسترسی
-                </p>
-              </div>
-            </div>
-
-            {userMsg && (
-              <div
-                className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2.5 ${
-                  userMsg.type === "success"
-                    ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
-                    : "bg-red-50 text-red-900 border border-red-200"
+          {SETTING_CATEGORIES.flatMap((c: SettingCategory): SettingItem[] => c.items).map((it: SettingItem) => {
+            const Icon = it.icon
+            const isActive = activeTab === it.id
+            return (
+              <button
+                key={it.id}
+                type="button"
+                onClick={() => handleSelectTab(it.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 whitespace-nowrap cursor-pointer transition-all ${
+                  isActive
+                    ? "bg-blue-900 text-white shadow-xs"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200"
                 }`}
               >
-                {userMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
-                <span>{userMsg.text}</span>
-              </div>
-            )}
+                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-amber-400" : "text-slate-500"}`} />
+                <span>{it.label}</span>
+                {it.badge !== undefined && (
+                  <span className={`px-1 py-0.2 rounded-full text-[9px] font-black ${
+                    isActive ? "bg-white/20 text-white" : it.badgeColor || "bg-slate-200 text-slate-700"
+                  }`}>
+                    {it.badge}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
-            <form onSubmit={handleAddUserSubmit} className="space-y-4">
-              <div>
-                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
-                  Username / شناسه کاربر
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newUsername}
-                  onChange={(e) => setNewUsername(e.target.value)}
-                  placeholder="e.g. jsmith"
-                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all placeholder:text-slate-400"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
-                  Full Name / نام مکمل
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g. John Smith"
-                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all placeholder:text-slate-400"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
-                  System Role / نقش کاربر
-                </label>
-                <select
-                  value={newRole}
-                  onChange={(e) => setNewRole(e.target.value as UserRole)}
-                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all cursor-pointer"
+      {/* Main Two-Column Master-Detail Layout */}
+      <div className="flex flex-col lg:flex-row items-start gap-6">
+        {/* ========================================================================= */}
+        {/* LEFT SIDEBAR: CATEGORIZED SETTINGS NAVIGATION (DESKTOP)                   */}
+        {/* ========================================================================= */}
+        <aside className="hidden lg:block w-72 shrink-0 space-y-4 sticky top-4">
+          <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl border border-slate-200/90 dark:border-slate-800/90 p-3.5 shadow-md shadow-slate-200/40 dark:shadow-none space-y-3">
+            {/* Search Filter Input */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={settingsSearch}
+                onChange={(e) => setSettingsSearch(e.target.value)}
+                placeholder="Search settings (جستجو)..."
+                className="w-full h-9 pl-9 pr-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-800 dark:text-slate-200 placeholder:text-slate-400"
+              />
+              {settingsSearch && (
+                <button
+                  type="button"
+                  onClick={() => setSettingsSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 text-xs"
                 >
-                  <option value="shipper">🚢 Shipper / Client Portal Account (Dedicated Client Access)</option>
-                  <option value="superadmin">👑 Superadmin (Full System Access)</option>
-                  <option value="admin">🛡️ Admin (BOL & Accounting Access)</option>
-                  <option value="accountant">💼 Accountant (Ledgers & Invoices Only)</option>
-                  <option value="viewer">👁️ Viewer (Read-only Document Access)</option>
-                </select>
-                <p className="text-[11px] text-slate-500 mt-1 font-medium italic">
-                  {ROLE_BADGES[newRole]?.desc}
-                </p>
-              </div>
+                  ✕
+                </button>
+              )}
+            </div>
 
-              {/* Shipper Linked Client Selector */}
-              {newRole === "shipper" && (
-                <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 space-y-3 animate-in fade-in duration-200">
-                  <div>
-                    <label className="text-[11px] font-black uppercase tracking-wider text-amber-900 block mb-1">
-                      🏢 Link Existing Client / Company (مربوط به مشتری)
-                    </label>
-                    <select
-                      value={newClientName}
-                      onChange={(e) => {
-                        setNewClientName(e.target.value)
-                        if (!newName) setNewName(e.target.value)
-                      }}
-                      className="w-full h-10 px-3 text-xs font-bold text-slate-900 bg-white border border-amber-300 rounded-xl focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
-                    >
-                      <option value="">-- Select Existing Client or Type Below --</option>
-                      {clientOptions.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-black uppercase tracking-wider text-amber-900 block mb-1">
-                      Account Password / رمز عبور پورتال
-                    </label>
-                    <input
-                      type="password"
-                      value={newPasswordUser}
-                      onChange={(e) => setNewPasswordUser(e.target.value)}
-                      placeholder="Enter secure password"
-                      className="w-full h-10 px-3 text-xs font-bold text-slate-900 bg-white border border-amber-300 rounded-xl focus:border-amber-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-black uppercase tracking-wider text-amber-900 block mb-1">
-                      Confirm Password / تکرار رمز عبور
-                    </label>
-                    <input
-                      type="password"
-                      value={newConfirmPasswordUser}
-                      onChange={(e) => setNewConfirmPasswordUser(e.target.value)}
-                      placeholder="Confirm password"
-                      className="w-full h-10 px-3 text-xs font-bold text-slate-900 bg-white border border-amber-300 rounded-xl focus:border-amber-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-black uppercase tracking-wider text-amber-900 block mb-1">
-                      Account Status / وضعیت حساب
-                    </label>
-                    <select
-                      value={newStatus}
-                      onChange={(e) => setNewStatus(e.target.value as any)}
-                      className="w-full h-10 px-3 text-xs font-bold text-slate-900 bg-white border border-amber-300 rounded-xl"
-                    >
-                      <option value="active">Active / فعال (Can Log In)</option>
-                      <option value="disabled">Disabled / غیرفعال (Access Blocked)</option>
-                    </select>
+            {/* "All Sections" master button */}
+            <button
+              type="button"
+              onClick={() => handleSelectTab("all")}
+              className={`w-full flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "all"
+                  ? "bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 text-white shadow-md shadow-blue-950/20"
+                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className={`p-1.5 rounded-xl ${activeTab === "all" ? "bg-white/10 text-amber-300" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"}`}>
+                  <LayoutGrid className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                  <div className="font-extrabold text-[12px]">All in One Overview</div>
+                  <div className={`text-[10px] font-[vazirmatn] ${activeTab === "all" ? "text-blue-200" : "text-slate-400"}`}>
+                    مشاهده یکجای تمام بخش‌ها
                   </div>
                 </div>
-              )}
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                activeTab === "all" ? "bg-amber-400 text-slate-950" : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+              }`}>
+                15
+              </span>
+            </button>
 
-              <div>
-                <label className="text-xs font-black uppercase tracking-wider text-slate-700 block mb-1.5">
-                  Email (Optional) / ایمیل
-                </label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="user@skyariana.com"
-                  className="w-full h-11 px-4 text-xs sm:text-sm font-bold text-slate-900 bg-slate-50/80 border border-slate-300 rounded-2xl focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 transition-all placeholder:text-slate-400"
-                />
+            <div className="h-px bg-slate-100 dark:bg-slate-800" />
+
+            {/* Categories & Items List */}
+            <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto pr-1 scrollbar-thin">
+              {filteredCategories.map((category) => (
+                <div key={category.id} className="space-y-1">
+                  <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                    <span>{category.title}</span>
+                    <span className="font-[vazirmatn] text-[9px] opacity-75">{category.titleFa}</span>
+                  </div>
+
+                  <div className="space-y-0.5">
+                    {category.items.map((item) => {
+                      const Icon = item.icon
+                      const isActive = activeTab === item.id
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleSelectTab(item.id)}
+                          className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                            isActive
+                              ? "bg-blue-900 text-white shadow-sm ring-1 ring-blue-700/60"
+                              : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-amber-400" : "text-slate-500 dark:text-slate-400"}`} />
+                            <div className="text-left min-w-0">
+                              <div className="truncate text-[11.5px] font-bold">{item.label}</div>
+                              <div className={`text-[9.5px] truncate font-[vazirmatn] ${isActive ? "text-blue-200" : "text-slate-400"}`}>
+                                {item.labelFa}
+                              </div>
+                            </div>
+                          </div>
+
+                          {item.badge !== undefined && (
+                            <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-black shrink-0 ${
+                              isActive ? "bg-white/20 text-white" : item.badgeColor || "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            }`}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {filteredCategories.length === 0 && (
+                <div className="p-4 text-center text-xs text-slate-400">
+                  No settings match &quot;{settingsSearch}&quot;
+                </div>
+              )}
+            </div>
+
+            {/* Quick Storage Meter Bar at Bottom of Sidebar */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+              <div className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <Server className="w-3 text-blue-500" />
+                    <span>Database Quota</span>
+                  </span>
+                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-black">
+                    {storageStats.totalKB} KB
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-600 to-emerald-500 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, Math.max(3, storageStats.percent))}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* ========================================================================= */}
+        {/* RIGHT CONTENT WORKSPACE                                                   */}
+        {/* ========================================================================= */}
+        <main className="flex-1 min-w-0 w-full space-y-6">
+          {activeTab !== "all" && currentActiveItem && (
+            <div className="flex items-center justify-between gap-3 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-950 dark:text-blue-300 font-extrabold text-xs flex items-center gap-1.5">
+                  <span>Settings</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="text-blue-700 dark:text-amber-400 font-black">{currentActiveItem.label}</span>
+                </span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 font-[vazirmatn] font-bold" dir="rtl">
+                  {currentActiveItem.labelFa}
+                </span>
               </div>
 
               <button
-                type="submit"
-                className="w-full h-12 bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 hover:from-blue-950 hover:to-indigo-950 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-xl shadow-blue-950/20 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+                type="button"
+                onClick={() => handleSelectTab("all")}
+                className="text-xs text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1.5 font-bold cursor-pointer transition-colors"
+                title="View all settings on a single page"
               >
-                <UserPlus className="w-4 h-4 text-amber-400" />
-                <span>Create System Account / ایجاد حساب</span>
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">View All Sections</span>
               </button>
-            </form>
-          </div>
+            </div>
+          )}
 
-          {/* Active Users Table Card */}
-          <div className="lg:col-span-7 bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-7 space-y-5">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+      {/* TAB 1: USER MANAGEMENT & PERMISSIONS                                      */}
+      {/* ========================================================================= */}
+      {(activeTab === "all" || activeTab === "users") && (
+        <div id="section-users" className="scroll-mt-28 space-y-4 animate-in fade-in duration-300">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-md border border-slate-700/60">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-900 to-purple-900 text-amber-400 shadow-md shadow-indigo-950/20">
-                  <Users className="w-6 h-6" />
+                <div className="w-8 h-8 rounded-xl bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  01
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">Active User Accounts</h3>
-                  <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
-                    کاربران فعال سیستم و سطوح دسترسی
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">1. User Accounts, Roles & RBAC Permissions</h2>
+                    <span className="text-xs text-amber-300 font-[vazirmatn] font-bold" dir="rtl">
+                      مدیریت کاربران، نقش‌ها و سطوح دسترسی
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">
+                    Enterprise Role-Based Access Control, Staff Permissions, Approval Rules, and Audit Log
                   </p>
                 </div>
               </div>
-              <span className="px-3 py-1 text-xs font-black rounded-full bg-blue-100 text-blue-900 border border-blue-200">
-                {users.length} Active Accounts
-              </span>
+              <button
+                type="button"
+                onClick={() => setActiveTab("users")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Users tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Focus Section</span>
+              </button>
             </div>
+          )}
 
-            <div className="space-y-3">
-              {users.map((u) => {
-                const badge = ROLE_BADGES[u.role] || ROLE_BADGES.viewer
-                const isSuper = u.role === "superadmin"
-                return (
-                  <div
-                    key={u.id}
-                    className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-blue-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 font-black flex items-center justify-center text-base shadow-sm">
-                        {u.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="text-sm font-black text-slate-900">{u.name}</div>
-                        <div className="text-xs text-slate-500 font-mono font-bold">@{u.username}</div>
-                        {u.email && <div className="text-[11px] text-blue-700 font-medium">{u.email}</div>}
-                      </div>
-                    </div>
+          <UsersPermissionsTab />
+        </div>
+      )}
 
-                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`px-2.5 py-1 rounded-xl text-[11px] font-black border ${badge.bg} ${badge.text}`}>
-                          {badge.icon} {badge.label}
-                        </span>
-
-                        {u.role === "shipper" && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              toggleUserStatus(u.id)
-                              toast.success(`Status updated for @${u.username}`)
-                            }}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition ${
-                              u.status === "disabled"
-                                ? "bg-red-100 text-red-800 border-red-300 hover:bg-red-200"
-                                : "bg-emerald-100 text-emerald-800 border-emerald-300 hover:bg-emerald-200"
-                            }`}
-                            title="Click to toggle Active / Disabled status"
-                          >
-                            {u.status === "disabled" ? "🚫 Disabled" : "✓ Active"}
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        {u.role === "shipper" && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setView("shipper-portal")
-                              }}
-                              className="px-2.5 py-1 text-[11px] font-black text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 rounded-xl transition cursor-pointer flex items-center gap-1 shadow-2xs"
-                              title="Open & Preview Shipper Portal"
-                            >
-                              👁️ Open Portal
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setResetModalUser(u)
-                                setResetModalNewPass("")
-                              }}
-                              className="px-2 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition"
-                              title="Reset password for this shipper"
-                            >
-                              🔑 Password
-                            </button>
-                          </>
-                        )}
-
-                        {!isSuper && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm(`Revoke portal access & delete user '${u.username}'?`)) {
-                                deleteUser(u.id)
-                                toast.success(`User '${u.username}' removed.`)
-                              }
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-xl hover:bg-red-50 transition cursor-pointer"
-                            title="Delete User / Revoke Access"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
+      {/* ========================================================================= */}
+      {/* TAB 1.5: CLIENT PORTAL                                                    */}
+      {/* ========================================================================= */}
+      {(activeTab === "all" || activeTab === "client_portal") && (
+        <div id="section-portal" className="scroll-mt-28 space-y-4 animate-in fade-in duration-300">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-md border border-slate-700/60">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-500 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  02
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">2. Client Portal Management</h2>
+                    <span className="text-xs text-blue-300 font-[vazirmatn] font-bold" dir="rtl">
+                      پورتال اختصاصی مشتریان
+                    </span>
                   </div>
-                )
-              })}
+                  <p className="text-[11px] text-slate-300 hidden sm:block">Customer credentials, permission scopes, proof of payment submissions</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("client_portal")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Client Portal tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-blue-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
             </div>
-          </div>
+          )}
+          <ClientPortalTab />
         </div>
       )}
 
@@ -1006,8 +1267,35 @@ export function SettingsView() {
       {/* ========================================================================= */}
       {/* TAB 2: STAMP & SIGNATURE STUDIO (استودیو مهر و امضای رسمی)                */}
       {/* ========================================================================= */}
-      {activeTab === "stamp" && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in fade-in duration-300">
+      {(activeTab === "all" || activeTab === "stamp") && (
+        <div id="section-stamp" className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-in fade-in duration-300 scroll-mt-28">
+          {activeTab === "all" && (
+            <div className="lg:col-span-12 flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-md border border-slate-700/60">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  03
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">3. Stamp & Official Signature Studio</h2>
+                    <span className="text-xs text-emerald-300 font-[vazirmatn] font-bold" dir="rtl">
+                      استودیو مهر و امضای رسمی
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">Digital signature pad, preset official seals, scale, opacity and signatory text</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("stamp")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Stamp & Signature tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
           {/* Left Column: Live Document Footer Preview */}
           <div className="lg:col-span-6 bg-white/95 backdrop-blur-2xl rounded-3xl border border-slate-200/90 shadow-xl shadow-slate-200/50 p-5 sm:p-7 space-y-5 flex flex-col justify-between">
             <div className="space-y-4">
@@ -1649,8 +1937,35 @@ export function SettingsView() {
       {/* ========================================================================= */}
       {/* TAB 3: COMPANY PROFILE & LETTERHEAD (مشخصات شرکت)                         */}
       {/* ========================================================================= */}
-      {activeTab === "company" && (
-        <div className="bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-8 space-y-6 animate-in fade-in duration-300">
+      {(activeTab === "all" || activeTab === "company") && (
+        <div id="section-company" className="bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-8 space-y-6 animate-in fade-in duration-300 scroll-mt-28">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-md border border-slate-700/60 -mt-1 mb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  04
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">4. Official Company Profile & Letterhead</h2>
+                    <span className="text-xs text-amber-300 font-[vazirmatn] font-bold" dir="rtl">
+                      مشخصات رسمی شرکت و سربرگ
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">Legal enterprise identity, bilingual company name, tax & license numbers</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("company")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Company tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-2xl bg-gradient-to-br from-teal-900 to-emerald-950 text-amber-400 shadow-md shadow-teal-950/20">
@@ -1750,8 +2065,35 @@ export function SettingsView() {
       {/* ========================================================================= */}
       {/* TAB 4: CLOUD SYNC & BACKUP HUB                                            */}
       {/* ========================================================================= */}
-      {activeTab === "cloud" && (
-        <div className="bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-8 space-y-6 animate-in fade-in duration-300">
+      {(activeTab === "all" || activeTab === "cloud") && (
+        <div id="section-cloud" className="bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-8 space-y-6 animate-in fade-in duration-300 scroll-mt-28">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-md border border-slate-700/60 -mt-1 mb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-sky-500 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  05
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">5. Multi-Device Cloud Sync & Backup Hub</h2>
+                    <span className="text-xs text-sky-300 font-[vazirmatn] font-bold" dir="rtl">
+                      همگام‌سازی ابری و پشتیبان‌گیری
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">Sync BOL records, customer ledgers, and documents across PCs and mobile devices</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("cloud")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Cloud Sync tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-sky-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
             <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 shadow-md shadow-blue-950/20">
               <Cloud className="w-6 h-6" />
@@ -1861,7 +2203,7 @@ export function SettingsView() {
 
                     const backup = {
                       app: "SKY_ARIANA_LOGISTICS",
-                      version: "3.2.0",
+                      version: CURRENT_SYSTEM_VERSION.version,
                       exportedAt: new Date().toISOString(),
                       totalDocuments: allDocs.length,
                       savedDocuments: allDocs,
@@ -1945,8 +2287,35 @@ export function SettingsView() {
       {/* ========================================================================= */}
       {/* TAB 5: SECURITY & PASSWORDS                                               */}
       {/* ========================================================================= */}
-      {activeTab === "security" && (
-        <div className="max-w-2xl mx-auto bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-8 space-y-6 animate-in fade-in duration-300">
+      {(activeTab === "all" || activeTab === "security") && (
+        <div id="section-security" className="max-w-2xl mx-auto bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-8 space-y-6 animate-in fade-in duration-300 scroll-mt-28">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-md border border-slate-700/60 -mt-1 mb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  08
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">8. Security, Passwords & Access Pin</h2>
+                    <span className="text-xs text-amber-300 font-[vazirmatn] font-bold" dir="rtl">
+                      امنیت، کلمات عبور و پین کد
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">Update your current administrator password and strengthen security keys</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("security")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Security tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
           <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
             <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-md shadow-amber-500/30">
               <Key className="w-6 h-6" />
@@ -2063,8 +2432,35 @@ export function SettingsView() {
       {/* ========================================================================= */}
       {/* TAB 6: APP & SYSTEM BUILD                                                 */}
       {/* ========================================================================= */}
-      {activeTab === "updates" && (
-        <div className="bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-8 space-y-6 animate-in fade-in duration-300">
+      {(activeTab === "all" || activeTab === "updates") && (
+        <div id="section-updates" className="bg-white/90 backdrop-blur-2xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/50 p-5 sm:p-8 space-y-6 animate-in fade-in duration-300 scroll-mt-28">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-md border border-slate-700/60 -mt-1 mb-2">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  10
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">10. Application & System Build Info</h2>
+                    <span className="text-xs text-emerald-300 font-[vazirmatn] font-bold" dir="rtl">
+                      اطلاعات نسخه و بیلد سیستم
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">Production release channels, offline support, and system health status</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("updates")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus System Build tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
               <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-900 to-purple-900 text-amber-400 shadow-md shadow-indigo-950/20">
@@ -2147,11 +2543,304 @@ export function SettingsView() {
       {/* ========================================================================= */}
       {/* TAB 7: DATA VAULT & SYSTEM SNAPSHOTS                                      */}
       {/* ========================================================================= */}
-      {activeTab === "vault" && (
-        <div className="animate-in fade-in duration-300">
-          <DataBackupManager />
+      {(activeTab === "all" || activeTab === "vault") && (
+        <div id="section-vault" className="scroll-mt-28 space-y-4 animate-in fade-in duration-300">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-md border border-slate-700/60">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  07
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">7. Data Vault & System Snapshots</h2>
+                    <span className="text-xs text-indigo-300 font-[vazirmatn] font-bold" dir="rtl">
+                      خزانه داده و تصاویر محلی
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">Export JSON backups, inspect local storage quotas, and create atomic snapshot points</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("vault")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Data Vault tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
+          <div className="animate-in fade-in duration-300">
+            <DataBackupManager />
+          </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* TAB 8: GOOGLE DRIVE AUTOMATIC DATA SYNC (PHASE 2)                         */}
+      {/* ========================================================================= */}
+      {(activeTab === "all" || activeTab === "gdrive") && (
+        <div id="section-gdrive" className="scroll-mt-28 space-y-4 animate-in fade-in duration-300">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-md border border-slate-700/60">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-teal-500 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  06
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">6. Google Drive Automatic Data Sync</h2>
+                    <span className="text-xs text-teal-300 font-[vazirmatn] font-bold" dir="rtl">
+                      پشتیبان‌گیری خودکار گوگل درایو
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">Automate secondary cloud snapshots directly into your Google Drive account</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("gdrive")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Google Drive tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-teal-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
+          <div className="animate-in fade-in duration-300">
+            <GoogleDriveSyncSettings />
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 9: RECENTLY DELETED RECORDS (TOMBSTONES)                              */}
+      {/* ========================================================================= */}
+      {(activeTab === "all" || activeTab === "deleted") && (
+        <div id="section-deleted" className="scroll-mt-28 space-y-4 animate-in fade-in duration-300">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-md border border-slate-700/60">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-rose-500 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  09
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">9. Recently Deleted Records & Recovery</h2>
+                    <span className="text-xs text-rose-300 font-[vazirmatn] font-bold" dir="rtl">
+                      بازیابی اسناد و داده‌های حذف شده
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">Audit and restore soft-deleted BOLs, transactions, and company profiles</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("deleted")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Recovery tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-rose-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
+          <div className="animate-in fade-in duration-300">
+            <RecentlyDeletedView />
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: MAIN SERVER & LAN DEVICES                                            */}
+      {/* ========================================================================= */}
+      {(activeTab === "all" || activeTab === "server") && (
+        <div id="section-server" className="scroll-mt-28 space-y-4 animate-in fade-in duration-300">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white shadow-md border border-slate-700/60">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  <Server className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">Main Server & Local Network (LAN) Devices</h2>
+                    <span className="text-xs text-blue-300 font-[vazirmatn] font-bold" dir="rtl">
+                      مدیریت سرور اصلی و اتصال دستگاه‌های شبکه محلی
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">Pair laptops, phones, and tablets to this PC over local Wi-Fi / LAN network</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("server")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Server section only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-blue-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
+          <ServerConnectionTab />
+          <ServerModeCard />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: ENTERPRISE BACKUP & RECOVERY                                         */}
+      {/* ========================================================================= */}
+      {(activeTab === "all" || activeTab === "backup_recovery") && (
+        <div id="section-backup-recovery" className="scroll-mt-28 space-y-4 animate-in fade-in duration-300">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-emerald-950 to-blue-950 text-white shadow-md border border-slate-700/60">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">Enterprise Automatic Backup, Safe Recovery & Database Health</h2>
+                    <span className="text-xs text-emerald-300 font-[vazirmatn] font-bold" dir="rtl">
+                      پشتیبان‌گیری خودکار، بازیابی ایمن و سلامت پایگاه داده
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">Automated versioned archives, multi-step safe restore, relational integrity audits, and import rollback</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("backup_recovery")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Backup & Recovery tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
+          <BackupRecoveryView />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: ACCOUNTING PERIODS & FINANCIAL LOCKS                                 */}
+      {/* ========================================================================= */}
+      {(activeTab === "all" || activeTab === "accounting_periods") && (
+        <div id="section-accounting-periods" className="scroll-mt-28 space-y-4 animate-in fade-in duration-300">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white shadow-md border border-slate-700/60">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-blue-600 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">Financial Period Closing & Server Lock Controls</h2>
+                    <span className="text-xs text-blue-300 font-[vazirmatn] font-bold" dir="rtl">
+                      مدیریت دوره‌های مالی و قفل امنیتی دفتر کل
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">Enforce strict server-side lock on closed periods, pre-close backup verification, and multi-currency carry-forward</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("accounting_periods")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Accounting Periods tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-blue-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
+          <AccountingPeriodsSettings />
+        </div>
+      )}
+
+
+      {/* ========================================================================= */}
+      {/* TAB: AI OPERATIONS ASSISTANT (SKY AI)                                     */}
+      {/* ========================================================================= */}
+      {(activeTab === "all" || activeTab === "ai_assistant") && (
+        <div id="section-ai-assistant" className="scroll-mt-28 space-y-4 animate-in fade-in duration-300">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-purple-950 to-indigo-950 text-white shadow-md border border-slate-700/60">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-purple-600 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  <Sparkles className="w-4 h-4 text-purple-200" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">AI Operations Assistant (SKY AI)</h2>
+                    <span className="text-xs text-purple-300 font-[vazirmatn] font-bold" dir="rtl">
+                      دستیار هوشمند عملیاتی و رهگیری
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">
+                    Configure Google Gemini API, model selection, execution mode (Read-only vs Actions), and language preferences
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("ai_assistant")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus AI Assistant tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-purple-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
+          <AIAssistantSettingsTab />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: PERFORMANCE & DIAGNOSTICS                                            */}
+      {/* ========================================================================= */}
+      {(activeTab === "all" || activeTab === "performance") && (
+        <div id="section-performance" className="scroll-mt-28 space-y-4 animate-in fade-in duration-300">
+          {activeTab === "all" && (
+            <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-amber-950 to-slate-950 text-white shadow-md border border-slate-700/60">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  <Activity className="w-4 h-4 text-slate-950" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-black text-white">System Performance & Diagnostics</h2>
+                    <span className="text-xs text-amber-300 font-[vazirmatn] font-bold" dir="rtl">
+                      کارایی و تشخیص سیستم
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 hidden sm:block">
+                    Monitor network latency, chunk caching status, DOM element load, and browser storage memory
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("performance")}
+                className="px-3 py-1.5 rounded-xl text-xs font-black bg-white/10 hover:bg-white/20 text-white transition border border-white/20 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="Focus Performance Diagnostics tab only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden md:inline">Focus Section</span>
+              </button>
+            </div>
+          )}
+          <PerformanceDiagnosticsTab />
+        </div>
+      )}
+        </main>
+      </div>
 
       {/* Cloud Sync Hub Modal */}
       <CloudSyncModal open={isCloudSyncOpen} onOpenChange={setIsCloudSyncOpen} />
@@ -2201,6 +2890,19 @@ export function SettingsView() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Floating Quick Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-50 p-3 rounded-full bg-blue-600/90 hover:bg-blue-600 text-white shadow-2xl border border-blue-400/50 backdrop-blur-md transition-all animate-in fade-in zoom-in-95 cursor-pointer flex items-center gap-1.5 text-xs font-bold ring-2 ring-white/20 active:scale-95"
+          title="Back to Top (بازگشت به بالا)"
+        >
+          <ChevronUp className="w-4 h-4 text-white" />
+          <span className="hidden sm:inline">Top</span>
+        </button>
       )}
 
     </div>

@@ -1,0 +1,201 @@
+const fs = require('node:fs');
+const path = require('node:path');
+
+const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#080e1a" />
+      <stop offset="40%" stop-color="#0c192e" />
+      <stop offset="70%" stop-color="#0f2547" />
+      <stop offset="100%" stop-color="#091224" />
+    </linearGradient>
+
+    <!-- Glowing Trade Route Gradients -->
+    <linearGradient id="route-glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.1" />
+      <stop offset="50%" stop-color="#60a5fa" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#818cf8" stop-opacity="0.2" />
+    </linearGradient>
+
+    <linearGradient id="gold-route" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.1" />
+      <stop offset="50%" stop-color="#fbbf24" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.2" />
+    </linearGradient>
+
+    <radialGradient id="hub-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9" />
+      <stop offset="40%" stop-color="#0284c7" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
+    </radialGradient>
+
+    <pattern id="tech-grid" width="80" height="80" patternUnits="userSpaceOnUse">
+      <rect width="80" height="80" fill="none" />
+      <path d="M 80 0 L 0 0 0 80" fill="none" stroke="#1e3a8a" stroke-width="0.6" stroke-opacity="0.25" />
+      <circle cx="0" cy="0" r="1.5" fill="#38bdf8" fill-opacity="0.4" />
+    </pattern>
+  </defs>
+
+  <!-- Deep Cosmic Logistics Canvas -->
+  <rect width="1920" height="1080" fill="url(#bg-grad)" />
+  <rect width="1920" height="1080" fill="url(#tech-grid)" />
+
+  <!-- Orthographic World Hemisphere Wireframe -->
+  <g transform="translate(960, 540)" opacity="0.65">
+    <!-- Outer Horizon -->
+    <circle cx="0" cy="0" r="480" fill="none" stroke="#1e40af" stroke-width="1.5" stroke-opacity="0.4" />
+    <circle cx="0" cy="0" r="495" fill="none" stroke="#38bdf8" stroke-width="0.8" stroke-dasharray="4 8" stroke-opacity="0.3" />
+    <circle cx="0" cy="0" r="450" fill="none" stroke="#1e3a8a" stroke-width="0.8" stroke-dasharray="2 4" stroke-opacity="0.25" />
+
+    <!-- Latitudinal Parallels -->
+    <ellipse cx="0" cy="-320" rx="357" ry="114" fill="none" stroke="#38bdf8" stroke-width="0.8" stroke-opacity="0.25" />
+    <ellipse cx="0" cy="-160" rx="452" ry="144" fill="none" stroke="#38bdf8" stroke-width="0.8" stroke-opacity="0.3" />
+    <ellipse cx="0" cy="0" rx="480" ry="153" fill="none" stroke="#60a5fa" stroke-width="1.2" stroke-opacity="0.45" />
+    <ellipse cx="0" cy="160" rx="452" ry="144" fill="none" stroke="#38bdf8" stroke-width="0.8" stroke-opacity="0.3" />
+    <ellipse cx="0" cy="320" rx="357" ry="114" fill="none" stroke="#38bdf8" stroke-width="0.8" stroke-opacity="0.25" />
+
+    <!-- Longitudinal Meridians -->
+    <ellipse cx="0" cy="0" rx="140" ry="480" fill="none" stroke="#38bdf8" stroke-width="0.8" stroke-opacity="0.3" />
+    <ellipse cx="0" cy="0" rx="280" ry="480" fill="none" stroke="#38bdf8" stroke-width="0.8" stroke-opacity="0.3" />
+    <ellipse cx="0" cy="0" rx="400" ry="480" fill="none" stroke="#38bdf8" stroke-width="0.8" stroke-opacity="0.25" />
+    <line x1="0" y1="-480" x2="0" y2="480" stroke="#60a5fa" stroke-width="1.4" stroke-opacity="0.5" />
+
+    <!-- Compass Degree Markers on Horizon Ring -->
+    <g stroke="#38bdf8" stroke-width="1" opacity="0.5">
+      <line x1="0" y1="-480" x2="0" y2="-465" />
+      <line x1="480" y1="0" x2="465" y2="0" />
+      <line x1="0" y1="480" x2="0" y2="465" />
+      <line x1="-480" y1="0" x2="-465" y2="0" />
+      <line x1="339" y1="-339" x2="328" y2="-328" />
+      <line x1="339" y1="339" x2="328" y2="328" />
+      <line x1="-339" y1="339" x2="-328" y2="328" />
+      <line x1="-339" y1="-339" x2="-328" y2="-328" />
+    </g>
+  </g>
+
+  <!-- Major Intercontinental Trade Corridor Arcs -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M 320 680 Q 640 280 1020 380 T 1640 460" stroke="url(#route-glow)" stroke-width="2.5" />
+    <path d="M 320 680 Q 640 280 1020 380 T 1640 460" stroke="#ffffff" stroke-width="0.8" stroke-dasharray="6 12" opacity="0.7" />
+
+    <path d="M 480 820 Q 820 540 1140 510 T 1720 310" stroke="url(#gold-route)" stroke-width="2" />
+    <path d="M 480 820 Q 820 540 1140 510 T 1720 310" stroke="#fef08a" stroke-width="0.8" stroke-dasharray="4 8" opacity="0.8" />
+
+    <path d="M 210 890 C 580 840 760 920 1180 840 S 1780 780 1860 810" stroke="#0284c7" stroke-width="2" stroke-dasharray="12 8" opacity="0.55" />
+  </g>
+
+  <!-- Global Strategic Logistics Waypoints -->
+  <g id="waypoints">
+    <!-- KABUL HUB (Central Node) -->
+    <g transform="translate(1040, 470)">
+      <circle cx="0" cy="0" r="32" fill="url(#hub-glow)" />
+      <circle cx="0" cy="0" r="16" fill="none" stroke="#38bdf8" stroke-width="1" stroke-dasharray="3 3" />
+      <circle cx="0" cy="0" r="6" fill="#38bdf8" />
+      <circle cx="0" cy="0" r="2.5" fill="#ffffff" />
+      <rect x="16" y="-18" width="135" height="28" rx="4" fill="#0b1e3b" fill-opacity="0.85" stroke="#38bdf8" stroke-width="1" />
+      <text x="24" y="-5" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#ffffff" letter-spacing="1">KABUL (KBL)</text>
+      <text x="24" y="6" font-family="Arial, sans-serif" font-size="7.5" font-weight="bold" fill="#38bdf8">CENTRAL CARGO HUB</text>
+    </g>
+
+    <!-- DUBAI (DXB) -->
+    <g transform="translate(890, 560)">
+      <circle cx="0" cy="0" r="24" fill="url(#hub-glow)" />
+      <circle cx="0" cy="0" r="5" fill="#38bdf8" />
+      <rect x="14" y="-14" width="100" height="22" rx="3" fill="#0b1e3b" fill-opacity="0.8" stroke="#1e40af" stroke-width="0.8" />
+      <text x="20" y="-2" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#ffffff">DUBAI (DXB)</text>
+      <text x="20" y="6" font-family="Arial, sans-serif" font-size="7" fill="#93c5fd">INTL TRANSIT</text>
+    </g>
+
+    <!-- ISTANBUL (IST) -->
+    <g transform="translate(720, 420)">
+      <circle cx="0" cy="0" r="20" fill="url(#hub-glow)" />
+      <circle cx="0" cy="0" r="4.5" fill="#38bdf8" />
+      <rect x="12" y="-14" width="110" height="22" rx="3" fill="#0b1e3b" fill-opacity="0.8" stroke="#1e40af" stroke-width="0.8" />
+      <text x="18" y="-2" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#ffffff">ISTANBUL (IST)</text>
+      <text x="18" y="6" font-family="Arial, sans-serif" font-size="7" fill="#93c5fd">GATEWAY WEST</text>
+    </g>
+
+    <!-- FRANKFURT (FRA) -->
+    <g transform="translate(560, 340)">
+      <circle cx="0" cy="0" r="22" fill="url(#hub-glow)" />
+      <circle cx="0" cy="0" r="5" fill="#38bdf8" />
+      <rect x="12" y="-14" width="125" height="22" rx="3" fill="#0b1e3b" fill-opacity="0.8" stroke="#1e40af" stroke-width="0.8" />
+      <text x="18" y="-2" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#ffffff">FRANKFURT (FRA)</text>
+      <text x="18" y="6" font-family="Arial, sans-serif" font-size="7" fill="#93c5fd">EUROPE LOGISTICS</text>
+    </g>
+
+    <!-- TORGHUNDI / ISLAM QALA DRY PORT BORDER -->
+    <g transform="translate(1120, 540)">
+      <circle cx="0" cy="0" r="16" fill="none" stroke="#f59e0b" stroke-width="1" stroke-dasharray="2 2" />
+      <circle cx="0" cy="0" r="4.5" fill="#fbbf24" />
+      <rect x="12" y="-14" width="130" height="22" rx="3" fill="#1c1917" fill-opacity="0.85" stroke="#f59e0b" stroke-width="0.8" />
+      <text x="18" y="-2" font-family="Arial, sans-serif" font-size="8.5" font-weight="bold" fill="#fef08a">TORGHUNDI (TRG)</text>
+      <text x="18" y="6" font-family="Arial, sans-serif" font-size="7" fill="#f59e0b">CUSTOMS DRY PORT</text>
+    </g>
+
+    <!-- SHANGHAI / ASIA PACIFIC -->
+    <g transform="translate(1480, 520)">
+      <circle cx="0" cy="0" r="22" fill="url(#hub-glow)" />
+      <circle cx="0" cy="0" r="5" fill="#38bdf8" />
+      <rect x="12" y="-14" width="120" height="22" rx="3" fill="#0b1e3b" fill-opacity="0.8" stroke="#1e40af" stroke-width="0.8" />
+      <text x="18" y="-2" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#ffffff">SHANGHAI (PVG)</text>
+      <text x="18" y="6" font-family="Arial, sans-serif" font-size="7" fill="#93c5fd">PACIFIC TERMINAL</text>
+    </g>
+  </g>
+
+  <!-- Modern Commercial Cargo Jet Silhouette in Flight -->
+  <g transform="translate(740, 240) rotate(-18) scale(0.65)" fill="#60a5fa" opacity="0.85">
+    <path d="M0,-140 C10,-135 14,-100 14,-40 L18,30 L115,100 L115,115 L18,60 L14,140 L45,170 L45,182 L0,165 L-45,182 L-45,170 L-14,140 L-18,60 L-115,115 L-115,100 L-18,30 L-14,-40 C-14,-100 -10,-135 0,-140 Z" />
+    <ellipse cx="55" cy="45" rx="7" ry="18" fill="#93c5fd" />
+    <ellipse cx="-55" cy="45" rx="7" ry="18" fill="#93c5fd" />
+    <path d="M-55,65 L-55,380" stroke="#38bdf8" stroke-width="1.8" stroke-dasharray="8 12" opacity="0.5" fill="none" />
+    <path d="M55,65 L55,380" stroke="#38bdf8" stroke-width="1.8" stroke-dasharray="8 12" opacity="0.5" fill="none" />
+    <circle cx="0" cy="-140" r="3" fill="#ffffff" />
+  </g>
+
+  <!-- Modern Container Vessel Silhouette on Maritime Wave -->
+  <g transform="translate(1320, 840) scale(0.65)" fill="none" stroke="#38bdf8" stroke-width="1.4" opacity="0.75">
+    <path d="M-180,30 L160,30 L200,30 C215,30 225,24 230,15 L215,0 L-180,0 Z" fill="#0284c7" fill-opacity="0.3" />
+    <line x1="-200" y1="32" x2="250" y2="32" stroke="#38bdf8" stroke-width="1.8" stroke-dasharray="6 4" />
+    <g fill="#38bdf8" fill-opacity="0.35" stroke="#38bdf8" stroke-width="0.8">
+      <rect x="-150" y="-22" width="28" height="22" rx="1" />
+      <rect x="-150" y="-42" width="28" height="20" rx="1" />
+      <rect x="-118" y="-22" width="28" height="22" rx="1" />
+      <rect x="-118" y="-34" width="28" height="12" rx="1" />
+      <rect x="-86" y="-22" width="28" height="22" rx="1" />
+      <rect x="-86" y="-42" width="28" height="20" rx="1" />
+      <rect x="-54" y="-22" width="28" height="22" rx="1" />
+      <rect x="-22" y="-22" width="28" height="22" rx="1" />
+      <rect x="-22" y="-42" width="28" height="20" rx="1" />
+      <rect x="10" y="-22" width="28" height="22" rx="1" />
+      <rect x="42" y="-22" width="28" height="22" rx="1" />
+      <rect x="42" y="-34" width="28" height="12" rx="1" />
+      <rect x="74" y="-22" width="28" height="22" rx="1" />
+    </g>
+    <rect x="120" y="-50" width="36" height="50" rx="2" fill="#0284c7" fill-opacity="0.4" />
+    <line x1="138" y1="-50" x2="138" y2="-75" stroke-width="1.8" />
+    <line x1="128" y1="-68" x2="148" y2="-68" stroke-width="1.4" />
+    <circle cx="138" cy="-77" r="2" fill="#ffffff" />
+  </g>
+
+  <!-- Technical Telemetry & UI Framing Brackets -->
+  <g stroke="#38bdf8" stroke-width="1.2" opacity="0.4">
+    <path d="M 40 100 L 40 40 L 100 40" fill="none" stroke-width="2" />
+    <path d="M 1880 100 L 1880 40 L 1820 40" fill="none" stroke-width="2" />
+    <path d="M 40 980 L 40 1040 L 100 1040" fill="none" stroke-width="2" />
+    <path d="M 1880 980 L 1880 1040 L 1820 1040" fill="none" stroke-width="2" />
+
+    <text x="60" y="58" font-family="Courier, monospace" font-size="11" font-weight="bold" fill="#38bdf8" letter-spacing="2">SYS::SKY_ARIANA_LOGISTICS // NETWORK_ONLINE</text>
+    <text x="1860" y="58" font-family="Courier, monospace" font-size="11" font-weight="bold" fill="#38bdf8" letter-spacing="2" text-anchor="end">LAT 34°31'N // LON 69°11'E</text>
+
+    <text x="60" y="1030" font-family="Courier, monospace" font-size="11" font-weight="bold" fill="#60a5fa" letter-spacing="2">ENCRYPTED BILL OF LADING DISPATCH &amp; MULTI-MODAL FREIGHT MANAGEMENT SYSTEM</text>
+    <text x="1860" y="1030" font-family="Courier, monospace" font-size="11" font-weight="bold" fill="#60a5fa" letter-spacing="2" text-anchor="end">GLOBAL LOGISTICS SECURE GATEWAY v5.0</text>
+  </g>
+</svg>`;
+
+const target = path.join(__dirname, '../public/images/login-background.svg');
+fs.writeFileSync(target, svg, 'utf-8');
+const stats = fs.statSync(target);
+console.log(`Successfully generated login-background.svg (${stats.size} bytes).`);

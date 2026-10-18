@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-10-04T23:06:09.711Z",
+  "environment": "Node v25.8.0 Windows x64",
+  "startupMs": 490.67,
+  "savedBolsMs": 409.35,
+  "savedBolsAllMs": 73.72,
+  "bolDetailMs": 57.25,
+  "previewMs": 60.11,
+  "ledgerMs": 75.82,
+  "reportsMs": 76.49,
+  "filesMs": 58.43,
+  "recentBolsMs": 63.94,
+  "backupMs": 41.23,
+  "pdfMs": 138.33,
+  "payloads": {
+    "savedBolsAllKb": 296,
+    "savedBols25Kb": 31.7,
+    "ledgerKb": 1256.1,
+    "bolDetailKb": 4.1,
+    "filesKb": 64.9
+  }
+}

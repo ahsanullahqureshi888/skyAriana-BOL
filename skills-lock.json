@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "eve": {
+      "source": "vercel/eve",
+      "sourceType": "github",
+      "skillPath": "skills/eve/SKILL.md",
+      "computedHash": "4833349453c45c606f79202e495b7bbc42ea380f329f3beee36b9927763f19ef"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "106acf230014cbb43ca34e6410371321b56ca742f9ee0442e8ec05bf02eb0384"
+    },
+    "gh-pr-description": {
+      "source": "vercel/eve",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/gh-pr-description/SKILL.md",
+      "computedHash": "c658a2679e9cf12a018997db5a9ca7972fbe3899f71021e5587f6734dd251445"
+    },
+    "technical-writing": {
+      "source": "vercel/eve",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/technical-writing/SKILL.md",
+      "computedHash": "99be8fec19ea801cc708abea5d3a1ffa1fecc76c52cff90c1dfc45e39271a092"
+    },
+    "vercel-react-best-practices": {
+      "source": "https://github.com/vercel-labs/agent-skills",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/vercel-react-best-practices/SKILL.md",
+      "computedHash": "71ed7794962fa6e803ee83030517b5b93a9f70fbfeb431ec4535c5480a8d8355"
+    }
+  }
+}

@@ -3,14 +3,19 @@ import { NextRequest, NextResponse } from 'next/server'
 
 // GET - Fetch all templates for user
 export async function GET() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.json([])
+  }
+
   try {
     const supabase = await createClient()
 
     const {
       data: { user },
+      error: authError
     } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -22,7 +27,7 @@ export async function GET() {
 
     if (error) throw error
 
-    return NextResponse.json(templates)
+    return NextResponse.json(templates || [])
   } catch (error) {
     console.error('[v0] Error fetching templates:', error)
     return NextResponse.json(
@@ -34,14 +39,19 @@ export async function GET() {
 
 // POST - Create new template
 export async function POST(request: NextRequest) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.json({ error: 'Supabase not configured' }, { status: 503 })
+  }
+
   try {
     const supabase = await createClient()
 
     const {
       data: { user },
+      error: authError
     } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

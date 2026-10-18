@@ -1,29 +1,37 @@
 import { BillOfLadingFormData } from "@/lib/types/bill-of-lading"
 
 /**
- * Generate a PDF document from HTML element
- * This is a server-side utility that converts HTML to PDF
+ * Generate a PDF document from HTML element.
+ * Note: html2pdf.js and DOMParser are client-side only APIs.
  */
 export async function generatePDFFromHTML(htmlElement: string, fileName: string): Promise<Buffer> {
-  // Dynamic import to avoid issues with browser-only libraries in server context
+  if (typeof window === "undefined") {
+    throw new Error("generatePDFFromHTML is a client-only utility and cannot be executed on the server.")
+  }
+
+  // Dynamic import to ensure browser execution only
   const html2pdf = (await import("html2pdf.js")).default
 
   return new Promise((resolve, reject) => {
-    const element = new DOMParser().parseFromString(htmlElement, "text/html").body
+    try {
+      const element = new DOMParser().parseFromString(htmlElement, "text/html").body
 
-    const opt = {
-      margin: 0,
-      filename: fileName,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
-    } as const
+      const opt = {
+        margin: 0,
+        filename: fileName,
+        image: { type: "jpeg", quality: 0.99 },
+        html2canvas: { scale: 3 },
+        jsPDF: { orientation: "portrait", unit: "mm", format: "a4" },
+      } as const
 
-    html2pdf()
-      .set(opt)
-      .from(element)
-      .save()
-      .catch((error: Error) => reject(error))
+      html2pdf()
+        .set(opt)
+        .from(element)
+        .save()
+        .catch((error: Error) => reject(error))
+    } catch (err) {
+      reject(err)
+    }
   })
 }
 

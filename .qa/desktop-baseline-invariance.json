@@ -1,0 +1,125 @@
+{
+  "timestamp": "2026-09-09T09:48:30.114203",
+  "accounting_identity": "Net Balance = Total Debit - Total Credit",
+  "status": "PASS",
+  "total_accounts_audited": 14,
+  "total_system_debit": 0.0,
+  "total_system_credit": 0.0,
+  "total_net_balance": 0.0,
+  "discrepancies_count": 0,
+  "discrepancies": [],
+  "accounts": [
+    {
+      "account": "najeb amin ltd",
+      "total_entries": 32,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "karamat sulaiman ltd",
+      "total_entries": 2,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "sarwar hematyar ltd",
+      "total_entries": 2,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "allah nazar \"mohammad sadiq\" s/o mohammad iqbal",
+      "total_entries": 1,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "new yaqoubi ltd",
+      "total_entries": 1,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "najeb ahmad ltd",
+      "total_entries": 1,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "najib ahmad ltd",
+      "total_entries": 1,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "sadiqe mujeeb popal ltd",
+      "total_entries": 1,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "etehad beverages company",
+      "total_entries": 1,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "fazel basit l.t.d",
+      "total_entries": 1,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "abdul qayoom s/o abdul rauf",
+      "total_entries": 1,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "hayatullah khan fazli ltd",
+      "total_entries": 1,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "haji noor muhmmad ayaz noori",
+      "total_entries": 2,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    },
+    {
+      "account": "tahir sultani ltd",
+      "total_entries": 1,
+      "total_debit": 0.0,
+      "total_credit": 0.0,
+      "net_balance": 0.0,
+      "invariant_satisfied": true
+    }
+  ]
+}

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import path from "path"
+import { getDataPath } from "@/lib/server-paths"
 import { readJsonFile, writeJsonFile } from "@/lib/services/blob-db"
 
-const ENTITIES_FILE = path.join(process.cwd(), ".local-cmr-entities.json")
+const ENTITIES_FILE = getDataPath(".local-cmr-entities.json")
 
 const DEFAULT_PRESET_ENTITIES = [
   // Senders
@@ -19,9 +20,10 @@ const DEFAULT_PRESET_ENTITIES = [
   { id: "ent_car_2", type: "carrier", name: "MANDUZAY TRANSPORTATION", details: '“MANDUZAY TRANSPORTATION COMPANY”\nInternational Freight & Transit Services\nKabul - Mazar - Hairatan', usage_count: 6 },
   // Commodities
   { id: "ent_g_1", type: "commodity", name: "AFGHAN BROOM (360 BUNDLES 16000 PCS)", details: '1.   360 BUNDLES 16000 PCS 10000 KG AFGHAN BROOM', usage_count: 10 },
-  { id: "ent_g_2", type: "commodity", name: "BLACK RAISINS BEST (631 CTNS)", details: '1.   631 CTNS - BLACK-RAISNIS (BEST)', usage_count: 8 },
+  { id: "ent_g_2", type: "commodity", name: "BLACK RAISINS BEST (631 CTNS)", details: '1.   631 CTNS - BLACK RAISINS (BEST)', usage_count: 8 },
   { id: "ent_g_3", type: "commodity", name: "GREEN RAISINS KANDAHAR (521 CTNS)", details: '1.   521 CTNS - GREEN RAISINS (KANDAHAR CHOICE)', usage_count: 7 },
   { id: "ent_g_4", type: "commodity", name: "DRIED FIGS AAA (450 BAGS)", details: '1.   450 BAGS - DRIED FIGS AAA QUALITY', usage_count: 5 },
+  { id: "ent_g_5", type: "commodity", name: "GOLDEN RAISINS (MED) (1476 CTNS)", details: '1.   1476 CTNS - GOLDEN RAISINS (MED)', usage_count: 9 },
   // Customs
   { id: "ent_cus_1", type: "customs", name: "CUSTOM POST Termiz", details: 'CUSTOM POST "Termiz"\nCODE POST: 22005', usage_count: 10 },
   { id: "ent_cus_2", type: "customs", name: "TOSHKENT AVIA YUKLAR", details: 'COUSTOM POST : TOSHKENT AVIA YUKLAR\nVED CODE:00102', usage_count: 8 },
@@ -42,6 +44,14 @@ async function saveEntities(list: any[]): Promise<void> {
 }
 
 export async function GET(request: Request) {
+    // Auto-injected Cloud Auth Check
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const { createClient } = require('@/lib/supabase/server');
+      const supabaseAuth = await createClient();
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' }});
+    }
+
   const { searchParams } = new URL(request.url)
   const type = searchParams.get("type")?.toLowerCase()
   const q = searchParams.get("q")?.toLowerCase()
@@ -64,6 +74,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+    // Auto-injected Cloud Auth Check
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const { createClient } = require('@/lib/supabase/server');
+      const supabaseAuth = await createClient();
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' }});
+    }
+
   try {
     const ent = await request.json()
     let list = await getEntities()

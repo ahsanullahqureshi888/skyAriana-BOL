@@ -49,9 +49,9 @@ export async function getDatabaseHealth(): Promise<DatabaseHealthReport> {
 
   for (const item of DATABASE_FILES) {
     const filePath = getDataPath(item.file)
-    const tmpPath = path.join(os.tmpdir(), item.file)
+    const tmpPath = path.join(/*turbopackIgnore: true*/ os.tmpdir(), item.file)
 
-    let activePath = fs.existsSync(filePath) ? filePath : (fs.existsSync(tmpPath) ? tmpPath : "")
+    let activePath = fs.existsSync(filePath) ? filePath : (fs.existsSync(/*turbopackIgnore: true*/ tmpPath) ? tmpPath : "")
     let count = 0
     let size = 0
     let mtime = "N/A"
@@ -163,21 +163,76 @@ export async function exportFullDatabasePackage(): Promise<Record<string, any>> 
 
 /**
  * Restore database tables from a master JSON export package
+ * Hardened with:
+ * - Pre-Restore Backup: Automatically snapshots live database before mutating
+ * - Zero-Record Protection: Refuses to overwrite populated database with an empty snapshot
+ * - Structural Validation: Validates incoming table structures
  */
-export async function restoreFullDatabasePackage(payload: Record<string, any>): Promise<{ restoredCount: number }> {
-  if (!payload || !payload.tables) {
+export async function restoreFullDatabasePackage(
+  payload: Record<string, any>,
+  options: { forceZeroRecords?: boolean } = {}
+): Promise<{ restoredCount: number; preRestoreBackupFile?: string }> {
+  if (!payload || typeof payload !== "object" || !payload.tables) {
     throw new Error("Invalid database backup payload: missing 'tables' root key.")
   }
 
+  // 1. Calculate incoming record counts
+  let incomingTotalRecords = 0
+  for (const item of DATABASE_FILES) {
+    const tableData = payload.tables[item.file]
+    if (Array.isArray(tableData)) {
+      incomingTotalRecords += tableData.length
+    } else if (tableData && typeof tableData === "object") {
+      incomingTotalRecords += Object.keys(tableData).length
+    }
+  }
+
+  // 2. Calculate live record counts
+  let liveTotalRecords = 0
+  for (const item of DATABASE_FILES) {
+    const filePath = getDataPath(item.file)
+    if (fs.existsSync(filePath)) {
+      const content = await readJsonFile<any>(filePath, [])
+      if (Array.isArray(content)) {
+        liveTotalRecords += content.length
+      } else if (content && typeof content === "object") {
+        liveTotalRecords += Object.keys(content).length
+      }
+    }
+  }
+
+  // 3. Zero-Record Protection Check (Phase 17)
+  if (liveTotalRecords > 0 && incomingTotalRecords === 0 && !options.forceZeroRecords) {
+    throw new Error(
+      `Zero-Record Protection: Incoming backup contains 0 records while the live database contains ${liveTotalRecords} records. Refusing to replace populated database with an empty snapshot without explicit override.`
+    )
+  }
+
+  // 4. Pre-Restore Backup (Phase 16)
+  let preRestoreBackupFile = ""
+  if (liveTotalRecords > 0) {
+    try {
+      const currentLiveState = await exportFullDatabasePackage()
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
+      const backupFileName = `.local-pre-restore-backup-${timestamp}.json`
+      const backupFilePath = getDataPath(backupFileName)
+      await writeJsonFile(backupFilePath, currentLiveState)
+      preRestoreBackupFile = backupFileName
+    } catch (backupErr) {
+      console.warn("[restoreFullDatabasePackage] Warning: Failed to write pre-restore backup:", backupErr)
+    }
+  }
+
+  // 5. Atomic File Restorations
   let count = 0
   for (const item of DATABASE_FILES) {
-    if (payload.tables[item.file]) {
+    if (payload.tables[item.file] !== undefined) {
       const filePath = getDataPath(item.file)
       await writeJsonFile(filePath, payload.tables[item.file])
       count++
     }
   }
 
-  return { restoredCount: count }
+  return { restoredCount: count, preRestoreBackupFile: preRestoreBackupFile || undefined }
 }
 

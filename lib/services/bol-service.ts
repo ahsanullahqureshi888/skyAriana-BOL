@@ -7,7 +7,7 @@ export class BOLService {
   // Fetch all BOLs
   async fetchBOLs() {
     try {
-      const response = await fetch('/api/bols')
+      const response = await fetch('/api/bol')
       if (!response.ok) throw new Error('Failed to fetch BOLs')
       return await response.json()
     } catch (error) {
@@ -19,7 +19,7 @@ export class BOLService {
   // Fetch single BOL
   async fetchBOL(id: string) {
     try {
-      const response = await fetch(`/api/bols/${id}`)
+      const response = await fetch(`/api/bol/${id}`)
       if (!response.ok) throw new Error('BOL not found')
       return await response.json()
     } catch (error) {
@@ -31,7 +31,7 @@ export class BOLService {
   // Create new BOL
   async createBOL(data: Partial<BillOfLadingFormData>) {
     try {
-      const response = await fetch('/api/bols', {
+      const response = await fetch('/api/bol', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -47,7 +47,7 @@ export class BOLService {
   // Update BOL
   async updateBOL(id: string, data: Partial<BillOfLadingFormData>) {
     try {
-      const response = await fetch(`/api/bols/${id}`, {
+      const response = await fetch(`/api/bol/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -63,7 +63,7 @@ export class BOLService {
   // Delete BOL
   async deleteBOL(id: string) {
     try {
-      const response = await fetch(`/api/bols/${id}`, {
+      const response = await fetch(`/api/bol/${id}`, {
         method: 'DELETE',
       })
       if (!response.ok) throw new Error('Failed to delete BOL')
@@ -108,7 +108,7 @@ export class BOLService {
   // Record BOL history
   async recordHistory(bolId: string, action: string, changes?: any) {
     try {
-      const response = await fetch(`/api/bols/${bolId}/history`, {
+      const response = await fetch(`/api/bol/${bolId}/history`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, changes }),
@@ -123,7 +123,7 @@ export class BOLService {
   // Fetch BOL history
   async fetchHistory(bolId: string) {
     try {
-      const response = await fetch(`/api/bols/${bolId}/history`)
+      const response = await fetch(`/api/bol/${bolId}/history`)
       if (!response.ok) throw new Error('Failed to fetch history')
       return await response.json()
     } catch (error) {

@@ -817,14 +817,14 @@ export function LedgerView() {
                 value={newEntry.debit !== undefined ? newEntry.debit : ''}
                 onChange={e => setNewEntry({ ...newEntry, debit: e.target.value === '' ? '' as any : (parseFloat(e.target.value) || 0) })}
                 onFocus={(e) => {
-                  if (newEntry.debit === 0 || newEntry.debit === '0' || Number(newEntry.debit) === 0) {
+                  if (Number(newEntry.debit) === 0) {
                     setNewEntry(prev => ({ ...prev, debit: '' as any }))
                   } else {
                     e.target.select()
                   }
                 }}
                 onBlur={() => {
-                  if (newEntry.debit === '' || newEntry.debit === undefined) {
+                  if ((newEntry.debit as any) === '' || newEntry.debit === undefined || isNaN(Number(newEntry.debit))) {
                     setNewEntry(prev => ({ ...prev, debit: 0 }))
                   }
                 }}
@@ -838,14 +838,14 @@ export function LedgerView() {
                 value={newEntry.credit !== undefined ? newEntry.credit : ''}
                 onChange={e => setNewEntry({ ...newEntry, credit: e.target.value === '' ? '' as any : (parseFloat(e.target.value) || 0) })}
                 onFocus={(e) => {
-                  if (newEntry.credit === 0 || newEntry.credit === '0' || Number(newEntry.credit) === 0) {
+                  if (Number(newEntry.credit) === 0) {
                     setNewEntry(prev => ({ ...prev, credit: '' as any }))
                   } else {
                     e.target.select()
                   }
                 }}
                 onBlur={() => {
-                  if (newEntry.credit === '' || newEntry.credit === undefined) {
+                  if ((newEntry.credit as any) === '' || newEntry.credit === undefined || isNaN(Number(newEntry.credit))) {
                     setNewEntry(prev => ({ ...prev, credit: 0 }))
                   }
                 }}

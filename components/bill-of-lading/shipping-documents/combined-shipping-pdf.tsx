@@ -20,6 +20,7 @@ import {
   Truck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { AfghanTruckPlate } from "@/components/ui/afghan-truck-plate"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import {
   DropdownMenu,
@@ -30,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { ShippingDocumentData, ShippingDocumentKind, StickerLayout } from "@/lib/utils/shipping-documents"
+import { SaveToDriveButton } from "@/components/google-drive/save-to-drive-button"
 import { PackingListPdfPage } from "./packing-list-pdf-page"
 import { StickerPdfPage } from "./sticker-pdf-page"
 
@@ -40,7 +42,7 @@ export interface CombinedShippingPdfProps {
   logoUrl?: string
   companyName?: string
   companySubtitle?: string
-  bolPreview: ReactNode
+  bolPreview?: ReactNode
   onDownload: (kind: ShippingDocumentKind, stickerQuantity?: number, stickerLayout?: StickerLayout) => Promise<void>
   onPrint: (kind: ShippingDocumentKind, stickerQuantity?: number, stickerLayout?: StickerLayout) => Promise<void>
 }
@@ -65,7 +67,7 @@ export function CombinedShippingPdf({
   onPrint,
 }: CombinedShippingPdfProps) {
   const [currentPage, setCurrentPage] = useState<number>(1)
-  const [zoom, setZoom] = useState<number>(0.72)
+  const [zoom, setZoom] = useState<number>(1.0)
   const [busyAction, setBusyAction] = useState<"download" | "print" | null>(null)
 
   useEffect(() => {
@@ -142,14 +144,14 @@ export function CombinedShippingPdf({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="flex h-[94vh] max-h-[96vh] w-[96vw] max-w-[1550px] sm:max-w-[96vw] lg:max-w-[1550px] xl:max-w-[1600px] grid-rows-none flex-col gap-0 overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl shadow-purple-950/20"
+        className="flex h-[94vh] max-h-[96vh] w-[96vw] max-w-[1550px] sm:max-w-[96vw] lg:max-w-[1550px] xl:max-w-[1600px] grid-rows-none flex-col gap-0 overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-0 shadow-2xl shadow-sky-950/20"
         showCloseButton={false}
       >
         {/* Dialog Header */}
         <DialogHeader className="border-b border-slate-200 bg-white px-5 py-3.5 sm:px-6 shrink-0">
           <div className="flex flex-wrap items-center justify-between gap-3 pr-1">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#583184] via-purple-700 to-indigo-800 text-white shadow-md shadow-purple-600/25 shrink-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0369a1] via-[#0284c7] to-[#0891b2] text-white shadow-md shadow-sky-600/25 shrink-0">
                 <Package className="h-5 w-5" />
               </div>
               <div className="min-w-0">
@@ -157,7 +159,7 @@ export function CombinedShippingPdf({
                   <DialogTitle className="text-base sm:text-lg font-black text-slate-950 tracking-tight">
                     Shipping Document Center — Complete 3-Page PDF Set
                   </DialogTitle>
-                  <span className="text-[10.5px] font-extrabold text-purple-800 bg-purple-50 border border-purple-200 px-2.5 py-0.5 rounded-full font-[vazirmatn]">
+                  <span className="text-[10.5px] font-extrabold text-sky-800 bg-sky-50 border border-sky-200 px-2.5 py-0.5 rounded-full font-[vazirmatn]">
                     مرکز اسناد باربری و ترانزیت
                   </span>
                 </div>
@@ -194,7 +196,7 @@ export function CombinedShippingPdf({
                   <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">
                     Document Pages ({currentPage} of {totalPages})
                   </p>
-                  <span className="text-[10px] font-extrabold text-purple-700 bg-purple-100/60 px-2 py-0.5 rounded-md">
+                  <span className="text-[10px] font-extrabold text-sky-700 bg-sky-100/60 px-2 py-0.5 rounded-md">
                     Total: 3 Pages
                   </span>
                 </div>
@@ -206,8 +208,8 @@ export function CombinedShippingPdf({
                     onClick={() => setCurrentPage(1)}
                     className={`w-full flex items-center justify-between p-3 rounded-2xl text-xs font-bold transition-all duration-150 active:scale-[0.985] cursor-pointer border ${
                       currentPage === 1
-                        ? "bg-[#583184] text-white border-[#583184] shadow-md shadow-purple-500/25 ring-2 ring-purple-300"
-                        : "bg-white hover:bg-purple-50/50 text-slate-800 border-slate-200 hover:border-purple-200"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/25 ring-2 ring-blue-300"
+                        : "bg-white hover:bg-blue-50/50 text-slate-800 border-slate-200 hover:border-blue-200"
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -218,7 +220,7 @@ export function CombinedShippingPdf({
                       </div>
                       <div className="text-left">
                         <p className="font-black text-xs">Page 1: Bill of Lading</p>
-                        <p className={`text-[10px] ${currentPage === 1 ? "text-purple-200" : "text-slate-500"}`}>
+                        <p className={`text-[10px] ${currentPage === 1 ? "text-blue-100" : "text-slate-500"}`}>
                           Official International B/L Master
                         </p>
                       </div>
@@ -236,19 +238,19 @@ export function CombinedShippingPdf({
                     onClick={() => setCurrentPage(2)}
                     className={`w-full flex items-center justify-between p-3 rounded-2xl text-xs font-bold transition-all duration-150 active:scale-[0.985] cursor-pointer border ${
                       currentPage === 2
-                        ? "bg-[#583184] text-white border-[#583184] shadow-md shadow-purple-500/25 ring-2 ring-purple-300"
-                        : "bg-white hover:bg-purple-50/50 text-slate-800 border-slate-200 hover:border-purple-200"
+                        ? "bg-[#0284c7] text-white border-[#0284c7] shadow-md shadow-sky-500/25 ring-2 ring-sky-300"
+                        : "bg-white hover:bg-sky-50/50 text-slate-800 border-slate-200 hover:border-sky-200"
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
                       <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${
-                        currentPage === 2 ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-700"
+                        currentPage === 2 ? "bg-white/20 text-white" : "bg-sky-50 text-sky-700"
                       }`}>
                         <FileSpreadsheet className="h-4 w-4" />
                       </div>
                       <div className="text-left">
                         <p className="font-black text-xs">Page 2: Packing List</p>
-                        <p className={`text-[10px] ${currentPage === 2 ? "text-purple-200" : "text-slate-500"}`}>
+                        <p className={`text-[10px] ${currentPage === 2 ? "text-sky-100" : "text-slate-500"}`}>
                           With Driver Info & Cargo Rows
                         </p>
                       </div>
@@ -266,8 +268,8 @@ export function CombinedShippingPdf({
                     onClick={() => setCurrentPage(3)}
                     className={`w-full flex items-center justify-between p-3 rounded-2xl text-xs font-bold transition-all duration-150 active:scale-[0.985] cursor-pointer border ${
                       currentPage === 3
-                        ? "bg-[#583184] text-white border-[#583184] shadow-md shadow-purple-500/25 ring-2 ring-purple-300"
-                        : "bg-white hover:bg-purple-50/50 text-slate-800 border-slate-200 hover:border-purple-200"
+                        ? "bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-500/25 ring-2 ring-amber-300"
+                        : "bg-white hover:bg-amber-50/50 text-slate-800 border-slate-200 hover:border-amber-200"
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -278,7 +280,7 @@ export function CombinedShippingPdf({
                       </div>
                       <div className="text-left">
                         <p className="font-black text-xs">Page 3: Export Cargo Sticker</p>
-                        <p className={`text-[10px] ${currentPage === 3 ? "text-purple-200" : "text-slate-500"}`}>
+                        <p className={`text-[10px] ${currentPage === 3 ? "text-amber-100" : "text-slate-500"}`}>
                           Official Master Sticker Label
                         </p>
                       </div>
@@ -307,7 +309,11 @@ export function CombinedShippingPdf({
                 <div className="rounded-xl bg-white/90 border border-indigo-100 p-2.5 space-y-1 text-[10.5px]">
                   <div className="flex justify-between items-center gap-2">
                     <span className="text-slate-500 font-bold shrink-0">Truck Number:</span>
-                    <span className="font-mono font-black text-slate-950">{data.truckNumber || "—"}</span>
+                    {data.truckNumber ? (
+                      <AfghanTruckPlate value={data.truckNumber} size="sm" />
+                    ) : (
+                      <span className="font-mono font-black text-slate-950">—</span>
+                    )}
                   </div>
                   <div className="flex justify-between items-center gap-2">
                     <span className="text-slate-500 font-bold shrink-0">Driver Name:</span>
@@ -330,18 +336,18 @@ export function CombinedShippingPdf({
               </div>
 
               {/* Master BOL Data Integrity Banner */}
-              <div className="rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50/80 via-white to-indigo-50/50 p-3.5 text-xs text-purple-950 space-y-2 shadow-2xs">
+              <div className="rounded-2xl border border-sky-200 bg-gradient-to-br from-sky-50/80 via-white to-cyan-50/50 p-3.5 text-xs text-sky-950 space-y-2 shadow-2xs">
                 <div className="flex items-center justify-between">
-                  <span className="font-black text-purple-950 flex items-center gap-1.5 text-xs">
+                  <span className="font-black text-sky-950 flex items-center gap-1.5 text-xs">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                     Shipment Summary
                   </span>
-                  <span className="text-[9.5px] font-extrabold text-purple-700 font-mono">
+                  <span className="text-[9.5px] font-extrabold text-sky-700 font-mono">
                     #{data.bolNumber || "BOL"}
                   </span>
                 </div>
 
-                <div className="rounded-xl bg-white/90 border border-purple-100 p-2.5 space-y-1 text-[10.5px] font-medium text-slate-700">
+                <div className="rounded-xl bg-white/90 border border-sky-100 p-2.5 space-y-1 text-[10.5px] font-medium text-slate-700">
                   <div className="flex justify-between items-center gap-2">
                     <span className="text-slate-500 font-bold shrink-0">Commodity:</span>
                     <span className="font-bold text-slate-950 truncate">{data.commodity || "—"}</span>
@@ -372,7 +378,7 @@ export function CombinedShippingPdf({
                 type="button"
                 onClick={() => runAction("download", "all")}
                 disabled={busyAction !== null}
-                className="w-full h-11 rounded-2xl bg-gradient-to-r from-[#583184] via-purple-700 to-[#47266b] hover:from-[#4a2770] hover:to-purple-900 text-white font-black shadow-lg shadow-purple-600/25 cursor-pointer text-xs transition-all active:scale-[0.98]"
+                className="w-full h-11 rounded-2xl bg-gradient-to-r from-[#0369a1] via-[#0284c7] to-[#0891b2] hover:from-[#0284c7] hover:to-[#0369a1] text-white font-black shadow-lg shadow-sky-600/25 cursor-pointer text-xs transition-all active:scale-[0.98]"
               >
                 {busyAction === "download" ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -381,6 +387,24 @@ export function CombinedShippingPdf({
                 )}
                 Download Complete PDF (All 3 Pages)
               </Button>
+
+              <SaveToDriveButton
+                category={currentPage === 2 ? "packing-list" : currentPage === 3 ? "cargo-sticker" : "bol"}
+                fileName={`${data.bolNumber || "BOL"}-${currentPage === 2 ? "Packing-List" : currentPage === 3 ? "Cargo-Sticker" : "Shipping-Document"}.pdf`}
+                className="w-full h-10 rounded-2xl border-cyan-300 text-cyan-900 bg-cyan-50 hover:bg-cyan-100 font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                label={currentPage === 2 ? "Save Packing List to Google Drive" : currentPage === 3 ? "Save Sticker to Google Drive" : "Save to Google Drive"}
+                getPdfBlob={async () => {
+                  const kind: ShippingDocumentKind = currentPage === 2 ? "packing-list" : currentPage === 3 ? "stickers" : "all"
+                  const { generateShippingDocumentsPDF } = await import("@/lib/utils/shipping-documents")
+                  return generateShippingDocumentsPDF({
+                    data,
+                    kind,
+                    logoUrl,
+                    companyName,
+                    companySubtitle,
+                  })
+                }}
+              />
 
               <div className="grid grid-cols-2 gap-2">
                 <Button
@@ -412,8 +436,8 @@ export function CombinedShippingPdf({
                     <DropdownMenuLabel className="text-[10px] font-black text-slate-400 uppercase">
                       Individual Downloads
                     </DropdownMenuLabel>
-                    <DropdownMenuItem onClick={downloadAllSeparatePdfs} className="cursor-pointer text-xs font-bold py-2 text-purple-900 bg-purple-50/70 hover:bg-purple-100/80 rounded-xl">
-                      <Download className="h-4 w-4 mr-2 text-purple-700" />
+                    <DropdownMenuItem onClick={downloadAllSeparatePdfs} className="cursor-pointer text-xs font-bold py-2 text-sky-900 bg-sky-50/70 hover:bg-sky-100/80 rounded-xl">
+                      <Download className="h-4 w-4 mr-2 text-sky-700" />
                       Download 3 Separate PDFs
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -422,11 +446,11 @@ export function CombinedShippingPdf({
                       Bill of Lading Only (Page 1)
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => runAction("download", "packing-list")} className="cursor-pointer text-xs font-semibold py-2">
-                      <FileSpreadsheet className="h-4 w-4 mr-2 text-emerald-600" />
+                      <FileSpreadsheet className="h-4 w-4 mr-2 text-[#0284c7]" />
                       Packing List Only (Page 2)
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => runAction("download", "stickers")} className="cursor-pointer text-xs font-semibold py-2">
-                      <Tags className="h-4 w-4 mr-2 text-[#583184]" />
+                      <Tags className="h-4 w-4 mr-2 text-amber-600" />
                       Export Cargo Sticker Only (Page 3)
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -474,7 +498,7 @@ export function CombinedShippingPdf({
                   <span className="font-black text-slate-900 truncate text-xs sm:text-sm">
                     {pageTitle}
                   </span>
-                  <span className="text-[10.5px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200 hidden md:inline shrink-0">
+                  <span className="text-[10.5px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200 hidden md:inline shrink-0">
                     {currentPage === 1 ? "A4 Master B/L" : currentPage === 2 ? "A4 Packing List" : "A4 Cargo Sticker"}
                   </span>
                 </div>
@@ -493,10 +517,10 @@ export function CombinedShippingPdf({
                       else if (currentPage === 2) runAction("download", "packing-list")
                       else runAction("download", "stickers")
                     }}
-                    className="h-8 rounded-xl text-xs font-bold border-purple-200 bg-purple-50/50 text-purple-900 hover:bg-purple-100 cursor-pointer"
+                    className="h-8 rounded-xl text-xs font-bold border-sky-200 bg-sky-50/50 text-sky-900 hover:bg-sky-100 cursor-pointer"
                     title="Download this active page as PDF"
                   >
-                    <FileDown className="h-3.5 w-3.5 mr-1 text-purple-700" />
+                    <FileDown className="h-3.5 w-3.5 mr-1 text-sky-700" />
                     <span>Download Page</span>
                   </Button>
                 </div>
@@ -533,7 +557,7 @@ export function CombinedShippingPdf({
                     size="sm"
                     onClick={() => setZoom(0.72)}
                     className={`h-7 px-2 rounded-lg text-[10.5px] font-extrabold cursor-pointer transition-all ${
-                      Math.abs(zoom - 0.72) < 0.02 ? "bg-white shadow-2xs text-purple-900" : "text-slate-600 hover:text-slate-900"
+                      Math.abs(zoom - 0.72) < 0.02 ? "bg-white shadow-2xs text-sky-900" : "text-slate-600 hover:text-slate-900"
                     }`}
                     title="Optimal Reading Size (72%)"
                   >
@@ -545,7 +569,7 @@ export function CombinedShippingPdf({
                     size="sm"
                     onClick={() => setZoom(1.0)}
                     className={`h-7 px-2 rounded-lg text-[10.5px] font-extrabold cursor-pointer transition-all ${
-                      Math.abs(zoom - 1.0) < 0.02 ? "bg-white shadow-2xs text-purple-900" : "text-slate-600 hover:text-slate-900"
+                      Math.abs(zoom - 1.0) < 0.02 ? "bg-white shadow-2xs text-sky-900" : "text-slate-600 hover:text-slate-900"
                     }`}
                     title="100% Scale 1:1"
                   >

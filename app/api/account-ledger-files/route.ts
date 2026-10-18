@@ -1,16 +1,17 @@
 import { mkdir, writeFile } from "fs/promises"
 import path from "path"
 import { NextRequest, NextResponse } from "next/server"
+import { getUploadPath } from "@/lib/server-paths"
 
 export const runtime = "nodejs"
 
 const uploadRoots = {
   pdf: {
-    dir: path.join(process.cwd(), "public", "uploads", "account-ledger-pdfs"),
+    dir: getUploadPath("account-ledger-pdfs"),
     publicPrefix: "/uploads/account-ledger-pdfs",
   },
   media: {
-    dir: path.join(process.cwd(), "public", "uploads", "account-ledger-media"),
+    dir: getUploadPath("account-ledger-media"),
     publicPrefix: "/uploads/account-ledger-media",
   },
 }
@@ -67,6 +68,14 @@ function extensionFor(file: File, kind: "pdf" | "media") {
 }
 
 export async function POST(request: NextRequest) {
+    // Auto-injected Cloud Auth Check
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const { createClient } = require('@/lib/supabase/server');
+      const supabaseAuth = await createClient();
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' }});
+    }
+
   try {
     const formData = await request.formData()
     const file = formData.get("file")

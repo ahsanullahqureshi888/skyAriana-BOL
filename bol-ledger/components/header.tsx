@@ -24,7 +24,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
 
   const getSubtitle = () => {
     if (subtitle) return subtitle
-    if (view === 'bol') return 'Bill of Lading Management'
+    if ((view as string) === 'bol') return 'Bill of Lading Management'
     if (view === 'ledger') return 'Company Ledger'
     if (view === 'invoice') return 'Create Invoice'
     if (view === 'companies') return 'Account Companies'
@@ -32,7 +32,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
   }
 
   return (
-    <header className="glass-strong sticky top-0 z-50 border-b border-white/20 no-print">
+    <header className="glass-strong sticky top-0 z-50 border-b border-slate-200/80 dark:border-slate-800 no-print">
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center gap-4">
           {showBack && (
@@ -40,7 +40,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
               variant="ghost"
               size="icon"
               onClick={goBack}
-              className="shrink-0 h-9 w-9 hover:bg-white/20 text-foreground transition-colors"
+              className="shrink-0 h-9 w-9 hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -49,7 +49,7 @@ export function Header({ showBack = false, title, subtitle }: HeaderProps) {
             <div className="relative h-10 w-28 shrink-0">
               <Image
                 src="/logo.png"
-                alt="SKY ARIANA LIMITED Logo"
+                alt="AQ COMPANIES Logo"
                 fill
                 className="object-contain"
                 priority

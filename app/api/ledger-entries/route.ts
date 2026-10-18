@@ -2,17 +2,43 @@ import { NextRequest, NextResponse } from "next/server"
 import { getAccountLedgerDatabase, saveAccountLedgerDatabase } from "@/lib/services/account-ledger-storage-service"
 import { getBolAccountLedgerDatabase, saveBolAccountLedgerDatabase } from "@/lib/services/bol-account-ledger-storage-service"
 import * as localStorage from "@/lib/services/local-storage-service"
+import { createClient } from "@/lib/supabase/server"
+import { assertAccountingPeriodOpen } from "@/lib/accounting/period-closing/period-service"
 
 function normalizeKey(str: string): string {
   return str.trim().toLowerCase().replace(/[^a-z0-9]/g, "-")
 }
 
+async function resolveUser(request: NextRequest) {
+  let user: any = null
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    try {
+      const supabase = await createClient()
+      const { data } = await supabase.auth.getUser()
+      if (data?.user) {
+        user = data.user
+      }
+    } catch (e) {}
+  }
+  const role = (user?.user_metadata?.role || user?.app_metadata?.role || request.headers.get("x-user-role") || "").toLowerCase()
+  const shipperIdentity = user?.user_metadata?.shipper_name || user?.email || request.headers.get("x-shipper-name")
+  return { user, role, shipperIdentity }
+}
+
 // GET: Fetch ledger entries by company or account
 export async function GET(request: NextRequest) {
+  const { role, shipperIdentity } = await resolveUser(request)
+
   try {
     const { searchParams } = new URL(request.url)
-    const companyId = searchParams.get("companyId") || searchParams.get("company_id")
-    const accountName = searchParams.get("accountName") || searchParams.get("shipper_name")
+    let companyId = searchParams.get("companyId") || searchParams.get("company_id")
+    let accountName = searchParams.get("accountName") || searchParams.get("shipper_name")
+
+    // Multi-tenant protection: clients cannot query other accounts
+    if ((role === "shipper" || role === "client") && shipperIdentity) {
+      companyId = shipperIdentity
+      accountName = shipperIdentity
+    }
 
     const db = await getAccountLedgerDatabase()
     const bolDb = await getBolAccountLedgerDatabase()
@@ -47,7 +73,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("[ledger-entries API] GET error:", error)
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Failed to fetch entries" },
+      { success: false, error: "Failed to fetch entries" },
       { status: 500 }
     )
   }
@@ -55,6 +81,12 @@ export async function GET(request: NextRequest) {
 
 // POST: Create a single entry or batch import entries
 export async function POST(request: NextRequest) {
+  const { role } = await resolveUser(request)
+
+  if (role === "shipper" || role === "client" || role === "viewer") {
+    return NextResponse.json({ error: "Forbidden: Unauthorized to create ledger entries" }, { status: 403 })
+  }
+
   try {
     const body = await request.json()
 
@@ -63,6 +95,24 @@ export async function POST(request: NextRequest) {
 
     // Handle batch import
     if (body.entries && Array.isArray(body.entries)) {
+      for (const e of body.entries) {
+        const postingDate = e.date || e.date_of_ship || e.shipDate
+        try {
+          await assertAccountingPeriodOpen(postingDate, {
+            role,
+            actor: role || "user",
+            entityType: "ledger_entry",
+            entityId: e.barnamehNo || e.bolNo || e.id,
+          })
+        } catch (err: any) {
+          return NextResponse.json({
+            success: false,
+            error: err.message,
+            period_locked: true,
+          }, { status: 403 })
+        }
+      }
+
       const companyId = body.companyId || body.company_id || (body.entries[0]?.company_id) || "default"
       const cleanKey = normalizeKey(companyId)
 
@@ -117,6 +167,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle single entry creation
+    const postingDate = body.date || body.dateOfShip || body.shipDate
+    try {
+      await assertAccountingPeriodOpen(postingDate, {
+        role,
+        actor: role || "user",
+        entityType: "ledger_entry",
+        entityId: body.barnamehNo || body.bolNo || body.id,
+      })
+    } catch (err: any) {
+      return NextResponse.json({
+        success: false,
+        error: err.message,
+        period_locked: true,
+      }, { status: 403 })
+    }
+
     const companyId = body.companyId || body.company_id || "default"
     const cleanKey = normalizeKey(companyId)
 
@@ -171,14 +237,20 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[ledger-entries API] POST error:", error)
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Failed to create entry" },
+      { success: false, error: "Failed to create entry" },
       { status: 500 }
     )
   }
 }
 
-// PATCH: Atomically update any ledger entry details (especially Debit, Credit, Freight, etc.)
+// PATCH: Atomically update any ledger entry details
 export async function PATCH(request: NextRequest) {
+  const { role } = await resolveUser(request)
+
+  if (role === "shipper" || role === "client" || role === "viewer") {
+    return NextResponse.json({ error: "Forbidden: Unauthorized to update entries" }, { status: 403 })
+  }
+
   try {
     const body = await request.json()
     const entryId = body.id || body.entryId
@@ -193,6 +265,70 @@ export async function PATCH(request: NextRequest) {
 
     const db = await getAccountLedgerDatabase()
     const bolDb = await getBolAccountLedgerDatabase()
+
+    // Check period lock on target record
+    let targetRow: any = null
+    for (const rows of Object.values(db.ledgerEntries)) {
+      if (Array.isArray(rows)) {
+        const match = rows.find((r) => (entryId && r.id === entryId) || (barnamehNo && ((r.barnamehNo || r.bolNo || "").trim().toLowerCase() === barnamehNo.toLowerCase())))
+        if (match) {
+          targetRow = match
+          break
+        }
+      }
+    }
+    if (!targetRow) {
+      for (const rows of Object.values(bolDb.ledgerRecords)) {
+        if (Array.isArray(rows)) {
+          const match = rows.find((r) => (entryId && r.id === entryId) || (barnamehNo && ((r.barnamehNo || r.bolNo || "").trim().toLowerCase() === barnamehNo.toLowerCase())))
+          if (match) {
+            targetRow = match
+            break
+          }
+        }
+      }
+    }
+
+    if (targetRow) {
+      const existingDate = targetRow.date || targetRow.dateOfShip || targetRow.shipDate
+      try {
+        await assertAccountingPeriodOpen(existingDate, {
+          role,
+          actor: role || "user",
+          entityType: "ledger_entry",
+          entityId: entryId || barnamehNo,
+        })
+        if (body.date && body.date !== existingDate) {
+          await assertAccountingPeriodOpen(body.date, {
+            role,
+            actor: role || "user",
+            entityType: "ledger_entry",
+            entityId: entryId || barnamehNo,
+          })
+        }
+      } catch (err: any) {
+        return NextResponse.json({
+          success: false,
+          error: err.message,
+          period_locked: true,
+        }, { status: 403 })
+      }
+    } else if (body.date) {
+      try {
+        await assertAccountingPeriodOpen(body.date, {
+          role,
+          actor: role || "user",
+          entityType: "ledger_entry",
+          entityId: entryId || barnamehNo,
+        })
+      } catch (err: any) {
+        return NextResponse.json({
+          success: false,
+          error: err.message,
+          period_locked: true,
+        }, { status: 403 })
+      }
+    }
 
     let updated = false
     let updatedRecord: any = null
@@ -326,7 +462,7 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     console.error("[ledger-entries API] PATCH error:", error)
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Failed to update entry" },
+      { success: false, error: "Failed to update entry" },
       { status: 500 }
     )
   }
@@ -334,6 +470,12 @@ export async function PATCH(request: NextRequest) {
 
 // DELETE: Delete a ledger entry
 export async function DELETE(request: NextRequest) {
+  const { role } = await resolveUser(request)
+
+  if (role === "viewer" || role === "shipper" || role === "client") {
+    return NextResponse.json({ error: "Forbidden: Unauthorized to delete entries" }, { status: 403 })
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
@@ -348,6 +490,45 @@ export async function DELETE(request: NextRequest) {
 
     const db = await getAccountLedgerDatabase()
     const bolDb = await getBolAccountLedgerDatabase()
+
+    // Verify target entry is not in a closed accounting period
+    let targetDate: string | undefined = undefined
+    for (const rows of Object.values(db.ledgerEntries)) {
+      if (Array.isArray(rows)) {
+        const match = rows.find((r) => (id && r.id === id) || (barnamehNo && (r.barnamehNo === barnamehNo || r.bolNo === barnamehNo)))
+        if (match) {
+          targetDate = match.date || match.dateOfShip || match.shipDate
+          break
+        }
+      }
+    }
+    if (!targetDate) {
+      for (const rows of Object.values(bolDb.ledgerRecords)) {
+        if (Array.isArray(rows)) {
+          const match = rows.find((r) => (id && r.id === id) || (barnamehNo && (r.barnamehNo === barnamehNo || r.bolNo === barnamehNo)))
+          if (match) {
+            targetDate = match.date || match.dateOfShip || match.shipDate
+            break
+          }
+        }
+      }
+    }
+    if (targetDate) {
+      try {
+        await assertAccountingPeriodOpen(targetDate, {
+          role,
+          actor: role || "user",
+          entityType: "ledger_entry",
+          entityId: id || barnamehNo || undefined,
+        })
+      } catch (err: any) {
+        return NextResponse.json({
+          success: false,
+          error: err.message,
+          period_locked: true,
+        }, { status: 403 })
+      }
+    }
 
     const newDbEntries: Record<string, any[]> = {}
     for (const [k, rows] of Object.entries(db.ledgerEntries)) {
@@ -390,7 +571,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("[ledger-entries API] DELETE error:", error)
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : "Failed to delete entry" },
+      { success: false, error: "Failed to delete entry" },
       { status: 500 }
     )
   }

@@ -30,6 +30,19 @@ export interface PredefinedRoute {
 }
 
 export interface BillOfLading {
+  internal_bol_number: string
+  carrier_bol_number: string
+  bol_source: 'LIVE' | 'IMPORTED' | 'AUTO-CREATED'
+  source_file: string
+  source_sheet: string
+  source_row: string | number
+  source_fingerprint: string
+  import_batch_id: string
+  completion_status: number
+  auto_created: boolean
+  original_raw_data: any
+  status: string
+
   id: string
   bol_number: string
   issue_date: string
@@ -83,7 +96,87 @@ export const NOTE_THEMES: { value: NoteTheme; label: string; color: string }[] =
   { value: 'gray', label: 'Gray', color: '#6b7280' },
 ]
 
+export const CARGO_ROUTE_NOTE_OPTIONS = [
+  // ─── دوغارون (Dogharoun — Iran/Khorasan) ───
+  "🗺️از دوغارون با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva).",
+  "از دوغارون با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva)",
+  "از دوغارون کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در دبی / جبل علی (Full Way Reefer)",
+  "از دوغارون کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در بندرعباس (Full Way Reefer)",
+  "از دوغارون کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در بندر مرسین ترکیه (Full Way Reefer)",
+  "از دوغارون کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در موندرا / نهاوا شیوا هند (Full Way Reefer)",
+  "از دوغارون کانتینر یخچالی از بندرعباس کانتینر یخچالی تا جبل علی / دبی (Full Way Reefer)",
+  "از دوغارون کانتینر یخچالی از بندرعباس کانتینر یخچالی (تمام مسیر یخچالی - Full Way Reefer)",
+  "از دوغارون تمام مسیر کانتینر یخچالی (Full Way Reefer)",
+  "از دوغارون کانتینر یخچالی تا مقصد نهایی (تمام مسیر یخچالی)",
+  "از دوغارون کانتینر معمولی از بندرعباس کانتینر یخچالی (با سوییچ بی ال در بندرعباس)",
+  "از دوغارون کانتینر معمولی از بندرعباس کانتینر یخچالی",
+  "از دوغارون کانتینر معمولی از بندرعباس کانتینر معمولی",
+  "از دوغارون کانتینر یخچالی از بندرعباس کانتینر یخچالی",
+  "از دوغارون کانتینر یخچالی از بندرعباس کانتینر معمولی",
+  "مسیر از دوغارون کانتینر یخچالی از بندرعباس کانتینر یخچالی",
+  // ─── اسلام قلعه (Islam Qala — Herat) ───
+  "🗺️از اسلام قلعه با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva).",
+  "از اسلام قلعه با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva)",
+  "از اسلام قلعه کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در دبی / جبل علی (Full Way Reefer)",
+  "از اسلام قلعه کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در بندرعباس (Full Way Reefer)",
+  "از اسلام قلعه کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در بندر مرسین ترکیه (Full Way Reefer)",
+  "از اسلام قلعه کانتینر یخچالی از بندرعباس کانتینر یخچالی تا جبل علی / دبی (Full Way Reefer)",
+  "از اسلام قلعه تمام مسیر کانتینر یخچالی (Full Way Reefer)",
+  "از اسلام قلعه کانتینر معمولی از بندرعباس کانتینر یخچالی (با سوییچ بی ال در بندرعباس)",
+  "از اسلام قلعه کانتینر معمولی از بندرعباس کانتینر یخچالی",
+  "از اسلام قلعه کانتینر معمولی از بندرعباس کانتینر معمولی",
+  "از اسلام قلعه کانتینر یخچالی از بندرعباس کانتینر یخچالی",
+  "از اسلام قلعه کانتینر یخچالی از بندرعباس کانتینر معمولی",
+  // ─── نیمروز (Nimroz — Iran/Sistan) ───
+  "🗺️از نیمروز با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva).",
+  "از نیمروز با کانتینر معمولی تا بندرعباس، سپس با کانتینر یخچالی از بندرعباس، با سوییچ B/L در دبی / جبل علی، و مقصد نهایی: نهاوا شیوا (Nhava Sheva)",
+  "از نیمروز کانتینر معمولی از بندرعباس کانتینر یخچالی (با سوییچ بی ال در دبی / جبل علی)",
+  "از نیمروز کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در دبی / جبل علی (Full Way Reefer)",
+  "از نیمروز کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در بندرعباس (Full Way Reefer)",
+  "از نیمروز کانتینر یخچالی از چابهار کانتینر یخچالی با سوییچ بی ال در دبی / جبل علی (Full Way Reefer)",
+  "از نیمروز کانتینر معمولی از بندرعباس کانتینر یخچالی (با سوییچ بی ال در بندرعباس)",
+  "از نیمروز کانتینر معمولی از بندرعباس کانتینر یخچالی",
+  "از نیمروز کانتینر معمولی از بندرعباس کانتینر معمولی",
+  "از نیمروز کانتینر یخچالی از بندرعباس کانتینر یخچالی",
+  "از نیمروز کانتینر یخچالی از بندرعباس کانتینر معمولی",
+  // ─── تورغندی (Torghundi — Turkmenistan) ───
+  "از تورغندی کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در دبی / جبل علی (Full Way Reefer)",
+  "از تورغندی کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در بندرعباس (Full Way Reefer)",
+  "از تورغندی کانتینر معمولی از بندرعباس کانتینر یخچالی (با سوییچ بی ال)",
+  "از تورغندی کانتینر معمولی از بندرعباس کانتینر یخچالی",
+  "از تورغندی کانتینر معمولی از بندرعباس کانتینر معمولی",
+  "از تورغندی کانتینر یخچالی از بندرعباس کانتینر یخچالی",
+  // ─── حیرتان (Hairatan — Uzbekistan) ───
+  "از حیرتان کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در دبی / جبل علی (Full Way Reefer)",
+  "از حیرتان کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در بندرعباس (Full Way Reefer)",
+  "از حیرتان کانتینر معمولی از بندرعباس کانتینر یخچالی (با سوییچ بی ال)",
+  "از حیرتان کانتینر معمولی از بندرعباس کانتینر یخچالی",
+  "از حیرتان کانتینر معمولی از بندرعباس کانتینر معمولی",
+  "از حیرتان کانتینر یخچالی از بندرعباس کانتینر یخچالی",
+  // ─── سپین بولدک (Spin Boldak — Pakistan) ───
+  "از سپین بولدک کانتینر یخچالی از کراچی کانتینر یخچالی با سوییچ بی ال در دبی / جبل علی (Full Way Reefer)",
+  "از سپین بولدک کانتینر یخچالی از بندرعباس کانتینر یخچالی با سوییچ بی ال در دبی / جبل علی (Full Way Reefer)",
+  "از سپین بولدک کانتینر معمولی از کراچی به جبل علی با سوییچ بی ال",
+  "از سپین بولدک کانتینر معمولی از بندرعباس کانتینر یخچالی (با سوییچ بی ال)",
+  "از سپین بولدک کانتینر معمولی از بندرعباس کانتینر یخچالی",
+  "از سپین بولدک کانتینر معمولی از بندرعباس کانتینر معمولی",
+  "از سپین بولدک کانتینر یخچالی از بندرعباس کانتینر یخچالی",
+] as const
+
 export interface BillOfLadingFormData {
+  internal_bol_number?: string
+  carrier_bol_number?: string
+  bol_source?: 'LIVE' | 'IMPORTED' | 'AUTO-CREATED'
+  source_file?: string
+  source_sheet?: string
+  source_row?: string | number
+  source_fingerprint?: string
+  import_batch_id?: string
+  completion_status?: number
+  auto_created?: boolean
+  original_raw_data?: any
+  status?: string
+
   // Document ID (for PDF storage linking)
   id?: string
   bol_number?: string
@@ -94,6 +187,7 @@ export interface BillOfLadingFormData {
   notes_2?: string
   notes_2_label?: string
   notes_2_theme?: 'red' | 'blue' | 'green' | 'orange' | 'purple' | 'gray'
+  cargo_route_note: string
   
   // Truck Information
   truck_number: string
@@ -226,6 +320,7 @@ export const initialFormData: BillOfLadingFormData = {
   notes_2: "عبدالوهاب ریگوال اسلام قلعه/نجیب الله حسین محمودی مقدم\n0796140001  0703130001\nنماینده دوغارون /شماره تماس : 09152091993",
   notes_2_label: "نماینده نمبر",
   notes_2_theme: 'red',
+  cargo_route_note: "",
   
   // Truck Information
   truck_number: "",
@@ -237,7 +332,7 @@ export const initialFormData: BillOfLadingFormData = {
   // Routes - default with origin and destination
   routes: [
     {
-      id: crypto.randomUUID(),
+      id: "route-kandahar",
       location: "Kandahar",
       locationPersian: "کندهار",
       stopOrder: 1,
@@ -245,7 +340,7 @@ export const initialFormData: BillOfLadingFormData = {
         stopLabel: "Origin",
     },
     {
-      id: crypto.randomUUID(),
+      id: "route-nimroz",
       location: "Nimroz",
       locationPersian: "نیمروز / میلک",
       stopOrder: 2,
@@ -253,7 +348,7 @@ export const initialFormData: BillOfLadingFormData = {
         stopLabel: "Stop 1",
     },
     {
-      id: crypto.randomUUID(),
+      id: "route-bandar-abbas",
       location: "Bandar Abbas, IR",
       locationPersian: "بندرعباس، ایران",
       stopOrder: 3,
@@ -261,7 +356,7 @@ export const initialFormData: BillOfLadingFormData = {
         stopLabel: "Stop 2",
     },
     {
-      id: crypto.randomUUID(),
+      id: "route-dubai",
       location: "Dubai, AE",
       locationPersian: "دبی، امارات",
       stopOrder: 4,
@@ -269,7 +364,7 @@ export const initialFormData: BillOfLadingFormData = {
         stopLabel: "Stop 3",
     },
     {
-      id: crypto.randomUUID(),
+      id: "route-nhava-sheva",
       location: "Nhava Sheva, IN",
       locationPersian: "نوا شوا، هند",
       stopOrder: 5,
@@ -300,8 +395,10 @@ export const initialFormData: BillOfLadingFormData = {
   port_of_loading: "",
   port_of_discharge: "",
   place_of_delivery: "",
-  cargo_description: `📦 CONTAINER & CARGO DETAILS │ 🧾 DOCUMENT & SHIPPING DETAILS
-🥬 Cargo: | 📅 Transit Date: | 📄 HS CODE:  │ 📄 Afghan TC No:  │ 📄 Invoice NO: `,
+  cargo_description: `📦 CONTAINER & CARGO PARTICULARS:
+• Description: 
+• Transit Date: ${new Date().toLocaleDateString("en-CA")}
+• INV-`,
   net_weight: "",
   gross_weight: "",
   measurement: "",

@@ -63,8 +63,16 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { SavedBolReport } from "@/components/reports/saved-bol-report"
+import { SaveToDriveButton } from "@/components/google-drive/save-to-drive-button"
 import { toast } from "sonner"
-import * as XLSX from "xlsx"
 import {
   getActiveExchangeRate,
   setActiveExchangeRate,
@@ -72,15 +80,29 @@ import {
   DEFAULT_AFN_USD_RATE,
   runDataMigrationCleanup
 } from "@/lib/services/currency-service"
+import { isMeaningfulBOL } from "@/lib/utils/bol-filters"
 
 /**
  * Dedicated Portal for Report Printing
  * Mounts #sky-reports-print-root directly on document.body for clean, unclipped print output
  */
 function ReportPrintPortal({ children }: { children: React.ReactNode }) {
+  const [isPrinting, setIsPrinting] = useState(false)
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
+    const handleBeforePrint = () => setIsPrinting(true)
+    const handleAfterPrint = () => setIsPrinting(false)
+    window.addEventListener("beforeprint", handleBeforePrint)
+    window.addEventListener("afterprint", handleAfterPrint)
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint)
+      window.removeEventListener("afterprint", handleAfterPrint)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isPrinting) return
     const existing = document.getElementById("sky-reports-print-root") as HTMLDivElement | null
     const root = existing || document.createElement("div")
 
@@ -97,9 +119,9 @@ function ReportPrintPortal({ children }: { children: React.ReactNode }) {
         document.body.removeChild(root)
       }
     }
-  }, [])
+  }, [isPrinting])
 
-  if (!container) return null
+  if (!isPrinting || !container) return null
   return createPortal(children, container)
 }
 
@@ -271,7 +293,7 @@ export function ReportsView() {
     setThemeMode(nextTheme)
     try {
       window.localStorage.setItem("skybol:reports-theme", nextTheme)
-      toast.success(`${nextTheme === "light" ? "☀️ Light Theme" : "🌙 Dark Theme"} active`)
+      toast.success(`${nextTheme === "light" ? "☀️  Light Theme" : "🌙 Dark Theme"} active`)
     } catch {
       // ignore
     }
@@ -280,7 +302,7 @@ export function ReportsView() {
   const isLight = themeMode === "light"
 
   // Navigation Sub-Tab State
-  const [activeTab, setActiveTab] = useState<"pnl" | "containers" | "trade" | "shipments" | "balances" | "expenses">("containers")
+  const [activeTab, setActiveTab] = useState<"pnl" | "containers" | "trade" | "shipments" | "balances" | "expenses" | "bol_report">("containers")
   
   // Direction Filter: All, Export (صادرات), Import (واردات), Transit (ترانزیت)
   const [directionFilter, setDirectionFilter] = useState<"all" | "Export" | "Import" | "Transit">("all")
@@ -298,6 +320,9 @@ export function ReportsView() {
   const [selectedShipper, setSelectedShipper] = useState<string>("all")
   const [selectedConsignee, setSelectedConsignee] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
+  const [showMobileMoreActions, setShowMobileMoreActions] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Print & PDF Export Configuration State
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false)
@@ -388,11 +413,22 @@ export function ReportsView() {
         const k = d.bol_number || d.id
         if (k && !merged.has(k)) merged.set(k, d)
       }
-
-      setBolDocs(Array.from(merged.values()))
+      const allDocs = Array.from(merged.values())
+      const validDocs = allDocs.filter(isMeaningfulBOL)
+      setBolDocs(validDocs)
     } catch (e) {
       console.error("Error loading documents for reports:", e)
     }
+
+    // Also fetch the complete authoritative dataset from /api/bol?all=true
+    fetch("/api/bol?all=true")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
+          setBolDocs(json.data)
+        }
+      })
+      .catch(() => {})
 
     try {
       const rawInvs = window.localStorage.getItem("skybol:saved-invoices")
@@ -444,6 +480,12 @@ export function ReportsView() {
     }
   }, [loadDocuments])
 
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true)
+    loadDocuments()
+    toast.success("Container data refreshed")
+    setTimeout(() => setIsRefreshing(false), 600)
+  }, [loadDocuments])
 
   // Save Custom Expenses
   const saveExpensesList = (newList: CustomExpenseEntry[]) => {
@@ -1328,9 +1370,9 @@ export function ReportsView() {
   // =========================================================================
   // EXPORT TO EXCEL SPREADSHEET (.xlsx)
   // =========================================================================
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
-      const wb = XLSX.utils.book_new()
+      toast.info("Preparing Excel export...")
 
       // 1. Container P&L Worksheet
       const containerRows = filteredContainers.map(r => ({
@@ -1362,6 +1404,42 @@ export function ReportsView() {
         "Loss Cause / Remarks": r.lossReason || (r.status === 'Profitable' ? 'Normal Operations' : '-'),
         "Exchange Rate Applied (AFN/USD)": r.exchangeRateUsed || exchangeRate
       }))
+
+      // Try High-Speed Python Streaming Excel Export First (Zero UI Freeze)
+      try {
+        const filename = `SkyAriana_Container_Freight_Report_${new Date().toISOString().slice(0, 10)}.xlsx`
+        const res = await fetch("/api/v1/documents/excel-export", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename,
+            rows: containerRows,
+            sheet_title: "Container Manifest",
+            title: "SKY ARIANA LIMITED - CONTAINER & FREIGHT REPORT",
+          }),
+          signal: AbortSignal.timeout(4000),
+        })
+        if (res.ok) {
+          const json = await res.json()
+          if (json.success && json.data?.download_url) {
+            const dl = document.createElement("a")
+            dl.href = json.data.download_url
+            dl.download = json.data.filename || filename
+            document.body.appendChild(dl)
+            dl.click()
+            document.body.removeChild(dl)
+            toast.success("Container Excel report exported via streaming engine!")
+            return
+          }
+        }
+      } catch (backendErr) {
+        // Fallback transparently to browser-side XLSX
+      }
+
+      // Browser-Side XLSX Fallback (Offline-First Guarantee)
+      const XLSX = await import("xlsx")
+      const wb = XLSX.utils.book_new()
+
       const wsContainers = XLSX.utils.json_to_sheet(containerRows)
       XLSX.utils.book_append_sheet(wb, wsContainers, "Container Manifest")
 
@@ -1372,7 +1450,7 @@ export function ReportsView() {
         ["Direction Filter", directionFilter.toUpperCase()],
         ["Exchange Rate Applied", `1 USD = ${exchangeRate} AFN`],
         [],
-        ["METRIC", "TOTAL", "EXPORT (صادرات)", "IMPORT (واردات)", "TRANSIT (ترانزیت)"],
+        ["METRIC", "TOTAL", "EXPORT", "IMPORT", "TRANSIT"],
         ["Container Count", containerMetrics.totalContainers, containerMetrics.exportCount, containerMetrics.importCount, containerMetrics.transitCount],
         ["Total TEU", containerMetrics.totalTEU, containerMetrics.exportCount * 2, containerMetrics.importCount * 2, containerMetrics.transitCount * 2],
         ["Gross Weight (MT)", (containerMetrics.totalGrossWeightKg / 1000).toFixed(1), (containerMetrics.exportWeightKg / 1000).toFixed(1), (containerMetrics.importWeightKg / 1000).toFixed(1), "-"],
@@ -1520,21 +1598,28 @@ export function ReportsView() {
       const printContainer = document.querySelector('#sky-reports-print-root') || document.querySelector('.reports-print-root')
       if (!printContainer) throw new Error('Print container not found')
 
-      const { default: html2canvas } = await import('html2canvas')
-      // @ts-ignore
-      const { jsPDF } = await import('jspdf/dist/jspdf.es.min.js')
+      const { toCanvas } = await import('html-to-image')
+      const { jsPDF } = await import('jspdf')
 
       const isLandscape = printOrientation === 'landscape'
-      const canvas = await html2canvas(printContainer as HTMLElement, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
+      const canvas = await toCanvas(printContainer as HTMLElement, {
+        pixelRatio: 3,
+        quality: 1.0,
+        skipFonts: true,
         backgroundColor: '#ffffff',
-        logging: false,
-        windowWidth: isLandscape ? 1400 : 1000,
+        style: {
+          transform: 'none',
+          margin: '0',
+          boxShadow: 'none',
+          opacity: '1',
+          visibility: 'visible',
+          WebkitFontSmoothing: 'antialiased',
+          MozOsxFontSmoothing: 'grayscale',
+          textRendering: 'optimizeLegibility',
+        } as any,
       })
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.98)
+      const imgData = canvas.toDataURL('image/jpeg', 0.99)
       const pdf = new jsPDF({
         orientation: isLandscape ? 'landscape' : 'portrait',
         unit: 'mm',
@@ -1549,13 +1634,13 @@ export function ReportsView() {
       let heightLeft = canvasHeightMM
       let position = 0
 
-      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'FAST')
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'SLOW')
       heightLeft -= pdfHeight
 
       while (heightLeft > 0) {
         position = heightLeft - canvasHeightMM
         pdf.addPage()
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'FAST')
+        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, canvasHeightMM, undefined, 'SLOW')
         heightLeft -= pdfHeight
       }
 
@@ -1590,157 +1675,294 @@ export function ReportsView() {
   }
 
   return (
-    <div className={`min-h-screen p-2.5 sm:p-4 md:p-6 font-sans transition-colors duration-200 ${
-      isLight 
-        ? "bg-gradient-to-br from-slate-100 via-blue-50/50 to-indigo-50/70 text-slate-900" 
-        : "bg-slate-950 text-slate-100"
-    }`}>
-      <div className="max-w-[1780px] w-full mx-auto space-y-4 sm:space-y-6">
+    <div data-reports-center="true" className="w-full space-y-4 sm:space-y-6 font-sans select-text">
+      <div className="w-full space-y-4 sm:space-y-6">
 
         {/* =================================================================== */}
         {/* TOP CONTROLS & HEADER BANNER */}
         {/* =================================================================== */}
-        <div className={`backdrop-blur-xl border rounded-2xl p-3.5 sm:p-5 shadow-lg flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 transition-all ${
+        <header className={`rounded-3xl border p-4 sm:p-5 shadow-sm transition-all flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 relative overflow-hidden ${
           isLight
-            ? "bg-white/95 border-slate-200 shadow-slate-200/60 text-slate-900"
-            : "bg-slate-900/90 border-slate-800 shadow-lg text-slate-100"
+            ? "bg-white/95 border-slate-200/90 shadow-slate-200/40 text-slate-900"
+            : "bg-slate-900/95 border-slate-800/90 shadow-none text-slate-100"
         }`}>
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0">
+          {/* Subtle Brand Accent Line */}
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-900 via-indigo-600 to-cyan-500" />
+
+          {/* Left Brand & Title Info */}
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-900 via-indigo-700 to-cyan-600 flex items-center justify-center text-white shadow-md shadow-blue-950/20 shrink-0">
               <Container className="w-6 h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className={`text-base sm:text-xl md:text-2xl font-black tracking-tight ${
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className={`text-lg sm:text-xl md:text-2xl font-black tracking-tight ${
                   isLight ? "text-slate-900" : "text-white"
                 }`}>
                   Container Analytics &amp; Freight Profit/Loss
                 </h1>
-                <Badge className={
-                  isLight
-                    ? "bg-cyan-100 text-cyan-800 border-cyan-300 font-bold text-[10px] sm:text-xs"
-                    : "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-bold text-[10px] sm:text-xs"
-                }>
+                <span
+                  dir="rtl"
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold font-[vazirmatn] border ${
+                    isLight
+                      ? "bg-cyan-50 text-cyan-900 border-cyan-200"
+                      : "bg-cyan-950/50 text-cyan-300 border-cyan-800"
+                  }`}
+                >
                   گزارش کانتینرها، صادرات/واردات و سود کرایه‌ها
-                </Badge>
+                </span>
               </div>
-              <p className={`text-[11px] sm:text-xs font-semibold mt-0.5 ${
-                isLight ? "text-slate-500" : "text-slate-400"
-              }`}>
-                Detailed Export vs. Import Analysis, Container TEU Tonnage &amp; Per-Box Freight Profit
-              </p>
+              <div className="flex items-center gap-2 flex-wrap text-xs font-medium">
+                <p className={isLight ? "text-slate-500" : "text-slate-400"}>
+                  Detailed Export vs. Import Analysis, Container TEU Tonnage &amp; Per-Box Freight Profit
+                </p>
+                <span className="hidden md:inline text-slate-300 dark:text-slate-700">•</span>
+                <span className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-bold ${
+                  isLight ? "bg-slate-100 text-slate-700" : "bg-slate-800 text-slate-300"
+                }`}>
+                  {filteredContainers.length} of {allContainerRecords.length} Containers
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Quick Action Buttons + Theme Toggle */}
-          <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto no-scrollbar pb-1 sm:pb-0 no-print">
-            {/* Theme Toggle Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleTheme}
-              className={`gap-1.5 h-9 rounded-xl text-xs font-bold shrink-0 cursor-pointer shadow-xs transition-all ${
-                isLight
-                  ? "bg-amber-50/90 text-amber-900 border-amber-300 hover:bg-amber-100 hover:border-amber-400"
-                  : "bg-slate-800/90 text-amber-300 border-slate-700 hover:bg-slate-700 hover:text-amber-200"
-              }`}
-              title="Toggle between Light and Dark themes"
-            >
-              {isLight ? <Sun className="w-4 h-4 text-amber-600 fill-amber-500" /> : <Moon className="w-4 h-4 text-amber-300 fill-amber-400" />}
-              <span>{isLight ? "Light Mode" : "Dark Mode"}</span>
-            </Button>
+          {/* Mobile Quick Action Buttons (< sm) */}
+          <div className="flex sm:hidden flex-col w-full gap-2 no-print">
+            {/* Primary Action Row */}
+            <div className="grid grid-cols-3 gap-1.5 w-full">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsAddExpenseOpen(true)}
+                className={`h-9 px-2 rounded-xl text-[11px] font-bold cursor-pointer ${
+                  isLight
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                    : "bg-emerald-950/40 text-emerald-300 border-emerald-700 hover:bg-emerald-900/60"
+                }`}
+              >
+                <Plus className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                <span>Expense</span>
+              </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadDocuments}
-              className={`gap-1.5 h-9 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
-                isLight
-                  ? "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200"
-                  : "bg-slate-800/80 border-slate-700 hover:bg-slate-700 text-slate-200"
-              }`}
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Refresh</span>
-            </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`h-9 px-2 rounded-xl text-[11px] font-bold cursor-pointer ${
+                      isLight
+                        ? "bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100"
+                        : "bg-slate-800/80 border-slate-700 text-slate-200"
+                    }`}
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 mr-1 text-blue-600" />
+                    <span>Export</span>
+                    <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center" className="w-56 p-1.5 rounded-xl shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 z-50">
+                  <DropdownMenuItem onClick={handleExportExcel} className="gap-2.5 p-2 rounded-lg text-xs font-semibold cursor-pointer">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    <span>Export Excel (.xlsx)</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="my-1" />
+                  <DropdownMenuItem onClick={handleExportCSV} className="gap-2.5 p-2 rounded-lg text-xs font-semibold cursor-pointer">
+                    <FileDown className="w-4 h-4 text-cyan-600" />
+                    <span>Export CSV (.csv)</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAddExpenseOpen(true)}
-              className={`gap-1.5 h-9 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
-                isLight
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
-                  : "bg-emerald-950/40 text-emerald-300 border-emerald-700 hover:bg-emerald-900/60"
-              }`}
-            >
-              <Plus className="w-4 h-4 text-emerald-600" />
-              <span>Add Expense / Log</span>
-            </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setIsPrintDialogOpen(true)}
+                className="h-9 px-2 rounded-xl text-[11px] font-bold bg-blue-900 hover:bg-blue-800 text-white shadow-sm cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 mr-1 text-amber-400" />
+                <span>Print A4</span>
+              </Button>
+            </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportExcel}
-              className={`gap-1.5 h-9 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
-                isLight
-                  ? "bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100"
-                  : "bg-blue-950/40 text-blue-300 border-blue-700 hover:bg-blue-900/60"
-              }`}
-              title="Download Excel Workbook with multiple sheets"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600" />
-              <span>Export Excel</span>
-            </Button>
+            {/* Status & Secondary Tools Row */}
+            <div className="flex items-center gap-1.5 w-full justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  setTempRateInput(exchangeRate.toString())
+                  setIsRateModalOpen(true)
+                }}
+                className={`flex-1 flex items-center justify-center gap-1.5 h-8 px-2 rounded-xl text-[11px] font-bold border transition cursor-pointer ${
+                  isLight
+                    ? "bg-amber-50/80 text-amber-950 border-amber-300/80"
+                    : "bg-amber-950/30 text-amber-200 border-amber-700/50"
+                }`}
+              >
+                <Coins className="w-3 h-3 text-amber-500 shrink-0" />
+                <span className="font-mono font-extrabold">1 USD = {exchangeRate} AFN</span>
+              </button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportCSV}
-              className={`gap-1.5 h-9 rounded-xl text-xs font-bold shrink-0 cursor-pointer ${
-                isLight
-                  ? "bg-cyan-50 text-cyan-800 border-cyan-300 hover:bg-cyan-100"
-                  : "bg-cyan-950/40 text-cyan-300 border-cyan-700 hover:bg-cyan-900/60"
-              }`}
-              title="Download clean CSV table"
-            >
-              <FileDown className="w-3.5 h-3.5 text-cyan-600" />
-              <span>CSV</span>
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className={`h-8 px-2.5 rounded-xl text-[11px] font-bold shrink-0 cursor-pointer ${
+                  isLight ? "bg-slate-100 border-slate-300 text-slate-700" : "bg-slate-800/80 border-slate-700 text-slate-200"
+                }`}
+              >
+                <RefreshCw className={`w-3 h-3 mr-1 ${isRefreshing ? "animate-spin" : ""}`} />
+                <span>Refresh</span>
+              </Button>
 
-            {/* Live Exchange Rate Selector Button */}
-            <Button
-              variant="outline"
-              size="sm"
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleTheme}
+                className={`h-8 px-2.5 rounded-xl text-[11px] font-bold shrink-0 cursor-pointer ${
+                  isLight ? "border-slate-300 text-slate-700 bg-white" : "border-slate-700 text-slate-300 bg-slate-800/80"
+                }`}
+              >
+                {isLight ? <Sun className="w-3 h-3 text-amber-500" /> : <Moon className="w-3 h-3 text-indigo-400" />}
+              </Button>
+            </div>
+          </div>
+
+          {/* Desktop & Tablet Action Buttons (sm+) */}
+          <div className="hidden sm:flex flex-wrap items-center gap-2.5 w-full 2xl:w-auto justify-start 2xl:justify-end no-print">
+            {/* Live Exchange Rate Selector Pill */}
+            <button
+              type="button"
               onClick={() => {
                 setTempRateInput(exchangeRate.toString())
                 setIsRateModalOpen(true)
               }}
-              className={`gap-1.5 h-9 rounded-xl text-xs font-black shrink-0 cursor-pointer border transition-all ${
+              className={`inline-flex items-center gap-2 h-9 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer shadow-2xs hover:scale-[1.02] active:scale-95 ${
                 isLight
-                  ? "bg-amber-50/90 hover:bg-amber-100/90 text-amber-900 border-amber-300 shadow-xs"
-                  : "bg-amber-950/30 hover:bg-amber-900/40 text-amber-300 border-amber-700/50"
+                  ? "bg-amber-50/90 hover:bg-amber-100 text-amber-950 border-amber-300/80"
+                  : "bg-amber-950/30 hover:bg-amber-900/40 text-amber-200 border-amber-700/60"
               }`}
               title="Click to view or adjust Afghan Afghani (AFN) to USD exchange rate"
             >
               <Coins className="w-3.5 h-3.5 text-amber-500" />
-              <span>1 USD = {exchangeRate} AFN</span>
-              <Badge className="ml-1 text-[9px] px-1 py-0 bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-400">
+              <span className="font-mono tracking-tight font-extrabold">1 USD = {exchangeRate} AFN</span>
+              <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-400/30">
                 Rate
-              </Badge>
+              </span>
+            </button>
+
+            {/* Compact Theme Toggle Button (Icon only) */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleTheme}
+              className={`w-9 h-9 p-0 rounded-xl shrink-0 cursor-pointer border shadow-2xs transition-all ${
+                isLight
+                  ? "bg-white hover:bg-slate-50 border-slate-300 text-slate-700 hover:text-slate-900"
+                  : "bg-slate-800/80 hover:bg-slate-800 border-slate-700 text-slate-200 hover:text-white"
+              }`}
+              title={isLight ? "Switch to Dark Mode" : "Switch to Light Mode"}
+            >
+              {isLight ? (
+                <Sun className="w-4 h-4 text-amber-500 fill-amber-500/20" />
+              ) : (
+                <Moon className="w-4 h-4 text-sky-400 fill-sky-400/20" />
+              )}
             </Button>
 
+            {/* Refresh Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className={`gap-1.5 h-9 px-3 rounded-xl text-xs font-bold shrink-0 cursor-pointer border shadow-2xs transition-all ${
+                isLight
+                  ? "bg-white hover:bg-slate-50 border-slate-300 text-slate-700 hover:text-slate-900"
+                  : "bg-slate-800/80 hover:bg-slate-800 border-slate-700 text-slate-200 hover:text-white"
+              }`}
+              title="Reload shipments and recalculate container metrics"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-slate-500 dark:text-slate-400 ${isRefreshing ? "animate-spin" : ""}`} />
+              <span>Refresh</span>
+            </Button>
+
+            {/* Add Expense Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAddExpenseOpen(true)}
+              className={`gap-1.5 h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer border shadow-2xs transition-all ${
+                isLight
+                  ? "bg-emerald-50 hover:bg-emerald-100/90 text-emerald-900 border-emerald-300 hover:border-emerald-400"
+                  : "bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border-emerald-800 hover:border-emerald-700"
+              }`}
+              title="Add custom OPEX or logistics expense log"
+            >
+              <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Add Expense / Log</span>
+            </Button>
+
+            {/* Unified Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={`gap-1.5 h-9 px-3.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer border shadow-2xs transition-all ${
+                    isLight
+                      ? "bg-white hover:bg-slate-50 border-slate-300 text-slate-700 hover:text-slate-900"
+                      : "bg-slate-800/80 hover:bg-slate-800 border-slate-700 text-slate-200 hover:text-white"
+                  }`}
+                  title="Download report data in Excel or CSV format"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>Export</span>
+                  <ChevronDown className="w-3 h-3 text-slate-400 ml-0.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60 p-1.5 rounded-2xl shadow-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 z-50">
+                <DropdownMenuItem
+                  onClick={handleExportExcel}
+                  className="gap-2.5 p-2 rounded-xl cursor-pointer text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                    <FileSpreadsheet className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-slate-900 dark:text-slate-100">Export Excel (.xlsx)</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Full multi-tab workbook</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1 bg-slate-100 dark:bg-slate-800" />
+                <DropdownMenuItem
+                  onClick={handleExportCSV}
+                  className="gap-2.5 p-2 rounded-xl cursor-pointer text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-cyan-50 dark:bg-cyan-950/60 flex items-center justify-center text-cyan-600 dark:text-cyan-400 shrink-0">
+                    <FileDown className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-slate-900 dark:text-slate-100">Export CSV (.csv)</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Clean tabular dataset</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Print A4 / PDF Button */}
             <Button
               variant="default"
               size="sm"
               onClick={() => setIsPrintDialogOpen(true)}
-              className="gap-1.5 h-9 rounded-xl text-xs font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md hover:from-blue-700 hover:to-indigo-700 shrink-0 cursor-pointer"
+              className="gap-1.5 h-9 px-4 rounded-xl text-xs font-bold bg-blue-900 hover:bg-blue-800 text-white shadow-md shadow-blue-900/20 shrink-0 cursor-pointer transition-all active:scale-95"
+              title="Generate official printable A4 report or download PDF"
             >
-              <Printer className="w-3.5 h-3.5" />
+              <Printer className="w-3.5 h-3.5 text-amber-400" />
               <span>Print A4 / PDF</span>
             </Button>
           </div>
-        </div>
+        </header>
 
         {/* =================================================================== */}
         {/* DIRECTION TOGGLE CHIPS & FILTERS TOOLBAR */}
@@ -1753,10 +1975,10 @@ export function ReportsView() {
           
           {/* Trade Direction Selector Pills */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0 max-w-full">
               <button
                 onClick={() => setDirectionFilter("all")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
                   directionFilter === "all"
                     ? "bg-blue-600 text-white shadow-md shadow-blue-500/25"
                     : isLight
@@ -1770,7 +1992,7 @@ export function ReportsView() {
 
               <button
                 onClick={() => setDirectionFilter("Export")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
                   directionFilter === "Export"
                     ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/25"
                     : isLight
@@ -1778,13 +2000,14 @@ export function ReportsView() {
                     : "bg-slate-800/80 text-slate-400 hover:text-white"
                 }`}
               >
-                <ArrowUpRight className="w-4 h-4 text-emerald-300" />
-                <span>Export / صادرات ({allContainerRecords.filter(r => r.direction === 'Export').length})</span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-300" />
+                <span className="sm:hidden">Export ({allContainerRecords.filter(r => r.direction === 'Export').length})</span>
+                <span className="hidden sm:inline">Export / صادرات ({allContainerRecords.filter(r => r.direction === 'Export').length})</span>
               </button>
 
               <button
                 onClick={() => setDirectionFilter("Import")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
                   directionFilter === "Import"
                     ? "bg-amber-600 text-white shadow-md shadow-amber-500/25"
                     : isLight
@@ -1792,13 +2015,14 @@ export function ReportsView() {
                     : "bg-slate-800/80 text-slate-400 hover:text-white"
                 }`}
               >
-                <ArrowDownLeft className="w-4 h-4 text-amber-300" />
-                <span>Import / واردات ({allContainerRecords.filter(r => r.direction === 'Import').length})</span>
+                <ArrowDownLeft className="w-3.5 h-3.5 text-amber-300" />
+                <span className="sm:hidden">Import ({allContainerRecords.filter(r => r.direction === 'Import').length})</span>
+                <span className="hidden sm:inline">Import / واردات ({allContainerRecords.filter(r => r.direction === 'Import').length})</span>
               </button>
 
               <button
                 onClick={() => setDirectionFilter("Transit")}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
                   directionFilter === "Transit"
                     ? "bg-purple-600 text-white shadow-md shadow-purple-500/25"
                     : isLight
@@ -1812,7 +2036,7 @@ export function ReportsView() {
             </div>
 
             {/* Container Size Quick Filter */}
-            <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
+            <div className="flex items-center gap-1 shrink-0 overflow-x-auto no-scrollbar max-w-full pb-0.5 sm:pb-0">
               <span className={`text-[11px] font-bold mr-1 hidden sm:inline ${
                 isLight ? "text-slate-500" : "text-slate-400"
               }`}>Size:</span>
@@ -1830,7 +2054,7 @@ export function ReportsView() {
                       : "text-slate-400 hover:text-slate-200"
                   }`}
                 >
-                  {sz.toUpperCase()}
+                  {sz === 'all' ? 'All' : sz === '40HQ' ? '40HC' : sz}
                 </button>
               ))}
             </div>
@@ -1840,33 +2064,53 @@ export function ReportsView() {
           <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 pt-1 border-t ${
             isLight ? "border-slate-200" : "border-slate-800"
           }`}>
-            {/* Live Search */}
-            <div className="relative">
-              <Search className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${
-                isLight ? "text-slate-400" : "text-slate-400"
-              }`} />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search Container #, B/L, Shipper..."
-                className={`h-9 pl-9 text-xs rounded-xl ${
-                  isLight
-                    ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:bg-white"
-                    : "bg-slate-800/80 border-slate-700 text-slate-200 placeholder:text-slate-500"
+            {/* Live Search & Mobile Filters Toggle */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className={`w-3.5 h-3.5 absolute left-3 top-2.5 ${
+                  isLight ? "text-slate-400" : "text-slate-400"
+                }`} />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search Container #, B/L, Shipper..."
+                  className={`h-9 pl-9 text-xs rounded-xl ${
+                    isLight
+                      ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:bg-white"
+                      : "bg-slate-800/80 border-slate-700 text-slate-200 placeholder:text-slate-500"
+                  }`}
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMobileFilters(!showMobileFilters)}
+                className={`sm:hidden h-9 px-2.5 rounded-xl text-xs font-bold gap-1 cursor-pointer shrink-0 ${
+                  (statusFilter !== 'all' || selectedShipper !== 'all' || selectedConsignee !== 'all')
+                    ? isLight ? "border-blue-500 text-blue-700 bg-blue-50" : "border-blue-500 text-blue-300 bg-blue-950/40"
+                    : isLight ? "border-slate-300 text-slate-700 bg-slate-50" : "border-slate-700 text-slate-300 bg-slate-800/80"
                 }`}
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+                title="Toggle More Filters"
+              >
+                <Filter className="w-3.5 h-3.5" />
+                <span>Filters</span>
+                {(statusFilter !== 'all' || selectedShipper !== 'all' || selectedConsignee !== 'all') && (
+                  <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0" />
+                )}
+              </Button>
             </div>
 
             {/* Status Filter */}
             <select
               value={statusFilter}
               onChange={(e: any) => setStatusFilter(e.target.value)}
-              className={`h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`${showMobileFilters ? 'block' : 'hidden'} sm:block h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
                 isLight
                   ? "bg-slate-50 border border-slate-300 text-slate-800"
                   : "bg-slate-800/80 border border-slate-700 text-slate-200"
@@ -1883,7 +2127,7 @@ export function ReportsView() {
             <select
               value={selectedShipper}
               onChange={(e) => setSelectedShipper(e.target.value)}
-              className={`h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`${showMobileFilters ? 'block' : 'hidden'} sm:block h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
                 isLight
                   ? "bg-slate-50 border border-slate-300 text-slate-800"
                   : "bg-slate-800/80 border border-slate-700 text-slate-200"
@@ -1899,7 +2143,7 @@ export function ReportsView() {
             <select
               value={selectedConsignee}
               onChange={(e) => setSelectedConsignee(e.target.value)}
-              className={`h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`${showMobileFilters ? 'block' : 'hidden'} sm:block h-9 w-full rounded-xl px-3 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 ${
                 isLight
                   ? "bg-slate-50 border border-slate-300 text-slate-800"
                   : "bg-slate-800/80 border border-slate-700 text-slate-200"
@@ -2126,6 +2370,20 @@ export function ReportsView() {
             : "bg-slate-900/90 border-slate-800"
         }`}>
           <button
+            onClick={() => setActiveTab("bol_report")}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
+              activeTab === "bol_report"
+                ? "bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white shadow-md shadow-blue-500/25"
+                : isLight
+                ? "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                : "text-slate-400 hover:text-white hover:bg-slate-800"
+            }`}
+          >
+            <BarChart3 className="w-4 h-4 text-blue-500" />
+            <span>📊 Saved BOL Report ({bolDocs.length})</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("containers")}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-black transition-all shrink-0 cursor-pointer ${
               activeTab === "containers"
@@ -2209,6 +2467,20 @@ export function ReportsView() {
             <span>Expenses &amp; OPEX ({customExpenses.length})</span>
           </button>
         </div>
+
+        {/* =================================================================== */}
+        {/* TAB 1: CONTAINER FREIGHT & PROFIT/LOSS MANIFEST */}
+        {/* =================================================================== */}
+        {activeTab === "bol_report" && (
+          <div className="w-full rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl min-h-[750px]">
+            <SavedBolReport
+              documents={bolDocs}
+              filteredDocuments={bolDocs}
+              onClose={() => setActiveTab("containers")}
+              selectedDocIds={[]}
+            />
+          </div>
+        )}
 
         {/* =================================================================== */}
         {/* TAB 1: CONTAINER FREIGHT & PROFIT/LOSS MANIFEST */}
@@ -3828,6 +4100,50 @@ export function ReportsView() {
                 <span>Download PDF</span>
               </Button>
 
+              <SaveToDriveButton
+                category="ledger"
+                fileName={`Ledger-Statement-${new Date().toISOString().slice(0, 10)}.pdf`}
+                label="Save to Drive"
+                className={`gap-1.5 rounded-xl text-xs font-bold ${
+                  isLight ? "border-cyan-300 text-cyan-800 bg-cyan-50/50 hover:bg-cyan-100" : "border-cyan-700 text-cyan-300 bg-cyan-950/30 hover:bg-cyan-900/50"
+                }`}
+                getPdfBlob={async () => {
+                  const printContainer = document.querySelector('#sky-reports-print-root') || document.querySelector('.reports-print-root')
+                  if (!printContainer) throw new Error('Print container not found')
+                  const { toCanvas } = await import('html-to-image')
+                  const { jsPDF } = await import('jspdf')
+                  const isLandscape = printOrientation === 'landscape'
+                  const canvas = await toCanvas(printContainer as HTMLElement, {
+                    pixelRatio: 3,
+                    quality: 1.0,
+                    skipFonts: true,
+                    backgroundColor: '#ffffff',
+                    style: {
+                      transform: 'none',
+                      margin: '0',
+                      boxShadow: 'none',
+                      opacity: '1',
+                      visibility: 'visible',
+                      WebkitFontSmoothing: 'antialiased',
+                      MozOsxFontSmoothing: 'grayscale',
+                      textRendering: 'optimizeLegibility',
+                    } as any,
+                  })
+                  const imgData = canvas.toDataURL('image/jpeg', 0.99)
+                  const pdf = new jsPDF({
+                    orientation: isLandscape ? 'landscape' : 'portrait',
+                    unit: 'mm',
+                    format: 'a4',
+                  })
+                  const pdfWidth = isLandscape ? 297 : 210
+                  const pdfHeight = isLandscape ? 210 : 297
+                  const imgProps = pdf.getImageProperties(imgData)
+                  const canvasHeightMM = (imgProps.height * pdfWidth) / imgProps.width
+                  pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, canvasHeightMM, undefined, 'SLOW')
+                  return pdf.output('blob')
+                }}
+              />
+
               <Button
                 variant="default"
                 size="sm"
@@ -4264,7 +4580,7 @@ export function ReportsView() {
 
           {/* Document Footer Note */}
           <div className="text-center text-[7.5px] text-slate-400 font-mono pt-4 mt-2">
-            This document is an official confidential export of SKY ARIANA LIMITED management information systems. Generated by SkyBOL v3.2 Enterprise.
+            This document is an official confidential export of SKY ARIANA LIMITED management information systems. Generated by SkyBOL v5.1pro Enterprise.
           </div>
 
         </div>

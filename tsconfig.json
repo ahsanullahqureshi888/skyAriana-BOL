@@ -22,6 +22,7 @@
         "name": "next"
       }
     ],
+    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./*"
@@ -40,6 +41,10 @@
   "exclude": [
     "node_modules",
     "bol-ledger",
-    "awesome-claude-code-subagents"
+    "awesome-claude-code-subagents",
+    "scripts/fleet",
+    "release",
+    "release-desktop",
+    ".desktop-package"
   ]
 }

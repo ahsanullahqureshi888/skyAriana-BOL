@@ -96,35 +96,35 @@ export function CompaniesView() {
       {currentAccount.companies.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           {/* Card 1 */}
-          <div className="flex items-center gap-4 rounded-3xl border border-amber-200/60 bg-white/90 p-5 backdrop-blur-xl shadow-lg shadow-amber-900/5 relative overflow-hidden group hover:border-amber-400 transition-all">
-            <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-900 to-indigo-900 text-amber-400 shadow-md shadow-blue-950/20">
+          <div className="flex items-center gap-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm relative overflow-hidden group hover:border-blue-300 dark:hover:border-blue-700 transition-all">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-amber-400 border border-slate-800 shadow-sm">
               <Building className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs font-black text-slate-500 uppercase tracking-wider">Shipper Companies</p>
-              <p className="text-3xl font-black text-slate-900 mt-0.5">{currentAccount.companies.length}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Shipper Companies</p>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">{currentAccount.companies.length}</p>
             </div>
           </div>
 
           {/* Card 2 */}
-          <div className="flex items-center gap-4 rounded-3xl border border-amber-200/60 bg-white/90 p-5 backdrop-blur-xl shadow-lg shadow-amber-900/5 relative overflow-hidden group hover:border-amber-400 transition-all">
-            <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-900 to-purple-900 text-amber-400 shadow-md shadow-indigo-950/20">
+          <div className="flex items-center gap-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm relative overflow-hidden group hover:border-blue-300 dark:hover:border-blue-700 transition-all">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-950 text-amber-400 border border-slate-800 shadow-sm">
               <BookOpen className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs font-black text-slate-500 uppercase tracking-wider">Recorded Entries</p>
-              <p className="text-3xl font-black text-slate-900 mt-0.5">{totalEntries}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Recorded Entries</p>
+              <p className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">{totalEntries}</p>
             </div>
           </div>
 
           {/* Card 3 */}
-          <div className="flex items-center gap-4 rounded-3xl border border-amber-200/60 bg-white/90 p-5 backdrop-blur-xl shadow-lg shadow-amber-900/5 relative overflow-hidden group hover:border-amber-400 transition-all">
-            <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 shadow-sm">
+          <div className="flex items-center gap-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm relative overflow-hidden group hover:border-emerald-300 dark:hover:border-emerald-700 transition-all">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400 shadow-sm">
               <DollarSign className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-xs font-black text-slate-500 uppercase tracking-wider">Net Account Balance</p>
-              <p className="text-2xl font-black text-emerald-700 mt-0.5 font-mono">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Net Account Balance</p>
+              <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-0.5 font-mono tabular-nums">
                 ${grandNetBalance.toLocaleString()} <span className="text-xs text-slate-500 font-sans font-bold">USD</span>
               </p>
             </div>

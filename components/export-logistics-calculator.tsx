@@ -129,11 +129,10 @@ export function ExportLogisticsCalculator({
     setRiskBuffer(preset.defaultRiskBuffer)
     setTargetMargin(preset.defaultTargetMargin)
     setEquipmentType(preset.equipmentType || "40RF")
-    if (preset.temperatureSetting) {
-      setTemperatureSetting(preset.temperatureSetting)
-    }
-    if (preset.defaultOceanFreight > 0) {
-      setOceanFreight(preset.defaultOceanFreight)
+    setTemperatureSetting(preset.temperatureSetting || "")
+    setOceanFreight(preset.defaultOceanFreight ?? 0)
+    if (preset.destinationPort) {
+      setDestinationPortName(preset.destinationPort)
     }
     toast.success(`Loaded ${preset.name}`, {
       description: preset.namePersian,
@@ -196,6 +195,15 @@ export function ExportLogisticsCalculator({
       temperatureSetting,
     })
   }, [oceanFreight, legs, riskBuffer, targetMargin, pricingMethod, destinationPortName, shipperName, equipmentType, temperatureSetting])
+
+  // Format Currency based on active mode
+  const formatCost = (usd: number) => {
+    if (currencyMode === "AFN") {
+      const afn = Math.round(usd * (quoteResult.exchangeRate || 68.5))
+      return `؋${afn.toLocaleString()}`
+    }
+    return `${usd.toLocaleString()}`
+  }
 
   // Copy Handlers
   const handleCopyEnglish = () => {
@@ -263,24 +271,29 @@ export function ExportLogisticsCalculator({
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white dark:bg-[#0c0c0f] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-sm">
         <div className="space-y-1">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400">
+            <div className="p-2.5 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
               <Calculator className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl md:text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
+                <h2 className="text-xl md:text-2xl font-black tracking-tight text-zinc-950 dark:text-zinc-50">
                   Export & Reverse-Transit Logistics Engine
                 </h2>
-                {quoteResult.isReefer && (
+                {quoteResult.isReefer ? (
                   <Badge className="bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-300 dark:border-cyan-800 text-[11px] gap-1 font-bold">
                     <ThermometerSnowflake className="w-3.5 h-3.5" />
-                    Reefer ({equipmentType})
+                    Reefer ({equipmentType}{temperatureSetting ? ` • ${temperatureSetting}` : ""})
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[11px] gap-1 font-semibold">
+                    <Box className="w-3.5 h-3.5 text-blue-500" />
+                    Standard Dry ({equipmentType})
                   </Badge>
                 )}
                 <AutoSaveBadge status={autoSaveStatus} lastSavedAt={lastSavedAt} />
               </div>
 
-              <p className="text-xs md:text-sm text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs md:text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
                 Inland Border Clearance, Plugging Charges, Escort Service (مامور بدرقه), TRF Taxes & Multi-Leg Quotes
               </p>
             </div>
@@ -322,163 +335,222 @@ export function ExportLogisticsCalculator({
         </div>
       </div>
 
-      {/* Corridor Preset Selector Tabs (3 Corridors) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Corridor Preset Selector Tabs (4 Corridors - Balanced 4-Column Grid) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {EXPORT_CORRIDOR_PRESETS.map((preset) => {
           const isSelected = selectedCorridorId === preset.id
-          const isReeferCard = preset.routeCode === "DGH-MERSIN-REEFER"
+          const isReeferCard = preset.routeCode.includes("REEFER") || preset.equipmentType === "40RF"
+
+          // Determine accurate route flag and badge title
+          let badgeText: string = preset.routeCode
+          let badgeFlag = "📍"
+          if (preset.routeCode === "DGH-MERSIN-NHAVA-REEFER") {
+            badgeText = "Route 3B (Nhava Reefer)"
+            badgeFlag = "❄️🇮🇳"
+          } else if (preset.routeCode === "DGH-MERSIN-REEFER") {
+            badgeText = "Route 3A (Mersin Reefer)"
+            badgeFlag = "❄️🇹🇷"
+          } else if (preset.routeCode === "DGH-MERSIN") {
+            badgeText = "Route 1 (Mersin Dry)"
+            badgeFlag = "🇹🇷"
+          } else if (preset.routeCode === "NMZ-BND") {
+            badgeText = "Route 2 (Bandar Abbas)"
+            badgeFlag = "🇮🇷"
+          }
+
+          const legsSumUSD = preset.legs.reduce((s, l) => s + l.cost, 0)
+          const legsSumDisplay = currencyMode === "USD"
+            ? `$${legsSumUSD.toLocaleString()} USD`
+            : `؋${Math.round(legsSumUSD * (quoteResult.exchangeRate || 68.5)).toLocaleString()} AFN`
+
           return (
             <div
               key={preset.id}
               onClick={() => handleSelectCorridor(preset)}
-              className={`cursor-pointer rounded-2xl p-4 md:p-5 border transition-all duration-200 ${
+              className={`group relative cursor-pointer rounded-2xl p-4 md:p-5 border transition-all duration-200 flex flex-col justify-between ${
                 isSelected
                   ? isReeferCard
-                    ? "bg-cyan-50/70 dark:bg-cyan-950/30 border-cyan-500/80 shadow-md ring-1 ring-cyan-500/40"
-                    : "bg-blue-50/70 dark:bg-blue-950/30 border-blue-500/80 shadow-md ring-1 ring-blue-500/40"
-                  : "bg-white dark:bg-[#0c0c0f] border-zinc-200 dark:border-zinc-800 hover:border-blue-300 dark:hover:border-blue-900 shadow-xs"
+                    ? "bg-gradient-to-b from-cyan-500/10 via-sky-500/5 to-white dark:from-cyan-950/40 dark:via-slate-900/90 dark:to-slate-900 border-cyan-500 dark:border-cyan-400 ring-2 ring-cyan-500/25 shadow-md"
+                    : "bg-gradient-to-b from-blue-500/10 via-indigo-500/5 to-white dark:from-blue-950/40 dark:via-slate-900/90 dark:to-slate-900 border-blue-500 dark:border-blue-400 ring-2 ring-blue-500/25 shadow-md"
+                  : "bg-white dark:bg-[#0c0c0f] border-zinc-200 dark:border-zinc-800/90 hover:border-blue-300 dark:hover:border-zinc-700 hover:shadow-xs shadow-2xs"
               }`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] font-bold ${
-                        isSelected
-                          ? isReeferCard
-                            ? "bg-cyan-600 text-white border-cyan-600"
-                            : "bg-blue-600 text-white border-blue-600"
-                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
-                      }`}
-                    >
-                      {preset.routeCode === "DGH-MERSIN-REEFER"
-                        ? "❄️ Route 3 (Reefer)"
-                        : preset.routeCode === "DGH-MERSIN"
-                        ? "🇹🇷 Route 1 (Dry)"
-                        : "🇮🇷 Route 2 (South)"}
-                    </Badge>
-                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                      {preset.name}
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] font-bold gap-1 px-2 py-0.5 rounded-full ${
+                      isSelected
+                        ? isReeferCard
+                          ? "bg-cyan-600 text-white border-cyan-600 shadow-2xs"
+                          : "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                        : "bg-zinc-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700"
+                    }`}
+                  >
+                    <span>{badgeFlag}</span>
+                    <span>{badgeText}</span>
+                  </Badge>
+
+                  {isSelected && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      Active
                     </span>
-                  </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium line-clamp-2">
-                    {preset.description}
-                  </p>
-                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 font-sans mt-1" dir="rtl">
-                    {preset.namePersian}
-                  </p>
+                  )}
                 </div>
-                <div className="text-right whitespace-nowrap">
-                  <span className="text-[10px] text-zinc-400 block">Legs Total</span>
-                  <span className="text-sm font-bold font-mono text-zinc-900 dark:text-zinc-100">
-                    ${preset.legs.reduce((s, l) => s + l.cost, 0).toLocaleString()} USD
-                  </span>
-                </div>
+
+                <h4 className="text-xs font-bold text-zinc-950 dark:text-zinc-50 leading-snug line-clamp-1 mb-1.5">
+                  {preset.name}
+                </h4>
+
+                <p className="text-[11px] text-zinc-600 dark:text-zinc-300 line-clamp-2 leading-relaxed mb-2 font-normal">
+                  {preset.description}
+                </p>
+
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-vazirmatn line-clamp-1 mb-3 text-right" dir="rtl">
+                  {preset.namePersian}
+                </p>
+              </div>
+
+              <div className="pt-2.5 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-zinc-400 dark:text-zinc-500">
+                  Legs Total
+                </span>
+                <span className={`text-xs font-bold font-mono ${
+                  isSelected
+                    ? isReeferCard
+                      ? "text-cyan-700 dark:text-cyan-300 font-black"
+                      : "text-blue-700 dark:text-blue-300 font-black"
+                    : "text-zinc-900 dark:text-zinc-100 font-bold"
+                }`}>
+                  {legsSumDisplay}
+                </span>
               </div>
             </div>
           )
         })}
       </div>
 
-      {/* KPI Cards Row */}
+      {/* KPI Cards Row (6 Balanced Cards) */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {/* Card 1: Transit & Accessorials */}
-        <Card className="bg-white dark:bg-[#0c0c0f] border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xs">
-          <CardContent className="p-4 space-y-1">
+        <Card className="bg-white dark:bg-[#0c0c0f] border-zinc-200 dark:border-zinc-800/90 rounded-2xl shadow-xs border-t-2 border-t-blue-500 hover:shadow-sm transition-all">
+          <CardContent className="p-3.5 space-y-1.5">
             <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
-              <span className="text-[11px] font-semibold uppercase tracking-wider">Transit & Fees</span>
-              <Truck className="w-4 h-4 text-blue-500" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Transit & Fees</span>
+              <div className="w-6 h-6 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                <Truck className="w-3.5 h-3.5" />
+              </div>
             </div>
-            <div className="text-lg md:text-xl font-bold font-mono text-zinc-950 dark:text-zinc-50">
+            <div className="text-base sm:text-lg lg:text-xl font-black font-mono text-zinc-950 dark:text-zinc-50 truncate">
               {currencyMode === "USD"
                 ? `$${quoteResult.inlandAndBorderCostUSD.toLocaleString()}`
                 : `؋${quoteResult.inlandAndBorderCostAFN.toLocaleString()}`}
             </div>
-            <p className="text-[10px] text-zinc-400 truncate">{legs.length} Stops (Escort / Plug)</p>
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium truncate">
+              {legs.length} Stops (Transit / Escort)
+            </p>
           </CardContent>
         </Card>
 
         {/* Card 2: Ocean Freight (with TRF) */}
-        <Card className="bg-white dark:bg-[#0c0c0f] border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xs">
-          <CardContent className="p-4 space-y-1">
+        <Card className="bg-white dark:bg-[#0c0c0f] border-zinc-200 dark:border-zinc-800/90 rounded-2xl shadow-xs border-t-2 border-t-cyan-500 hover:shadow-sm transition-all">
+          <CardContent className="p-3.5 space-y-1.5">
             <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
-              <span className="text-[11px] font-semibold uppercase tracking-wider">Ocean Freight</span>
-              <Ship className="w-4 h-4 text-cyan-500" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Ocean Freight</span>
+              <div className="w-6 h-6 rounded-lg bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+                <Ship className="w-3.5 h-3.5" />
+              </div>
             </div>
-            <div className="text-lg md:text-xl font-bold font-mono text-zinc-950 dark:text-zinc-50">
+            <div className="text-base sm:text-lg lg:text-xl font-black font-mono text-zinc-950 dark:text-zinc-50 truncate">
               {currencyMode === "USD"
                 ? `$${quoteResult.oceanFreightCostUSD.toLocaleString()}`
                 : `؋${quoteResult.oceanFreightCostAFN.toLocaleString()}`}
             </div>
-            <p className="text-[10px] text-zinc-400 truncate">Includes 8% TRF Tax</p>
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium truncate">
+              {quoteResult.oceanFreightCostUSD > 0 ? "Includes 8% TRF Tax" : "Direct Inland Leg"}
+            </p>
           </CardContent>
         </Card>
 
         {/* Card 3: Escort & Plugging */}
-        <Card className="bg-white dark:bg-[#0c0c0f] border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xs">
-          <CardContent className="p-4 space-y-1">
+        <Card className="bg-white dark:bg-[#0c0c0f] border-zinc-200 dark:border-zinc-800/90 rounded-2xl shadow-xs border-t-2 border-t-amber-500 hover:shadow-sm transition-all">
+          <CardContent className="p-3.5 space-y-1.5">
             <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
-              <span className="text-[11px] font-semibold uppercase tracking-wider">Escort & Plug</span>
-              <Shield className="w-4 h-4 text-amber-500" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Escort & Plug</span>
+              <div className="w-6 h-6 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <Shield className="w-3.5 h-3.5" />
+              </div>
             </div>
-            <div className="text-lg md:text-xl font-bold font-mono text-zinc-950 dark:text-zinc-50">
-              ${(quoteResult.escortFeeUSD + quoteResult.pluggingFeeUSD).toLocaleString()}
+            <div className="text-base sm:text-lg lg:text-xl font-black font-mono text-zinc-950 dark:text-zinc-50 truncate">
+              {currencyMode === "USD"
+                ? `$${(quoteResult.escortFeeUSD + quoteResult.pluggingFeeUSD).toLocaleString()}`
+                : `؋${Math.round((quoteResult.escortFeeUSD + quoteResult.pluggingFeeUSD) * (quoteResult.exchangeRate || 68.5)).toLocaleString()}`}
             </div>
-            <p className="text-[10px] text-zinc-400 truncate">
-              {quoteResult.escortFeeUSD > 0 ? "مامور بدرقه + " : ""}
-              {quoteResult.pluggingFeeUSD > 0 ? "Plugging" : "None"}
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium truncate font-vazirmatn">
+              {quoteResult.escortFeeUSD > 0 ? "مامور بدرقه " : ""}
+              {quoteResult.pluggingFeeUSD > 0 ? "+ برق رفر" : (!quoteResult.escortFeeUSD ? "None" : "")}
             </p>
           </CardContent>
         </Card>
 
         {/* Card 4: Base COGS (Grand Total Base Cost) */}
-        <Card className="bg-white dark:bg-[#0c0c0f] border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xs">
-          <CardContent className="p-4 space-y-1">
+        <Card className="bg-white dark:bg-[#0c0c0f] border-zinc-200 dark:border-zinc-800/90 rounded-2xl shadow-xs border-t-2 border-t-purple-500 hover:shadow-sm transition-all">
+          <CardContent className="p-3.5 space-y-1.5">
             <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
-              <span className="text-[11px] font-semibold uppercase tracking-wider">Grand Total Cost</span>
-              <Layers className="w-4 h-4 text-purple-500" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Grand Total Cost</span>
+              <div className="w-6 h-6 rounded-lg bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                <Layers className="w-3.5 h-3.5" />
+              </div>
             </div>
-            <div className="text-lg md:text-xl font-bold font-mono text-zinc-950 dark:text-zinc-50">
+            <div className="text-base sm:text-lg lg:text-xl font-black font-mono text-zinc-950 dark:text-zinc-50 truncate">
               {currencyMode === "USD"
                 ? `$${quoteResult.totalBaseCostUSD.toLocaleString()}`
                 : `؋${quoteResult.totalBaseCostAFN.toLocaleString()}`}
             </div>
-            <p className="text-[10px] text-zinc-400 truncate">Total Base Operating Cost</p>
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-medium truncate">
+              Total Base Operating Cost
+            </p>
           </CardContent>
         </Card>
 
         {/* Card 5: Target Profit */}
-        <Card className="bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50 rounded-xl shadow-xs">
-          <CardContent className="p-4 space-y-1">
+        <Card className="bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50 rounded-2xl shadow-xs border-t-2 border-t-emerald-500 hover:shadow-sm transition-all">
+          <CardContent className="p-3.5 space-y-1.5">
             <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400">
-              <span className="text-[11px] font-semibold uppercase tracking-wider">Net Profit</span>
-              <TrendingUp className="w-4 h-4 text-emerald-500" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Net Profit</span>
+              <div className="w-6 h-6 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                <TrendingUp className="w-3.5 h-3.5" />
+              </div>
             </div>
-            <div className="text-lg md:text-xl font-bold font-mono text-emerald-700 dark:text-emerald-300">
+            <div className="text-base sm:text-lg lg:text-xl font-black font-mono text-emerald-700 dark:text-emerald-300 truncate">
               {currencyMode === "USD"
                 ? `$${quoteResult.grossProfitUSD.toLocaleString()}`
                 : `؋${quoteResult.grossProfitAFN.toLocaleString()}`}
             </div>
-            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+            <p className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 font-medium truncate">
               {quoteResult.targetMarginPercent}% Margin ({quoteResult.effectiveMarkupPercent.toFixed(1)}% Markup)
             </p>
           </CardContent>
         </Card>
 
         {/* Card 6: Final Customer Quote */}
-        <Card className="bg-gradient-to-br from-blue-600 via-indigo-600 to-cyan-700 text-white rounded-xl shadow-md border-0 col-span-2 md:col-span-1">
-          <CardContent className="p-4 space-y-1">
+        <Card className="bg-gradient-to-br from-blue-600 via-indigo-600 to-cyan-700 text-white rounded-2xl shadow-md border-0 col-span-2 md:col-span-1 hover:shadow-lg transition-all">
+          <CardContent className="p-3.5 space-y-1.5">
             <div className="flex items-center justify-between text-blue-100">
-              <span className="text-[11px] font-bold uppercase tracking-wider">Final Quote</span>
-              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span className="text-[10px] font-black uppercase tracking-wider">Final Quote</span>
+              <div className="w-6 h-6 rounded-lg bg-white/10 text-amber-300 flex items-center justify-center">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
             </div>
-            <div className="text-lg md:text-xl font-black font-mono text-white">
+            <div className="text-base sm:text-lg lg:text-xl font-black font-mono text-white truncate tracking-tight">
               {currencyMode === "USD"
                 ? `$${quoteResult.finalQuotedPriceUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
                 : `؋${quoteResult.finalQuotedPriceAFN.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
             </div>
-            <p className="text-[10px] text-blue-200 truncate">Total / (1 - Margin)</p>
+            <p className="text-[10px] text-blue-200 font-medium truncate">
+              Total / (1 - Margin)
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -594,8 +666,10 @@ export function ExportLogisticsCalculator({
                     <td colSpan={4} className="p-3 text-right text-zinc-600 dark:text-zinc-400">
                       Transit & Accessorial Legs Total:
                     </td>
-                    <td className="p-3 text-right font-mono text-zinc-950 dark:text-zinc-50">
-                      ${quoteResult.inlandAndBorderCostUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                    <td className="p-3 text-right font-mono font-black text-blue-700 dark:text-blue-400 text-sm">
+                      {currencyMode === "USD"
+                        ? `${quoteResult.inlandAndBorderCostUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })} USD`
+                        : `؋${quoteResult.inlandAndBorderCostAFN.toLocaleString("en-US", { minimumFractionDigits: 2 })} AFN`}
                     </td>
                     <td></td>
                   </tr>
@@ -625,7 +699,15 @@ export function ExportLogisticsCalculator({
                 </label>
                 <select
                   value={equipmentType}
-                  onChange={(e) => setEquipmentType(e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value as EquipmentType
+                    setEquipmentType(next)
+                    if (["40HC", "20GP", "40Dry"].includes(next)) {
+                      setTemperatureSetting("")
+                    } else if (!temperatureSetting) {
+                      setTemperatureSetting("-18°C Frozen")
+                    }
+                  }}
                   className="w-full h-8 text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 font-semibold"
                 >
                   <option value="40RF">❄️ 40RF - 40ft High Cube Reefer (Plugging Active)</option>
@@ -741,80 +823,75 @@ export function ExportLogisticsCalculator({
         {/* Right Column: Visual Breakdown, Cost Distribution & Formal Dossier (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
           {/* Visual Cost Allocation Progress Bars */}
-          <div className="bg-white dark:bg-[#0c0c0f] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs space-y-4">
+          <div className="bg-white dark:bg-[#0c0c0f] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs space-y-5">
             <h3 className="text-sm font-bold text-zinc-950 dark:text-zinc-50 flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <Layers className="w-4 h-4 text-emerald-500" />
                 Cost Breakdown & Revenue Share
               </span>
-              <span className="text-xs font-mono font-bold text-zinc-500">
-                100% Total Quoted
+              <span className="text-[11px] font-mono font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full">
+                100% QUOTE
               </span>
             </h3>
 
             {/* Stacked Percentage Bar */}
-            <div className="space-y-2">
-              <div className="h-4 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden flex shadow-inner">
+            <div className="space-y-4">
+              <div className="relative h-6 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full flex p-1 gap-1 shadow-inner overflow-hidden">
                 {quoteResult.escortFeeUSD > 0 && (
                   <div
                     style={{ width: `${(quoteResult.escortFeeUSD / quoteResult.finalQuotedPriceUSD) * 100}%` }}
-                    className="bg-amber-500 hover:opacity-90 transition-all"
-                    title={`Escort Service: $${quoteResult.escortFeeUSD}`}
+                    className="bg-gradient-to-r from-amber-500 to-amber-400 rounded-full shadow-sm hover:opacity-90 transition-all cursor-crosshair group relative"
                   />
                 )}
                 {quoteResult.pluggingFeeUSD > 0 && (
                   <div
                     style={{ width: `${(quoteResult.pluggingFeeUSD / quoteResult.finalQuotedPriceUSD) * 100}%` }}
-                    className="bg-cyan-500 hover:opacity-90 transition-all"
-                    title={`Plugging Charges: $${quoteResult.pluggingFeeUSD}`}
+                    className="bg-gradient-to-r from-cyan-500 to-cyan-400 rounded-full shadow-sm hover:opacity-90 transition-all cursor-crosshair"
                   />
                 )}
                 <div
                   style={{ width: `${(quoteResult.inlandTruckingCostUSD / quoteResult.finalQuotedPriceUSD) * 100}%` }}
-                  className="bg-blue-500 hover:opacity-90 transition-all"
-                  title={`Inland Trucking: $${quoteResult.inlandTruckingCostUSD}`}
+                  className="bg-gradient-to-r from-blue-500 to-blue-400 rounded-full shadow-sm hover:opacity-90 transition-all cursor-crosshair"
                 />
                 <div
                   style={{ width: `${(quoteResult.oceanFreightTotalUSD / quoteResult.finalQuotedPriceUSD) * 100}%` }}
-                  className="bg-indigo-500 hover:opacity-90 transition-all"
-                  title={`Ocean Freight (TRF): $${quoteResult.oceanFreightTotalUSD}`}
+                  className="bg-gradient-to-r from-indigo-500 to-indigo-400 rounded-full shadow-sm hover:opacity-90 transition-all cursor-crosshair"
                 />
                 <div
                   style={{ width: `${(quoteResult.grossProfitUSD / quoteResult.finalQuotedPriceUSD) * 100}%` }}
-                  className="bg-emerald-500 hover:opacity-90 transition-all"
-                  title={`Net Profit: $${quoteResult.grossProfitUSD}`}
+                  className="bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full shadow-sm hover:opacity-90 transition-all cursor-crosshair"
                 />
               </div>
 
               {/* Legend Grid */}
-              <div className="grid grid-cols-2 gap-2 pt-2 text-xs">
+              <div className="grid grid-cols-2 gap-2 text-xs">
                 {quoteResult.escortFeeUSD > 0 && (
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40">
-                    <span className="flex items-center gap-1.5 text-amber-800 dark:text-amber-300 font-semibold">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-br from-amber-50/50 to-amber-100/30 dark:from-amber-950/20 dark:to-amber-900/10 border border-amber-200/60 dark:border-amber-900/40 hover:shadow-sm transition-all group">
+                    <span className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-semibold text-[11px] uppercase tracking-wide">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/30 group-hover:scale-110 transition-transform" />
                       Escort (مامور بدرقه)
                     </span>
-                    <span className="font-mono font-bold text-amber-900 dark:text-amber-200">
-                      ${quoteResult.escortFeeUSD}
+                    <span className="font-mono font-black text-amber-900 dark:text-amber-200">
+                      {formatCost(quoteResult.escortFeeUSD)}
                     </span>
                   </div>
                 )}
 
                 {quoteResult.pluggingFeeUSD > 0 && (
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-cyan-50/50 dark:bg-cyan-950/20 border border-cyan-200 dark:border-cyan-900/40">
-                    <span className="flex items-center gap-1.5 text-cyan-800 dark:text-cyan-300 font-semibold">
-                      <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-gradient-to-br from-cyan-50/50 to-cyan-100/30 dark:from-cyan-950/20 dark:to-cyan-900/10 border border-cyan-200/60 dark:border-cyan-900/40 hover:shadow-sm transition-all group">
+                    <span className="flex items-center gap-2 text-cyan-800 dark:text-cyan-300 font-semibold text-[11px] uppercase tracking-wide">
+                      <span className="w-2.5 h-2.5 rounded-full bg-cyan-500 shadow-sm shadow-cyan-500/30 group-hover:scale-110 transition-transform" />
                       Plugging (7 Days)
                     </span>
-                    <span className="font-mono font-bold text-cyan-900 dark:text-cyan-200">
-                      ${quoteResult.pluggingFeeUSD}
+                    <span className="font-mono font-black text-cyan-900 dark:text-cyan-200">
+                      {formatCost(quoteResult.pluggingFeeUSD)}
                     </span>
                   </div>
                 )}
 
-                <div className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-100 dark:border-zinc-800">
-                  <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/80 hover:border-blue-300 transition-colors group">
+                  <span className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 font-semibold text-[11px] uppercase tracking-wide">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500/30 group-hover:scale-110 transition-transform" />
                     Inland Trucking
                   </span>
                   <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
@@ -822,9 +899,9 @@ export function ExportLogisticsCalculator({
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-100 dark:border-zinc-800">
-                  <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/80 hover:border-indigo-300 transition-colors group">
+                  <span className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 font-semibold text-[11px] uppercase tracking-wide">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm shadow-indigo-500/30 group-hover:scale-110 transition-transform" />
                     Ocean + TRF
                   </span>
                   <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
@@ -832,19 +909,18 @@ export function ExportLogisticsCalculator({
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 col-span-2">
-                  <span className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-300 font-bold">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <div className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/20 border border-emerald-200 dark:border-emerald-900/50 col-span-2 shadow-sm">
+                  <span className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-black text-xs uppercase tracking-wider">
+                    <span className="w-3 h-3 rounded-full bg-emerald-500 shadow-md shadow-emerald-500/40 animate-pulse" />
                     Net Profit ({quoteResult.targetMarginPercent}% Margin)
                   </span>
-                  <span className="font-mono font-extrabold text-emerald-700 dark:text-emerald-300 text-sm">
-                    ${quoteResult.grossProfitUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  <span className="font-mono font-black text-emerald-700 dark:text-emerald-300 text-base drop-shadow-sm">
+                    {currencyMode === "USD" ? `${quoteResult.grossProfitUSD.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : `O<${quoteResult.grossProfitAFN.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
                   </span>
                 </div>
               </div>
             </div>
           </div>
-
           {/* Bilingual Quotation Dossier Preview */}
           <div className="bg-white dark:bg-[#0c0c0f] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
@@ -857,7 +933,7 @@ export function ExportLogisticsCalculator({
                   onClick={handleCopyEnglish}
                   variant="outline"
                   size="sm"
-                  className="h-7 text-xs px-2.5 gap-1"
+                  className="h-7 text-xs px-2.5 gap-1 shadow-xs"
                 >
                   {copiedEnglish ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   EN
@@ -866,7 +942,7 @@ export function ExportLogisticsCalculator({
                   onClick={handleCopyPersian}
                   variant="outline"
                   size="sm"
-                  className="h-7 text-xs px-2.5 gap-1"
+                  className="h-7 text-xs px-2.5 gap-1 shadow-xs"
                 >
                   {copiedPersian ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   فا / پښتو
@@ -874,25 +950,27 @@ export function ExportLogisticsCalculator({
               </div>
             </div>
 
-            <div className="bg-zinc-900 text-zinc-200 p-4 rounded-xl font-mono text-[11px] leading-relaxed overflow-x-auto max-h-[300px] border border-zinc-800 select-all">
-              <pre className="whitespace-pre">{quoteResult.formattedDossierText}</pre>
+            <div className="relative group">
+              <div className="bg-zinc-950 text-zinc-300 p-4 sm:p-5 rounded-xl font-mono text-[11px] leading-relaxed border border-zinc-800 shadow-inner max-h-[250px] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-zinc-900/50 select-all relative z-20 focus-within:ring-2 focus-within:ring-blue-500/30">
+                <pre className="whitespace-pre-wrap break-words">{quoteResult.formattedDossierText}</pre>
+              </div>
             </div>
 
             {/* Footer Action Buttons */}
-            <div className="flex items-center justify-between gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
               <Button
                 onClick={handlePostLedger}
                 variant="outline"
-                className="w-full text-xs font-semibold gap-1.5 h-9 rounded-xl border-zinc-300 dark:border-zinc-700"
+                className="flex-1 w-full text-xs font-bold gap-2 h-10 rounded-xl border-zinc-300 dark:border-zinc-700 shadow-xs hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
               >
                 <BookOpen className="w-4 h-4 text-indigo-500" />
                 Post Ledger Journal
               </Button>
               <Button
                 onClick={handleApplyToBOL}
-                className="w-full text-xs font-semibold gap-1.5 h-9 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                className="flex-1 w-full text-xs font-bold gap-2 h-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/20 transition-all border border-blue-500/50"
               >
-                <Truck className="w-4 h-4" />
+                <Truck className="w-4 h-4 text-blue-100" />
                 Load into BOL Draft
               </Button>
             </div>

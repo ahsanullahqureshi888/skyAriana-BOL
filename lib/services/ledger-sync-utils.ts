@@ -40,10 +40,10 @@ export function getFinancialsMap(): Record<string, EntryFinancials> {
   }
 }
 
-export function saveFinancialsForEntry(
-  bolNo: string | undefined | null,
-  id: string | undefined | null,
-  entryData: {
+export interface FinancialEntryInput {
+  bolNo?: string | null
+  id?: string | null
+  data: {
     debit?: number | string
     credit?: number | string
     driverFreight?: string
@@ -59,78 +59,118 @@ export function saveFinancialsForEntry(
     containerDetails?: string
     quantity?: string
   }
-) {
-  if (typeof window === "undefined") return
+}
+
+export function saveFinancialsForEntries(items: FinancialEntryInput[]): void {
+  if (typeof window === "undefined" || !items || items.length === 0) return
   try {
-    const map = getFinancialsMap()
-    const fin: EntryFinancials = {}
+    let map = getFinancialsMap()
 
-    if (entryData.debit !== undefined && entryData.debit !== "") {
-      fin.debit = Number(entryData.debit) || 0
-    }
-    if (entryData.credit !== undefined && entryData.credit !== "") {
-      fin.credit = Number(entryData.credit) || 0
-    }
-    if (entryData.driverFreight !== undefined) {
-      fin.driverFreight = entryData.driverFreight
-    }
-    if (entryData.surrenderedBL !== undefined) {
-      fin.surrenderedBL = Boolean(entryData.surrenderedBL)
-    }
-    if (entryData.pdfPathname !== undefined) {
-      fin.pdfPathname = entryData.pdfPathname
-    }
-    if (entryData.date !== undefined) {
-      fin.date = entryData.date
-    }
-    if (entryData.invoiceNo !== undefined) {
-      fin.invoiceNo = entryData.invoiceNo
-    }
-    if (entryData.shipperDescription !== undefined && entryData.shipperDescription.trim() !== "") {
-      fin.shipperDescription = entryData.shipperDescription.trim()
-      fin.description = entryData.shipperDescription.trim()
-    }
-    if (entryData.description !== undefined && entryData.description.trim() !== "") {
-      fin.shipperDescription = entryData.description.trim()
-      fin.description = entryData.description.trim()
-    }
-    if (entryData.consignee !== undefined) {
-      fin.consignee = entryData.consignee
-    }
-    if (entryData.containerNo !== undefined) {
-      fin.containerNo = entryData.containerNo
-    }
-    if (entryData.containerType !== undefined) {
-      fin.containerType = entryData.containerType
-    }
-    if (entryData.containerDetails !== undefined) {
-      fin.containerDetails = entryData.containerDetails
-    }
-    if (entryData.quantity !== undefined) {
-      fin.quantity = entryData.quantity
-    }
+    for (const item of items) {
+      const { bolNo, id, data: entryData } = item
+      if (!entryData) continue
 
-    const keys: string[] = []
-    if (bolNo && bolNo.trim()) {
-      keys.push(bolNo.trim().toLowerCase())
-      keys.push(bolNo.trim())
-    }
-    if (id && id.trim()) {
-      keys.push(id.trim().toLowerCase())
-      keys.push(id.trim())
-    }
+      const fin: EntryFinancials = {}
 
-    keys.forEach((k) => {
-      map[k] = {
-        ...(map[k] || {}),
-        ...fin,
+      if (entryData.debit !== undefined && entryData.debit !== "") {
+        fin.debit = Number(entryData.debit) || 0
       }
-    })
+      if (entryData.credit !== undefined && entryData.credit !== "") {
+        fin.credit = Number(entryData.credit) || 0
+      }
+      if (entryData.driverFreight !== undefined) {
+        fin.driverFreight = entryData.driverFreight
+      }
+      if (entryData.surrenderedBL !== undefined) {
+        fin.surrenderedBL = Boolean(entryData.surrenderedBL)
+      }
+      if (entryData.pdfPathname !== undefined) {
+        fin.pdfPathname = entryData.pdfPathname
+      }
+      if (entryData.date !== undefined) {
+        fin.date = entryData.date
+      }
+      if (entryData.invoiceNo !== undefined) {
+        fin.invoiceNo = entryData.invoiceNo
+      }
+      if (entryData.shipperDescription !== undefined && entryData.shipperDescription.trim() !== "") {
+        fin.shipperDescription = entryData.shipperDescription.trim()
+        fin.description = entryData.shipperDescription.trim()
+      }
+      if (entryData.description !== undefined && entryData.description.trim() !== "") {
+        fin.shipperDescription = entryData.description.trim()
+        fin.description = entryData.description.trim()
+      }
+      if (entryData.consignee !== undefined) {
+        fin.consignee = entryData.consignee
+      }
+      if (entryData.containerNo !== undefined) {
+        fin.containerNo = entryData.containerNo
+      }
+      if (entryData.containerType !== undefined) {
+        fin.containerType = entryData.containerType
+      }
+      if (entryData.containerDetails !== undefined) {
+        fin.containerDetails = entryData.containerDetails
+      }
+      if (entryData.quantity !== undefined) {
+        fin.quantity = entryData.quantity
+      }
 
-    window.localStorage.setItem(FINANCIALS_MAP_KEY, JSON.stringify(map))
-  } catch (e) {
-    console.warn("Failed to save financials map:", e)
+      const keys: string[] = []
+      if (bolNo && bolNo.trim()) {
+        keys.push(bolNo.trim().toLowerCase())
+        keys.push(bolNo.trim())
+      }
+      if (id && id.trim()) {
+        keys.push(id.trim().toLowerCase())
+        keys.push(id.trim())
+      }
+
+      keys.forEach((k) => {
+        map[k] = {
+          ...(map[k] || {}),
+          ...fin,
+        }
+      })
+    }
+
+    // Limit map size to prevent QuotaExceededError
+    const allKeys = Object.keys(map)
+    if (allKeys.length > 500) {
+      const trimmed: Record<string, any> = {}
+      for (const k of allKeys.slice(-400)) {
+        trimmed[k] = map[k]
+      }
+      map = trimmed
+    }
+
+    try {
+      window.localStorage.setItem(FINANCIALS_MAP_KEY, JSON.stringify(map))
+    } catch {
+      // Aggressive prune on quota exceed
+      const keys = Object.keys(map)
+      const trimmed: Record<string, any> = {}
+      for (const k of keys.slice(-150)) {
+        trimmed[k] = map[k]
+      }
+      try {
+        window.localStorage.setItem(FINANCIALS_MAP_KEY, JSON.stringify(trimmed))
+      } catch {
+        // Degrade safely without throwing to caller
+      }
+    }
+  } catch {
+    // Fail-safe
   }
+}
+
+export function saveFinancialsForEntry(
+  bolNo: string | undefined | null,
+  id: string | undefined | null,
+  entryData: FinancialEntryInput["data"]
+) {
+  saveFinancialsForEntries([{ bolNo, id, data: entryData }])
 }
 
 export function smartMergeRow(existing: any = {}, incoming: any = {}): any {
@@ -246,7 +286,7 @@ function ledgerDateKey(value: unknown): string {
 }
 
 export function validateLedgerInvariance(
-  ledgerRecords: Record<string, AuditableLedgerEntry[]> = {}
+  ledgerRecords: Record<string, AuditableLedgerEntry[] | { entries?: AuditableLedgerEntry[]; currentBalance?: number } | unknown> = {}
 ): LedgerAuditResult {
   let totalAccounts = 0
   let totalEntries = 0
@@ -258,7 +298,13 @@ export function validateLedgerInvariance(
   totalAccounts = accountKeys.length
 
   for (const account of accountKeys) {
-    const entries = Array.isArray(ledgerRecords[account]) ? ledgerRecords[account] : []
+    const rawVal = ledgerRecords[account]
+    let entries: AuditableLedgerEntry[] = []
+    if (Array.isArray(rawVal)) {
+      entries = rawVal as AuditableLedgerEntry[]
+    } else if (rawVal && typeof rawVal === "object" && "entries" in rawVal && Array.isArray((rawVal as { entries: unknown[] }).entries)) {
+      entries = (rawVal as { entries: AuditableLedgerEntry[] }).entries
+    }
     totalEntries += entries.length
 
     let accDebit = 0
@@ -266,9 +312,11 @@ export function validateLedgerInvariance(
 
     // Sort a copy so importing or auditing does not mutate the caller's records.
     // Accept ISO and legacy day-first dates; keep same-day row order stable.
-    const chronological = entries.map((entry, index) => ({ entry, index })).sort((a, b) =>
-      ledgerDateKey(a.entry?.date).localeCompare(ledgerDateKey(b.entry?.date))
-    )
+    const chronological = entries
+      .map((entry: AuditableLedgerEntry, index: number) => ({ entry, index }))
+      .sort((a: { entry: AuditableLedgerEntry; index: number }, b: { entry: AuditableLedgerEntry; index: number }) =>
+        ledgerDateKey(a.entry?.date).localeCompare(ledgerDateKey(b.entry?.date))
+      )
     for (const { entry, index } of chronological) {
       const d = auditAmount(entry?.debit)
       const c = auditAmount(entry?.credit)
@@ -282,11 +330,11 @@ export function validateLedgerInvariance(
         })
         continue
       }
-      accDebit += d
-      accCredit += c
+      accDebit = Math.round((accDebit + d + Number.EPSILON) * 100) / 100
+      accCredit = Math.round((accCredit + c + Number.EPSILON) * 100) / 100
       if (entry.balance !== undefined && entry.balance !== null && entry.balance !== "") {
         const reported = auditAmount(entry.balance)
-        const expected = accDebit - accCredit
+        const expected = Math.round((accDebit - accCredit + Number.EPSILON) * 100) / 100
         if (!Number.isFinite(reported) || Math.abs(reported - expected) > 0.01) {
           discrepancies.push({
             account,
@@ -299,11 +347,11 @@ export function validateLedgerInvariance(
         }
       }
     }
-    totalDebit += accDebit
-    totalCredit += accCredit
+    totalDebit = Math.round((totalDebit + accDebit + Number.EPSILON) * 100) / 100
+    totalCredit = Math.round((totalCredit + accCredit + Number.EPSILON) * 100) / 100
   }
 
-  const netBalance = totalDebit - totalCredit
+  const netBalance = Math.round((totalDebit - totalCredit + Number.EPSILON) * 100) / 100
 
   return {
     isValid: discrepancies.length === 0,

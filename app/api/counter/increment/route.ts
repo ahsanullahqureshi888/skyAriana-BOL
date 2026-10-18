@@ -1,31 +1,33 @@
 import { NextResponse } from "next/server"
-import path from "path"
-import { readJsonFile, writeJsonFile } from "@/lib/services/blob-db"
+import { getDataPath } from "@/lib/server-paths"
+import { mutateJsonFile } from "@/lib/services/blob-db"
+import { createClient } from "@/lib/supabase/server"
 
-const SETTINGS_FILE = path.join(process.cwd(), ".local-cmr-settings.json")
-
-async function getCounter(): Promise<number> {
-  try {
-    const parsed = await readJsonFile<any>(SETTINGS_FILE, null)
-    if (parsed && typeof parsed.cmr_serial_counter === "number") {
-      return parsed.cmr_serial_counter
-    }
-  } catch (e) {}
-  return 5
-}
-
-async function saveCounter(val: number): Promise<void> {
-  try {
-    const settings = await readJsonFile<any>(SETTINGS_FILE, {})
-    settings.cmr_serial_counter = val
-    await writeJsonFile(SETTINGS_FILE, settings)
-  } catch (e) {}
-}
+const SETTINGS_FILE = getDataPath(".local-cmr-settings.json")
 
 export async function POST() {
-  const currentVal = await getCounter()
-  const nextVal = currentVal + 1
-  await saveCounter(nextVal)
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const role = user.user_metadata?.role || user.app_metadata?.role || "user"
+  if (role === "shipper" || role === "client" || role === "viewer") {
+    return NextResponse.json({ error: "Forbidden: Unauthorized to increment counter" }, { status: 403 })
+  }
+
+  let nextVal = 5
+
+  await mutateJsonFile(SETTINGS_FILE, {}, (settings: any) => {
+    const current = typeof settings?.cmr_serial_counter === "number" ? settings.cmr_serial_counter : 5
+    nextVal = current + 1
+    return {
+      ...(settings || {}),
+      cmr_serial_counter: nextVal,
+    }
+  })
 
   return NextResponse.json({
     counter: nextVal,

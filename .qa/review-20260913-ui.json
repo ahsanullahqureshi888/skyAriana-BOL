@@ -1,0 +1,30 @@
+{
+  "url": "http://127.0.0.1:3210",
+  "browser": "Microsoft Edge via Playwright",
+  "viewports": [
+    "1440x960",
+    "390x844"
+  ],
+  "checks": [
+    "URL username cannot create a session",
+    "Wrong password rejected",
+    "Configured credentials open BOL editor",
+    "Date-only label stays September 13 in Los Angeles",
+    "Saved BOLs tab renders",
+    "Account Ledger tab renders",
+    "A4 Preview tab renders",
+    "BOL Settings tab renders",
+    "BOL Editor tab renders",
+    "Mobile viewport has no horizontal page overflow"
+  ],
+  "pageErrors": [],
+  "consoleErrors": [],
+  "blockedRequests": [
+    "http://127.0.0.1:3210/api/sync",
+    "http://127.0.0.1:3210/api/sync"
+  ],
+  "mobileWidths": {
+    "viewport": 390,
+    "scroll": 390
+  }
+}

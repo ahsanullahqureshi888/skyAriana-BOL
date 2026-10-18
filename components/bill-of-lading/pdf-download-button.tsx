@@ -6,6 +6,8 @@ import { Download, Loader2, Trash2 } from "lucide-react"
 import { downloadPDFFromServer, deletePDFFromServer, buildBolSmartFileName } from "@/lib/utils/pdf-upload"
 import { toast } from "sonner"
 
+import { SaveToDriveButton } from "@/components/google-drive/save-to-drive-button"
+
 interface PDFDownloadButtonProps {
   bolId: string
   bolNumber: string
@@ -68,6 +70,8 @@ export function PDFDownloadButton({
     return null
   }
 
+  const smartFileName = buildBolSmartFileName(documentData, bolNumber, ".pdf")
+
   return (
     <div className="flex items-center gap-1">
       <Button
@@ -84,6 +88,24 @@ export function PDFDownloadButton({
           <Download className="h-3.5 w-3.5" />
         )}
       </Button>
+
+      <SaveToDriveButton
+        category="bol"
+        fileName={smartFileName}
+        showIconOnly={true}
+        size="icon"
+        className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+        getPdfBlob={async () => {
+          const res = await fetch(`/api/bol/pdf?action=download&bolId=${bolId}`)
+          const data = await res.json()
+          if (data?.data?.pdfUrl) {
+            const fileRes = await fetch(data.data.pdfUrl)
+            return fileRes.blob()
+          }
+          throw new Error("Unable to retrieve PDF")
+        }}
+      />
+
       <Button
         variant="outline"
         size="icon"

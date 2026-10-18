@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { isPashtoOrArabic, prepareBidiPdfText } from "@/lib/utils/pashto-bidi"
+import { SaveToDriveButton } from "@/components/google-drive/save-to-drive-button"
 
 type InvoiceItem = {
   id: string
@@ -502,7 +503,7 @@ async function invoicePdfBlob(invoiceInput: InvoiceForm) {
 
     if (logoSource) {
       try {
-        doc.addImage(logoSource, "PNG", 14, 15, 32, 20, undefined, "FAST")
+        doc.addImage(logoSource, "PNG", 14, 15, 32, 20, undefined, "SLOW")
       } catch {
         // Logo fallback
       }
@@ -810,9 +811,17 @@ export function InvoiceEditor() {
   }
 
   const newInvoice = async () => {
-    const response = await fetch("/api/invoices?action=next-number")
-    const result = await response.json()
-    setInvoice({ ...emptyInvoice(), invoice_number: result.invoiceNumber || "" })
+    let num = ""
+    try {
+      const response = await fetch("/api/invoices?action=next-number")
+      if (response.ok) {
+        const result = await response.json().catch(() => ({}))
+        num = result?.invoiceNumber || ""
+      }
+    } catch (e) {
+      console.warn("Error fetching next invoice number:", e)
+    }
+    setInvoice({ ...emptyInvoice(), invoice_number: num })
     setActiveTab("form")
   }
 
@@ -932,6 +941,13 @@ export function InvoiceEditor() {
             <Button onClick={downloadPdf} className="rounded-2xl bg-linear-to-r from-[#D4AF37] to-[#F4D03F] text-slate-950 shadow-lg shadow-amber-100">
               <Download className="h-4 w-4" /> Save PDF
             </Button>
+            <SaveToDriveButton
+              category="invoice"
+              fileName={`${invoice.invoice_number || "Invoice"}.pdf`}
+              label="Save to Drive"
+              className="rounded-2xl border-cyan-300 text-cyan-950 bg-cyan-50 hover:bg-cyan-100 font-bold"
+              getPdfBlob={() => invoicePdfBlob(invoice)}
+            />
             <ToolbarButton onClick={newInvoice} icon={<RefreshCw className="h-4 w-4" />} label="Reset View" />
           </div>
         </div>

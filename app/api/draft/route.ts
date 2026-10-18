@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
 import path from "path"
+import { getDataPath } from "@/lib/server-paths"
 import { readJsonFile, writeJsonFile } from "@/lib/services/blob-db"
 
-const CMR_DRAFT_FILE = path.join(process.cwd(), ".local-cmr-draft.json")
-const BOL_DRAFT_FILE = path.join(process.cwd(), ".local-bol-draft.json")
+const CMR_DRAFT_FILE = getDataPath(".local-cmr-draft.json")
+const BOL_DRAFT_FILE = getDataPath(".local-bol-draft.json")
 
 function getDraftFilePath(type?: string | null): string {
   if (type === "bol") return BOL_DRAFT_FILE
@@ -11,6 +12,14 @@ function getDraftFilePath(type?: string | null): string {
 }
 
 export async function GET(request: Request) {
+    // Auto-injected Cloud Auth Check
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const { createClient } = require('@/lib/supabase/server');
+      const supabaseAuth = await createClient();
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' }});
+    }
+
   try {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get("type") || "cmr"
@@ -27,6 +36,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+    // Auto-injected Cloud Auth Check
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const { createClient } = require('@/lib/supabase/server');
+      const supabaseAuth = await createClient();
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' }});
+    }
+
   try {
     const body = await request.json()
     const { searchParams } = new URL(request.url)
@@ -56,6 +73,14 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+    // Auto-injected Cloud Auth Check
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const { createClient } = require('@/lib/supabase/server');
+      const supabaseAuth = await createClient();
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' }});
+    }
+
   try {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get("type") || "cmr"

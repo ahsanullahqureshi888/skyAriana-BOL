@@ -6,7 +6,6 @@
  */
 
 import { getActiveExchangeRate } from "./currency-service"
-import * as XLSX from "xlsx"
 
 export interface AnalyticsKPIs {
   totalShipments: number
@@ -780,7 +779,8 @@ export function computeAnalyticsData(options?: {
 /**
  * Export Multi-Sheet Analytics Payload to Excel Workbook
  */
-export function exportAnalyticsToExcel(data: AnalyticsDataPayload, filename = "SkyAriana_Executive_Analytics_Report.xlsx"): void {
+export async function exportAnalyticsToExcel(data: AnalyticsDataPayload, filename = "SkyAriana_Executive_Analytics_Report.xlsx"): Promise<void> {
+  const XLSX = await import("xlsx")
   const wb = XLSX.utils.book_new()
 
   // Sheet 1: Executive KPI Summary

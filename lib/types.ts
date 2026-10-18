@@ -64,7 +64,19 @@ export interface InvoiceItem {
   detentionDetails?: string
 }
 
-export type UserRole = "superadmin" | "admin" | "accountant" | "viewer" | "shipper"
+export type UserRole =
+  | "superadmin"
+  | "admin"
+  | "management"
+  | "operations"
+  | "accounting"
+  | "accountant"
+  | "documents"
+  | "tracking"
+  | "data_entry"
+  | "viewer"
+  | "client"
+  | "shipper"
 
 export interface User {
   id: string
@@ -73,12 +85,18 @@ export interface User {
   role: UserRole
   email?: string
   password?: string
+  phone?: string
+  department?: string
+  branch?: string
   clientId?: string
   clientName?: string
-  status?: 'active' | 'disabled'
+  status?: 'active' | 'disabled' | 'inactive' | 'suspended' | 'locked' | 'pending'
   avatar?: string
+  permissions_override?: import('@/lib/rbac/rbac-types').UserPermissionOverride[]
   createdAt?: string
   lastLogin?: string
+  updatedAt?: string
+  createdBy?: string
 }
 
 export interface Invoice {

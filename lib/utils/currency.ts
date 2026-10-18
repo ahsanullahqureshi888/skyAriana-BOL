@@ -3,7 +3,7 @@
  * Supports real-time conversions, exchange rates, formatting, and UTF-8 safe exporting.
  */
 
-export type SupportedCurrency = "USD" | "AFN" | "IRR" | "AED" | "PKR" | "EUR"
+export type SupportedCurrency = "USD" | "AFN" | "IRR" | "AED" | "PKR" | "EUR" | "INR" | "TRY"
 
 export interface CurrencyConfig {
   code: SupportedCurrency
@@ -63,6 +63,22 @@ export const CURRENCY_CONFIGS: Record<SupportedCurrency, CurrencyConfig> = {
     defaultRateToUSD: 0.92,
     precision: 2,
   },
+  INR: {
+    code: "INR",
+    name: "Indian Rupee",
+    symbol: "₹",
+    namePersian: "روپیه هندی",
+    defaultRateToUSD: 83.5,
+    precision: 2,
+  },
+  TRY: {
+    code: "TRY",
+    name: "Turkish Lira",
+    symbol: "₺",
+    namePersian: "لیره ترکیه",
+    defaultRateToUSD: 34.2,
+    precision: 2,
+  },
 }
 
 export const SAVED_RATES_KEY = "sky-currency-rates-v1"
@@ -76,6 +92,8 @@ export function getCustomRates(): Record<SupportedCurrency, number> {
       AED: 3.6725,
       PKR: 278.5,
       EUR: 0.92,
+      INR: 83.5,
+      TRY: 34.2,
     }
   }
   try {
@@ -89,6 +107,8 @@ export function getCustomRates(): Record<SupportedCurrency, number> {
         AED: parsed.AED || CURRENCY_CONFIGS.AED.defaultRateToUSD,
         PKR: parsed.PKR || CURRENCY_CONFIGS.PKR.defaultRateToUSD,
         EUR: parsed.EUR || CURRENCY_CONFIGS.EUR.defaultRateToUSD,
+        INR: parsed.INR || CURRENCY_CONFIGS.INR.defaultRateToUSD,
+        TRY: parsed.TRY || CURRENCY_CONFIGS.TRY.defaultRateToUSD,
       }
     }
   } catch (e) {}
@@ -99,6 +119,8 @@ export function getCustomRates(): Record<SupportedCurrency, number> {
     AED: CURRENCY_CONFIGS.AED.defaultRateToUSD,
     PKR: CURRENCY_CONFIGS.PKR.defaultRateToUSD,
     EUR: CURRENCY_CONFIGS.EUR.defaultRateToUSD,
+    INR: CURRENCY_CONFIGS.INR.defaultRateToUSD,
+    TRY: CURRENCY_CONFIGS.TRY.defaultRateToUSD,
   }
 }
 

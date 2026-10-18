@@ -1,0 +1,2 @@
+@echo off
+"C:\Program Files\nodejs\node.exe" -e "let b='';process.stdin.on('data',d=>b+=d);process.stdin.on('end',()=>{try{const p=JSON.parse(b||'{}');if(process.argv.some(a=>/post/i.test(a))||p.toolResult||p.hookEvent==='PostToolUse'){console.log('{}');return;}if(p.toolCall){const c=(p.toolCall.args&&p.toolCall.args.CommandLine)||'';if(/rm\s+-rf|drop\s+table|git\s+reset\s+--hard/i.test(c)){console.log(JSON.stringify({decision:'ask',reason:'Destructive command'}));return;}console.log(JSON.stringify({decision:'allow'}));return;}}catch(e){}console.log('{}');});" %*

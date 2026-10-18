@@ -3,6 +3,14 @@ import { cacheDocument, getCachedDocument, invalidateDocumentCache } from '@/lib
 
 // GET - Retrieve cached BOL document
 export async function GET(request: NextRequest) {
+    // Auto-injected Cloud Auth Check
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const { createClient } = require('@/lib/supabase/server');
+      const supabaseAuth = await createClient();
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' }});
+    }
+
   try {
     const { searchParams } = new URL(request.url)
     const docId = searchParams.get('id') || searchParams.get('key')
@@ -30,6 +38,14 @@ export async function GET(request: NextRequest) {
 
 // POST - Cache BOL document
 export async function POST(request: NextRequest) {
+    // Auto-injected Cloud Auth Check
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const { createClient } = require('@/lib/supabase/server');
+      const supabaseAuth = await createClient();
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' }});
+    }
+
   try {
     const body = await request.json()
     const docId = body.docId || body.key
@@ -55,6 +71,14 @@ export async function POST(request: NextRequest) {
 
 // DELETE - Invalidate cache for document
 export async function DELETE(request: NextRequest) {
+    // Auto-injected Cloud Auth Check
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const { createClient } = require('@/lib/supabase/server');
+      const supabaseAuth = await createClient();
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' }});
+    }
+
   try {
     const { searchParams } = new URL(request.url)
     const docId = searchParams.get('id')

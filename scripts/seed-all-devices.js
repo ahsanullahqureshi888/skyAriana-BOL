@@ -3,7 +3,7 @@ const path = require('path');
 
 const prefix = `{
   "app": "SKY_ARIANA_LOGISTICS",
-  "version": "3.2.0",
+  "version": "5.1pro",
   "exportedAt": "2026-08-27T04:49:47.757Z",
   "totalDocuments": 79,
   "savedDocuments": [
@@ -638,31 +638,7 @@ async function run() {
 
   // 5. Broadcast to global relays
   const relays = [
-    'sky-relay-v3-master',
-    'sky-relay-v3-4440',
-    'sky-relay-v3-2026',
-    'sky-relay-v3-master-backup',
-  ];
-
-  for (const rk of relays) {
-    try {
-      const url = `https://cl1p.net/${encodeURIComponent(rk)}`;
-      const bodyStr = new URLSearchParams({ content: JSON.stringify(masterSnapshot) }).toString();
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'SkyArianaLogistics/3.2',
-        },
-        body: bodyStr,
-      });
-      console.log(`Broadcast to global relay [${rk}]:`, res.status === 200 ? 'SUCCESS' : `Status ${res.status}`);
-    } catch (e) {
-      console.warn(`Failed relay [${rk}]:`, e.message);
-    }
-  }
-
-  console.log('ALL LOCAL, CLOUD, SNAPSHOT, AND RELAY STORAGE SUCCESSFULLY UPDATED!');
+  console.log('ALL LOCAL, CLOUD, AND SNAPSHOT STORAGE SUCCESSFULLY UPDATED!');
 }
 
 run().catch(console.error);

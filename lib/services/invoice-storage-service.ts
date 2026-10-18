@@ -48,6 +48,7 @@ export interface InvoiceRecord {
   buyer_email?: string
   buyer_tax_number?: string
   shipper?: string
+  consignee?: string
   shipment_type?: string
   container_no?: string
   seal_no?: string
@@ -159,6 +160,7 @@ export async function saveInvoice(data: Partial<InvoiceRecord>) {
     buyer_email: data.buyer_email || "",
     buyer_tax_number: data.buyer_tax_number || "",
     shipper: data.shipper || "",
+    consignee: data.consignee || "",
     shipment_type: data.shipment_type || "",
     container_no: data.container_no || "",
     seal_no: data.seal_no || "",

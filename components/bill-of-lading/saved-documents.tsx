@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, useCallback, startTransition, memo, type ChangeEvent, type MouseEvent } from "react"
+import { useEffect, useMemo, useState, useRef, useCallback, startTransition, useDeferredValue, memo, type ChangeEvent, type MouseEvent } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -42,11 +42,54 @@ import {
   FileCode2,
   Package,
   Coins,
+  Printer,
+  BarChart3,
+  Banknote,
+  Wallet,
+  FolderArchive,
+  Compass,
+  FileCheck,
+  Archive,
+  AlertTriangle,
+  ShieldAlert,
+  Info,
 } from "lucide-react"
 import { generateBOLPDFBlob, savePDFToDevice, buildBolSmartFileName } from "@/lib/utils/pdf-upload"
-import { generateShippingDocumentsPDF, deriveShippingDocumentData, buildShippingDocumentFileName } from "@/lib/utils/shipping-documents"
+import { generateShippingDocumentsPDF, deriveShippingDocumentData, buildShippingDocumentFileName, extractInvoiceNumber } from "@/lib/utils/shipping-documents"
 import { CloudSyncModal } from "./cloud-sync-modal"
 import { useApp } from "@/lib/app-context"
+import { SavedBolReport } from "@/components/reports/saved-bol-report"
+import { extractBolRoute, parsePackages, parseWeight, parseMoney, parsePackageUnit, formatPackageBreakdown } from "@/lib/reports/parsers"
+import type { ReportTab } from "@/lib/reports/types"
+import { isMeaningfulBOL, parseBolSeq, isUUID, cleanBolNumber, normalizeBolRecord } from "@/lib/utils/bol-filters"
+import { RecentBolCard } from "./recent-bol-card"
+import { SavedBolCard } from "./saved-bol-card"
+import { duplicateBol, archiveBol, restoreBol } from "@/lib/services/bol-lifecycle-service"
+
+export { isMeaningfulBOL, parseBolSeq, isUUID, cleanBolNumber, normalizeBolRecord }
+
+export function getCleanBolNumber(doc: any): string {
+  const raw = String(doc?.bol_number || doc?.billOfLadingNumber || doc?.bolNo || doc?.id || "").trim()
+  if (raw === "b0632d43-3cf9-4c6e-8eed-e83c969d4c86") return "BOL-2026-NSA642"
+  if (raw === "a6959d9d-b0bc-49e6-80ad-48859a0c8225") return "BOL-2026-NSA640"
+  const clean = cleanBolNumber(doc?.bol_number) || cleanBolNumber(doc?.billOfLadingNumber) || cleanBolNumber(doc?.bolNo) || cleanBolNumber(doc?.id)
+  if (clean) return clean
+  return "BOL"
+}
+
+export function sanitizeSavedDocument<T extends Record<string, any>>(doc: T): T {
+  if (!doc) return doc
+  const cleanNum = getCleanBolNumber(doc)
+  const hasValidBol = cleanNum !== "BOL"
+  const isIdUUID = isUUID(doc.id)
+  return {
+    ...doc,
+    id: !isIdUUID ? (doc.id || cleanNum) : (hasValidBol ? cleanNum : doc.id),
+    bol_number: hasValidBol ? cleanNum : (cleanBolNumber(doc.bol_number) || ""),
+    billOfLadingNumber: hasValidBol ? cleanNum : (cleanBolNumber(doc.billOfLadingNumber) || ""),
+    bolNo: hasValidBol ? cleanNum : (cleanBolNumber(doc.bolNo) || ""),
+  }
+}
 
 type DocumentCategoryKey = "all" | "latest" | "account" | "export" | "import" | "with-pdf"
 type ViewMode = "grid" | "list" | "table"
@@ -88,9 +131,39 @@ interface SavedDocument {
   container_numbers?: string
   seal_numbers?: string
   measurement?: string
+  cargo_route_note?: string
+  consignee_address?: string
+  consignee_contact?: string
+  consignee_email?: string
+  shipper_address?: string
+  shipper_contact?: string
+  shipper_email?: string
+  notes_1?: string
+  notes_2?: string
+  notes_1_label?: string
+  notes_2_label?: string
+  notes_1_theme?: string
+  notes_2_theme?: string
+  routes?: Array<{
+    id?: string
+    location?: string
+    locationPersian?: string
+    stopOrder?: number
+    transportMode?: string
+    stopLabel?: string
+  }>
+  borderCrossing?: string
+  route_name?: string
+  driverFreight?: string
   created_at: string
   pdf_url?: string | null
   pdf_uploaded_at?: string | null
+  status?: string
+  isArchived?: boolean
+  archived_at?: string | null
+  archived_by?: string | null
+  pdf_status?: "none" | "ready" | "outdated" | "missing" | "error"
+  [key: string]: any
 }
 
 interface AccountCompanyPdfFile {
@@ -108,13 +181,13 @@ interface AccountCompanyRecord {
 }
 
 interface SavedDocumentsProps {
-  onLoadDocument: (id: string, targetTab?: string) => void
+  onLoadDocument: (id: string, targetTab?: string, initialDoc?: SavedDocument | any) => void
   refreshTrigger?: number
   variant?: "sidebar" | "sheet"
 }
 
 const categoryButtons: { key: DocumentCategoryKey; label: string }[] = [
-  { key: "all", label: "All Documents" },
+  { key: "all", label: "All BOL Records" },
   { key: "latest", label: "⚡ Latest BOLs" },
   { key: "with-pdf", label: "📄 Uploaded PDFs" },
   { key: "account", label: "🏢 Account" },
@@ -123,16 +196,52 @@ const categoryButtons: { key: DocumentCategoryKey; label: string }[] = [
 ]
 
 function extractInvoiceNo(doc: SavedDocument): string {
-  if (doc.invoice_no && doc.invoice_no.trim()) return doc.invoice_no.trim()
-  if (doc.invoice_number && doc.invoice_number.trim()) return doc.invoice_number.trim()
-  const texts = [
-    doc.cargo_description,
-    doc.goods_description,
-    doc.description_of_goods,
-    doc.remarks,
-  ].filter(Boolean).join(" ")
-  const match = texts.match(/(?:invoice|inv|fakt[ou]r|فاکتور)\s*(?:no|number|#)?\s*[:#-]?\s*([A-Z0-9][A-Z0-9/_-]*)/i)
-  return match?.[1]?.trim() || ""
+  return extractInvoiceNumber(doc)
+}
+
+function formatDisplayWeight(wt?: string | null): string {
+  if (!wt) return ""
+  let clean = String(wt).trim()
+  if (!clean || clean === "—" || clean === "-") return ""
+  clean = clean.replace(/\.0+$/, "").replace(/(\.\d+?)0+$/, "$1")
+  if (/^\d+$/.test(clean)) {
+    return Number(clean).toLocaleString() + " KG"
+  }
+  if (!clean.toLowerCase().includes("kg") && !clean.toLowerCase().includes("ton") && /^\d+[\d,.]*$/.test(clean)) {
+    return clean + " KG"
+  }
+  return clean
+}
+
+function isNonZeroRent(val: any): boolean {
+  if (!val) return false
+  const s = String(val).trim().toLowerCase()
+  if (s === "" || s === "0" || s === "0.00" || s === "0.0000" || s === "null" || s === "undefined") return false
+  if (s === "0 afn" || s === "0 usd" || s === "0.00 afn" || s === "0.00 usd") return false
+  return true
+}
+
+function formatDriverRent(rent?: any): string {
+  if (!isNonZeroRent(rent)) return ""
+  const str = String(rent).trim()
+  const cleanNumeric = str.replace(/\.0+$/, "").replace(/(\.\d+?)0+$/, "$1")
+  if (/^\d+(\.\d+)?$/.test(cleanNumeric)) {
+    const num = parseFloat(cleanNumeric)
+    return `${Math.round(num).toLocaleString()} AFN`
+  }
+  return str
+}
+
+function formatDocDate(doc: any): string {
+  const rawDate = doc?.issue_date || doc?.issueDate || doc?.created_at || doc?.createdAt
+  if (!rawDate) return "No date"
+  try {
+    const d = new Date(rawDate)
+    if (isNaN(d.getTime())) return "No date"
+    return d.toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })
+  } catch {
+    return "No date"
+  }
 }
 
 interface DocumentGridCardProps {
@@ -144,12 +253,17 @@ interface DocumentGridCardProps {
   uploadingId: string | null
   deletingId: string | null
   openingPdfId: string | null
+  downloadingPdfId?: string | null
   onEdit: (doc: SavedDocument) => void
   onDownload: (doc: SavedDocument) => void
   onPreview: (doc: SavedDocument) => void
   onDuplicate: (doc: SavedDocument) => void
   onOpenPdf: (doc: SavedDocument) => void
   onDelete: (doc: SavedDocument, e: React.MouseEvent) => void
+  onArchive?: (doc: SavedDocument, e?: React.MouseEvent) => void
+  onRestore?: (doc: SavedDocument) => void
+  onHardDelete?: (doc: SavedDocument, e?: React.MouseEvent) => void
+  onFiles?: (doc: SavedDocument) => void
   onCategoryAssign: (doc: SavedDocument, cat: Exclude<DocumentCategoryKey, "all" | "latest" | "with-pdf">) => void
   onFileInput: (doc: SavedDocument) => (e: ChangeEvent<HTMLInputElement>) => void
   isSelected?: boolean
@@ -157,343 +271,62 @@ interface DocumentGridCardProps {
   onSendToCMR?: (doc: SavedDocument) => void
 }
 
-const DocumentGridCard = memo(function DocumentGridCard({
-  doc,
-  isLatest,
-  hasUploadedPdf,
-  invoiceNo,
-  assignedCategory,
-  uploadingId,
-  deletingId,
-  openingPdfId,
-  onEdit,
-  onDownload,
-  onPreview,
-  onDuplicate,
-  onOpenPdf,
-  onDelete,
-  onCategoryAssign,
-  onFileInput,
-  isSelected = false,
-  onToggleSelect,
-  onSendToCMR,
-}: DocumentGridCardProps) {
-  const docKey = doc.id || doc.bol_number
-
+const DocumentGridCard = memo(function DocumentGridCard(props: DocumentGridCardProps) {
   return (
-    <article
-      style={{ contentVisibility: "auto", containIntrinsicSize: "380px" }}
-      className={`group relative flex min-h-[360px] flex-col rounded-[22px] sm:rounded-[26px] border ${
-        isSelected ? "border-blue-500 ring-2 ring-blue-500/30 bg-blue-50/20" : "border-slate-200/90 bg-white/95"
-      } p-3.5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-400 hover:bg-white hover:shadow-md overflow-hidden`}
-    >
-      {/* Top Accent Gradient Line */}
-      <div className={`absolute top-0 left-0 right-0 h-1.5 ${isLatest ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 shadow-sm shadow-amber-500/50" : "bg-gradient-to-r from-[#0a2540] via-blue-600 to-indigo-500"}`} />
-
-      {/* Top Header Row */}
-      <div className="flex items-center justify-between gap-1.5 pt-1 relative z-10 flex-wrap">
-        <div className="flex items-center gap-1.5 min-w-0 max-w-[72%] flex-wrap">
-          {onToggleSelect && (
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => onToggleSelect(docKey)}
-              className="w-4 h-4 rounded-md border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
-              title="Select document for batch actions"
-            />
-          )}
-          <div className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#0a2540] via-blue-900 to-[#1d4ed8] px-2.5 py-1 text-[11px] font-black font-mono tracking-tight text-white shadow-sm shadow-blue-950/20 truncate">
-            <FileText className="h-3.5 w-3.5 shrink-0 text-blue-200" />
-            <span className="truncate" title={doc.bol_number}>{doc.bol_number || "BOL"}</span>
-          </div>
-          {invoiceNo && (
-            <div className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 border border-emerald-300 px-1.5 py-0.5 text-[9.5px] font-black font-mono text-emerald-900 shadow-2xs shrink-0" title={`Invoice No: ${invoiceNo}`}>
-              <Receipt className="h-3 w-3 text-emerald-700 shrink-0" />
-              <span className="truncate">INV: {invoiceNo}</span>
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-1 shrink-0 ml-auto">
-          {isLatest && (
-            <span className="rounded-full px-2 py-0.5 text-[8.5px] font-black bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-xs uppercase tracking-wider">
-              LATEST
-            </span>
-          )}
-          <span className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold ${
-            hasUploadedPdf ? "bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs" : "bg-slate-100 text-slate-500 border border-slate-200"
-          }`}>
-            {hasUploadedPdf ? "PDF" : "No PDF"}
-          </span>
-        </div>
-      </div>
-
-      {/* Shipper & Consignee */}
-      <div className="mt-2.5 space-y-1 relative z-10">
-        <p className="text-xs font-black text-slate-950 leading-snug break-words line-clamp-1" title={doc.shipper_name}>
-          {doc.shipper_name || "No shipper"}
-        </p>
-        <div className="flex items-center gap-1.5 rounded-xl bg-slate-50 px-2.5 py-1 border border-slate-200/80 text-[11px] font-bold text-slate-700 leading-tight" title={doc.consignee_name}>
-          <ArrowRight className="h-3 w-3 text-blue-600 shrink-0" />
-          <span className="truncate">{doc.consignee_name || "No consignee"}</span>
-        </div>
-      </div>
-
-      {/* Route / Ports (if present) */}
-      {(doc.port_of_loading || doc.port_of_discharge || doc.origin_country || doc.destination_country) && (
-        <div className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-slate-700 bg-slate-100/80 border border-slate-200/70 rounded-lg px-2 py-0.5 relative z-10 truncate">
-          <MapPin className="h-3 w-3 text-blue-600 shrink-0" />
-          <span className="truncate">
-            {doc.port_of_loading || doc.origin_country} ➔ {doc.port_of_discharge || doc.destination_country}
-          </span>
-        </div>
-      )}
-
-      {/* Cargo & Weight Details Box */}
-      <div className="mt-2 rounded-2xl bg-gradient-to-br from-blue-50/60 via-indigo-50/40 to-slate-50 border border-blue-100/80 p-2.5 text-xs text-slate-700 space-y-1.5 relative z-10">
-        <div className="flex items-center justify-between gap-1 text-[11px] font-extrabold text-blue-950">
-          <span className="flex items-center gap-1 truncate" title="Quantity / Packages">
-            <Package className="h-3.5 w-3.5 text-blue-600 shrink-0" />
-            <span className="truncate">{doc.number_of_packages || "0 CTNS"}</span>
-          </span>
-          <span className="flex items-center gap-1 text-slate-900 font-black shrink-0 font-mono text-[10.5px]">
-            <Scale className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-            <span>{doc.net_weight ? `Net: ${doc.net_weight}` : (doc.gross_weight || "—")}</span>
-          </span>
-        </div>
-
-        {/* Goods Value (if present) */}
-        {doc.goods_value && (
-          <div className="flex items-center justify-between text-[11px] font-black text-emerald-800 bg-emerald-50/80 px-2 py-0.5 rounded-lg border border-emerald-200/70">
-            <span className="text-emerald-700 font-bold text-[10px] flex items-center gap-1">
-              <Coins className="h-3 w-3" />
-              <span>Goods Value</span>
-            </span>
-            <span className="font-mono">{doc.goods_value}</span>
-          </div>
-        )}
-
-        {/* Date & Truck Number */}
-        <div className="flex items-center justify-between text-[10.5px] font-bold text-slate-700 pt-0.5 border-t border-blue-100/60">
-          <span className="flex items-center gap-1">
-            <Calendar className="h-3 w-3 text-slate-600 shrink-0" />
-            <span>{doc.issue_date ? new Date(doc.issue_date).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }) : "No date"}</span>
-          </span>
-          <span className="flex items-center gap-1 text-slate-800 font-extrabold">
-            <Truck className="h-3 w-3 text-slate-600 shrink-0" />
-            <span className="truncate max-w-[90px]">{doc.truck_number || "No truck #"}</span>
-          </span>
-        </div>
-      </div>
-
-      {/* Category Pills & Assignment */}
-      <div className="mt-2 flex items-center justify-between gap-1 relative z-10">
-        <div className="flex items-center gap-1">
-          {(["account", "export", "import"] as const).map((cat) => {
-            const isAssigned = assignedCategory === cat
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => onCategoryAssign(doc, cat)}
-                className={`rounded-lg px-2 py-0.5 text-[9.5px] font-black uppercase transition-all cursor-pointer ${
-                  isAssigned
-                    ? cat === "account"
-                      ? "bg-amber-500 text-slate-950 shadow-xs"
-                      : cat === "export"
-                        ? "bg-blue-600 text-white shadow-xs"
-                        : "bg-purple-600 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-                title={`Mark as ${cat}`}
-              >
-                {cat}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Action Buttons Matrix */}
-      <div className="mt-auto pt-3 space-y-1.5 relative z-10 border-t border-slate-100">
-        {/* Primary Row: Edit & Download */}
-        <div className="grid grid-cols-2 gap-1.5">
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => onEdit(doc)}
-            className="h-8.5 rounded-xl bg-gradient-to-r from-[#0a2540] via-blue-900 to-[#1d4ed8] hover:from-blue-900 hover:to-blue-700 text-white font-black text-xs cursor-pointer shadow-md shadow-blue-950/20 transition-all flex items-center justify-center gap-1"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            <span>Edit BOL</span>
-          </Button>
-
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => onDownload(doc)}
-            className="h-8.5 rounded-xl border-amber-300 bg-amber-50/90 hover:bg-amber-100/90 text-amber-950 font-black text-xs cursor-pointer shadow-2xs transition-all flex items-center justify-center gap-1"
-          >
-            <FileDown className="h-3.5 w-3.5 text-amber-700" />
-            <span>Download</span>
-          </Button>
-        </div>
-
-        {/* Secondary Quick Actions Row: Preview, Duplicate, File PDF, Send to CMR */}
-        <div className="grid grid-cols-4 gap-1">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onPreview(doc)}
-            className="h-7.5 rounded-lg border border-blue-200/80 bg-blue-50/70 hover:bg-blue-100/80 text-blue-700 font-bold text-[9.5px] cursor-pointer transition-all flex items-center justify-center px-0.5"
-            title="Preview A4 Document"
-          >
-            <Eye className="h-3 w-3 mr-0.5 shrink-0 text-blue-600" />
-            <span>Preview</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onDuplicate(doc)}
-            className="h-7.5 rounded-lg border border-purple-200/80 bg-purple-50/70 hover:bg-purple-100/80 text-purple-700 font-bold text-[9.5px] cursor-pointer transition-all flex items-center justify-center px-0.5"
-            title="Clone document with new BOL number"
-          >
-            <Copy className="h-3 w-3 mr-0.5 text-purple-600 shrink-0" />
-            <span>Duplicate</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenPdf(doc)}
-            disabled={!hasUploadedPdf || openingPdfId === doc.id}
-            className="h-7.5 rounded-lg border border-emerald-200/80 bg-emerald-50/70 hover:bg-emerald-100/80 text-emerald-700 font-bold text-[9.5px] disabled:border-slate-100 disabled:bg-slate-50/60 disabled:text-slate-300 cursor-pointer transition-all flex items-center justify-center px-0.5"
-            title={hasUploadedPdf ? "Open uploaded PDF file" : "No uploaded PDF available"}
-          >
-            <ExternalLink className="h-3 w-3 mr-0.5 shrink-0" />
-            <span>PDF</span>
-          </Button>
-
-          {onSendToCMR && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onSendToCMR(doc)}
-              className="h-7.5 rounded-lg border border-indigo-200/80 bg-indigo-50/70 hover:bg-indigo-100/80 text-indigo-700 font-bold text-[9.5px] cursor-pointer transition-all flex items-center justify-center px-0.5"
-              title="Bridge to International CMR Waybill"
-            >
-              <Truck className="h-3 w-3 mr-0.5 text-indigo-600 shrink-0" />
-              <span>CMR</span>
-            </Button>
-          )}
-        </div>
-
-        {/* Attach PDF & Delete Row */}
-        <div className="grid grid-cols-[1fr_auto] gap-1.5 pt-0.5">
-          <label
-            className={`inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 px-2.5 text-[11px] font-bold text-slate-700 transition-all shadow-2xs ${
-              uploadingId === doc.id ? "pointer-events-none opacity-70" : ""
-            }`}
-          >
-            {uploadingId === doc.id ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Upload className="h-3.5 w-3.5 text-blue-600" />
-            )}
-            <span>{hasUploadedPdf ? "Replace PDF" : "Attach PDF"}</span>
-            <input
-              type="file"
-              accept="application/pdf,.pdf"
-              className="hidden"
-              disabled={uploadingId === doc.id}
-              onChange={onFileInput(doc)}
-            />
-          </label>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={(event) => onDelete(doc, event)}
-            disabled={deletingId === (doc.id || doc.bol_number) || deletingId === doc.bol_number}
-            className="h-8 w-8 rounded-xl border border-red-200/80 bg-red-50/50 hover:bg-red-100/80 p-0 text-red-600 hover:text-red-700 cursor-pointer transition-all flex items-center justify-center"
-            title="Delete Bill of Lading"
-          >
-            {deletingId === (doc.id || doc.bol_number) || deletingId === doc.bol_number ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Trash2 className="h-3.5 w-3.5" />
-            )}
-          </Button>
-        </div>
-      </div>
-    </article>
+    <SavedBolCard
+      doc={props.doc}
+      isLatest={props.isLatest}
+      hasUploadedPdf={props.hasUploadedPdf}
+      invoiceNo={props.invoiceNo}
+      assignedCategory={props.assignedCategory}
+      uploadingId={props.uploadingId}
+      deletingId={props.deletingId}
+      openingPdfId={props.openingPdfId}
+      downloadingPdfId={props.downloadingPdfId}
+      onEdit={props.onEdit}
+      onDownload={props.onDownload}
+      onPreview={props.onPreview}
+      onDuplicate={props.onDuplicate}
+      onOpenPdf={props.onOpenPdf}
+      onDelete={props.onDelete}
+      onArchive={props.onArchive}
+      onRestore={props.onRestore}
+      onHardDelete={props.onHardDelete}
+      onFiles={props.onFiles}
+      onCategoryAssign={props.onCategoryAssign}
+      onFileInput={props.onFileInput}
+      isSelected={props.isSelected}
+      onToggleSelect={props.onToggleSelect}
+      onSendToCMR={props.onSendToCMR}
+      onCardClick={props.onEdit}
+    />
   )
 })
-
-function parseBolSeq(bolNum: string): number {
-  if (!bolNum) return 0
-  const match = bolNum.match(/NSA(\d+)/i) || bolNum.match(/(\d+)\s*$/)
-  if (match && match[1]) {
-    const val = parseInt(match[1], 10)
-    return isNaN(val) ? 0 : val
-  }
-  return 0
-}
-
-export function isMeaningfulBOL(d: any): boolean {
-  if (!d) return false
-  const s = (d.shipper_name || "").trim().toLowerCase()
-  const hasShipper = s !== "" && s !== "no shipper" && s !== "no-shipper" && s !== "none"
-  const hasBol = Boolean(d.bol_number && String(d.bol_number).trim().length > 3)
-
-  const q = (d.number_of_packages || "").trim().toLowerCase()
-  const hasPkg = q !== "" && q !== "0" && q !== "0-ctns" && q !== "0 ctns"
-
-  const nw = (d.net_weight || "").trim()
-  const gw = (d.gross_weight || "").trim()
-  const val = (d.goods_value || "").trim()
-  const cName = (d.consignee_name || "").trim().toLowerCase()
-  const hasConsignee = cName !== "" && cName !== "no consignee"
-  const hasDesc = (d.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 3
-  const hasDriver = Boolean((d.driver_name || "").trim() || (d.driver_rent || "").trim() || (d.truck_number || "").trim())
-
-  return hasShipper || hasBol || hasPkg || nw !== "" || gw !== "" || val !== "" || hasConsignee || hasDesc || hasDriver
-}
 
 export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "sidebar" }: SavedDocumentsProps) {
   const { currentUser } = useApp()
   const isShipper = currentUser?.role === "shipper"
 
-  const [documents, setDocuments] = useState<SavedDocument[]>(() => {
-    if (typeof window === "undefined") return []
-    try {
-      const storedLocal1 = window.localStorage.getItem("sky-bol-browser-documents")
-      const storedLocal2 = window.localStorage.getItem("skybol:saved-documents")
-      const storedLocal3 = window.localStorage.getItem("skybol:backup-documents")
-      const list1: SavedDocument[] = storedLocal1 ? JSON.parse(storedLocal1) : []
-      const list2: SavedDocument[] = storedLocal2 ? JSON.parse(storedLocal2) : []
-      const list3: SavedDocument[] = storedLocal3 ? JSON.parse(storedLocal3) : []
-      const mergedMap = new Map<string, SavedDocument>()
-      for (const d of [...list1, ...list2, ...list3]) {
-        const key = (d.bol_number || d.id || "").trim()
-        if (key && !mergedMap.has(key)) mergedMap.set(key, d)
-      }
-      return Array.from(mergedMap.values()).filter(isMeaningfulBOL)
-    } catch {
-      return []
-    }
-  })
-  const [isLoading, setIsLoading] = useState(() => {
-    if (typeof window === "undefined") return true
-    try {
-      const s1 = window.localStorage.getItem("sky-bol-browser-documents")
-      const s2 = window.localStorage.getItem("skybol:saved-documents")
-      return !(s1 || s2)
-    } catch {
-      return false
-    }
-  })
+  // Keep the first tab render free of synchronous storage parsing.
+  const [documents, setDocuments] = useState<SavedDocument[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [visibleCount, setVisibleCount] = useState(25)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+  const [totalPages, setTotalPages] = useState(1)
+  const [serverTotal, setServerTotal] = useState<number | null>(null)
+  const [isServerMode, setIsServerMode] = useState(false)
+  const [apiSummaryStats, setApiSummaryStats] = useState<{
+    count: number
+    totalPkgs: number
+    totalWeightKg: number
+    totalValueUsd: number
+    packageUnitsBreakdown?: Record<string, number>
+    packagesDisplay?: string
+  } | null>(null)
+  const [apiLatestTopBOLs, setApiLatestTopBOLs] = useState<SavedDocument[]>([])
+  const searchAbortRef = useRef<AbortController | null>(null)
+
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [openingPdfId, setOpeningPdfId] = useState<string | null>(null)
@@ -502,6 +335,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   const [selectedCompanyName, setSelectedCompanyName] = useState<string | null>(null)
   const [openCompanyTabs, setOpenCompanyTabs] = useState<string[]>([])
   const [query, setQuery] = useState("")
+  const deferredQuery = useDeferredValue(query)
   const [newCompanyName, setNewCompanyName] = useState("")
   const [activeCategory, setActiveCategory] = useState<DocumentCategoryKey>("all")
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "7days" | "month">("all")
@@ -515,102 +349,303 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   const [customAccountCompanies, setCustomAccountCompanies] = useState<string[]>([])
   const [isCloudSyncModalOpen, setIsCloudSyncModalOpen] = useState(false)
   const [docToDelete, setDocToDelete] = useState<SavedDocument | null>(null)
+  const [statusFilter, setStatusFilter] = useState<"active" | "archived" | "all">("active")
+  const [docToArchive, setDocToArchive] = useState<SavedDocument | null>(null)
+  const [isArchiving, setIsArchiving] = useState(false)
+  const [docToHardDelete, setDocToHardDelete] = useState<SavedDocument | null>(null)
+  const [isHardDeleting, setIsHardDeleting] = useState(false)
+  const [hardDeleteBlocker, setHardDeleteBlocker] = useState<{ blocked: boolean; count: number; details: string[]; message?: string } | null>(null)
+  const [isDuplicating, setIsDuplicating] = useState(false)
+  const [showSavedBolReport, setShowSavedBolReport] = useState(false)
+  const [reportInitialTab, setReportInitialTab] = useState<ReportTab>("detailed")
+  const [allReportDocuments, setAllReportDocuments] = useState<SavedDocument[]>([])
 
-  const fetchDocuments = async () => {
+  const fetchAllReportDocuments = useCallback(async () => {
+    try {
+      const res = await fetch("/api/bol?all=true")
+      if (res.ok) {
+        const json = await res.json()
+        if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
+          setAllReportDocuments(json.data)
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch all documents for report:", e)
+    }
+  }, [])
+
+  const fetchSummary = useCallback(async () => {
+    try {
+      const res = await fetch("/api/bol/summary")
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success && json.data) {
+          setApiSummaryStats({
+            count: json.data.total_bols || 0,
+            totalPkgs: json.data.total_packages || 0,
+            totalWeightKg: json.data.total_weight || 0,
+            totalValueUsd: json.data.total_goods_value || 0,
+            packageUnitsBreakdown: json.data.package_units_breakdown || {},
+            packagesDisplay: json.data.packages_display || "",
+          })
+        }
+      }
+    } catch {}
+  }, [])
+
+  const fetchRecentBols = useCallback(async () => {
+    try {
+      const res = await fetch("/api/bol/recent?limit=6")
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success && Array.isArray(json.data)) {
+          setApiLatestTopBOLs(json.data)
+        }
+      }
+    } catch {}
+  }, [])
+
+  const fetchDocuments = useCallback(async (pageToFetch = 1, searchToFetch = "", sizeToFetch = pageSize, signal?: AbortSignal) => {
     // 1. Immediately read local storage with zero delay
     try {
       const storedLocal1 = window.localStorage.getItem("sky-bol-browser-documents")
       const storedLocal2 = window.localStorage.getItem("skybol:saved-documents")
       const storedLocal3 = window.localStorage.getItem("skybol:backup-documents")
-      const list1: SavedDocument[] = storedLocal1 ? JSON.parse(storedLocal1) : []
-      const list2: SavedDocument[] = storedLocal2 ? JSON.parse(storedLocal2) : []
-      const list3: SavedDocument[] = storedLocal3 ? JSON.parse(storedLocal3) : []
+      const rawList1: SavedDocument[] = storedLocal1 ? JSON.parse(storedLocal1) : []
+      const rawList2: SavedDocument[] = storedLocal2 ? JSON.parse(storedLocal2) : []
+      const rawList3: SavedDocument[] = storedLocal3 ? JSON.parse(storedLocal3) : []
+
+      const sanitizeList = (raw: any[]) => {
+        let changed = false
+        const cleaned = raw.map((d: any) => {
+          const rawNum = String(d?.bol_number || d?.id || "").trim()
+          if (rawNum === "b0632d43-3cf9-4c6e-8eed-e83c969d4c86") {
+            changed = true
+            return { ...d, id: "BOL-2026-NSA642", bol_number: "BOL-2026-NSA642", billOfLadingNumber: "BOL-2026-NSA642", bolNo: "BOL-2026-NSA642" }
+          }
+          if (rawNum === "a6959d9d-b0bc-49e6-80ad-48859a0c8225") {
+            changed = true
+            return { ...d, id: "BOL-2026-NSA640", bol_number: "BOL-2026-NSA640", billOfLadingNumber: "BOL-2026-NSA640", bolNo: "BOL-2026-NSA640" }
+          }
+          if (isUUID(d?.bol_number)) {
+            changed = true
+            const fallback = cleanBolNumber(d.id)
+            return { ...d, bol_number: fallback || "", billOfLadingNumber: fallback || "", bolNo: fallback || "" }
+          }
+          return sanitizeSavedDocument(d)
+        })
+        return { cleaned, changed }
+      }
+
+      const s1 = sanitizeList(rawList1)
+      const s2 = sanitizeList(rawList2)
+      const s3 = sanitizeList(rawList3)
+      if (s1.changed) window.localStorage.setItem("sky-bol-browser-documents", JSON.stringify(s1.cleaned))
+      if (s2.changed) window.localStorage.setItem("skybol:saved-documents", JSON.stringify(s2.cleaned))
+      if (s3.changed) window.localStorage.setItem("skybol:backup-documents", JSON.stringify(s3.cleaned))
+
       const localMap = new Map<string, SavedDocument>()
-      for (const d of [...list1, ...list2, ...list3]) {
-        const k = (d.bol_number || d.id || "").trim()
-        if (k && !localMap.has(k)) localMap.set(k, d)
+      for (const d of [...s1.cleaned, ...s2.cleaned, ...s3.cleaned]) {
+        const k = getCleanBolNumber(d)
+        const key = k !== "BOL" ? k : (d.id || "").trim()
+        if (key && !localMap.has(key)) localMap.set(key, d)
       }
       const initialValid = Array.from(localMap.values()).filter(isMeaningfulBOL)
-      if (initialValid.length > 0) {
+      if (initialValid.length > 0 && !isServerMode) {
         setDocuments(initialValid)
         setIsLoading(false)
       }
     } catch (e) {}
 
-    // 2. Fetch server records in background with 5s timeout
-    try {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 5000)
-      const response = await fetch("/api/bol", { signal: controller.signal })
-      clearTimeout(timer)
+    // Fetch summary and recent in background
+    void fetchSummary()
+    void fetchRecentBols()
 
-      let serverDocs: SavedDocument[] = []
+    // 2. Fetch server records with server-side pagination & search
+    try {
+      const controller = signal ? null : new AbortController()
+      const timer = controller ? setTimeout(() => controller.abort(), 5000) : null
+      const params = new URLSearchParams()
+      params.set("page", String(pageToFetch))
+      params.set("page_size", String(sizeToFetch))
+      if (searchToFetch && searchToFetch.trim()) {
+        params.set("q", searchToFetch.trim())
+      }
+      const fetchSignal = signal || controller?.signal
+      const response = await fetch(`/api/bol?${params.toString()}`, { signal: fetchSignal })
+      if (timer) clearTimeout(timer)
+
       if (response.ok) {
         const result = await response.json()
+        if ((result.total !== undefined || result.source === "fastapi-sqlite") && Array.isArray(result.data)) {
+          if (result.data.length === 0 && (result.total === 0 || result.total === undefined) && !searchToFetch) {
+            // If server returned 0 without any search query, fall through to local documents if present
+          } else {
+            // Read client-side local cache to ensure immediate hydration of any missing or zero fields
+            let clientLocalDocs: SavedDocument[] = []
+            try {
+              const storedLocal1 = window.localStorage.getItem("sky-bol-browser-documents")
+              const storedLocal2 = window.localStorage.getItem("skybol:saved-documents")
+              const storedLocal3 = window.localStorage.getItem("skybol:backup-documents")
+              const list1 = storedLocal1 ? JSON.parse(storedLocal1) : []
+              const list2 = storedLocal2 ? JSON.parse(storedLocal2) : []
+              const list3 = storedLocal3 ? JSON.parse(storedLocal3) : []
+              clientLocalDocs = [...list1, ...list2, ...list3]
+            } catch (e) {}
+
+            const localLookup = new Map<string, any>()
+            for (const d of clientLocalDocs) {
+              const k = (d.bol_number || d.id || "").trim().toUpperCase()
+              if (k && !localLookup.has(k)) localLookup.set(k, d)
+              const pureDigits = k.match(/\d+$/)
+              if (pureDigits && !localLookup.has(`num:${pureDigits[0]}`)) localLookup.set(`num:${pureDigits[0]}`, d)
+            }
+
+            const enrichedServerData = result.data.map((item: any) => {
+              const k = (item.bol_number || item.id || "").trim().toUpperCase()
+              const pureDigits = k.match(/\d+$/)
+              const localMatch = localLookup.get(k) || (pureDigits ? localLookup.get(`num:${pureDigits[0]}`) : null)
+              if (!localMatch) return item
+
+              const issueDate = (item.issue_date && String(item.issue_date).trim() !== "" && String(item.issue_date) !== "null")
+                ? item.issue_date
+                : (localMatch.issue_date || localMatch.issueDate || localMatch.created_at || "")
+              const truckNumber = (item.truck_number && String(item.truck_number).trim() !== "" && String(item.truck_number) !== "null")
+                ? item.truck_number
+                : (localMatch.truck_number || localMatch.truckNumber || "")
+              const rent = isNonZeroRent(item.driver_rent)
+                ? item.driver_rent
+                : (localMatch.driver_rent || localMatch.driverFreight || localMatch.driverRent || "")
+
+              return {
+                ...localMatch,
+                ...item,
+                issue_date: issueDate,
+                truck_number: truckNumber,
+                driver_rent: rent,
+                driver_name: item.driver_name || localMatch.driver_name || localMatch.driverName || "",
+                driver_contact: item.driver_contact || item.driver_phone || localMatch.driver_contact || localMatch.driverContact || "",
+                driver_phone: item.driver_phone || item.driver_contact || localMatch.driver_phone || localMatch.driverContact || "",
+                routes: (item.routes && item.routes.length > 0) ? item.routes : (localMatch.routes || []),
+                cargo_description: item.cargo_description || localMatch.cargo_description || localMatch.cargoDescription || "",
+                number_of_packages: item.number_of_packages || localMatch.number_of_packages || localMatch.numberOfPackages || "",
+                net_weight: (localMatch.net_weight && parseWeight(localMatch.net_weight) <= 60000 && String(localMatch.net_weight).length > String(item.net_weight || "").length)
+                  ? localMatch.net_weight
+                  : (item.net_weight || localMatch.net_weight || ""),
+                gross_weight: (localMatch.gross_weight && parseWeight(localMatch.gross_weight) <= 60000 && String(localMatch.gross_weight).length > String(item.gross_weight || "").length)
+                  ? localMatch.gross_weight
+                  : (item.gross_weight || localMatch.gross_weight || ""),
+                consignee_name: item.consignee_name || localMatch.consignee_name || localMatch.consigneeName || "",
+                consignee_address: item.consignee_address || localMatch.consignee_address || localMatch.consigneeAddress || "",
+                consigneeAddress: item.consigneeAddress || localMatch.consigneeAddress || localMatch.consignee_address || "",
+                consignee_contact: item.consignee_contact || localMatch.consignee_contact || localMatch.consigneeContact || "",
+                consignee_email: item.consignee_email || localMatch.consignee_email || localMatch.consigneeEmail || "",
+                shipper_name: item.shipper_name || localMatch.shipper_name || localMatch.shipperName || "",
+                shipper_address: item.shipper_address || localMatch.shipper_address || localMatch.shipperAddress || "",
+                shipper_contact: item.shipper_contact || localMatch.shipper_contact || localMatch.shipperContact || "",
+                cargo_route_note: item.cargo_route_note || item.cargoRouteNote || localMatch.cargo_route_note || localMatch.cargoRouteNote || "",
+                cargoRouteNote: item.cargoRouteNote || item.cargo_route_note || localMatch.cargoRouteNote || localMatch.cargo_route_note || "",
+                kgs_per_carton: item.kgs_per_carton || item.kgsPerCarton || localMatch.kgs_per_carton || localMatch.kgsPerCarton || "",
+                gross_weight_per_carton: item.gross_weight_per_carton || item.grossWeightPerCarton || localMatch.gross_weight_per_carton || localMatch.grossWeightPerCarton || "",
+                rate_per_kgs: item.rate_per_kgs || item.ratePerKgs || localMatch.rate_per_kgs || localMatch.ratePerKgs || "",
+                goods_value: item.goods_value || item.goodsValue || localMatch.goods_value || localMatch.goodsValue || "",
+                notes_1: item.notes_1 || localMatch.notes_1 || "",
+                notes_2: item.notes_2 || localMatch.notes_2 || "",
+              }
+            })
+
+            setDocuments(enrichedServerData)
+            setServerTotal(result.total ?? enrichedServerData.length)
+            setCurrentPage(result.page ?? pageToFetch)
+            setTotalPages(result.total_pages ?? Math.max(1, Math.ceil((result.total ?? enrichedServerData.length) / sizeToFetch)))
+            setIsServerMode(true)
+            setVisibleCount(enrichedServerData.length)
+            setIsLoading(false)
+            return
+          }
+        }
+
+        let serverDocs: SavedDocument[] = []
         if (Array.isArray(result.data)) {
           serverDocs = result.data
         }
-      }
 
-      let clientLocalDocs: SavedDocument[] = []
-      try {
-        const storedLocal1 = window.localStorage.getItem("sky-bol-browser-documents")
-        const storedLocal2 = window.localStorage.getItem("skybol:saved-documents")
-        const storedLocal3 = window.localStorage.getItem("skybol:backup-documents")
-        const list1: SavedDocument[] = storedLocal1 ? JSON.parse(storedLocal1) : []
-        const list2: SavedDocument[] = storedLocal2 ? JSON.parse(storedLocal2) : []
-        const list3: SavedDocument[] = storedLocal3 ? JSON.parse(storedLocal3) : []
-        clientLocalDocs = [...list1, ...list2, ...list3]
-      } catch (e) {
-        console.error("Error reading browser local documents:", e)
-      }
+        let clientLocalDocs: SavedDocument[] = []
+        try {
+          const storedLocal1 = window.localStorage.getItem("sky-bol-browser-documents")
+          const storedLocal2 = window.localStorage.getItem("skybol:saved-documents")
+          const storedLocal3 = window.localStorage.getItem("skybol:backup-documents")
+          const list1: SavedDocument[] = storedLocal1 ? JSON.parse(storedLocal1) : []
+          const list2: SavedDocument[] = storedLocal2 ? JSON.parse(storedLocal2) : []
+          const list3: SavedDocument[] = storedLocal3 ? JSON.parse(storedLocal3) : []
+          clientLocalDocs = [...list1, ...list2, ...list3]
+        } catch (e) {
+          console.error("Error reading browser local documents:", e)
+        }
 
-      const mergedMap = new Map<string, SavedDocument>()
-      const addOrUpdate = (d: SavedDocument) => {
-        const key = (d.bol_number || d.id || "").trim()
-        if (!key) return
-        const existing = mergedMap.get(key)
-        if (!existing) {
-          mergedMap.set(key, d)
-        } else {
-          const timeExisting = new Date((existing as any).updated_at || existing.created_at || (existing as any).issue_date || 0).getTime()
-          const timeNew = new Date((d as any).updated_at || d.created_at || (d as any).issue_date || 0).getTime()
-          if (timeNew >= timeExisting) {
+        const mergedMap = new Map<string, SavedDocument>()
+        const addOrUpdate = (rawD: SavedDocument) => {
+          const d = sanitizeSavedDocument(rawD)
+          const k = getCleanBolNumber(d)
+          const key = k !== "BOL" ? k : (d.id || "").trim()
+          if (!key) return
+          const existing = mergedMap.get(key)
+          if (!existing) {
             mergedMap.set(key, d)
+          } else {
+            mergedMap.set(key, {
+              ...existing,
+              ...d,
+              consignee_name: d.consignee_name || existing.consignee_name || (existing as any).consigneeName || "",
+              consignee_address: d.consignee_address || existing.consignee_address || (existing as any).consigneeAddress || "",
+              consigneeAddress: (d as any).consigneeAddress || d.consignee_address || (existing as any).consigneeAddress || existing.consignee_address || "",
+              consignee_contact: d.consignee_contact || existing.consignee_contact || (existing as any).consigneeContact || "",
+              consignee_email: d.consignee_email || existing.consignee_email || (existing as any).consigneeEmail || "",
+              shipper_name: d.shipper_name || existing.shipper_name || (existing as any).shipperName || "",
+              shipper_address: d.shipper_address || existing.shipper_address || (existing as any).shipperAddress || "",
+              shipper_contact: d.shipper_contact || existing.shipper_contact || (existing as any).shipperContact || "",
+              cargo_route_note: (d as any).cargo_route_note || (d as any).cargoRouteNote || (existing as any).cargo_route_note || (existing as any).cargoRouteNote || "",
+              cargoRouteNote: (d as any).cargoRouteNote || (d as any).cargo_route_note || (existing as any).cargoRouteNote || (existing as any).cargo_route_note || "",
+              kgs_per_carton: (d as any).kgs_per_carton || (d as any).kgsPerCarton || (existing as any).kgs_per_carton || (existing as any).kgsPerCarton || "",
+              gross_weight_per_carton: (d as any).gross_weight_per_carton || (d as any).grossWeightPerCarton || (existing as any).gross_weight_per_carton || (existing as any).grossWeightPerCarton || "",
+              goods_value: (d as any).goods_value || (d as any).goodsValue || existing.goods_value || "",
+              rate_per_kgs: (d as any).rate_per_kgs || (d as any).ratePerKgs || (existing as any).rate_per_kgs || "",
+              notes_1: (d as any).notes_1 || (existing as any).notes_1 || "",
+              notes_2: (d as any).notes_2 || (existing as any).notes_2 || "",
+              routes: (Array.isArray(d.routes) && d.routes.length > 0) ? d.routes : (existing.routes || []),
+            })
           }
         }
+
+        for (const d of serverDocs) addOrUpdate(d)
+        for (const d of clientLocalDocs) addOrUpdate(d)
+
+        const mergedList = Array.from(mergedMap.values()).sort((a, b) => {
+          const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
+          const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
+          if (dateB !== dateA) return dateB - dateA
+          return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
+        })
+
+        const validDocs = mergedList.filter(isMeaningfulBOL)
+        if (validDocs.length > 0) {
+          try {
+            const jsonStr = JSON.stringify(validDocs)
+            window.localStorage.setItem("sky-bol-browser-documents", jsonStr)
+            window.localStorage.setItem("skybol:saved-documents", jsonStr)
+            window.localStorage.setItem("skybol:backup-documents", jsonStr)
+          } catch (e) {}
+        }
+
+        setDocuments(validDocs)
+        setIsServerMode(false)
       }
-
-      for (const d of serverDocs) addOrUpdate(d)
-      for (const d of clientLocalDocs) addOrUpdate(d)
-
-      const mergedList = Array.from(mergedMap.values()).sort((a, b) => {
-        const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
-        const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
-        if (dateB !== dateA) return dateB - dateA
-        return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
-      })
-
-      // Strict filter: purge any placeholder / draft BOLs without shipper or quantity
-      const validDocs = mergedList.filter(isMeaningfulBOL)
-
-      // If valid BOLs exist, sync to browser localStorage
-      if (validDocs.length > 0) {
-        try {
-          const jsonStr = JSON.stringify(validDocs)
-          window.localStorage.setItem("sky-bol-browser-documents", jsonStr)
-          window.localStorage.setItem("skybol:saved-documents", jsonStr)
-          window.localStorage.setItem("skybol:backup-documents", jsonStr)
-        } catch (e) {}
-      }
-
-      setDocuments(validDocs)
     } catch (error) {
       console.warn("Saved documents background sync notice:", error)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [pageSize, isServerMode])
 
   const handleRecoverAllBOLs = async () => {
     const toastId = toast.loading("Recovering saved BOL documents...")
@@ -664,7 +699,22 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   }
 
   useEffect(() => {
-    void fetchDocuments()
+    // Allow the tab's loading state to paint before reading browser storage.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const frame = requestAnimationFrame(() => { timer = setTimeout(() => { void fetchDocuments() }, 0) })
+
+    // 350ms debounced search with AbortController cancellation to prevent stale request overwrite
+    let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined
+    if (query) {
+      searchDebounceTimer = setTimeout(() => {
+        if (searchAbortRef.current) {
+          searchAbortRef.current.abort()
+        }
+        const ac = new AbortController()
+        searchAbortRef.current = ac
+        void fetchDocuments(1, query, pageSize, ac.signal)
+      }, 350)
+    }
 
     const handleRefresh = (event?: CustomEvent) => {
       if (event?.detail && (event.detail.bol_number || event.detail.id)) {
@@ -691,7 +741,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
           console.error("Error storing local doc update:", e)
         }
 
-        // Instantly update React state so user doesn't even have to wait for network fetch
+        // Instantly update both main documents list and top latest creations so zero stale cards exist
         startTransition(() => {
           setDocuments((prev) => {
             const filtered = prev.filter((d: any) => {
@@ -706,19 +756,38 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
               return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
             })
           })
+
+          setApiLatestTopBOLs((prev) => {
+            const filtered = prev.filter((d: any) => {
+              const dId = d.id || d.bol_number
+              const dNum = d.bol_number
+              return dId !== targetId && dNum !== targetId && dId !== targetNum && dNum !== targetNum
+            })
+            return [updatedDoc, ...filtered]
+          })
         })
       }
       void fetchDocuments()
+      void fetchRecentBols()
+      void fetchSummary()
     }
 
     window.addEventListener("skybol:documents-updated", handleRefresh as EventListener)
     window.addEventListener("skybol:account-ledger-updated", handleRefresh as EventListener)
 
     return () => {
+      cancelAnimationFrame(frame)
+      clearTimeout(timer)
       window.removeEventListener("skybol:documents-updated", handleRefresh as EventListener)
       window.removeEventListener("skybol:account-ledger-updated", handleRefresh as EventListener)
     }
   }, [refreshTrigger])
+
+  useEffect(() => {
+    if (isServerMode) {
+      void fetchDocuments(1, deferredQuery)
+    }
+  }, [deferredQuery, fetchDocuments, isServerMode])
 
   useEffect(() => {
     try {
@@ -784,6 +853,13 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       doc.shipper_name,
       doc.consignee_name,
       doc.truck_number,
+      doc.driver_name,
+      doc.driver_rent,
+      (doc as any).driverFreight,
+      (doc as any).driverRent,
+      doc.goods_value,
+      doc.invoice_no,
+      doc.invoice_number,
       getAssignedCategory(doc),
       extra.category,
       extra.document_category,
@@ -815,15 +891,25 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     return keywords[category].some((keyword) => searchText.includes(keyword))
   }
 
+  const activeCount = useMemo(() => documents.filter((d) => !d.isArchived && d.status !== "archived").length, [documents])
+  const archivedCount = useMemo(() => documents.filter((d) => d.isArchived || d.status === "archived").length, [documents])
+
   // Sorted and Filtered Documents (Bringing Latest First by Default)
   const filteredDocuments = useMemo(() => {
-    const cleanQuery = query.trim().toLowerCase()
+    const cleanQuery = deferredQuery.trim().toLowerCase()
     const now = new Date()
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
     const sevenDaysAgo = startOfToday - 7 * 24 * 60 * 60 * 1000
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
 
     const filtered = documents.filter((doc) => {
+      // Quick Status Filter: active (default), archived, or all
+      if (statusFilter === "active") {
+        if (doc.isArchived || doc.status === "archived") return false
+      } else if (statusFilter === "archived") {
+        if (!doc.isArchived && doc.status !== "archived") return false
+      }
+
       if (isShipper) {
         const u = (currentUser?.username || "").toLowerCase()
         const n = (currentUser?.name || "").toLowerCase()
@@ -869,51 +955,100 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       }
       return 0
     })
-  }, [documents, query, activeCategory, dateFilter, sortBy, documentCategories, isShipper, currentUser])
+  }, [documents, deferredQuery, activeCategory, dateFilter, sortBy, documentCategories, isShipper, currentUser, statusFilter])
 
-  // Real-time Summary Analytics Ribbon
+  // Real-time Summary Analytics Ribbon - uses instant precomputed API when viewing all documents with strict sanity checks
   const summaryStats = useMemo(() => {
+    const isApiSane =
+      apiSummaryStats &&
+      apiSummaryStats.totalPkgs > 0 &&
+      apiSummaryStats.totalPkgs < 10_000_000 &&
+      apiSummaryStats.totalWeightKg > 0 &&
+      apiSummaryStats.totalWeightKg < 50_000_000 &&
+      apiSummaryStats.totalValueUsd > 0 &&
+      apiSummaryStats.totalValueUsd < 100_000_000 &&
+      Math.abs(apiSummaryStats.count - documents.length) <= 10
+
+    if (isApiSane && !deferredQuery && activeCategory === "all" && dateFilter === "all" && statusFilter === "active") {
+      return {
+        ...apiSummaryStats,
+        count: documents.length > 0 ? documents.length : apiSummaryStats.count,
+      }
+    }
     let totalPkgs = 0
     let totalWeightKg = 0
     let totalValueUsd = 0
+    const packageUnitsBreakdown: Record<string, number> = {}
 
     for (const doc of filteredDocuments) {
-      const pkgMatch = (doc.number_of_packages || "").match(/[\d,.]+/)
-      if (pkgMatch) {
-        const val = parseFloat(pkgMatch[0].replace(/,/g, ""))
-        if (!isNaN(val)) totalPkgs += val
+      const pkgs = parsePackages(doc.number_of_packages)
+      totalPkgs += pkgs
+      if (pkgs > 0) {
+        const unit = parsePackageUnit(doc.number_of_packages)
+        packageUnitsBreakdown[unit] = (packageUnitsBreakdown[unit] || 0) + pkgs
       }
-      const wtMatch = (doc.net_weight || doc.gross_weight || "").match(/[\d,.]+/)
-      if (wtMatch) {
-        const val = parseFloat(wtMatch[0].replace(/,/g, ""))
-        if (!isNaN(val)) totalWeightKg += val
-      }
-      const valMatch = (doc.goods_value || "").match(/[\d,.]+/)
-      if (valMatch) {
-        const val = parseFloat(valMatch[0].replace(/,/g, ""))
-        if (!isNaN(val)) totalValueUsd += val
-      }
+      const gross = parseWeight(doc.gross_weight)
+      const net = parseWeight(doc.net_weight)
+      totalWeightKg += gross > 0 ? gross : net
+      totalValueUsd += parseMoney(doc.goods_value).amount
     }
+
+    const roundedPkgs = Math.round(totalPkgs)
+    const packagesDisplay = formatPackageBreakdown(packageUnitsBreakdown, roundedPkgs)
 
     return {
       count: filteredDocuments.length,
-      totalPkgs,
-      totalWeightKg,
-      totalValueUsd,
+      totalPkgs: roundedPkgs,
+      packageUnitsBreakdown,
+      packagesDisplay,
+      totalWeightKg: Math.round(totalWeightKg),
+      totalValueUsd: Math.round(totalValueUsd * 100) / 100,
     }
-  }, [filteredDocuments])
+  }, [filteredDocuments, documents.length, apiSummaryStats, deferredQuery, activeCategory, dateFilter, statusFilter])
 
-  // Get Top 6 Latest BOLs for the Top Feature Banner
+  // Get Top 6 Latest BOLs for the Top Feature Banner (from dedicated recent API with canonical deduplication)
   const latestTopBOLs = useMemo(() => {
-    return [...documents]
-      .sort((a, b) => {
-        const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
-        const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
-        if (dateB !== dateA) return dateB - dateA
-        return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
-      })
-      .slice(0, 6)
-  }, [documents])
+    // Map existing documents by clean BOL number and ID to always use the fresher in-memory record
+    const docMap = new Map<string, SavedDocument>()
+    for (const d of documents) {
+      if (d.isArchived || d.status === "archived") continue
+      const num = getCleanBolNumber(d)?.toUpperCase().trim()
+      const idKey = (d.id || "").toUpperCase().trim()
+      if (num && num !== "BOL") docMap.set(num, d)
+      if (idKey) docMap.set(idKey, d)
+    }
+
+    const rawList = (apiLatestTopBOLs && apiLatestTopBOLs.length > 0 && !deferredQuery && activeCategory === "all")
+      ? apiLatestTopBOLs
+          .filter((d) => !d.isArchived && d.status !== "archived")
+          .map((d) => {
+            const num = getCleanBolNumber(d)?.toUpperCase().trim()
+            const idKey = (d.id || "").toUpperCase().trim()
+            return (num && docMap.get(num)) || (idKey && docMap.get(idKey)) || d
+          })
+      : [...documents]
+          .filter((d) => !d.isArchived && d.status !== "archived")
+          .sort((a, b) => {
+            const dateA = new Date((a as any).updated_at || a.created_at || a.issue_date || 0).getTime()
+            const dateB = new Date((b as any).updated_at || b.created_at || b.issue_date || 0).getTime()
+            if (dateB !== dateA) return dateB - dateA
+            return parseBolSeq(b.bol_number || "") - parseBolSeq(a.bol_number || "")
+          })
+
+    const seen = new Set<string>()
+    const deduplicated: SavedDocument[] = []
+    for (const d of rawList) {
+      if ((d as any).isArchived || (d as any).status === "archived") continue
+      const num = getCleanBolNumber(d)
+      const key = (num && num !== "BOL" ? num : (d.id || "")).toUpperCase().trim()
+      if (key && !seen.has(key)) {
+        seen.add(key)
+        deduplicated.push(d)
+      }
+      if (deduplicated.length >= 6) break
+    }
+    return deduplicated
+  }, [documents, apiLatestTopBOLs, deferredQuery, activeCategory])
 
   const accountCompanies = useMemo(() => {
     const byName = new Map<string, { companyName: string; docs: SavedDocument[] }>()
@@ -1118,27 +1253,159 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     event.target.value = ""
   }
 
-  const handleDelete = useCallback((doc: SavedDocument, event: React.MouseEvent) => {
-    event.stopPropagation()
-    setDocToDelete(doc)
+  const handleArchive = useCallback((doc: SavedDocument, event?: React.MouseEvent) => {
+    if (event) event.stopPropagation()
+    setDocToArchive(doc)
   }, [])
 
-  const confirmDeleteDocument = useCallback(async () => {
-    if (!docToDelete) return
-    const targetDoc = docToDelete
+  const confirmArchiveDocument = useCallback(async () => {
+    if (!docToArchive) return
+    const targetDoc = docToArchive
+    const id = targetDoc.id || targetDoc.bol_number
+    const bolNum = targetDoc.bol_number || targetDoc.id
+    setIsArchiving(true)
+    const toastId = toast.loading(`Archiving ${bolNum}...`)
+    try {
+      const result = await archiveBol(id)
+      if (!result.success) {
+        throw new Error(result.error || "Failed to archive BOL")
+      }
+
+      // Update in local state
+      startTransition(() => {
+        setDocuments((prev) =>
+          prev.map((d) => {
+            const matches = (d.id && (d.id === id || d.id === bolNum)) || (d.bol_number && (d.bol_number === id || d.bol_number === bolNum))
+            if (matches) {
+              return { ...d, isArchived: true, status: "archived", archived_at: result.archivedAt }
+            }
+            return d
+          })
+        )
+        // Also remove from latest top BOLs
+        setApiLatestTopBOLs((prev) =>
+          prev.filter((d) => {
+            const matches = (d.id && (d.id === id || d.id === bolNum)) || (d.bol_number && (d.bol_number === id || d.bol_number === bolNum))
+            return !matches
+          })
+        )
+      })
+
+      toast.success(`Bill of Lading ${bolNum} moved to Archive`, {
+        id: toastId,
+        description: "Document preserved safely. It can be restored anytime from Archived filter.",
+      })
+      setDocToArchive(null)
+    } catch (err: any) {
+      console.error("Archive error:", err)
+      toast.error(err?.message || "Could not archive document", { id: toastId })
+    } finally {
+      setIsArchiving(false)
+    }
+  }, [docToArchive])
+
+  const handleRestore = useCallback(async (doc: SavedDocument) => {
+    const id = doc.id || doc.bol_number
+    const bolNum = doc.bol_number || doc.id
+    const toastId = toast.loading(`Restoring ${bolNum}...`)
+    try {
+      const result = await restoreBol(id)
+      if (!result.success) {
+        throw new Error(result.error || "Failed to restore BOL")
+      }
+
+      startTransition(() => {
+        setDocuments((prev) =>
+          prev.map((d) => {
+            const matches = (d.id && (d.id === id || d.id === bolNum)) || (d.bol_number && (d.bol_number === id || d.bol_number === bolNum))
+            if (matches) {
+              return { ...d, isArchived: false, status: "active", archived_at: null }
+            }
+            return d
+          })
+        )
+      })
+
+      toast.success(`Bill of Lading ${bolNum} Restored to Active!`, {
+        id: toastId,
+        description: "Record is now active and accessible in all active lists.",
+      })
+    } catch (err: any) {
+      console.error("Restore error:", err)
+      toast.error(err?.message || "Could not restore document", { id: toastId })
+    }
+  }, [])
+
+  const handleHardDelete = useCallback(async (doc: SavedDocument, event?: React.MouseEvent) => {
+    if (event) event.stopPropagation()
+    setHardDeleteBlocker(null)
+    setDocToHardDelete(doc)
+
+    // Check financial ledgers proactively
+    try {
+      const rawRecords = window.localStorage.getItem("skybol:account-ledgers") || window.localStorage.getItem("skybol_account_ledger_records")
+      if (rawRecords) {
+        const records = JSON.parse(rawRecords)
+        const targetNum = (doc.bol_number || doc.id || "").trim()
+        const targetId = (doc.id || "").trim()
+        let count = 0
+        const details: string[] = []
+        for (const company in records) {
+          if (Array.isArray(records[company])) {
+            for (const row of records[company]) {
+              const rowBol = (row.barnamehNo || row.bolNo || row.bol_number || "").trim()
+              if (rowBol && (rowBol === targetNum || rowBol === targetId)) {
+                count++
+                details.push(`[${company}] Date: ${row.date || "N/A"}, Cargo: ${row.goodsDescription || row.cargo || "N/A"}`)
+              }
+            }
+          }
+        }
+        if (count > 0) {
+          setHardDeleteBlocker({
+            blocked: true,
+            count,
+            details: details.slice(0, 5),
+            message: `Found ${count} financial ledger entries linked to ${targetNum}. Hard delete is blocked to protect accounting invariance.`,
+          })
+        }
+      }
+    } catch (_) {}
+  }, [])
+
+  const confirmHardDeleteDocument = useCallback(async () => {
+    if (!docToHardDelete) return
+    const targetDoc = docToHardDelete
     const id = targetDoc.id || targetDoc.bol_number
     const bolNum = targetDoc.bol_number || targetDoc.id
 
-    setDeletingId(id)
+    setIsHardDeleting(true)
+    const toastId = toast.loading(`Permanently deleting ${bolNum}...`)
     try {
       // 1. Call backend API with both id and bol_number
-      try {
-        if (id) await fetch(`/api/bol/${encodeURIComponent(id)}`, { method: "DELETE" })
-      } catch (e) {}
+      const res = await fetch(`/api/bol/${encodeURIComponent(id)}`, { method: "DELETE" })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        if (json.blocked) {
+          setHardDeleteBlocker({
+            blocked: true,
+            count: json.ledgerCount || 1,
+            details: json.details || [],
+            message: json.message || "Financial ledger records detected.",
+          })
+          toast.error("Deletion Blocked by Financial Ledgers", {
+            id: toastId,
+            description: json.message || "BOL is linked to active accounting ledger transactions.",
+          })
+          return
+        }
+        throw new Error(json.error || `HTTP ${res.status}`)
+      }
+
       if (bolNum && bolNum !== id) {
         try {
           await fetch(`/api/bol/${encodeURIComponent(bolNum)}`, { method: "DELETE" })
-        } catch (e) {}
+        } catch (_) {}
       }
 
       // 2. Immediately purge from all browser localStorage stores
@@ -1157,41 +1424,23 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
               window.localStorage.setItem(k, JSON.stringify(updated))
             }
           }
-        } catch (e) {}
+        } catch (_) {}
       }
 
-      // Also remove associated record from Account Ledger
+      // 3. Remove draft key if present
       try {
-        const rawRecords = window.localStorage.getItem("skybol:account-ledgers") || window.localStorage.getItem("skybol_account_ledger_records")
-        if (rawRecords) {
-          const records = JSON.parse(rawRecords)
-          const updatedRecords: Record<string, any[]> = {}
-          for (const key in records) {
-            if (Array.isArray(records[key])) {
-              updatedRecords[key] = records[key].filter(
-                (row: any) => (row.barnamehNo || row.bolNo || "").trim() !== bolNum && (row.barnamehNo || row.bolNo || "").trim() !== id
-              )
-            }
-          }
-          window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(updatedRecords))
-          window.localStorage.setItem("skybol_account_ledger_records", JSON.stringify(updatedRecords))
-        }
-      } catch (e) {}
+        window.localStorage.removeItem(`skybol:draft:${bolNum}`)
+        window.localStorage.removeItem(`skybol:draft:${id}`)
+      } catch (_) {}
 
-      // Also remove from document categories
-      try {
-        const catRaw = window.localStorage.getItem(DOCUMENT_CATEGORY_STORAGE_KEY)
-        if (catRaw) {
-          const cats = JSON.parse(catRaw)
-          delete cats[id]
-          if (bolNum) delete cats[bolNum]
-          window.localStorage.setItem(DOCUMENT_CATEGORY_STORAGE_KEY, JSON.stringify(cats))
-        }
-      } catch (e) {}
-
-      // 3. Update React state immediately
+      // 4. Update React state immediately
       startTransition(() => {
         setDocuments((prev) => prev.filter((doc) => {
+          const dId = doc.id || doc.bol_number
+          const dNum = doc.bol_number
+          return dId !== id && dNum !== id && dId !== bolNum && dNum !== bolNum
+        }))
+        setApiLatestTopBOLs((prev) => prev.filter((doc) => {
           const dId = doc.id || doc.bol_number
           const dNum = doc.bol_number
           return dId !== id && dNum !== id && dId !== bolNum && dNum !== bolNum
@@ -1199,15 +1448,22 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       })
 
       window.dispatchEvent(new CustomEvent("skybol:documents-updated", { detail: { deletedId: id, deletedBol: bolNum } }))
-      toast.success(`Bill of Lading ${bolNum} deleted successfully`)
-      setDocToDelete(null)
-    } catch (error) {
+      toast.success(`Bill of Lading ${bolNum} permanently deleted`, { id: toastId })
+      setDocToHardDelete(null)
+      setHardDeleteBlocker(null)
+    } catch (error: any) {
       console.error("Error deleting document:", error)
-      toast.error("Could not delete document")
+      toast.error(error?.message || "Could not delete document", { id: toastId })
     } finally {
-      setDeletingId(null)
+      setIsHardDeleting(false)
     }
-  }, [docToDelete])
+  }, [docToHardDelete])
+
+  // Default delete behavior on cards/tables triggers safe Archive
+  const handleDelete = useCallback((doc: SavedDocument, event: React.MouseEvent) => {
+    event.stopPropagation()
+    handleArchive(doc, event)
+  }, [handleArchive])
 
   const handleDeleteEmptyBOLs = useCallback(async () => {
     const emptyDocs = documents.filter((doc) => !isMeaningfulBOL(doc))
@@ -1303,34 +1559,40 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   }, [fetchDocuments])
 
   const handleDuplicate = useCallback(async (doc: SavedDocument) => {
+    if (isDuplicating) return
+    setIsDuplicating(true)
     const toastId = toast.loading("Duplicating BOL...", {
-      description: "Fetching next auto BOL number...",
+      description: "Allocating official sequence & isolating draft...",
     })
     try {
-      const response = await fetch("/api/bol?action=next-number")
-      const result = await response.json()
-      const newBolNumber = result.bolNumber || "BOL-2026-NSA471"
+      const res = await duplicateBol(doc, {
+        actor: currentUser?.username || "admin",
+        navigateOnComplete: false,
+      })
 
-      const clonedDoc = {
-        ...doc,
-        id: "",
-        bol_number: newBolNumber,
-        issue_date: new Date().toISOString().split("T")[0],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+      if (!res.success || !res.newDoc) {
+        throw new Error(res.error || "Duplication failed")
       }
 
+      const newDoc = res.newDoc
       startTransition(() => {
-        onLoadDocument(clonedDoc.id, "form")
+        setDocuments((prev) => [newDoc, ...prev])
+        setApiLatestTopBOLs((prev) => [newDoc, ...prev])
       })
-      toast.success(`Cloned as ${newBolNumber}!`, {
+
+      toast.success(`Duplicated as ${res.newBolNumber}!`, {
         id: toastId,
-        description: "Document pre-filled with party and route info. Review and click Save.",
+        description: "Official sequence allocated. Document isolated in draft storage. Opening in editor...",
       })
-    } catch (e) {
-      toast.error("Failed to duplicate document", { id: toastId })
+
+      onLoadDocument(res.newBolNumber, "form")
+    } catch (e: any) {
+      console.error("Duplicate failed:", e)
+      toast.error(e?.message || "Failed to duplicate document", { id: toastId })
+    } finally {
+      setIsDuplicating(false)
     }
-  }, [onLoadDocument])
+  }, [currentUser, isDuplicating, onLoadDocument])
 
   const openUploadedPDF = useCallback(async (doc: SavedDocument) => {
     if (!doc.pdf_url) {
@@ -1358,24 +1620,36 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   }, [])
 
   // Direct Download of BOL PDF File
+  // Direct Download of BOL PDF File
   const downloadBOLPDF = useCallback(async (doc: SavedDocument) => {
-    setDownloadingPdfId(doc.id)
+    const canonicalId = cleanBolNumber(doc.bol_number) || cleanBolNumber(doc.id) || doc.id || doc.bol_number
+    setDownloadingPdfId(doc.id || canonicalId)
     startTransition(() => {
-      onLoadDocument(doc.id, "preview")
-      window.dispatchEvent(new CustomEvent("skybol:editor-action", { detail: { action: "preview", tab: "preview" } }))
+      onLoadDocument(canonicalId, "preview")
     })
     
     toast.loading("Generating BOL PDF file...", { id: "doc-pdf-download" })
 
     setTimeout(async () => {
       try {
+        let fullRecord: any = doc
+        try {
+          const res = await fetch(`/api/bol/${encodeURIComponent(canonicalId)}`)
+          if (res.ok) {
+            const json = await res.json()
+            if (json?.data) {
+              fullRecord = normalizeBolRecord({ ...doc, ...json.data }, canonicalId)
+            }
+          }
+        } catch (_) {}
+
         const previewElement = document.querySelector('[data-pdf-export="true"]') as HTMLElement | null
         const shippingDocData = deriveShippingDocumentData(
-          doc as unknown as import("@/lib/types/bill-of-lading").BillOfLadingFormData,
-          doc.bol_number || doc.id,
-          doc.issue_date || "",
+          fullRecord as unknown as import("@/lib/types/bill-of-lading").BillOfLadingFormData,
+          fullRecord.bol_number || canonicalId,
+          fullRecord.issue_date || "",
         )
-        const fileName = buildShippingDocumentFileName("all", shippingDocData)
+        const fileName = buildBolSmartFileName(fullRecord, fullRecord.bol_number || canonicalId, ".pdf")
         let pdfBlob: Blob
         try {
           pdfBlob = await generateShippingDocumentsPDF({
@@ -1392,10 +1666,10 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
             fileName,
             previewElement,
             modern: {
-              bolNumber: doc.bol_number || doc.id,
-              issueDate: doc.issue_date || "",
+              bolNumber: fullRecord.bol_number || canonicalId,
+              issueDate: fullRecord.issue_date || "",
               persianDateNumeric: "",
-              formData: doc as unknown as import("@/lib/types/bill-of-lading").BillOfLadingFormData,
+              formData: fullRecord as unknown as import("@/lib/types/bill-of-lading").BillOfLadingFormData,
               logoUrl: "/images/logo.png",
               companyName: "SKY ARIANA LIMITED",
               companyNamePersian: "شرکت حمل و نقل بین المللی سکای آریانا لمیتد",
@@ -1416,7 +1690,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       } catch (err) {
         console.error("Failed to download PDF:", err)
         if (typeof document !== "undefined") {
-          document.title = buildBolSmartFileName(doc, doc.bol_number || doc.id, "")
+          document.title = buildBolSmartFileName(doc, canonicalId, "")
           document.body.classList.remove("ledger-landscape-active")
           document.body.removeAttribute("data-print-mode")
           document.documentElement.removeAttribute("data-print-mode")
@@ -1442,25 +1716,35 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
   }, [onLoadDocument])
 
   const viewBOLPreview = useCallback((doc: SavedDocument) => {
+    const canonicalId = cleanBolNumber(doc.bol_number) || cleanBolNumber(doc.id) || doc.id || doc.bol_number
     if (typeof document !== "undefined") {
-      document.title = buildBolSmartFileName(doc, doc.bol_number || doc.id, "")
+      document.title = buildBolSmartFileName(doc, canonicalId, "")
     }
     startTransition(() => {
-      onLoadDocument(doc.id || doc.bol_number, "preview")
-      window.dispatchEvent(new CustomEvent("skybol:editor-action", { detail: { action: "preview", tab: "preview" } }))
+      onLoadDocument(canonicalId, "preview", doc)
     })
-    toast.success("BOL preview opened", {
-      description: `${doc.bol_number || "Document"} loaded in A4 Preview.`,
-    })
+    // Defer toast notification to browser idle time so click paint is instantaneous
+    setTimeout(() => {
+      toast.success("BOL preview opened", {
+        description: `${doc.bol_number || canonicalId || "Document"} loaded in A4 Preview.`,
+      })
+    }, 60)
   }, [onLoadDocument])
 
   const editBOL = useCallback((doc: SavedDocument) => {
+    const canonicalId = cleanBolNumber(doc.bol_number) || cleanBolNumber(doc.id) || doc.id || doc.bol_number
     if (typeof document !== "undefined") {
-      document.title = buildBolSmartFileName(doc, doc.bol_number || doc.id, "")
+      document.title = buildBolSmartFileName(doc, canonicalId, "")
     }
     startTransition(() => {
-      onLoadDocument(doc.id || doc.bol_number, "form")
-      window.dispatchEvent(new CustomEvent("skybol:editor-action", { detail: { action: "form", tab: "form" } }))
+      onLoadDocument(canonicalId, "form", doc)
+    })
+  }, [onLoadDocument])
+
+  const handleFiles = useCallback((doc: SavedDocument) => {
+    const canonicalId = cleanBolNumber(doc.bol_number) || cleanBolNumber(doc.id) || doc.id || doc.bol_number
+    startTransition(() => {
+      onLoadDocument(canonicalId, "attachments", doc)
     })
   }, [onLoadDocument])
 
@@ -1643,6 +1927,27 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
     }
   }, [])
 
+  if (showSavedBolReport) {
+    const reportDataset = allReportDocuments.length > 0 ? allReportDocuments : documents
+    return (
+      <div className="w-full min-h-[calc(100vh-100px)] animate-page-crossfade">
+        <SavedBolReport
+          documents={reportDataset}
+          filteredDocuments={reportDataset}
+          onClose={() => {
+            setTimeout(() => {
+              startTransition(() => {
+                setShowSavedBolReport(false)
+              })
+            }, 0)
+          }}
+          selectedDocIds={selectedDocIds}
+          initialTab={reportInitialTab}
+        />
+      </div>
+    )
+  }
+
   return (
     <Card className={`flex h-full w-full flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white/85 shadow-xl shadow-blue-900/5 backdrop-blur-2xl text-slate-900 ${variant === "sidebar" ? "w-full" : "w-full"}`}>
       
@@ -1666,7 +1971,7 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {isLoading && (
               <div className="flex items-center gap-1.5 rounded-full bg-blue-100/90 text-blue-700 px-3 py-1 text-xs font-black animate-pulse border border-blue-200">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
@@ -1675,57 +1980,132 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
             )}
             <div className="flex items-center gap-1.5 rounded-2xl bg-blue-50 px-3.5 py-1.5 text-xs font-black text-blue-950 border border-blue-200 shadow-2xs">
               <FileText className="h-4 w-4 text-blue-600" />
-              <span>{documents.length} Total Saved</span>
+              <span>{deferredQuery || activeCategory !== "all" || dateFilter !== "all" ? `${filteredDocuments.length} / ${serverTotal ?? documents.length} Records` : `${serverTotal ?? documents.length} BOL Records`}</span>
             </div>
+            <Button
+              type="button"
+              onClick={() => {
+                setTimeout(() => {
+                  startTransition(() => {
+                    setReportInitialTab("detailed")
+                    setShowSavedBolReport(true)
+                  })
+                  void fetchAllReportDocuments()
+                }, 0)
+              }}
+              className="h-8.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white px-3.5 text-xs font-black shadow-md shadow-blue-500/25 cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all [&_span]:pointer-events-none [&_svg]:pointer-events-none"
+              title="Open Master Saved BOL Report & Analytics with Print & PDF / گزارش جامع بارنامه‌ها"
+            >
+              <Printer className="h-4 w-4 shrink-0 pointer-events-none" />
+              <span>Saved BOL Report</span>
+            </Button>
           </div>
         </div>
 
         {/* Live Summary Analytics Metrics Ribbon */}
-        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <div className="rounded-2xl bg-gradient-to-br from-blue-500/10 via-white to-blue-500/5 border border-blue-200/90 p-3 shadow-2xs hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <span className="text-[10.5px] font-black uppercase tracking-wider text-blue-700 flex items-center gap-1">
-                <FileText className="h-3.5 w-3.5 text-blue-600" /> Total BOLs
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Card 1: Total BOLs */}
+          <div className="relative overflow-hidden rounded-2xl border border-blue-200/90 bg-gradient-to-br from-blue-50/90 via-white to-blue-50/30 p-3.5 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all duration-200 group">
+            <div className="absolute -top-10 -right-10 w-24 h-24 bg-blue-400/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform" />
+            <div className="flex items-center justify-between relative">
+              <span className="text-[11px] font-black uppercase tracking-wider text-blue-700 flex items-center gap-1.5">
+                <span className="p-1 rounded-lg bg-blue-100/90 text-blue-700 shadow-2xs">
+                  <FileText className="h-3.5 w-3.5" />
+                </span>
+                Total BOLs
               </span>
-              <span className="text-[10px] font-bold text-blue-600/80 font-[vazirmatn]">مجموع بارنامه‌ها</span>
+              <span className="text-[10px] font-bold text-blue-700/90 bg-blue-100/70 px-2 py-0.5 rounded-full font-[vazirmatn]" dir="rtl">
+                مجموع بارنامه‌ها
+              </span>
             </div>
-            <p className="text-xl font-black text-slate-950 mt-1 font-mono">{summaryStats.count}</p>
+            <div className="mt-2 flex items-baseline justify-between relative">
+              <p className="text-2xl font-black text-slate-900 tracking-tight tabular-nums font-sans">
+                {summaryStats.count.toLocaleString()}
+              </p>
+              <span className="text-[10px] font-bold text-blue-700 bg-blue-100/90 px-2 py-0.5 rounded-md border border-blue-200/80">
+                100% Verified
+              </span>
+            </div>
           </div>
 
-          <div className="rounded-2xl bg-gradient-to-br from-indigo-500/10 via-white to-indigo-500/5 border border-indigo-200/90 p-3 shadow-2xs hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <span className="text-[10.5px] font-black uppercase tracking-wider text-indigo-700 flex items-center gap-1">
-                <Boxes className="h-3.5 w-3.5 text-indigo-600" /> Packages
+          {/* Card 2: Packages */}
+          <div className="relative overflow-hidden rounded-2xl border border-indigo-200/90 bg-gradient-to-br from-indigo-50/90 via-white to-indigo-50/30 p-3.5 shadow-2xs hover:shadow-md hover:border-indigo-300 transition-all duration-200 group">
+            <div className="absolute -top-10 -right-10 w-24 h-24 bg-indigo-400/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform" />
+            <div className="flex items-center justify-between relative">
+              <span className="text-[11px] font-black uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
+                <span className="p-1 rounded-lg bg-indigo-100/90 text-indigo-700 shadow-2xs">
+                  <Boxes className="h-3.5 w-3.5" />
+                </span>
+                Packages
               </span>
-              <span className="text-[10px] font-bold text-indigo-600/80 font-[vazirmatn]">مجموع کارتن‌ها</span>
+              <span className="text-[10px] font-bold text-indigo-700/90 bg-indigo-100/70 px-2 py-0.5 rounded-full font-[vazirmatn]" dir="rtl">
+                مجموع بسته‌ها
+              </span>
             </div>
-            <p className="text-xl font-black text-slate-950 mt-1 font-mono">
-              {summaryStats.totalPkgs ? `${summaryStats.totalPkgs.toLocaleString()} CTNS` : "0 CTNS"}
-            </p>
+            <div className="mt-2 relative">
+              <div className="flex items-baseline justify-between">
+                <p className="text-2xl font-black text-slate-900 tracking-tight tabular-nums font-sans">
+                  {summaryStats.totalPkgs.toLocaleString()}
+                  <span className="text-xs font-black text-indigo-700 uppercase tracking-normal ml-1.5">PKGS</span>
+                </p>
+              </div>
+              <p className="text-[11px] font-bold text-indigo-700/90 mt-0.5 truncate" title={summaryStats.packagesDisplay}>
+                {summaryStats.packagesDisplay || "Cartons & Bags breakdown"}
+              </p>
+            </div>
           </div>
 
-          <div className="rounded-2xl bg-gradient-to-br from-amber-500/10 via-white to-orange-500/5 border border-amber-200/90 p-3 shadow-2xs hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <span className="text-[10.5px] font-black uppercase tracking-wider text-amber-800 flex items-center gap-1">
-                <Scale className="h-3.5 w-3.5 text-amber-700" /> Total Weight
+          {/* Card 3: Total Weight */}
+          <div className="relative overflow-hidden rounded-2xl border border-amber-200/90 bg-gradient-to-br from-amber-50/90 via-white to-orange-50/30 p-3.5 shadow-2xs hover:shadow-md hover:border-amber-300 transition-all duration-200 group">
+            <div className="absolute -top-10 -right-10 w-24 h-24 bg-amber-400/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform" />
+            <div className="flex items-center justify-between relative">
+              <span className="text-[11px] font-black uppercase tracking-wider text-amber-800 flex items-center gap-1.5">
+                <span className="p-1 rounded-lg bg-amber-100/90 text-amber-800 shadow-2xs">
+                  <Scale className="h-3.5 w-3.5" />
+                </span>
+                Total Weight
               </span>
-              <span className="text-[10px] font-bold text-amber-700/80 font-[vazirmatn]">مجموع وزن</span>
+              <span className="text-[10px] font-bold text-amber-800/90 bg-amber-100/70 px-2 py-0.5 rounded-full font-[vazirmatn]" dir="rtl">
+                مجموع وزن
+              </span>
             </div>
-            <p className="text-xl font-black text-slate-950 mt-1 font-mono">
-              {summaryStats.totalWeightKg ? `${summaryStats.totalWeightKg.toLocaleString()} KG` : "0 KG"}
-            </p>
+            <div className="mt-2 flex items-baseline justify-between relative">
+              <p className="text-2xl font-black text-slate-900 tracking-tight tabular-nums font-sans">
+                {summaryStats.totalWeightKg.toLocaleString()}
+                <span className="text-xs font-black text-amber-800 uppercase tracking-normal ml-1.5">KG</span>
+              </p>
+              {summaryStats.totalWeightKg > 0 && (
+                <span className="text-[10px] font-bold text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-200/80">
+                  {(summaryStats.totalWeightKg / 1000).toLocaleString("en-US", { maximumFractionDigits: 1 })} MT
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="rounded-2xl bg-gradient-to-br from-emerald-500/10 via-white to-teal-500/5 border border-emerald-200/90 p-3 shadow-2xs hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <span className="text-[10.5px] font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1">
-                <DollarSign className="h-3.5 w-3.5 text-emerald-700" /> Goods Value
+          {/* Card 4: Goods Value */}
+          <div className="relative overflow-hidden rounded-2xl border border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/30 p-3.5 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all duration-200 group">
+            <div className="absolute -top-10 -right-10 w-24 h-24 bg-emerald-400/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform" />
+            <div className="flex items-center justify-between relative">
+              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                <span className="p-1 rounded-lg bg-emerald-100/90 text-emerald-800 shadow-2xs">
+                  <DollarSign className="h-3.5 w-3.5" />
+                </span>
+                Goods Value
               </span>
-              <span className="text-[10px] font-bold text-emerald-700/80 font-[vazirmatn]">ارزش کالا</span>
+              <span className="text-[10px] font-bold text-emerald-800/90 bg-emerald-100/70 px-2 py-0.5 rounded-full font-[vazirmatn]" dir="rtl">
+                ارزش کالا
+              </span>
             </div>
-            <p className="text-xl font-black text-slate-950 mt-1 font-mono">
-              {summaryStats.totalValueUsd ? `$${summaryStats.totalValueUsd.toLocaleString()}` : "$0.00"}
-            </p>
+            <div className="mt-2 flex items-baseline justify-between relative">
+              <p className="text-2xl font-black text-slate-900 tracking-tight tabular-nums font-sans">
+                {Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(summaryStats.totalValueUsd)}
+              </p>
+              {summaryStats.count > 0 && summaryStats.totalValueUsd > 0 && (
+                <span className="text-[10px] font-bold text-emerald-900 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-200/80 hidden xl:inline-block">
+                  Avg ${(Math.round(summaryStats.totalValueUsd / summaryStats.count)).toLocaleString()}/BOL
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1751,6 +2131,72 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
             )}
           </div>
 
+          {/* Status Filter Quick Pills (Active / Archived / All Records) */}
+          <div className="flex items-center gap-1 bg-slate-100/90 dark:bg-slate-800/90 p-1 rounded-2xl border border-slate-200/80 dark:border-slate-700 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => {
+                startTransition(() => {
+                  setStatusFilter("active")
+                })
+              }}
+              className={`px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 [&_span]:pointer-events-none ${
+                statusFilter === "active"
+                  ? "bg-blue-600 text-white font-black shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white"
+              }`}
+            >
+              <span>Active</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                statusFilter === "active" ? "bg-white/20 text-white" : "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+              }`}>
+                {activeCount}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                startTransition(() => {
+                  setStatusFilter("archived")
+                })
+              }}
+              className={`px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 [&_span]:pointer-events-none ${
+                statusFilter === "archived"
+                  ? "bg-amber-600 text-white font-black shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white"
+              }`}
+            >
+              <span>Archived</span>
+              {archivedCount > 0 && (
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                  statusFilter === "archived" ? "bg-white/20 text-white" : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                }`}>
+                  {archivedCount}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                startTransition(() => {
+                  setStatusFilter("all")
+                })
+              }}
+              className={`px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 [&_span]:pointer-events-none ${
+                statusFilter === "all"
+                  ? "bg-slate-700 text-white font-black shadow-xs"
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white"
+              }`}
+            >
+              <span>All</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-black ${
+                statusFilter === "all" ? "bg-white/20 text-white" : "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200"
+              }`}>
+                {documents.length}
+              </span>
+            </button>
+          </div>
+
           {/* Date Filter Quick Pills */}
           <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200/80 text-xs font-bold">
             {(
@@ -1764,8 +2210,12 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
               <button
                 key={f.id}
                 type="button"
-                onClick={() => setDateFilter(f.id)}
-                className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
+                onClick={() => {
+                  startTransition(() => {
+                    setDateFilter(f.id)
+                  })
+                }}
+                className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer [&_span]:pointer-events-none ${
                   dateFilter === f.id
                     ? "bg-blue-600 text-white font-black shadow-xs"
                     : "text-slate-600 hover:text-slate-950"
@@ -1782,40 +2232,40 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
               type="button"
               variant="outline"
               onClick={handleExportToCSV}
-              className="h-8.5 rounded-xl border-emerald-300 bg-emerald-50/90 px-2.5 text-xs font-black text-emerald-800 hover:bg-emerald-100 shadow-2xs cursor-pointer"
+              className="h-8.5 rounded-xl border-emerald-300 bg-emerald-50/90 px-2.5 text-xs font-black text-emerald-800 hover:bg-emerald-100 shadow-2xs cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Export currently filtered list to CSV / Excel spreadsheet"
             >
-              <FileSpreadsheet className="h-3.5 w-3.5 mr-1 text-emerald-600 shrink-0" />
+              <FileSpreadsheet className="h-3.5 w-3.5 mr-1 text-emerald-600 shrink-0 pointer-events-none" />
               <span>Export CSV</span>
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsCloudSyncModalOpen(true)}
-              className="h-8.5 rounded-xl border-blue-300 bg-blue-50/90 px-2.5 text-xs font-black text-blue-900 hover:bg-blue-100 shadow-2xs cursor-pointer flex items-center gap-1"
-              title="Cloud Sync: Upload/Download all 58 BOLs and ledgers across all devices & browsers"
+              className="h-8.5 rounded-xl border-blue-300 bg-blue-50/90 px-2.5 text-xs font-black text-blue-900 hover:bg-blue-100 shadow-2xs cursor-pointer flex items-center gap-1 active:scale-98 transition-all [&_span]:pointer-events-none [&_svg]:pointer-events-none"
+              title="Cloud Sync: Upload & download verified BOL documents and ledgers across all devices & browsers"
             >
-              <Cloud className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+              <Cloud className="h-3.5 w-3.5 text-blue-600 shrink-0 pointer-events-none" />
               <span>Cloud Sync</span>
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={handleDeleteEmptyBOLs}
-              className="h-8.5 rounded-xl border-rose-300 bg-rose-50/90 px-2.5 text-xs font-black text-rose-800 hover:bg-rose-100 shadow-2xs cursor-pointer flex items-center gap-1"
+              className="h-8.5 rounded-xl border-rose-300 bg-rose-50/90 px-2.5 text-xs font-black text-rose-800 hover:bg-rose-100 shadow-2xs cursor-pointer flex items-center gap-1 [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Clean empty draft BOLs / حذف بارنامه‌های خالی"
             >
-              <Trash2 className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+              <Trash2 className="h-3.5 w-3.5 text-rose-600 shrink-0 pointer-events-none" />
               <span>Clean Drafts</span>
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={handleRecoverAllBOLs}
-              className="h-8.5 rounded-xl border-slate-300 bg-slate-50/80 px-2.5 text-xs font-bold text-slate-800 hover:bg-slate-100 shadow-2xs cursor-pointer"
+              className="h-8.5 rounded-xl border-slate-300 bg-slate-50/80 px-2.5 text-xs font-bold text-slate-800 hover:bg-slate-100 shadow-2xs cursor-pointer [&_span]:pointer-events-none [&_svg]:pointer-events-none"
               title="Sync & recover all saved BOL documents from server & disk"
             >
-              <RotateCcw className="h-3.5 w-3.5 mr-1 text-slate-600 shrink-0" />
+              <RotateCcw className="h-3.5 w-3.5 mr-1 text-slate-600 shrink-0 pointer-events-none" />
               <span>Recover Saved BOLs</span>
             </Button>
             {/* Sort Selector */}
@@ -1876,12 +2326,14 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
               key={category.key}
               type="button"
               onClick={() => {
-                setActiveCategory(category.key)
-                if (category.key !== "account") {
-                  setSelectedCompanyName(null)
-                }
+                startTransition(() => {
+                  setActiveCategory(category.key)
+                  if (category.key !== "account") {
+                    setSelectedCompanyName(null)
+                  }
+                })
               }}
-              className={`whitespace-nowrap rounded-xl border px-3 py-1.5 text-xs font-extrabold transition-all cursor-pointer shrink-0 ${
+              className={`whitespace-nowrap rounded-xl border px-3 py-1.5 text-xs font-extrabold transition-all cursor-pointer shrink-0 [&_span]:pointer-events-none ${
                 activeCategory === category.key
                   ? "border-blue-600 bg-linear-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20"
                   : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-blue-50 hover:text-blue-900 hover:border-blue-200"
@@ -1938,95 +2390,42 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
       {/* Main Content View Container */}
       <CardContent className="min-h-[420px] flex-1 overflow-auto bg-slate-50/40 p-3 sm:p-5">
         
-        {/* TOP LATEST BOLS HERO HIGHLIGHT STRIP (BRING UP THE LATEST BOL CREATIONS) */}
+        {/* TOP LATEST BOLS HERO HIGHLIGHT STRIP (REDESIGNED FOR MAXIMUM CLARITY & RESPONSIVENESS) */}
         {!isLoading && latestTopBOLs.length > 0 && activeCategory !== "account" && !query && (
-          <div className="mb-6 rounded-[28px] border border-amber-300/70 bg-linear-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 p-4.5 shadow-[0_10px_30px_-10px_rgba(245,158,11,0.15)] backdrop-blur-2xl relative overflow-hidden">
-            {/* Soft Ambient Light Glow */}
-            <div className="pointer-events-none absolute -top-10 -right-10 w-44 h-44 bg-amber-400/20 rounded-full blur-3xl" />
-            
-            <div className="flex items-center justify-between gap-2 mb-3.5 relative z-10">
+          <div className="mb-6 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 p-3.5 sm:p-5 shadow-xs relative overflow-hidden before:absolute before:top-0 before:left-0 before:right-0 before:h-1 before:bg-linear-to-r before:from-amber-400 before:via-amber-500 before:to-yellow-400">
+            {/* Header: Left-Aligned, Clean Spacing, Dynamic Count */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 relative z-10">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center shadow-md shadow-amber-500/30">
-                  <Zap className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shadow-xs">
+                  <Zap className="w-4 h-4 fill-slate-950" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-950 flex items-center gap-2 tracking-tight">
+                  <h3 className="text-sm font-black text-slate-950 dark:text-white flex items-center gap-2 tracking-tight">
                     LATEST BOL CREATIONS
-                    <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-[10px] font-black shadow-xs">
-                      6 RECENT
+                    <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 text-[10px] font-black">
+                      {latestTopBOLs.length} RECENT
                     </span>
                   </h3>
-                  <p className="text-[11px] text-slate-600 font-semibold">Your most recent Bill of Lading documents created in system</p>
+                  <p className="text-[11.5px] text-slate-600 dark:text-slate-400 font-medium">
+                    Recent Bill of Lading documents created in system
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 min-[1200px]:grid-cols-6 xl:grid-cols-6 2xl:grid-cols-6 relative z-10">
-              {latestTopBOLs.map((doc, idx) => (
-                <div
-                  key={`latest-${doc.id}`}
-                  className="group relative rounded-2xl bg-white/85 backdrop-blur-xl border border-amber-200/80 p-3.5 shadow-sm hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 flex flex-col justify-between overflow-hidden"
-                >
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <div>
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-[11px] font-mono shadow-2xs truncate">
-                        #{doc.bol_number || "BOL"}
-                      </span>
-                      <span className="text-[9px] font-extrabold text-amber-800 bg-amber-100/90 border border-amber-200/60 px-1.5 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                        <Clock className="w-2.5 h-2.5 text-amber-700" />
-                        {doc.created_at ? new Date(doc.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Just now"}
-                      </span>
-                    </div>
-
-                    <p className="mt-2 text-xs font-black text-slate-950 truncate" title={doc.shipper_name}>
-                      {doc.shipper_name || "No Shipper"}
-                    </p>
-                    <p className="text-[11px] text-slate-600 font-bold truncate flex items-center gap-1 mt-0.5">
-                      <ArrowRight className="w-3 h-3 text-amber-600 shrink-0" />
-                      <span className="truncate">{doc.consignee_name || "No Consignee"}</span>
-                    </p>
-
-                    {/* Quick Cargo & Logistics Details */}
-                    {(doc.number_of_packages || doc.net_weight || doc.truck_number || doc.goods_value) && (
-                      <div className="mt-2 flex items-center justify-between gap-1 text-[10px] bg-amber-50/90 border border-amber-200/80 rounded-lg px-2 py-1 text-amber-950 font-bold">
-                        {(doc.number_of_packages || doc.net_weight) && (
-                          <span className="truncate flex items-center gap-1">
-                            <Boxes className="w-3 h-3 text-amber-700 shrink-0" />
-                            <span>{doc.number_of_packages || doc.net_weight}</span>
-                          </span>
-                        )}
-                        {doc.truck_number && (
-                          <span className="truncate flex items-center gap-1 font-mono text-[9.5px]">
-                            <Truck className="w-3 h-3 text-amber-700 shrink-0" />
-                            <span>{doc.truck_number}</span>
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-3 pt-2.5 border-t border-amber-100/80 flex items-center gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => editBOL(doc)}
-                      className="flex-1 h-8 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs cursor-pointer shadow-xs active:scale-95 transition-all"
-                    >
-                      <Pencil className="w-3 h-3 mr-1" /> Edit
-                    </Button>
-
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => downloadBOLPDF(doc)}
-                      className="flex-1 h-8 rounded-xl border-amber-300 bg-amber-50/80 text-amber-900 font-extrabold text-xs cursor-pointer hover:bg-amber-100 active:scale-95 transition-all"
-                    >
-                      <FileDown className="w-3 h-3 mr-1 text-amber-700" /> PDF
-                    </Button>
-                  </div>
-                </div>
+            {/* Responsive Card Grid: 1 col (mobile), 2 cols (tablet), 3 cols (laptop), 4 cols (desktop), 6 cols (large desktop) */}
+            <div className="grid gap-3.5 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[1600px]:grid-cols-6 relative z-10 items-stretch">
+              {latestTopBOLs.map((doc) => (
+                <RecentBolCard
+                  key={`latest-${doc.id || doc.bol_number}`}
+                  doc={doc}
+                  onEdit={() => editBOL(doc)}
+                  onPreview={() => viewBOLPreview(doc)}
+                  onFiles={() => onLoadDocument(doc.id || doc.bol_number, "attachments")}
+                  onPdf={() => downloadBOLPDF(doc)}
+                  onCardClick={() => viewBOLPreview(doc)}
+                  isDownloadingPdf={downloadingPdfId === doc.id}
+                />
               ))}
             </div>
           </div>
@@ -2242,37 +2641,83 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
             )}
 
             {activeCategory === "account" ? null : filteredDocuments.length === 0 ? (
-              <div className="flex min-h-80 items-center justify-center">
-                <div className="max-w-sm rounded-3xl border border-dashed border-blue-300 bg-white/90 p-8 text-center shadow-lg backdrop-blur-xl">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 mb-3">
-                    <FileText className="h-7 w-7" />
+              <div className="flex min-h-80 items-center justify-center p-4">
+                <div className="max-w-md w-full rounded-3xl border border-dashed border-blue-300 dark:border-blue-800 bg-white/95 dark:bg-slate-900/90 p-8 text-center shadow-lg backdrop-blur-xl space-y-4">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400">
+                    <FileText className="h-8 w-8" />
                   </div>
-                  <p className="text-lg font-extrabold text-blue-950">No documents found</p>
-                  <p className="mt-1 text-xs font-medium text-slate-500">Try adjusting your search query or category filters.</p>
+                  <div>
+                    <p className="text-lg font-black text-slate-900 dark:text-slate-100">
+                      {documents.length === 0 ? "No Saved Bills of Lading" : "No documents match your filters"}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                      {documents.length === 0
+                        ? "Sync your saved records from cloud or recover existing BOLs from server storage."
+                        : "Try adjusting your search terms, date range, or active category filter."}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
+                    <Button
+                      type="button"
+                      onClick={handleRecoverAllBOLs}
+                      className="h-9 px-3.5 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      <span>Recover & Refresh BOLs</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCloudSyncModalOpen(true)}
+                      className="h-9 px-3.5 text-xs font-bold rounded-xl border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Cloud className="h-3.5 w-3.5 text-blue-600" />
+                      <span>Cloud Sync</span>
+                    </Button>
+                    {(query || activeCategory !== "all" || dateFilter !== "all") && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setQuery("")
+                          setActiveCategory("all")
+                          setDateFilter("all")
+                        }}
+                        className="h-9 px-3 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 cursor-pointer"
+                      >
+                        Reset Filters
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
               <div className="space-y-4">
                 {/* 1. GRID VIEW MODE - BALANCED RESPONSIVE GRID WITH PREMIUM CARDS */}
                 {viewMode === "grid" && (
-                  <div className="grid gap-3 sm:gap-3.5 lg:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[1920px]:grid-cols-6">
-                    {filteredDocuments.map((doc, idx) => (
+                  <div className="grid gap-3 sm:gap-3.5 lg:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 min-[1680px]:grid-cols-5 min-[2100px]:grid-cols-6">
+                    {filteredDocuments.slice(0, visibleCount).map((doc, idx) => (
                       <DocumentGridCard
                         key={doc.id || doc.bol_number}
                         doc={doc}
-                        isLatest={idx < 2 && sortBy === "latest"}
+                        isLatest={idx < 2 && sortBy === "latest" && !doc.isArchived && doc.status !== "archived"}
                         hasUploadedPdf={Boolean(doc.pdf_url)}
                         invoiceNo={extractInvoiceNo(doc)}
                         assignedCategory={getAssignedCategory(doc)}
                         uploadingId={uploadingId}
                         deletingId={deletingId}
                         openingPdfId={openingPdfId}
+                        downloadingPdfId={downloadingPdfId}
                         onEdit={editBOL}
                         onDownload={downloadBOLPDF}
                         onPreview={viewBOLPreview}
                         onDuplicate={handleDuplicate}
                         onOpenPdf={openUploadedPDF}
-                        onDelete={handleDelete}
+                        onDelete={handleArchive}
+                        onArchive={handleArchive}
+                        onRestore={handleRestore}
+                        onHardDelete={handleHardDelete}
+                        onFiles={handleFiles}
                         onCategoryAssign={assignDocumentCategory}
                         onFileInput={handleFileInput}
                         isSelected={selectedDocIds.includes(doc.id || doc.bol_number)}
@@ -2286,96 +2731,188 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
             {/* 2. COMPACT LIST VIEW MODE */}
             {viewMode === "list" && (
               <div className="space-y-3">
-                {filteredDocuments.map((doc, idx) => {
+                {filteredDocuments.slice(0, visibleCount).map((doc, idx) => {
                   const hasUploadedPdf = Boolean(doc.pdf_url)
                   const isLatest = idx < 2 && sortBy === "latest"
                   const invoiceNo = extractInvoiceNo(doc)
+                  const routeInfo = extractBolRoute(doc)
 
                   return (
                     <div
                       key={`list-${doc.id}`}
-                      className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-blue-300 hover:shadow-md transition-all"
+                      className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200/90 dark:border-slate-800 shadow-xs hover:border-blue-400 dark:hover:border-blue-700 hover:shadow-md transition-all"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 font-black text-xs shrink-0">
-                          <FileText className="w-5 h-5 text-blue-600" />
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/80 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-xs shrink-0">
+                          <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-black text-slate-900 text-sm">{doc.bol_number || "BOL"}</span>
+                            <span className="font-black text-slate-900 dark:text-white text-sm">{getCleanBolNumber(doc)}</span>
+                            {(doc.isArchived || doc.status === "archived") && (
+                              <span className="px-2 py-0.5 rounded-full bg-slate-900 text-amber-300 border border-amber-500/50 text-[10px] font-black uppercase tracking-wider">
+                                ARCHIVED
+                              </span>
+                            )}
                             {invoiceNo && (
-                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 text-[10px] font-black font-mono">
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[10px] font-black font-mono">
                                 INV: {invoiceNo}
                               </span>
                             )}
-                            {isLatest && (
+                            {isLatest && !doc.isArchived && doc.status !== "archived" && (
                               <span className="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[9px] font-black">
                                 LATEST
                               </span>
                             )}
-                            <span className="text-xs font-bold text-slate-500">
-                              • {doc.issue_date ? new Date(doc.issue_date).toLocaleDateString(undefined, { timeZone: "UTC" }) : "No date"}
+                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                              • {formatDocDate(doc)}
                             </span>
                           </div>
-                          <p className="text-xs font-semibold text-slate-700 truncate mt-0.5">
-                            <span className="font-extrabold text-slate-900">{doc.shipper_name}</span> ➔ {doc.consignee_name}
-                          </p>
-                          {(doc.number_of_packages || doc.net_weight || doc.goods_value) && (
-                            <p className="text-[11px] font-bold text-blue-900 mt-1 flex items-center gap-2 flex-wrap">
-                              {doc.number_of_packages && <span>📦 {doc.number_of_packages}</span>}
-                              {doc.net_weight && <span>⚖️ {doc.net_weight}</span>}
-                              {doc.goods_value && <span>💰 {doc.goods_value}</span>}
-                              {doc.truck_number && <span>🚚 {doc.truck_number}</span>}
+                          <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
+                              <span className="font-extrabold text-slate-900 dark:text-white">{doc.shipper_name || "Missing Shipper"}</span> ➔ {doc.consignee_name || "Missing Consignee"}
                             </p>
+                            {routeInfo.display !== "—" && (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-800/60 text-[10.5px] font-bold shadow-2xs"
+                                title={`Transit Route: ${routeInfo.display}`}
+                              >
+                                <Compass className="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                <span dir={routeInfo.isPersian ? "rtl" : "ltr"}>{routeInfo.shortDisplay || routeInfo.display}</span>
+                                {routeInfo.borderCrossing && (
+                                  <span className="text-[9.5px] font-normal text-indigo-600 dark:text-indigo-400">
+                                    • {routeInfo.borderCrossing.split(" ")[0]}
+                                  </span>
+                                )}
+                                {routeInfo.isFullReefer ? (
+                                  <span className="text-[8.5px] font-black text-cyan-800 dark:text-cyan-200 bg-cyan-100 dark:bg-cyan-950/80 border border-cyan-300 dark:border-cyan-800 rounded px-1">❄️ Full Reefer</span>
+                                ) : routeInfo.hasReefer ? (
+                                  <span className="text-[8.5px] font-black text-cyan-700 dark:text-cyan-300">❄️ Reefer</span>
+                                ) : null}
+                                {routeInfo.hasSwitchBl && (
+                                  <span className="text-[8.5px] font-black text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border border-purple-300 dark:border-purple-800 rounded px-1">🔄 Switch BL</span>
+                                )}
+                              </span>
+                            )}
+                          </div>
+                          {(doc.number_of_packages || doc.net_weight || doc.goods_value || doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent || doc.truck_number || doc.driver_name) && (
+                            <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
+                              {doc.number_of_packages && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">📦 {doc.number_of_packages}</span>}
+                              {(doc.net_weight || doc.gross_weight) && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">⚖️ {formatDisplayWeight(doc.net_weight || doc.gross_weight)}</span>}
+                              {doc.goods_value && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">💰 {doc.goods_value}</span>}
+                              {isNonZeroRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent) && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 font-mono text-[10.5px]">
+                                  <Banknote className="w-3 h-3 text-amber-700 dark:text-amber-400 shrink-0" />
+                                  <span>Rent: {formatDriverRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent)}</span>
+                                </span>
+                              )}
+                              {(doc.truck_number || doc.driver_name) && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200 border border-blue-200/80 dark:border-blue-800" dir="auto">
+                                  🚚 <bdi>{doc.truck_number || doc.driver_name}</bdi>
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 flex-wrap shrink-0">
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => editBOL(doc)}
-                          className="h-9 px-3 rounded-xl bg-blue-600 text-white font-extrabold text-xs cursor-pointer"
-                        >
-                          <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
-                        </Button>
+                        {(doc.isArchived || doc.status === "archived") ? (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => viewBOLPreview(doc)}
+                              className="h-9 px-3 rounded-xl bg-slate-800 text-white font-extrabold text-xs cursor-pointer shadow-xs hover:bg-slate-700 active:scale-95"
+                            >
+                              <Eye className="w-3.5 h-3.5 mr-1" /> View BOL
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => handleRestore(doc)}
+                              className="h-9 px-3 rounded-xl bg-emerald-600 text-white font-extrabold text-xs cursor-pointer shadow-xs hover:bg-emerald-700 active:scale-95"
+                              title="Restore to Active list"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5 mr-1" /> Restore
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleFiles(doc)}
+                              className="h-9 px-3 rounded-xl border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/60 text-cyan-900 dark:text-cyan-200 font-black text-xs cursor-pointer hover:bg-cyan-100 dark:hover:bg-cyan-900/60"
+                              title="Shipment Folder & Files"
+                            >
+                              <FolderArchive className="w-3.5 h-3.5 mr-1 text-cyan-600 dark:text-cyan-400" /> Files
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => handleHardDelete(doc, e)}
+                              disabled={isHardDeleting && docToHardDelete?.id === (doc.id || doc.bol_number)}
+                              className="h-9 w-9 p-0 rounded-xl border-red-200/80 dark:border-red-800/70 bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/60 font-black text-xs cursor-pointer flex items-center justify-center"
+                              title="Permanent Delete (Danger Zone)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => editBOL(doc)}
+                              className="h-9 px-3 rounded-xl bg-blue-600 text-white font-extrabold text-xs cursor-pointer shadow-xs hover:bg-blue-700 active:scale-95"
+                            >
+                              <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+                            </Button>
 
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => downloadBOLPDF(doc)}
-                          className="h-9 px-3 rounded-xl border-amber-300 bg-amber-50 text-amber-900 font-black text-xs cursor-pointer hover:bg-amber-100"
-                        >
-                          <FileDown className="w-3.5 h-3.5 mr-1 text-amber-600" /> Download PDF
-                        </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleFiles(doc)}
+                              className="h-9 px-3 rounded-xl border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/60 text-cyan-900 dark:text-cyan-200 font-black text-xs cursor-pointer hover:bg-cyan-100 dark:hover:bg-cyan-900/60"
+                              title="Digital Shipment Folder & Attachments"
+                            >
+                              <FolderArchive className="w-3.5 h-3.5 mr-1 text-cyan-600 dark:text-cyan-400" /> Files
+                            </Button>
 
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => viewBOLPreview(doc)}
-                          className="h-9 px-3 rounded-xl border-slate-200 text-slate-700 font-bold text-xs cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5 mr-1" /> Preview
-                        </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => downloadBOLPDF(doc)}
+                              className="h-9 px-3 rounded-xl border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-black text-xs cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/60"
+                            >
+                              <FileDown className="w-3.5 h-3.5 mr-1 text-amber-600 dark:text-amber-400" /> Download PDF
+                            </Button>
 
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => handleDelete(doc, e)}
-                          disabled={deletingId === (doc.id || doc.bol_number)}
-                          className="h-9 w-9 p-0 rounded-xl border-red-200/80 bg-red-50 text-red-600 hover:bg-red-100 font-black text-xs cursor-pointer flex items-center justify-center"
-                          title="Delete Bill of Lading"
-                        >
-                          {deletingId === (doc.id || doc.bol_number) ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-3.5 h-3.5" />
-                          )}
-                        </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => viewBOLPreview(doc)}
+                              className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
+                            >
+                              <Eye className="w-3.5 h-3.5 mr-1" /> Preview
+                            </Button>
+
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => handleArchive(doc, e)}
+                              disabled={isArchiving && docToArchive?.id === (doc.id || doc.bol_number)}
+                              className="h-9 w-9 p-0 rounded-xl border-amber-200/80 dark:border-amber-800/70 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/60 font-black text-xs cursor-pointer flex items-center justify-center"
+                              title="Archive Bill of Lading"
+                            >
+                              <Archive className="w-3.5 h-3.5" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   )
@@ -2385,108 +2922,216 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
 
             {/* 3. DETAILED TABLE VIEW MODE */}
             {viewMode === "table" && (
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <table className="w-full text-left text-xs text-slate-700">
-                  <thead className="bg-slate-100/80 text-slate-900 uppercase font-black tracking-wider text-[11px] border-b border-slate-200">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+                <table className="w-full text-left text-xs text-slate-700 dark:text-slate-200">
+                  <thead className="bg-slate-100/90 dark:bg-slate-800/90 text-slate-900 dark:text-slate-100 uppercase font-black tracking-wider text-[11px] border-b border-slate-200 dark:border-slate-700">
                     <tr>
                       <th className="p-3.5">BOL & Invoice #</th>
                       <th className="p-3.5">Issue Date</th>
                       <th className="p-3.5">Shipper</th>
                       <th className="p-3.5">Consignee</th>
+                      <th className="p-3.5">Route</th>
                       <th className="p-3.5">Cargo / Weight</th>
-                      <th className="p-3.5">Truck #</th>
+                      <th className="p-3.5">Truck / Driver Rent</th>
                       <th className="p-3.5">PDF Status</th>
                       <th className="p-3.5 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-semibold">
-                    {filteredDocuments.map((doc, idx) => {
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-semibold">
+                    {filteredDocuments.slice(0, visibleCount).map((doc, idx) => {
                       const hasUploadedPdf = Boolean(doc.pdf_url)
                       const isLatest = idx < 2 && sortBy === "latest"
                       const invoiceNo = extractInvoiceNo(doc)
+                      const routeInfo = extractBolRoute(doc)
 
                       return (
-                        <tr key={`table-${doc.id}`} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="p-3.5 font-black text-blue-900">
+                        <tr key={`table-${doc.id}`} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="p-3.5 font-black text-blue-900 dark:text-blue-300">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span>{doc.bol_number || "N/A"}</span>
+                              <span>{getCleanBolNumber(doc)}</span>
+                              {(doc.isArchived || doc.status === "archived") && (
+                                <span className="px-1.5 py-0.5 rounded bg-slate-900 text-amber-300 border border-amber-500/50 text-[9px] font-black uppercase tracking-wider">
+                                  ARCHIVED
+                                </span>
+                              )}
                               {invoiceNo && (
-                                <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-200 text-[9.5px] font-mono font-bold">
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[9.5px] font-mono font-bold">
                                   {invoiceNo}
                                 </span>
                               )}
-                              {isLatest && (
+                              {isLatest && !doc.isArchived && doc.status !== "archived" && (
                                 <span className="px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 text-[9px] font-black">
                                   LATEST
                                 </span>
                               )}
                             </div>
                           </td>
-                          <td className="p-3.5">
-                            {doc.issue_date ? new Date(doc.issue_date).toLocaleDateString(undefined, { timeZone: "UTC" }) : "N/A"}
+                          <td className="p-3.5 text-slate-600 dark:text-slate-400">
+                            {formatDocDate(doc)}
                           </td>
-                          <td className="p-3.5 font-bold text-slate-900 max-w-[160px] truncate">
+                          <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100 max-w-[160px] truncate" title={doc.shipper_name || "N/A"}>
                             {doc.shipper_name || "N/A"}
                           </td>
-                          <td className="p-3.5 font-bold text-slate-800 max-w-[160px] truncate">
+                          <td className="p-3.5 font-bold text-slate-800 dark:text-slate-200 max-w-[160px] truncate" title={doc.consignee_name || "N/A"}>
                             {doc.consignee_name || "N/A"}
                           </td>
-                          <td className="p-3.5 font-medium text-slate-700 max-w-[180px] truncate">
-                            {doc.number_of_packages || doc.net_weight ? (
-                              <span>{doc.number_of_packages} {doc.net_weight ? `(${doc.net_weight})` : ""}</span>
+                          <td className="p-3.5 max-w-[220px] truncate" title={routeInfo.display}>
+                            {routeInfo.display !== "—" ? (
+                              <div className="flex flex-col min-w-0 max-w-full">
+                                <span className="inline-flex items-center gap-1 font-bold text-slate-800 dark:text-slate-200 text-[11px] truncate">
+                                  <Compass className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                  <span className="truncate" dir={routeInfo.isPersian ? "rtl" : "ltr"}>{routeInfo.shortDisplay || routeInfo.display}</span>
+                                </span>
+                                {(routeInfo.borderCrossing || routeInfo.hasReefer || routeInfo.hasSwitchBl) && (
+                                  <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                                    {routeInfo.borderCrossing && (
+                                      <span className="inline-flex items-center text-[9px] font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200/80 dark:border-blue-800/60 rounded px-1 py-0.2 truncate" title={`Border: ${routeInfo.borderCrossing}`}>
+                                        {routeInfo.borderCrossing.split(" ")[0]}
+                                      </span>
+                                    )}
+                                    {routeInfo.isFullReefer ? (
+                                      <span className="text-[8.5px] font-black text-cyan-800 dark:text-cyan-200 bg-cyan-100 dark:bg-cyan-950/80 border border-cyan-300 dark:border-cyan-800 rounded px-1 py-0.2">❄️ Full Reefer</span>
+                                    ) : routeInfo.hasReefer ? (
+                                      <span className="text-[8.5px] font-bold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200 dark:border-cyan-800 rounded px-1 py-0.2">❄️ Reefer</span>
+                                    ) : null}
+                                    {routeInfo.hasSwitchBl && (
+                                      <span className="text-[8.5px] font-black text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 border border-purple-300 dark:border-purple-800 rounded px-1 py-0.2">🔄 Switch BL</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-slate-300 dark:text-slate-600 font-light">—</span>
+                            )}
+                          </td>
+                          <td className="p-3.5 font-medium text-slate-700 dark:text-slate-300 max-w-[180px] truncate">
+                            {doc.number_of_packages || doc.net_weight || doc.gross_weight ? (
+                              <span>
+                                {doc.number_of_packages ? doc.number_of_packages : ""}
+                                {(doc.net_weight || doc.gross_weight) ? ` (${formatDisplayWeight(doc.net_weight || doc.gross_weight)})` : ""}
+                              </span>
                             ) : "—"}
                           </td>
-                          <td className="p-3.5">{doc.truck_number || "N/A"}</td>
+                          <td className="p-3.5">
+                            <div className="flex flex-col min-w-0" dir="auto">
+                              <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate">
+                                <bdi>{doc.truck_number || (doc.driver_name ? doc.driver_name : "N/A")}</bdi>
+                              </span>
+                              {isNonZeroRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent) && (
+                                <span className="text-amber-800 dark:text-amber-300 font-bold font-mono text-[10px] truncate max-w-[140px]" title={`Driver Rent: ${formatDriverRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent)}`}>
+                                  Rent: {formatDriverRent(doc.driver_rent || (doc as any).driverFreight || (doc as any).driverRent)}
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td className="p-3.5">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                              hasUploadedPdf ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-500"
+                              hasUploadedPdf ? "bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800" : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
                             }`}>
                               {hasUploadedPdf ? "PDF Ready" : "No PDF"}
                             </span>
                           </td>
                           <td className="p-3.5 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              <Button
-                                type="button"
-                                size="sm"
-                                onClick={() => editBOL(doc)}
-                                className="h-8 px-2.5 rounded-lg bg-blue-600 text-white font-extrabold text-[11px] cursor-pointer"
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => downloadBOLPDF(doc)}
-                                className="h-8 px-2.5 rounded-lg border-amber-300 bg-amber-50 text-amber-900 font-extrabold text-[11px] cursor-pointer hover:bg-amber-100"
-                              >
-                                PDF
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => viewBOLPreview(doc)}
-                                className="h-8 px-2.5 rounded-lg border-slate-200 text-slate-700 font-bold text-[11px] cursor-pointer"
-                              >
-                                View
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={(e) => handleDelete(doc, e)}
-                                disabled={deletingId === (doc.id || doc.bol_number)}
-                                className="h-8 w-8 p-0 rounded-lg border-red-200/80 bg-red-50 text-red-600 hover:bg-red-100 font-black text-[11px] cursor-pointer flex items-center justify-center"
-                                title="Delete Bill of Lading"
-                              >
-                                {deletingId === (doc.id || doc.bol_number) ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                )}
-                              </Button>
+                              {(doc.isArchived || doc.status === "archived") ? (
+                                <>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => viewBOLPreview(doc)}
+                                    className="h-8 px-2.5 rounded-lg bg-slate-800 text-white font-extrabold text-xs cursor-pointer shadow-xs hover:bg-slate-700"
+                                    title="View BOL Preview"
+                                  >
+                                    <Eye className="w-3 h-3 mr-1" /> View
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => handleRestore(doc)}
+                                    className="h-8 px-2.5 rounded-lg bg-emerald-600 text-white font-extrabold text-xs cursor-pointer shadow-xs hover:bg-emerald-700"
+                                    title="Restore to Active"
+                                  >
+                                    <RotateCcw className="w-3 h-3 mr-1" /> Restore
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => onLoadDocument(doc.id || doc.bol_number, "attachments")}
+                                    className="h-8 px-2 rounded-lg border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/60 text-cyan-900 dark:text-cyan-200 font-black text-xs cursor-pointer"
+                                    title="Digital Shipment Folder"
+                                  >
+                                    <FolderArchive className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => handleHardDelete(doc, e)}
+                                    disabled={isHardDeleting && docToHardDelete?.id === (doc.id || doc.bol_number)}
+                                    className="h-8 w-8 p-0 rounded-lg border-red-200/80 dark:border-red-800/70 bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 hover:bg-red-100 font-black text-xs cursor-pointer flex items-center justify-center"
+                                    title="Permanent Delete (Danger Zone)"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => editBOL(doc)}
+                                    className="h-8 px-2.5 rounded-lg bg-blue-600 text-white font-extrabold text-xs cursor-pointer shadow-xs hover:bg-blue-700"
+                                  >
+                                    <Pencil className="w-3 h-3 mr-1" /> Edit
+                                  </Button>
+
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => onLoadDocument(doc.id || doc.bol_number, "attachments")}
+                                    className="h-8 px-2 rounded-lg border-cyan-300 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/60 text-cyan-900 dark:text-cyan-200 font-black text-xs cursor-pointer"
+                                    title="Digital Shipment Folder"
+                                  >
+                                    <FolderArchive className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
+                                  </Button>
+
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => downloadBOLPDF(doc)}
+                                    className="h-8 px-2 rounded-lg border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 font-black text-xs cursor-pointer"
+                                    title="Download PDF"
+                                  >
+                                    <FileDown className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                  </Button>
+
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => viewBOLPreview(doc)}
+                                    className="h-8 px-2 rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs cursor-pointer"
+                                    title="Preview"
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                  </Button>
+
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => handleArchive(doc, e)}
+                                    disabled={isArchiving && docToArchive?.id === (doc.id || doc.bol_number)}
+                                    className="h-8 w-8 p-0 rounded-lg border-amber-200/80 dark:border-amber-800/70 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 hover:bg-amber-100 font-black text-xs cursor-pointer flex items-center justify-center"
+                                    title="Archive Bill of Lading"
+                                  >
+                                    <Archive className="w-3 h-3" />
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -2500,6 +3145,74 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
         )}
           </>
         )}
+        {isServerMode && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Showing <span className="text-blue-900 dark:text-blue-400 font-extrabold">{serverTotal ? ((currentPage - 1) * pageSize) + 1 : 0}</span> to{" "}
+                <span className="text-blue-900 dark:text-blue-400 font-extrabold">{Math.min(currentPage * pageSize, serverTotal ?? 0)}</span> of{" "}
+                <span className="text-blue-900 dark:text-blue-400 font-extrabold">{serverTotal?.toLocaleString()}</span> BOLs
+              </span>
+              <div className="flex items-center gap-1.5 ml-1 border-l border-slate-300 dark:border-slate-700 pl-3">
+                <span className="text-xs text-slate-500 font-semibold">Per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const newSize = Number(e.target.value)
+                    setPageSize(newSize)
+                    setCurrentPage(1)
+                    void fetchDocuments(1, query, newSize)
+                  }}
+                  className="h-7 text-xs font-bold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage <= 1 || isLoading}
+                  onClick={() => {
+                    const p = Math.max(1, currentPage - 1)
+                    setCurrentPage(p)
+                    void fetchDocuments(p, query, pageSize)
+                  }}
+                  className="h-8 px-3 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Previous
+                </Button>
+                <span className="text-xs font-black text-slate-800 dark:text-slate-200 px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage >= totalPages || isLoading}
+                  onClick={() => {
+                    const p = Math.min(totalPages, currentPage + 1)
+                    setCurrentPage(p)
+                    void fetchDocuments(p, query, pageSize)
+                  }}
+                  className="h-8 px-3 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+        {!isServerMode && !isLoading && filteredDocuments.length > visibleCount && (
+          <Button type="button" variant="outline" className="mt-4 w-full" onClick={() => setVisibleCount(count => count + 30)}>
+            Show more BOLs ({Math.min(visibleCount, filteredDocuments.length)} of {filteredDocuments.length})
+          </Button>
+        )}
       </CardContent>
 
       {/* Cloud Sync Modal */}
@@ -2509,24 +3222,24 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
         onSyncComplete={fetchDocuments}
       />
 
-      {/* Delete Confirmation Modal (Yes / No) */}
-      {docToDelete && (
+      {/* Archive Confirmation Modal */}
+      {docToArchive && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-          onClick={() => !deletingId && setDocToDelete(null)}
+          onClick={() => !isArchiving && setDocToArchive(null)}
         >
           <div 
             className="w-full max-w-lg bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3.5 pb-4 border-b border-slate-100">
-              <div className="p-3.5 rounded-2xl bg-red-50 text-red-600 border border-red-200/80 shadow-sm shrink-0">
-                <Trash2 className="w-7 h-7 text-red-600" />
+              <div className="p-3.5 rounded-2xl bg-amber-50 text-amber-700 border border-amber-200/80 shadow-sm shrink-0">
+                <Archive className="w-7 h-7 text-amber-600" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-lg font-black text-slate-900 tracking-tight">Delete Bill of Lading?</h3>
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">Archive Bill of Lading?</h3>
                 <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
-                  آیا از حذف این بارنامه اطمینان کامل دارید؟
+                  آیا می‌خواهید این بارنامه را بایگانی (آرشیو) کنید؟
                 </p>
               </div>
             </div>
@@ -2535,35 +3248,36 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-500 font-bold">BOL Number / شماره بارنامه:</span>
                 <span className="font-mono font-black text-blue-900 text-sm bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-xs">
-                  {docToDelete.bol_number || docToDelete.id}
+                  {docToArchive.bol_number || docToArchive.id}
                 </span>
               </div>
-              {docToDelete.shipper_name && (
+              {docToArchive.shipper_name && (
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500 font-bold">Shipper / ارسال کننده:</span>
-                  <span className="font-black text-slate-900 truncate max-w-[260px]">{docToDelete.shipper_name}</span>
+                  <span className="font-black text-slate-900 truncate max-w-[260px]">{docToArchive.shipper_name}</span>
                 </div>
               )}
-              {docToDelete.consignee_name && (
+              {docToArchive.consignee_name && (
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500 font-bold">Consignee / گیرنده:</span>
-                  <span className="font-bold text-slate-800 truncate max-w-[260px]">{docToDelete.consignee_name}</span>
+                  <span className="font-bold text-slate-800 truncate max-w-[260px]">{docToArchive.consignee_name}</span>
                 </div>
               )}
-              {docToDelete.issue_date && (
+              {docToArchive.issue_date && (
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500 font-bold">Issue Date / تاریخ صدور:</span>
-                  <span className="font-mono font-bold text-slate-700">{docToDelete.issue_date}</span>
+                  <span className="font-mono font-bold text-slate-700">{docToArchive.issue_date}</span>
                 </div>
               )}
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-950 text-xs font-medium space-y-1">
-              <p className="font-bold text-amber-900 flex items-center gap-1.5">
-                <span>⚠️ Warning / هشدار</span>
+            <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-blue-950 text-xs font-medium space-y-1">
+              <p className="font-bold text-blue-900 flex items-center gap-1.5">
+                <Info className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>Safe & Reversible / اقدام قابل بازگشت و ایمن</span>
               </p>
-              <p className="text-[11.5px] leading-relaxed text-amber-800">
-                This document will be permanently removed from cloud database and offline storage.
+              <p className="text-[11.5px] leading-relaxed text-blue-800">
+                Archiving hides this BOL from daily active lists and latest creations, but safely retains all transaction records, financial ledgers, and attached PDFs. You can restore it anytime from the <strong>Archived</strong> filter.
               </p>
             </div>
 
@@ -2571,30 +3285,160 @@ export function SavedDocuments({ onLoadDocument, refreshTrigger, variant = "side
               <Button
                 type="button"
                 variant="outline"
-                disabled={Boolean(deletingId)}
-                onClick={() => setDocToDelete(null)}
+                disabled={isArchiving}
+                onClick={() => setDocToArchive(null)}
                 className="h-11 px-5 rounded-2xl border-slate-300 font-bold text-xs cursor-pointer hover:bg-slate-100 text-slate-700"
               >
-                ✕ No, Cancel / انصراف
+                ✕ Cancel / انصراف
               </Button>
               <Button
                 type="button"
-                onClick={confirmDeleteDocument}
-                disabled={Boolean(deletingId)}
-                className="h-11 px-6 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs cursor-pointer shadow-lg shadow-red-600/25 flex items-center gap-2"
+                onClick={confirmArchiveDocument}
+                disabled={isArchiving}
+                className="h-11 px-6 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs cursor-pointer shadow-lg shadow-amber-600/25 flex items-center gap-2"
               >
-                {deletingId ? (
+                {isArchiving ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Deleting / در حال حذف...</span>
+                    <span>Archiving / در حال بایگانی...</span>
                   </>
                 ) : (
                   <>
-                    <Trash2 className="w-4 h-4" />
-                    <span>✓ Yes, Delete / بله، حذف شود</span>
+                    <Archive className="w-4 h-4" />
+                    <span>✓ Archive BOL / بایگانی شود</span>
                   </>
                 )}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Danger Zone Hard Delete Modal */}
+      {docToHardDelete && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => !isHardDeleting && setDocToHardDelete(null)}
+        >
+          <div 
+            className="w-full max-w-lg bg-white rounded-3xl border border-red-200 shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3.5 pb-4 border-b border-red-100">
+              <div className="p-3.5 rounded-2xl bg-red-100 text-red-600 border border-red-200/80 shadow-sm shrink-0">
+                <Trash2 className="w-7 h-7 text-red-600" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-black text-red-600 tracking-tight">Danger Zone: Permanent Delete</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-black uppercase">
+                    IRREVERSIBLE
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-[vazirmatn] font-bold" dir="rtl">
+                  حذف دائمی و غیرقابل بازگشت بارنامه
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50/90 border border-slate-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-bold">BOL Number / شماره بارنامه:</span>
+                <span className="font-mono font-black text-red-900 text-sm bg-white px-3 py-1 rounded-xl border border-red-200 shadow-xs">
+                  {docToHardDelete.bol_number || docToHardDelete.id}
+                </span>
+              </div>
+              {docToHardDelete.shipper_name && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-bold">Shipper / ارسال کننده:</span>
+                  <span className="font-black text-slate-900 truncate max-w-[260px]">{docToHardDelete.shipper_name}</span>
+                </div>
+              )}
+              {docToHardDelete.consignee_name && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-bold">Consignee / گیرنده:</span>
+                  <span className="font-bold text-slate-800 truncate max-w-[260px]">{docToHardDelete.consignee_name}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Financial Ledger Blocker Alert */}
+            {hardDeleteBlocker ? (
+              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-300 text-rose-950 space-y-2">
+                <div className="flex items-center gap-2 font-black text-xs text-rose-800">
+                  <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0" />
+                  <span>Financial Ledger Protection Active</span>
+                </div>
+                <p className="text-xs leading-relaxed text-rose-900">
+                  This Bill of Lading is linked to <strong>{hardDeleteBlocker.count} transaction(s)</strong> in the financial account ledgers. Deleting it would break accounting invariance (<em>Net Balance = Total Debit - Total Credit</em>).
+                </p>
+                {hardDeleteBlocker.details && hardDeleteBlocker.details.length > 0 && (
+                  <ul className="text-[11px] list-disc list-inside space-y-0.5 text-rose-800 bg-rose-100/70 p-2 rounded-xl font-mono">
+                    {hardDeleteBlocker.details.map((d, i) => (
+                      <li key={i} className="truncate">{d}</li>
+                    ))}
+                  </ul>
+                )}
+                <p className="text-xs font-semibold text-rose-950 pt-1">
+                  💡 Recommendation: <strong>Archive this BOL instead</strong>. It will be removed from view without corrupting your company ledger balance.
+                </p>
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-950 text-xs font-medium space-y-1">
+                <p className="font-bold text-amber-900 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Warning / هشدار غیرقابل بازگشت</span>
+                </p>
+                <p className="text-[11.5px] leading-relaxed text-amber-800">
+                  This document will be permanently deleted from the database and all local devices. This action cannot be undone.
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isHardDeleting}
+                onClick={() => setDocToHardDelete(null)}
+                className="h-11 px-5 rounded-2xl border-slate-300 font-bold text-xs cursor-pointer hover:bg-slate-100 text-slate-700"
+              >
+                ✕ Cancel / انصراف
+              </Button>
+              {hardDeleteBlocker ? (
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const target = docToHardDelete
+                    setDocToHardDelete(null)
+                    setHardDeleteBlocker(null)
+                    if (target) handleArchive(target)
+                  }}
+                  className="h-11 px-6 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black text-xs cursor-pointer shadow-lg shadow-amber-600/25 flex items-center gap-2"
+                >
+                  <Archive className="w-4 h-4" />
+                  <span>Archive Instead (Recommended)</span>
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={confirmHardDeleteDocument}
+                  disabled={isHardDeleting}
+                  className="h-11 px-6 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs cursor-pointer shadow-lg shadow-red-600/25 flex items-center gap-2"
+                >
+                  {isHardDeleting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Deleting permanently...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      <span>Permanently Delete / حذف دائم</span>
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </div>

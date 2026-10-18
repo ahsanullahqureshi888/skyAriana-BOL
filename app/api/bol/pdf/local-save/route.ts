@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "fs/promises"
-import { homedir } from "os"
 import path from "path"
 import { NextRequest, NextResponse } from "next/server"
+import { getUploadPath } from "@/lib/server-paths"
 
 export const runtime = "nodejs"
 
@@ -19,6 +19,14 @@ function sanitizeFileName(fileName: string): string {
 }
 
 export async function POST(request: NextRequest) {
+    // Auto-injected Cloud Auth Check
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const { createClient } = require('@/lib/supabase/server');
+      const supabaseAuth = await createClient();
+      const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+      if (authError || !user) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' }});
+    }
+
   try {
     const formData = await request.formData()
     const pdfFile = formData.get("pdf")
@@ -43,7 +51,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const downloadsDir = path.join(homedir(), "Downloads")
+    const downloadsDir = getUploadPath("bol-pdfs")
     await mkdir(downloadsDir, { recursive: true })
 
     let targetPath = path.join(downloadsDir, fileName)

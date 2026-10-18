@@ -1,115 +1,96 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import '@/lib/polyfills'
+import { useEffect, useState, startTransition } from 'react'
 import dynamic from 'next/dynamic'
-import { safeLazy } from '@/lib/safe-lazy'
+import { safeLazy, createSafeModule } from '@/lib/safe-lazy'
 import { AppProvider, useApp } from '@/lib/app-context'
 import { Header } from '@/components/header'
+import { MobileBottomNav } from '@/components/mobile-bottom-nav'
 import { LoginScreen } from '@/components/login-screen'
 import { ErrorBoundary } from '@/components/error-boundary'
+import { ModuleErrorBoundary } from '@/components/system/module-error-boundary'
+import { StartupMachine } from '@/lib/startup/startup-machine'
+import { scheduleIdlePreloads } from '@/lib/startup/module-preloader'
+import { ModuleLoadingSkeleton } from '@/components/system/module-loading-skeleton'
 import { toast } from 'sonner'
 import { smartMergeLedgerRecords } from '@/lib/services/ledger-sync-utils'
+import { UiOverflowDetector } from '@/components/system/ui-overflow-detector'
+import { AppShell, MainWorkspace } from '@/components/layout'
 
-function ViewLoadingSkeleton() {
-  return (
-    <div className="w-full h-full min-h-[60vh] flex flex-col items-center justify-center p-8 space-y-4 animate-in fade-in duration-100">
-      <div className="w-12 h-12 rounded-2xl bg-blue-900/20 border border-blue-500/30 flex items-center justify-center animate-pulse">
-        <img src="/logo.png" alt="Sky Ariana" className="w-8 h-8 object-contain" />
-      </div>
-      <div className="h-1.5 w-32 bg-slate-800 rounded-full overflow-hidden">
-        <div className="h-full bg-amber-400 rounded-full animate-[pulse_1s_ease-in-out_infinite]" />
-      </div>
-      <p className="text-[11px] font-bold text-slate-400">Loading module...</p>
-    </div>
-  )
-}
+const BOLEditor = createSafeModule('Bill of Lading', () => import('@/components/bill-of-lading/bol-editor').then(m => m.BOLEditor))
+const AccountsView = createSafeModule('Customer Accounts', () => import('@/components/accounts-view').then(m => m.AccountsView))
+const CompaniesView = createSafeModule('Companies', () => import('@/components/companies-view').then(m => m.CompaniesView))
+const LedgerView = createSafeModule('Customer Ledger', () => import('@/components/ledger-view').then(m => m.LedgerView))
 
-// Dynamic loaders with safe lazy wrappers
-const viewLoaders: Record<string, () => Promise<any>> = {
-  accounts: () => import('@/components/accounts-view'),
-  companies: () => import('@/components/companies-view'),
-  ledger: () => import('@/components/ledger-view'),
-  invoice: () => import('@/components/invoice-view'),
-  bol: () => import('@/components/bill-of-lading/bol-editor'),
-  settings: () => import('@/components/settings-view'),
-  bank: () => import('@/components/sky-bank-view'),
-  'invoice-pad': () => import('@/components/invoice-pad-view'),
-  'sky-cmr': () => import('@/components/sky-cmr-view'),
-  'sky-doc': () => import('@/components/sky-doc-view'),
-  reports: () => import('@/components/reports-view'),
-  'shipper-portal': () => import('@/components/shipper-dashboard'),
-  analytics: () => import('@/components/analytics-dashboard-view'),
-  'export-calculator': () => import('@/components/export-calculator-view'),
-  'acci-portal': () => import('@/components/acci-portal-view'),
-}
-
-export function preloadView(viewName: string) {
-  try {
-    const loader = viewLoaders[viewName]
-    if (loader) {
-      void loader()
-    }
-  } catch (_) {}
-}
-
-export function preloadAllViews() {
-  if (typeof window === 'undefined') return
-  const views = Object.keys(viewLoaders)
-  const schedulePreload = () => {
-    views.forEach((v, index) => {
-      setTimeout(() => {
-        preloadView(v)
-      }, index * 40)
-    })
-  }
-
-  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-    (window as any).requestIdleCallback(schedulePreload, { timeout: 1500 })
-  } else {
-    setTimeout(schedulePreload, 100)
-  }
-}
-
-const AccountsView = dynamic(safeLazy(() => import('@/components/accounts-view').then(m => m.AccountsView)), { loading: ViewLoadingSkeleton })
-const CompaniesView = dynamic(safeLazy(() => import('@/components/companies-view').then(m => m.CompaniesView)), { loading: ViewLoadingSkeleton })
-const LedgerView = dynamic(safeLazy(() => import('@/components/ledger-view').then(m => m.LedgerView)), { loading: ViewLoadingSkeleton })
-const InvoiceView = dynamic(safeLazy(() => import('@/components/invoice-view').then(m => m.InvoiceView)), { loading: ViewLoadingSkeleton })
-const BOLEditor = dynamic(safeLazy(() => import('@/components/bill-of-lading/bol-editor').then(m => m.BOLEditor)), { loading: ViewLoadingSkeleton })
-const SettingsView = dynamic(safeLazy(() => import('@/components/settings-view').then(m => m.SettingsView)), { loading: ViewLoadingSkeleton })
-const SkyBankView = dynamic(safeLazy(() => import('@/components/sky-bank-view').then(m => m.SkyBankView)), { loading: ViewLoadingSkeleton })
-const InvoicePadView = dynamic(safeLazy(() => import('@/components/invoice-pad-view').then(m => m.InvoicePadView)), { loading: ViewLoadingSkeleton })
-const SkyCmrView = dynamic(safeLazy(() => import('@/components/sky-cmr-view').then(m => m.SkyCmrView)), { loading: ViewLoadingSkeleton })
-const SkyDocView = dynamic(safeLazy(() => import('@/components/sky-doc-view').then(m => m.SkyDocView)), { loading: ViewLoadingSkeleton })
-const ReportsView = dynamic(safeLazy(() => import('@/components/reports-view').then(m => m.ReportsView)), { loading: ViewLoadingSkeleton })
-const ShipperDashboardView = dynamic(safeLazy(() => import('@/components/shipper-dashboard').then(m => m.ShipperDashboardView)), { loading: ViewLoadingSkeleton })
-const AnalyticsDashboardView = dynamic(safeLazy(() => import('@/components/analytics-dashboard-view').then(m => m.AnalyticsDashboardView)), { loading: ViewLoadingSkeleton })
-const ExportCalculatorView = dynamic(safeLazy(() => import('@/components/export-calculator-view').then(m => m.ExportCalculatorView)), { loading: ViewLoadingSkeleton })
-const AcciPortalView = dynamic(safeLazy(() => import('@/components/acci-portal-view').then(m => m.AcciPortalView)), { loading: ViewLoadingSkeleton })
-const QuickActionsWidget = dynamic(safeLazy(() => import('@/components/quick-actions-widget').then(m => m.QuickActionsWidget)), { ssr: false })
-
+const MasterDataView = createSafeModule('Master Data', () => import('@/components/master-data/master-data-view').then(m => m.MasterDataView))
+const SettingsView = createSafeModule('Settings & Diagnostics', () => import('@/components/settings-view').then(m => m.SettingsView))
+const ShipmentOperationsDashboard = createSafeModule('Shipment Operations', () => import('@/components/shipments/shipment-operations-dashboard').then(m => m.ShipmentOperationsDashboard))
+const ControlTowerView = createSafeModule('Control Tower', () => import('@/components/control-tower/control-tower-view').then(m => m.ControlTowerView))
+const ShipperDashboardView = createSafeModule('Shipper Portal', () => import('@/components/shipper-dashboard').then(m => m.ShipperDashboardView))
+const InvoiceView = createSafeModule('Invoice Center', () => import('@/components/invoice-view').then(m => m.InvoiceView))
+const ReportsView = createSafeModule('Reports Center', () => import('@/components/reports-view').then(m => m.ReportsView))
+const ExecutiveBiWorkspace = createSafeModule('Executive BI & Analytics Center', () => import('@/components/analytics/executive-bi-workspace').then(m => m.ExecutiveBiWorkspace))
+const ExportCalculatorView = createSafeModule('Export Calculator', () => import('@/components/export-calculator-view').then(m => m.ExportCalculatorView))
+const WhatsAppOperationsView = createSafeModule('WhatsApp Operations', () => import('@/components/whatsapp/whatsapp-operations-view').then(m => m.WhatsAppOperationsView))
+const AdminCustomerPortalView = createSafeModule('Customer Portal Admin', () => import('@/components/customer-portal/admin-customer-portal-view').then(m => m.AdminCustomerPortalView))
+const DocumentComplianceWorkspace = createSafeModule('Compliance Center', () => import('@/components/document-compliance/document-compliance-workspace').then(m => m.DocumentComplianceWorkspace))
+const CustomerPortalView = createSafeModule('Customer Portal', () => import('@/components/customer-portal/customer-portal-view').then(m => m.CustomerPortalView))
+const AccountingWorkspace = createSafeModule('Accounting Workspace', () => import('@/components/accounting/accounting-workspace').then(m => m.AccountingWorkspace))
+const AccountingFinanceView = createSafeModule('Finance Center', () => import('@/components/finance/accounting-finance-view').then(m => m.AccountingFinanceView))
+const WorkflowWorkspace = createSafeModule('Workflow Engine', () => import('@/components/workflow/workflow-workspace').then(m => m.WorkflowWorkspace))
+const NotificationWorkspace = createSafeModule('Notification Center', () => import('@/components/notifications/notification-workspace').then(m => m.NotificationWorkspace))
+const DataProtectionCenter = createSafeModule('Data Protection', () => import('@/components/data-protection/data-protection-center').then(m => m.DataProtectionCenter))
+const AuditTrailCenter = createSafeModule('Audit Trail', () => import('@/components/audit/audit-trail-center').then(m => m.AuditTrailCenter))
+const DailyOperationsCenter = createSafeModule('Daily Operations', () => import('@/components/daily-operations/daily-operations-center').then(m => m.DailyOperationsCenter))
+const RouteLocationCenter = createSafeModule('Routes & Locations', () => import('@/components/locations/route-location-center').then(m => m.RouteLocationCenter))
+const RatesQuotationsCenter = createSafeModule('Rates & Quotations', () => import('@/components/pricing/rates-quotations-center').then(m => m.RatesQuotationsCenter))
+const FleetOperationsCenter = createSafeModule('Fleet Operations', () => import('@/components/fleet/fleet-operations-center').then(m => m.FleetOperationsCenter))
+const WarehouseCargoCenter = createSafeModule('Warehouse Operations', () => import('@/components/warehouse/warehouse-cargo-center').then(m => m.WarehouseCargoCenter))
+const CustomsBorderCenter = createSafeModule('Customs & Transit', () => import('@/components/customs/customs-border-center').then(m => m.CustomsBorderCenter))
+const OceanOperationsCenter = createSafeModule('Ocean Operations', () => import('@/components/ocean/ocean-operations-center').then(m => m.OceanOperationsCenter))
+const AirFreightCenter = createSafeModule('Air Freight', () => import('@/components/air/air-freight-center').then(m => m.AirFreightCenter))
+const ClaimsCenter = createSafeModule('Claims & Incidents', () => import('@/components/claims/claims-center').then(m => m.ClaimsCenter))
+const ProcurementCenterView = createSafeModule('Procurement & Vendors', () => import('@/components/procurement/procurement-center-view').then(m => m.ProcurementCenterView))
+const CrmSalesCenter = createSafeModule('CRM & Sales', () => import('@/components/crm/crm-sales-center').then(m => m.CrmSalesCenter))
+const PeriodClosingView = createSafeModule('Period Closing', () => import('@/components/accounting/period-closing/period-closing-view').then(m => m.PeriodClosingView))
+const TreasuryWorkspace = createSafeModule('Treasury Workspace', () => import('@/components/accounting/treasury/treasury-workspace').then(m => m.TreasuryWorkspace))
+const ManagementReportingWorkspace = createSafeModule('Management Reports', () => import('@/components/reports/management/management-reporting-workspace').then(m => m.ManagementReportingWorkspace))
+const FileCenterWorkspace = createSafeModule('File Center', () => import('@/components/files/file-center-workspace').then(m => m.FileCenterWorkspace))
+const CommunicationsWorkspace = createSafeModule('Communications Workspace', () => import('@/components/communications/communications-workspace').then(m => m.CommunicationsWorkspace))
+const BookingContainerCenter = createSafeModule('Container & Booking Fleet', () => import('@/components/booking/booking-container-center').then(m => m.BookingContainerCenter))
+const AiAssistantWorkspace = createSafeModule('Sky AI Operations Assistant', () => import('@/components/ai/ai-assistant-workspace').then(m => m.AiAssistantWorkspace))
+import type { CustomerPortalSession } from '@/lib/types/customer-portal'
 
 function MainContent() {
-  const { view, isAuthenticated, currentUser, setView } = useApp()
-  const [visitedViews, setVisitedViews] = useState<Set<string>>(() => new Set(['accounts']))
+  const { view, setView, accounts, selectAccount, selectCompany, isAuthenticated, currentUser, currentAccount, currentCompany } = useApp()
+  const [previewSession, setPreviewSession] = useState<CustomerPortalSession | null>(null)
+  const [mounted, setMounted] = useState(false)
 
-  // Track visited views to keep them alive and ready
   useEffect(() => {
-    if (view) {
-      setVisitedViews(prev => {
-        if (prev.has(view)) return prev
-        const next = new Set(prev)
-        next.add(view)
-        return next
-      })
-    }
-  }, [view])
-
-  // Instant background preloading for all modules
-  useEffect(() => {
-    preloadAllViews()
+    setMounted(true)
   }, [])
 
   useEffect(() => {
+    const handleNavigate = (e: any) => {
+      if (e?.detail?.view) {
+        const target = e.detail.view === 'backup' ? 'data-protection' : e.detail.view
+        startTransition(() => {
+          setView(target)
+        })
+      }
+    }
+    window.addEventListener("skybol:navigate-view", handleNavigate)
+    return () => window.removeEventListener("skybol:navigate-view", handleNavigate)
+  }, [setView])
+
+  useEffect(() => {
+    StartupMachine.getInstance().transition("READY")
+  }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+
     if (typeof window !== "undefined") {
       const searchParams = new URLSearchParams(window.location.search)
       const syncCode = searchParams.get("sync") || searchParams.get("sync_code")
@@ -126,28 +107,7 @@ function MainContent() {
               }
             } catch (e) {}
 
-            // Direct Global Relay Fallback
-            if (!data || !Array.isArray(data.documents) || data.documents.length === 0) {
-              const clean = syncCode.replace(/^SKY-?/, "").replace(/[\s-_]+/g, "")
-              const rKeys = clean ? [`sky-relay-v3-${clean}`, `sky-relay-v3-${syncCode.toLowerCase()}`, "sky-relay-v3-master"] : ["sky-relay-v3-master"]
-              for (const rk of rKeys) {
-                try {
-                  const rRes = await fetch(`https://cl1p.net/${encodeURIComponent(rk)}`)
-                  if (rRes.ok) {
-                    const html = await rRes.text()
-                    const match = html.match(/<textarea[^>]*name=["']content["'][^>]*>([\s\S]*?)<\/textarea>/i) || html.match(/<textarea[^>]*id=["']content["'][^>]*>([\s\S]*?)<\/textarea>/i)
-                    if (match && match[1]) {
-                      const raw = match[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&").trim()
-                      const parsed = JSON.parse(raw)
-                      if (parsed && (Array.isArray(parsed.documents) || parsed.documents)) {
-                        data = parsed
-                        break
-                      }
-                    }
-                  }
-                } catch (err) {}
-              }
-            }
+
 
             if (data && Array.isArray(data.documents) && data.documents.length > 0) {
               const storedLocal1 = window.localStorage.getItem("sky-bol-browser-documents")
@@ -208,7 +168,7 @@ function MainContent() {
               toast.success(`🎉 Synced ${allMerged.length} BOLs successfully to this device!`, { id: toastId })
               
               const cleanUrl = window.location.pathname
-              window.history.replaceState({}, document.title, cleanUrl)
+              window.history.replaceState(window.history.state, document.title, cleanUrl)
             } else {
               toast.error("Could not locate documents for this sync link.", { id: toastId })
             }
@@ -258,13 +218,13 @@ function MainContent() {
                   const hasBol = Boolean(d.bol_number && String(d.bol_number).trim().length > 3)
                   const q = (d.number_of_packages || "").trim().toLowerCase()
                   const hasPkg = q !== "" && q !== "0" && q !== "0-ctns" && q !== "0 ctns"
-                  const nw = (d.net_weight || "").trim()
-                  const gw = (d.gross_weight || "").trim()
-                  const val = (d.goods_value || "").trim()
-                  const cName = (d.consignee_name || "").trim().toLowerCase()
+                  const nw = String(d.net_weight ?? "").trim()
+                  const gw = String(d.gross_weight ?? "").trim()
+                  const val = String(d.goods_value ?? "").trim()
+                  const cName = String(d.consignee_name ?? "").trim().toLowerCase()
                   const hasConsignee = cName !== "" && cName !== "no consignee"
-                  const hasDesc = (d.cargo_description || "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 3
-                  const hasDriver = Boolean((d.driver_name || "").trim() || (d.driver_rent || "").trim() || (d.truck_number || "").trim())
+                  const hasDesc = String(d.cargo_description ?? "").replace(/[^\w\s\u0600-\u06FF]/g, "").trim().length > 3
+                  const hasDriver = Boolean(String(d.driver_name ?? "").trim() || String(d.driver_rent ?? "").trim() || String(d.truck_number ?? "").trim())
                   return hasShipper || hasBol || hasPkg || nw !== "" || gw !== "" || val !== "" || hasConsignee || hasDesc || hasDriver
                 })
                 const jsonStr = JSON.stringify(allMerged)
@@ -298,138 +258,433 @@ function MainContent() {
         void autoHydrateAllDevices()
       }
     }
-  }, [])
+  }, [isAuthenticated])
+
+  if (!mounted) {
+    return (
+      <div className="fixed inset-0 bg-[#020617] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3 text-slate-400">
+          <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+          <p className="text-xs font-mono">Initializing workspace...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!isAuthenticated) {
     return <LoginScreen />
   }
 
-  if (currentUser?.role === 'shipper' || view === 'shipper-portal') {
-    return <ShipperDashboardView />
+  const ledgerPanel = currentAccount && currentCompany
+    ? <LedgerView />
+    : currentAccount
+      ? <CompaniesView />
+      : <AccountsView />
+
+  const handlePreviewCustomer = async (customerId: string) => {
+    try {
+      const res = await fetch("/api/portal/admin/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId, adminName: currentUser?.name || "Administrator" }),
+      })
+      const data = await res.json()
+      if (res.ok && data.session) {
+        setPreviewSession(data.session)
+        setView('customer-portal')
+      } else {
+        toast.error("Failed to generate preview session")
+      }
+    } catch {
+      toast.error("Connection error")
+    }
   }
 
-  const isFullBleedView = view === "bank" || view === "invoice-pad" || view === "sky-cmr" || view === "sky-doc" || view === "acci-portal"
+  const isShipper = currentUser?.role === 'shipper' || view === 'shipper-portal'
+  const isBolView = !isShipper && view === 'bol'
 
   return (
-    <div className={isFullBleedView ? "h-screen w-full flex flex-col overflow-hidden bg-slate-950" : "min-h-screen flex flex-col"}>
-      <Header showBack={view !== 'accounts' && view !== 'settings' && !isFullBleedView} />
-      <main className={isFullBleedView ? "flex-1 w-full h-full overflow-hidden flex flex-col min-h-0 relative" : "flex-1 relative"}>
-        {/* Accounts View */}
-        {visitedViews.has('accounts') && (
-          <div className={view === 'accounts' ? 'w-full' : 'hidden'}>
-            <AccountsView />
+    <AppShell
+      header={<Header />}
+      footer={<MobileBottomNav />}
+    >
+      <MainWorkspace
+        fluid={isBolView || isShipper || view === 'accounts' || view === 'companies' || view === 'ledger'}
+        noPadding={isBolView}
+      >
+        {isShipper ? (
+          <div key="shipper-portal" className="animate-page-crossfade">
+            <ModuleErrorBoundary moduleName="Shipper Portal">
+              <ShipperDashboardView />
+            </ModuleErrorBoundary>
           </div>
+        ) : (
+          <>
+            {isBolView && (
+              <div key="bol-editor" className="animate-page-crossfade flex-1 flex flex-col min-h-0 h-full">
+                <ModuleErrorBoundary moduleName="Bill of Lading Workspace">
+                  <BOLEditor accountLedgerPanel={ledgerPanel} />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'accounts' && (
+              <div key="accounts" className="animate-page-crossfade w-full flex-1 flex flex-col min-h-0">
+                <ModuleErrorBoundary moduleName="Customer Accounts">
+                  <AccountsView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'companies' && (
+              <div key="companies" className="animate-page-crossfade w-full flex-1 flex flex-col min-h-0">
+                <ModuleErrorBoundary moduleName="Companies & Branches">
+                  <CompaniesView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'ledger' && (
+              <div key="ledger" className="animate-page-crossfade w-full flex-1 flex flex-col min-h-0">
+                <ModuleErrorBoundary moduleName="Customer Ledger">
+                  <LedgerView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'settings' && (
+              <div key="settings" className="animate-page-crossfade w-full flex-1 flex flex-col min-h-0">
+                <ModuleErrorBoundary moduleName="Settings & Diagnostics">
+                  <SettingsView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'document-compliance' && (
+              <div key="document-compliance" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Compliance Center">
+                  <DocumentComplianceWorkspace />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'shipments' && (
+              <div key="shipments" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Control Tower">
+                  <ControlTowerView
+                    onOpenBol={(bolNumber?: string) => {
+                      setView('bol')
+                    }}
+                    onOpenLedger={(accountName?: string) => {
+                      if (accountName) {
+                        const foundAccount = accounts.find((a) => a.name.toLowerCase() === accountName.toLowerCase())
+                        if (foundAccount) {
+                          selectAccount(foundAccount)
+                          if (foundAccount.companies && foundAccount.companies.length > 0) {
+                            selectCompany(foundAccount.companies[0])
+                          }
+                        }
+                      }
+                      setView('ledger')
+                    }}
+                    onOpenOperationsReport={() => {
+                      setView('reports')
+                    }}
+                  />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {(view === 'invoice' || view === 'invoice-pad') && (
+              <div key={view} className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Invoice Center">
+                  <InvoiceView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'reports' && (
+              <div key="reports" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Reports Center">
+                  <ReportsView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'analytics' && (
+              <div key="analytics" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Executive BI & Analytics Center">
+                  <ExecutiveBiWorkspace />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'export-calculator' && (
+              <div key="export-calculator" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Export Calculator">
+                  <ExportCalculatorView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'whatsapp' && (
+              <div key="whatsapp" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="WhatsApp Operations">
+                  <WhatsAppOperationsView
+                    onOpenBol={() => setView('bol')}
+                    onOpenLedger={(accountName?: string) => {
+                      if (accountName) {
+                        const foundAccount = accounts.find((a) => a.name.toLowerCase() === accountName.toLowerCase())
+                        if (foundAccount) {
+                          selectAccount(foundAccount)
+                          if (foundAccount.companies && foundAccount.companies.length > 0) {
+                            selectCompany(foundAccount.companies[0])
+                          }
+                        }
+                      }
+                      setView('ledger')
+                    }}
+                  />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'customer-portal-admin' && (
+              <div key="customer-portal-admin" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Customer Portal Admin">
+                  <AdminCustomerPortalView onPreviewCustomer={handlePreviewCustomer} />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'accounting' && (
+              <div key="accounting" className="animate-page-crossfade w-full flex-1 flex flex-col min-h-0">
+                <ModuleErrorBoundary moduleName="Accounting Workspace">
+                  <AccountingWorkspace />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'period-closing' && (
+              <div key="period-closing" className="animate-page-crossfade max-w-[1780px] mx-auto p-3 sm:p-6">
+                <ModuleErrorBoundary moduleName="Period Closing">
+                  <PeriodClosingView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'treasury' && (
+              <div key="treasury" className="animate-page-crossfade max-w-[1780px] mx-auto p-3 sm:p-6">
+                <ModuleErrorBoundary moduleName="Treasury Workspace">
+                  <TreasuryWorkspace />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'management-reports' && (
+              <div key="management-reports" className="animate-page-crossfade max-w-[1780px] mx-auto p-3 sm:p-6">
+                <ModuleErrorBoundary moduleName="Management Reports">
+                  <ManagementReportingWorkspace userRole={currentUser?.role || 'admin'} />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'accounting-finance' && (
+              <div key="accounting-finance" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Finance Center">
+                  <AccountingFinanceView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'master-data' && (
+              <div key="master-data" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Master Data">
+                  <MasterDataView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'workflow' && (
+              <div key="workflow" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Workflow Engine">
+                  <WorkflowWorkspace />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'notifications' && (
+              <div key="notifications" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Notification Center">
+                  <NotificationWorkspace />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {(view === 'data-protection' || view === 'backup') && (
+              <div key="data-protection" className="animate-page-crossfade w-full max-w-[1780px] mx-auto px-3 sm:px-6 py-2">
+                <ModuleErrorBoundary moduleName="Data Protection">
+                  <DataProtectionCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'audit-history' && (
+              <div key="audit-history" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Audit Trail">
+                  <AuditTrailCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'daily-operations' && (
+              <div key="daily-operations" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Daily Operations">
+                  <DailyOperationsCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'routes-locations' && (
+              <div key="routes-locations" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Routes & Locations">
+                  <RouteLocationCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'rates-quotations' && (
+              <div key="rates-quotations" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Rates & Quotations">
+                  <RatesQuotationsCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'procurement' && (
+              <div key="procurement" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Procurement & Vendors">
+                  <ProcurementCenterView />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'fleet-operations' && (
+              <div key="fleet-operations" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Fleet Operations">
+                  <FleetOperationsCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'warehouse-cargo' && (
+              <div key="warehouse-cargo" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Warehouse Operations">
+                  <WarehouseCargoCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'customs-transit' && (
+              <div key="customs-transit" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Customs & Transit">
+                  <CustomsBorderCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'ocean-operations' && (
+              <div key="ocean-operations" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Ocean Freight">
+                  <OceanOperationsCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'air-freight' && (
+              <div key="air-freight" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Air Freight">
+                  <AirFreightCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'claims-incidents' && (
+              <div key="claims-incidents" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Claims & Incidents">
+                  <ClaimsCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'crm-sales' && (
+              <div key="crm-sales" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="CRM & Sales">
+                  <CrmSalesCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'file-center' && (
+              <div key="file-center" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="File & Attachment Center">
+                  <FileCenterWorkspace />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'communications' && (
+              <div key="communications" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Communications Workspace">
+                  <CommunicationsWorkspace />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'booking-containers' && (
+              <div key="booking-containers" className="animate-page-crossfade w-full max-w-[1780px] mx-auto px-3 sm:px-6 py-2">
+                <ModuleErrorBoundary moduleName="Container & Booking Fleet">
+                  <BookingContainerCenter />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'ai-assistant' && (
+              <div key="ai-assistant" className="animate-page-crossfade w-full max-w-[1780px] mx-auto px-3 sm:px-6 py-2">
+                <ModuleErrorBoundary moduleName="Sky AI Operations Assistant">
+                  <AiAssistantWorkspace />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+            {view === 'customer-portal' && previewSession && (
+              <div key="customer-portal-preview" className="animate-page-crossfade">
+                <ModuleErrorBoundary moduleName="Customer Portal Preview">
+                  <CustomerPortalView
+                    session={previewSession}
+                    onSignOut={() => {
+                      setPreviewSession(null)
+                      setView('customer-portal-admin')
+                    }}
+                  />
+                </ModuleErrorBoundary>
+              </div>
+            )}
+          </>
         )}
-
-        {/* Companies View */}
-        {visitedViews.has('companies') && (
-          <div className={view === 'companies' ? 'w-full' : 'hidden'}>
-            <CompaniesView />
-          </div>
-        )}
-
-        {/* Ledger View */}
-        {visitedViews.has('ledger') && (
-          <div className={view === 'ledger' ? 'w-full' : 'hidden'}>
-            <LedgerView />
-          </div>
-        )}
-
-        {/* Invoice View */}
-        {visitedViews.has('invoice') && (
-          <div className={view === 'invoice' ? 'w-full' : 'hidden'}>
-            <InvoiceView />
-          </div>
-        )}
-
-        {/* Bill of Lading (BOL) Editor */}
-        {visitedViews.has('bol') && (
-          <div className={view === 'bol' ? 'w-full' : 'hidden'}>
-            <BOLEditor />
-          </div>
-        )}
-
-        {/* Export Logistics & Reverse Transit Calculator */}
-        {visitedViews.has('export-calculator') && (
-          <div className={view === 'export-calculator' ? 'w-full' : 'hidden'}>
-            <ExportCalculatorView />
-          </div>
-        )}
-
-        {/* Settings View */}
-        {visitedViews.has('settings') && (
-          <div className={view === 'settings' ? 'w-full' : 'hidden'}>
-            <SettingsView />
-          </div>
-        )}
-
-        {/* Reports View */}
-        {visitedViews.has('reports') && (
-          <div className={view === 'reports' ? 'w-full' : 'hidden'}>
-            <ReportsView />
-          </div>
-        )}
-
-        {/* Executive Analytics Dashboard View */}
-        {visitedViews.has('analytics') && (
-          <div className={view === 'analytics' ? 'w-full' : 'hidden'}>
-            <AnalyticsDashboardView />
-          </div>
-        )}
-
-        {/* Full-bleed Iframes: Keep mounted to avoid reconnect/re-render lag */}
-        {visitedViews.has('bank') && (
-          <div className={view === 'bank' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
-            <SkyBankView />
-          </div>
-        )}
-
-        {/* ACCI Chamber of Commerce Portal */}
-        {visitedViews.has('acci-portal') && (
-          <div className={view === 'acci-portal' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
-            <AcciPortalView />
-          </div>
-        )}
-
-        {visitedViews.has('invoice-pad') && (
-          <div className={view === 'invoice-pad' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
-            <InvoicePadView />
-          </div>
-        )}
-
-        {visitedViews.has('sky-cmr') && (
-          <div className={view === 'sky-cmr' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
-            <SkyCmrView />
-          </div>
-        )}
-
-        {visitedViews.has('sky-doc') && (
-          <div className={view === 'sky-doc' ? 'w-full h-full flex-1 flex flex-col min-h-0' : 'hidden'}>
-            <SkyDocView />
-          </div>
-        )}
-      </main>
-
-
-      {/* Global Floating Quick Actions Speed Dial */}
-      {!isFullBleedView && view !== 'bol' && (
-        <QuickActionsWidget
-          onOpenCommandPalette={() => {
-            window.dispatchEvent(new CustomEvent('skybol:open-command-palette'))
-          }}
-          onOpenCloudSync={() => {
-            window.dispatchEvent(new CustomEvent('skybol:open-cloud-sync'))
-          }}
-          onOpenChat={() => {
-            setView('analytics')
-          }}
-        />
-      )}
-    </div>
+      </MainWorkspace>
+      <UiOverflowDetector />
+    </AppShell>
   )
 }
 
+import { FirstRunWizard } from '@/components/restore/first-run-wizard'
+
 export default function Home() {
+  const [isFirstRun, setIsFirstRun] = useState<boolean>(false)
+  const [hasGAuth, setHasGAuth] = useState<boolean>(false)
+
+  useEffect(() => {
+    // If local storage already confirms existing session or records, skip network request
+    if (
+      window.localStorage.getItem("skybol:first-run-completed") === "true" ||
+      window.localStorage.getItem("skybol:user") ||
+      window.localStorage.getItem("sky-bol-browser-documents") ||
+      window.localStorage.getItem("skybol:saved-documents")
+    ) {
+      return
+    }
+
+    const checkSystemStatus = async () => {
+      try {
+        const res = await fetch("/api/system/status")
+        if (res.ok) {
+          const data = await res.json()
+          if (data.isFirstRun) {
+            setIsFirstRun(true)
+          }
+          setHasGAuth(Boolean(data.hasGoogleDriveAuth))
+        }
+      } catch (e) {
+        // Fallback silently to normal app
+      }
+    }
+    checkSystemStatus()
+  }, [])
+
+  if (isFirstRun) {
+    return (
+      <ErrorBoundary>
+        <FirstRunWizard 
+          onComplete={() => setIsFirstRun(false)} 
+          hasGoogleDriveAuth={hasGAuth} 
+        />
+      </ErrorBoundary>
+    )
+  }
+
   return (
     <ErrorBoundary>
       <AppProvider>

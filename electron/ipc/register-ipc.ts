@@ -1,8 +1,9 @@
-import { BrowserWindow, dialog, ipcMain, shell } from "electron"
+import { BrowserWindow, dialog, ipcMain, shell, clipboard } from "electron"
 import { readFile } from "node:fs/promises"
 import path from "node:path"
 import { atomicWriteFile } from "../services/atomic-file"
 import { createDataBackup, restoreDataBackup } from "../services/data"
+import { backendManager, type ConnectionMode, type NetworkConfig } from "../backend-manager"
 
 type SavePayload = { defaultName?: string; bytes: number[] }
 
@@ -74,6 +75,7 @@ export function registerIpcHandlers(options: {
     if (result.canceled || !result.filePath) return null
     const pdf = await window.webContents.printToPDF({
       pageSize: "A4",
+      landscape: true,
       printBackground: true,
       preferCSSPageSize: true,
     })
@@ -81,9 +83,10 @@ export function registerIpcHandlers(options: {
     return result.filePath
   })
   ipcMain.handle("backup:export", async () => {
+    const nowStr = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)
     const options: Electron.SaveDialogOptions = {
-      defaultPath: `Sky-Ariana-Backup-${new Date().toISOString().slice(0, 10)}.json`,
-      filters: [{ name: "Sky Ariana backup", extensions: ["json"] }],
+      defaultPath: `AQ_COMPANIES_FULL_BACKUP_${nowStr}_v5.2.0.json`,
+      filters: [{ name: "AQ Companies backup", extensions: ["json"] }],
     }
     const owner = getWindow()
     const result = owner ? await dialog.showSaveDialog(owner, options) : await dialog.showSaveDialog(options)
@@ -107,5 +110,47 @@ export function registerIpcHandlers(options: {
     else if (action === "maximize") window.isMaximized() ? window.unmaximize() : window.maximize()
     else if (action === "close") window.close()
     else if (action === "fullscreen") window.setFullScreen(!window.isFullScreen())
+  })
+
+  // Phase 7: Multi-PC Office Network & Central Server IPC Handlers
+  ipcMain.handle("network:get-status", async () => {
+    return backendManager.getNetworkStatus()
+  })
+
+  ipcMain.handle("network:get-config", async () => {
+    return backendManager.getNetworkConfig()
+  })
+
+  ipcMain.handle("network:save-config", async (_event, config: Partial<NetworkConfig>) => {
+    return backendManager.saveNetworkConfig(config)
+  })
+
+  ipcMain.handle("network:test-connection", async (_event, url: string) => {
+    return backendManager.testServerConnection(url)
+  })
+
+  ipcMain.handle("network:switch-mode", async (_event, payload: { mode: ConnectionMode; serverConfig?: Partial<NetworkConfig> }) => {
+    return backendManager.switchMode(payload.mode, payload.serverConfig)
+  })
+
+  // Desktop Global Clipboard Bridge Handlers
+  ipcMain.handle("clipboard:read-text", () => {
+    try {
+      return clipboard.readText()
+    } catch {
+      return ""
+    }
+  })
+
+  ipcMain.handle("clipboard:write-text", (_event, text: unknown) => {
+    try {
+      if (typeof text === "string") {
+        clipboard.writeText(text)
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
   })
 }

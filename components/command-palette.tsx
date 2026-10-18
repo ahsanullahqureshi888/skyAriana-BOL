@@ -90,6 +90,9 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
         } else if (e.key === "9") {
           e.preventDefault()
           setView("settings")
+        } else if (e.key === "0") {
+          e.preventDefault()
+          setView("shipments")
         }
       }
     }
@@ -247,6 +250,18 @@ export function CommandPalette({ open, onOpenChange, onOpenCloudSync }: CommandP
         badge: "Portal",
         perform: () => {
           setView("shipper-portal")
+          onOpenChange(false)
+        },
+      },
+      {
+        id: "nav-shipments",
+        title: "Operations Dashboard & Shipment Hub (مدیریت عملیات و محموله‌ها)",
+        subtitle: "Master multi-modal shipment lifecycle, document discrepancies & live tracking",
+        category: "Navigation",
+        icon: Compass,
+        badge: "Alt+0",
+        perform: () => {
+          setView("shipments")
           onOpenChange(false)
         },
       },

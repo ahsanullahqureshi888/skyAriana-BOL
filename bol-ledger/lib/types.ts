@@ -33,6 +33,7 @@ export interface LedgerEntry {
 export interface LedgerSettings {
   companyLogo: string
   backgroundImage: string
+  logoUrl?: string
 }
 
 export interface Company {

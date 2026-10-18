@@ -1,0 +1,36 @@
+[
+  {
+    "route": "/api/bol",
+    "status": 200,
+    "validJSON": true
+  },
+  {
+    "route": "/api/account-ledgers",
+    "status": 200,
+    "validJSON": true
+  },
+  {
+    "route": "/api/bol-account-ledgers",
+    "status": 200,
+    "validJSON": true
+  },
+  {
+    "route": "/api/invoices",
+    "status": 200,
+    "validJSON": true
+  },
+  {
+    "route": "/api/accounts",
+    "status": 200,
+    "validJSON": true
+  },
+  {
+    "route": "/api/draft?type=bol",
+    "status": 200,
+    "validJSON": true
+  },
+  {
+    "route": "/api/draft",
+    "saveReadDelete": "PASS"
+  }
+]

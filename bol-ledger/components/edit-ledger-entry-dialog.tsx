@@ -424,7 +424,7 @@ export function EditLedgerEntryDialog({
                       key={f}
                       type="button"
                       onClick={() => setFormData(prev => ({ ...prev, driverFreight: f }))}
-                      className="text-[10px] font-bold bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 px-2 py-1 rounded-lg cursor-pointer transition-all hover:scale-[1.02] whitespace-nowrap shrink-0"
+                      className="text-[10px] font-bold bg-slate-100 hover:bg-slate-900 text-slate-800 hover:text-white border border-slate-200 hover:border-slate-900 px-2.5 py-1 rounded-lg cursor-pointer transition-all hover:scale-[1.02] whitespace-nowrap shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
                     >
                       <span>⚡ {f}</span>
                     </button>

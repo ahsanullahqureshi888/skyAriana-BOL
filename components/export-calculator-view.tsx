@@ -19,7 +19,7 @@ export function ExportCalculatorView() {
   }
 
   return (
-    <div className="w-full min-h-screen bg-slate-950/95 py-6 px-3 sm:px-6">
+    <div className="w-full min-h-screen bg-slate-50 dark:bg-[#09090b] text-slate-900 dark:text-slate-100 py-6 px-3 sm:px-6 transition-colors duration-200">
       <div className="max-w-[1800px] mx-auto">
         <ExportLogisticsCalculator
           onApplyToBOL={handleApplyToBOL}

@@ -2,8 +2,12 @@
 
 import { Account, Company, LedgerEntry, Invoice, InvoiceItem, LedgerSettings, User, UserRole } from '@/lib/types'
 import { authenticateLocalUser } from "@/lib/services/local-user-auth"
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
-import { getFinancialsMap, saveFinancialsForEntry, smartMergeRow, smartMergeLedgerRecords, isCleanCompanyName } from '@/lib/services/ledger-sync-utils'
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect, startTransition } from 'react'
+import { mergeEntities } from '@/lib/master-data/duplicate-detector'
+import { getDefaultMasterEntities } from '@/lib/master-data/seed-loader'
+import { getFinancialsMap, saveFinancialsForEntry, saveFinancialsForEntries, smartMergeRow, smartMergeLedgerRecords, isCleanCompanyName } from '@/lib/services/ledger-sync-utils'
+import { logAuditEvent } from '@/lib/rbac/audit-service'
+import { validateSuperAdminProtection } from '@/lib/rbac/rbac-service'
 
 const DEFAULT_LEDGER_SETTINGS: LedgerSettings = {
   companyLogo: '/logo.png',
@@ -85,18 +89,32 @@ interface AppState {
   invoices: Invoice[]
   currentAccount: Account | null
   currentCompany: Company | null
-  view: 'accounts' | 'companies' | 'ledger' | 'invoice' | 'bol' | 'settings' | 'bank' | 'invoice-pad' | 'sky-cmr' | 'sky-doc' | 'reports' | 'shipper-portal' | 'analytics' | 'export-calculator' | 'acci-portal'
+  view: 'accounts' | 'companies' | 'ledger' | 'accounting' | 'invoice' | 'bol' | 'settings' | 'bank' | 'invoice-pad' | 'sky-cmr' | 'sky-doc' | 'reports' | 'shipper-portal' | 'analytics' | 'export-calculator' | 'acci-portal' | 'shipments' | 'whatsapp' | 'customer-portal' | 'customer-portal-admin' | 'accounting-finance' | 'document-compliance' | 'booking-containers' | 'bulk-entry' | 'master-data' | 'workflow' | 'notifications' | 'data-protection' | 'backup' | 'daily-operations' | 'audit-history' | 'search' | 'ai-assistant' | 'routes-locations' | 'rates-quotations' | 'procurement' | 'fleet-operations' | 'warehouse-cargo' | 'customs-transit' | 'ocean-operations' | 'air-freight' | 'claims-incidents' | 'crm-sales' | 'period-closing' | 'treasury' | 'management-reports' | 'file-center' | 'communications'
 
   isAuthenticated: boolean
   currentUser: User | null
   users: User[]
   deletedLedgerEntries: DeletedLedgerEntryItem[]
+  masterEntities: import('@/lib/types/master-data').MasterEntity[]
 }
 
 interface AppContextType extends AppState {
   login: (username: string, password: string, rememberMe?: boolean) => boolean
   logout: () => void
-  addUser: (user: { username: string; name: string; role: UserRole; email?: string; password?: string; clientId?: string; clientName?: string; status?: 'active' | 'disabled' }) => void
+  addUser: (user: {
+    username: string
+    name: string
+    role: UserRole
+    email?: string
+    password?: string
+    phone?: string
+    department?: string
+    branch?: string
+    clientId?: string
+    clientName?: string
+    status?: 'active' | 'disabled' | 'inactive' | 'suspended' | 'locked' | 'pending'
+    permissions_override?: import('@/lib/rbac/rbac-types').UserPermissionOverride[]
+  }) => void
   updateUser: (id: string, updates: Partial<User>) => void
   toggleUserStatus: (id: string) => void
   resetUserPassword: (id: string, newPass: string) => { success: boolean; message: string }
@@ -130,6 +148,11 @@ interface AppContextType extends AppState {
   getLedgerSettings: () => LedgerSettings
   isSyncing: boolean
   syncCloudData: () => Promise<void>
+  addMasterEntity: (entity: Omit<import('@/lib/types/master-data').MasterEntity, 'id' | 'createdAt' | 'updatedAt'>) => void
+  updateMasterEntity: (id: string, updates: Partial<import('@/lib/types/master-data').MasterEntity>) => void
+  deleteMasterEntity: (id: string) => void
+  mergeMasterEntities: (primaryId: string, secondaryId: string) => void
+  importMasterEntities: (entities: Omit<import('@/lib/types/master-data').MasterEntity, 'id' | 'createdAt' | 'updatedAt'>[]) => number
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -217,18 +240,116 @@ const DEFAULT_USERS_LIST: User[] = [
   },
 ]
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>({
+function syncMasterEntitiesToLegacy(entities: import('@/lib/types/master-data').MasterEntity[]) {
+  try {
+    if (typeof window === 'undefined') return
+    const shippers = entities.filter(e => e.type.includes('SHIPPER')).map(e => ({ id: e.id, name: e.name, address: e.address || '', contact: e.contactPerson || e.phone || '', email: e.email || '' }))
+    const consignees = entities.filter(e => e.type.includes('CONSIGNEE')).map(e => ({ id: e.id, name: e.name, address: e.address || '', contact: e.contactPerson || e.phone || '', email: e.email || '' }))
+    const notifyParties = entities.filter(e => e.type.includes('NOTIFY_PARTY')).map(e => ({ id: e.id, name: e.name, address: e.address || '', contact: e.contactPerson || e.phone || '', email: e.email || '' }))
+
+    // Helper to merge existing without overwriting or losing records
+    const mergeWithExisting = (key: string, newItems: any[]) => {
+      try {
+        const raw = window.localStorage.getItem(key)
+        const existing = raw ? JSON.parse(raw) : []
+        const map = new Map<string, any>()
+        if (Array.isArray(existing)) {
+          for (const item of existing) {
+            if (item?.name?.trim()) map.set(item.name.trim().toLowerCase(), item)
+          }
+        }
+        for (const item of newItems) {
+          if (item?.name?.trim()) map.set(item.name.trim().toLowerCase(), item)
+        }
+        return Array.from(map.values())
+      } catch {
+        return newItems
+      }
+    }
+
+    const mergedShippers = mergeWithExisting('sky-bol-saved-shippers', shippers)
+    const mergedConsignees = mergeWithExisting('sky-bol-saved-consignees', consignees)
+    const mergedNotify = mergeWithExisting('sky-bol-saved-notify-parties', notifyParties)
+
+    // Sync to both legacy storage keys for 100% backward and cross-module compatibility
+    window.localStorage.setItem('skybol:saved-shippers', JSON.stringify(mergedShippers))
+    window.localStorage.setItem('sky-bol-saved-shippers', JSON.stringify(mergedShippers))
+    window.localStorage.setItem('skybol:saved-consignees', JSON.stringify(mergedConsignees))
+    window.localStorage.setItem('sky-bol-saved-consignees', JSON.stringify(mergedConsignees))
+    window.localStorage.setItem('skybol:saved-notify-parties', JSON.stringify(mergedNotify))
+    window.localStorage.setItem('sky-bol-saved-notify-parties', JSON.stringify(mergedNotify))
+    window.dispatchEvent(new Event('storage'))
+  } catch (e) {}
+}
+
+let ledgerPostDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+function getInitialAppState(): AppState {
+  let isAuth = false
+  let user: User | null = null
+  let currentUsers = DEFAULT_USERS_LIST
+  let restoredDeletedEntries: DeletedLedgerEntryItem[] = []
+  let restoredMasterEntities: import('@/lib/types/master-data').MasterEntity[] = []
+
+  if (typeof window !== "undefined") {
+    try {
+      const storedUsersRaw = localStorage.getItem("skybol:system-users")
+      if (storedUsersRaw) {
+        const parsed = JSON.parse(storedUsersRaw)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          currentUsers = parsed
+        }
+      }
+
+      const rawDeleted = localStorage.getItem("skybol:deleted-ledger-entries")
+      if (rawDeleted) {
+        const parsedDeleted = JSON.parse(rawDeleted)
+        if (Array.isArray(parsedDeleted)) {
+          restoredDeletedEntries = parsedDeleted
+        }
+      }
+
+      const rawMaster = localStorage.getItem("skybol:master-entities")
+      if (rawMaster) {
+        const parsedMaster = JSON.parse(rawMaster)
+        if (Array.isArray(parsedMaster) && parsedMaster.length > 0) {
+          restoredMasterEntities = parsedMaster
+        }
+      }
+
+      const savedUser = localStorage.getItem("skybol:user") || sessionStorage.getItem("skybol:user")
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser)
+        if (parsed?.username) {
+          user = parsed
+          isAuth = true
+        }
+      }
+    } catch (e) {
+      console.warn("[AppProvider] Failed to read storage during state initialization:", e)
+    }
+  }
+
+  if (restoredMasterEntities.length === 0) {
+    restoredMasterEntities = getDefaultMasterEntities()
+  }
+
+  return {
     accounts: SAMPLE_ACCOUNTS,
     invoices: [],
     currentAccount: null,
     currentCompany: null,
-    view: 'accounts',
-    isAuthenticated: false,
-    currentUser: null,
-    users: DEFAULT_USERS_LIST,
-    deletedLedgerEntries: [],
-  })
+    view: user?.role === "shipper" ? "shipper-portal" : "accounts",
+    isAuthenticated: isAuth,
+    currentUser: user,
+    users: currentUsers,
+    deletedLedgerEntries: restoredDeletedEntries,
+    masterEntities: restoredMasterEntities,
+  }
+}
+
+export function AppProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<AppState>(getInitialAppState)
 
   // Restore login session and stored users on mount
   useEffect(() => {
@@ -253,6 +374,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } catch (e) {}
       }
 
+      let restoredMasterEntities: import('@/lib/types/master-data').MasterEntity[] = []
+      const rawMaster = localStorage.getItem("skybol:master-entities")
+      if (rawMaster) {
+        try {
+          const parsed = JSON.parse(rawMaster)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            restoredMasterEntities = parsed
+          }
+        } catch (e) {}
+      }
+      if (restoredMasterEntities.length === 0) {
+        restoredMasterEntities = getDefaultMasterEntities()
+        try {
+          localStorage.setItem("skybol:master-entities", JSON.stringify(restoredMasterEntities))
+          syncMasterEntitiesToLegacy(restoredMasterEntities)
+        } catch (e) {}
+      }
+
       const savedUser = localStorage.getItem("skybol:user") || sessionStorage.getItem("skybol:user")
       if (savedUser) {
         const parsed = JSON.parse(savedUser)
@@ -261,8 +400,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ...prev,
             isAuthenticated: true,
             currentUser: parsed,
+            view: parsed.role === "shipper" ? "shipper-portal" : prev.view,
             users: currentUsers,
             deletedLedgerEntries: restoredDeletedEntries,
+            masterEntities: restoredMasterEntities,
           }))
           return
         }
@@ -272,6 +413,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...prev,
         users: currentUsers,
         deletedLedgerEntries: restoredDeletedEntries,
+        masterEntities: restoredMasterEntities,
       }))
     } catch (e) {}
   }, [])
@@ -288,9 +430,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     role: UserRole; 
     email?: string;
     password?: string;
+    phone?: string;
+    department?: string;
+    branch?: string;
     clientId?: string;
     clientName?: string;
-    status?: 'active' | 'disabled';
+    status?: 'active' | 'disabled' | 'inactive' | 'suspended' | 'locked' | 'pending';
+    permissions_override?: import('@/lib/rbac/rbac-types').UserPermissionOverride[];
   }) => {
     setState((prev) => {
       const createdUser: User = {
@@ -300,37 +446,79 @@ export function AppProvider({ children }: { children: ReactNode }) {
         role: newUser.role,
         email: newUser.email?.trim() || `${newUser.username.trim().toLowerCase()}@skybalam.com`,
         password: newUser.password?.trim() || "skybalam2026",
+        phone: newUser.phone?.trim(),
+        department: newUser.department || "Operations",
+        branch: newUser.branch || "Main Headquarters (Kabul)",
         clientId: newUser.clientId?.trim(),
         clientName: newUser.clientName?.trim() || (newUser.role === 'shipper' ? newUser.name.trim() : undefined),
         status: newUser.status || 'active',
+        permissions_override: newUser.permissions_override,
         avatar: "/logo.png",
         createdAt: new Date().toISOString().split("T")[0],
         lastLogin: "Never",
+        createdBy: prev.currentUser?.name || "System Admin",
       }
       const updated = [...prev.users, createdUser]
       saveUsersToStorage(updated)
+      logAuditEvent({
+        userId: prev.currentUser?.id || "system",
+        userName: prev.currentUser?.name || "System Admin",
+        action: "USER_CREATED",
+        entityType: "user",
+        entityId: createdUser.id,
+        description: `Created new user ${createdUser.name} (${createdUser.username}) with role ${createdUser.role}`,
+        newValues: { id: createdUser.id, username: createdUser.username, role: createdUser.role, department: createdUser.department },
+      })
       return { ...prev, users: updated }
     })
   }, [saveUsersToStorage])
 
   const updateUser = useCallback((id: string, updates: Partial<User>) => {
     setState((prev) => {
-      const updated = prev.users.map((u) => (u.id === id ? { ...u, ...updates } : u))
+      const targetUser = prev.users.find((u) => u.id === id)
+      if (updates.role) {
+        validateSuperAdminProtection(prev.users, id, updates.role)
+      }
+      if (updates.status) {
+        validateSuperAdminProtection(prev.users, id, undefined, updates.status)
+      }
+      const updated = prev.users.map((u) => (u.id === id ? { ...u, ...updates, updatedAt: new Date().toISOString() } : u))
       saveUsersToStorage(updated)
+      logAuditEvent({
+        userId: prev.currentUser?.id || "system",
+        userName: prev.currentUser?.name || "System Admin",
+        action: "USER_UPDATED",
+        entityType: "user",
+        entityId: id,
+        description: `Updated profile for user ${targetUser?.name || id}`,
+        newValues: updates,
+      })
       return { ...prev, users: updated }
     })
   }, [saveUsersToStorage])
 
   const toggleUserStatus = useCallback((id: string) => {
     setState((prev) => {
+      const target = prev.users.find((u) => u.id === id)
+      const nextStatus: 'active' | 'disabled' = (target?.status === 'disabled' || target?.status === 'suspended' ? 'active' : 'disabled')
+      validateSuperAdminProtection(prev.users, id, undefined, nextStatus)
       const updated = prev.users.map((u) => {
         if (u.id === id) {
-          const nextStatus: 'active' | 'disabled' = u.status === 'disabled' ? 'active' : 'disabled'
-          return { ...u, status: nextStatus }
+          return { ...u, status: nextStatus, updatedAt: new Date().toISOString() }
         }
         return u
       })
       saveUsersToStorage(updated)
+      logAuditEvent({
+        userId: prev.currentUser?.id || "system",
+        userName: prev.currentUser?.name || "System Admin",
+        action: "USER_STATUS_TOGGLED",
+        entityType: "user",
+        entityId: id,
+        description: `Set status of user ${target?.name || id} to ${nextStatus}`,
+        oldValues: { status: target?.status },
+        newValues: { status: nextStatus },
+      })
       return { ...prev, users: updated }
     })
   }, [saveUsersToStorage])
@@ -341,14 +529,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     let success = false
     setState((prev) => {
+      const target = prev.users.find((u) => u.id === id)
       const updated = prev.users.map((u) => {
         if (u.id === id) {
           success = true
-          return { ...u, password: newPass.trim() }
+          return { ...u, password: newPass.trim(), updatedAt: new Date().toISOString() }
         }
         return u
       })
       saveUsersToStorage(updated)
+      logAuditEvent({
+        userId: prev.currentUser?.id || "system",
+        userName: prev.currentUser?.name || "System Admin",
+        action: "USER_PASSWORD_RESET",
+        entityType: "user",
+        entityId: id,
+        description: `Reset password for user ${target?.name || id}`,
+      })
       return { ...prev, users: updated }
     })
     return { success, message: success ? "Password successfully reset." : "User not found." }
@@ -356,16 +553,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateUserRole = useCallback((id: string, newRole: UserRole) => {
     setState((prev) => {
-      const updated = prev.users.map((u) => (u.id === id ? { ...u, role: newRole } : u))
+      validateSuperAdminProtection(prev.users, id, newRole)
+      const targetUser = prev.users.find((u) => u.id === id)
+      const updated = prev.users.map((u) => (u.id === id ? { ...u, role: newRole, updatedAt: new Date().toISOString() } : u))
       saveUsersToStorage(updated)
+      logAuditEvent({
+        userId: prev.currentUser?.id || "system",
+        userName: prev.currentUser?.name || "System Admin",
+        action: "USER_ROLE_CHANGED",
+        entityType: "user",
+        entityId: id,
+        description: `Changed role for user ${targetUser?.name || id} from ${targetUser?.role} to ${newRole}`,
+        oldValues: { role: targetUser?.role },
+        newValues: { role: newRole },
+      })
       return { ...prev, users: updated }
     })
   }, [saveUsersToStorage])
 
   const deleteUser = useCallback((id: string) => {
     setState((prev) => {
+      validateSuperAdminProtection(prev.users, id, undefined, 'disabled')
+      const target = prev.users.find((u) => u.id === id)
       const updated = prev.users.filter((u) => u.id !== id)
       saveUsersToStorage(updated)
+      logAuditEvent({
+        userId: prev.currentUser?.id || "system",
+        userName: prev.currentUser?.name || "System Admin",
+        action: "USER_DELETED",
+        entityType: "user",
+        entityId: id,
+        description: `Deleted user ${target?.name || id} (${target?.username})`,
+        oldValues: target,
+      })
       return { ...prev, users: updated }
     })
   }, [saveUsersToStorage])
@@ -390,16 +610,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avatar: foundUser.avatar || "/logo.png",
       lastLogin: new Date().toISOString().split("T")[0],
     }
-    // Remove a previous remembered identity when switching to a session-only login.
-    localStorage.removeItem("skybol:user")
-    sessionStorage.removeItem("skybol:user")
-    const storage = rememberMe ? localStorage : sessionStorage
-    storage.setItem("skybol:user", JSON.stringify(userObj))
+    try {
+      localStorage.setItem("skybol:user", JSON.stringify(userObj))
+      sessionStorage.setItem("skybol:user", JSON.stringify(userObj))
+      localStorage.setItem("skybol:first-run-completed", "true")
+    } catch (_) {}
     setState((prev) => ({
       ...prev,
       isAuthenticated: true,
       currentUser: userObj,
-      view: prev.view === "shipper-portal" ? "accounts" : prev.view,
+      view: userObj.role === "shipper" ? "shipper-portal" : (prev.view === "shipper-portal" ? "accounts" : prev.view),
     }))
     return true
   }, [state.users])
@@ -495,6 +715,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     let localDeletedEntries: DeletedLedgerEntryItem[] = []
     try {
+      
+      const rawMaster = window.localStorage.getItem("skybol:master-entities")
+      if (rawMaster) {
+        try {
+          const parsed = JSON.parse(rawMaster)
+          
+          // Legacy migration
+          try {
+            let migrated = false;
+            let currentEntities = Array.isArray(parsed) ? parsed : [];
+            const migrateLegacy = (key: string, type: import("@/lib/types/master-data").MasterEntityType) => {
+              const raw = window.localStorage.getItem(key);
+              if (raw) {
+                const items = JSON.parse(raw);
+                items.forEach((item: any) => {
+                  if (!currentEntities.find(e => e.name.toLowerCase() === item.name.toLowerCase() && e.type.includes(type))) {
+                    const existing = currentEntities.find(e => e.name.toLowerCase() === item.name.toLowerCase());
+                    if (existing) {
+                      existing.type.push(type);
+                    } else {
+                      currentEntities.push({
+                        id: 'ME-' + crypto.randomUUID(),
+                        type: [type],
+                        name: item.name,
+                        address: item.address,
+                        phone: item.contact,
+                        email: item.email,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                      });
+                    }
+                    migrated = true;
+                  }
+                });
+              }
+            };
+            migrateLegacy('skybol:saved-shippers', 'SHIPPER');
+            migrateLegacy('skybol:saved-consignees', 'CONSIGNEE');
+            migrateLegacy('skybol:saved-notify-parties', 'NOTIFY_PARTY');
+            if (migrated) {
+              window.localStorage.setItem("skybol:master-entities", JSON.stringify(currentEntities));
+              syncMasterEntitiesToLegacy(currentEntities);
+              
+            }
+          } catch(e) {}
+
+          if (Array.isArray(parsed)) {
+            setState(prev => ({ ...prev, masterEntities: parsed }))
+          }
+        } catch (e) {}
+      }
+
       const rawDeleted = window.localStorage.getItem("skybol:deleted-ledger-entries")
       if (rawDeleted) {
         const parsed = JSON.parse(rawDeleted)
@@ -854,7 +1126,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Sync updated cache back to localStorage for instant offline access
       try {
         window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(customCompanies))
+        try {
         window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(storedLedgerRecords))
+        } catch (storageErr) {
+          console.warn("[app-context] localStorage quota exceeded, canonical records stored on server:", storageErr)
+        }
       } catch (e) {}
 
       const currentAccId = prev.currentAccount?.id
@@ -882,20 +1158,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (!state.isAuthenticated) return
+
     void syncShippersAndBols()
 
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null
     const handleUpdate = () => {
-      void syncShippersAndBols()
+      if (debounceTimer) clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => {
+        void syncShippersAndBols()
+      }, 1500)
     }
 
     window.addEventListener("skybol:account-ledger-updated", handleUpdate)
     window.addEventListener("skybol:documents-updated", handleUpdate)
 
     return () => {
+      if (debounceTimer) clearTimeout(debounceTimer)
       window.removeEventListener("skybol:account-ledger-updated", handleUpdate)
       window.removeEventListener("skybol:documents-updated", handleUpdate)
     }
-  }, [syncShippersAndBols])
+  }, [state.isAuthenticated, syncShippersAndBols])
 
   const syncCloudData = useCallback(async () => {
     await syncShippersAndBols()
@@ -993,12 +1276,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
   }
 
-
   const persistLedgersDirectly = useCallback((accountsToSave: Account[], deletedItems: DeletedLedgerEntryItem[] = []) => {
     try {
       const raw = window.localStorage.getItem("skybol:account-ledgers") || "{}"
       const records = JSON.parse(raw)
       const companyNames: string[] = []
+      const financialEntriesToBatch: Array<{ bolNo?: string; id?: string; data: any }> = []
 
       accountsToSave.forEach(account => {
         if (account.name && !companyNames.includes(account.name)) {
@@ -1014,7 +1297,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
           if (company.name !== 'Acme Corp' && company.name !== 'Global Logistics') {
             company.ledgerEntries.forEach(e => {
-              saveFinancialsForEntry(e.barnamehNo, e.id, e)
+              financialEntriesToBatch.push({ bolNo: e.barnamehNo, id: e.id, data: e })
             })
 
             const rows = company.ledgerEntries.map(entry => ({
@@ -1042,41 +1325,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }))
 
             records[canonKey] = rows
-            records[`company-${canonKey}`] = rows
-            records[companyKey] = rows
-            records[cleanNameKey] = rows
-            records[company.name.toLowerCase()] = rows
-            records[company.name] = rows
+            if (company.name && company.name !== canonKey) {
+              records[company.name] = rows
+            }
           }
         })
       })
 
-      window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(records))
-      window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(companyNames))
-      window.localStorage.setItem("skybol:deleted-ledger-entries", JSON.stringify(deletedItems))
+      if (financialEntriesToBatch.length > 0) {
+        saveFinancialsForEntries(financialEntriesToBatch)
+      }
 
-      // Direct multi-backend persistence
-      fetch("/api/account-ledgers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accounts: companyNames,
-          ledgerEntries: records,
-          deletedLedgerEntries: deletedItems,
-        }),
-        keepalive: true,
-      }).catch(() => {})
+      try {
+        window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(records))
+        window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(companyNames))
+        window.localStorage.setItem("skybol:deleted-ledger-entries", JSON.stringify(deletedItems))
+      } catch (storageErr) {
+        console.warn("[app-context] localStorage quota exceeded, canonical records stored on server:", storageErr)
+      }
 
-      fetch("/api/bol-account-ledgers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customCompanies: companyNames,
-          ledgerRecords: records,
-          deletedLedgerEntries: deletedItems,
-        }),
-        keepalive: true,
-      }).catch(() => {})
+      // Direct multi-backend persistence (debounced by 600ms to eliminate multi-megabyte network thrashing during rapid edits)
+      if (ledgerPostDebounceTimer) clearTimeout(ledgerPostDebounceTimer)
+      ledgerPostDebounceTimer = setTimeout(() => {
+        fetch("/api/account-ledgers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accounts: companyNames,
+            ledgerEntries: records,
+            deletedLedgerEntries: deletedItems,
+          }),
+          keepalive: true,
+        }).catch(() => {})
+
+        fetch("/api/bol-account-ledgers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customCompanies: companyNames,
+            ledgerRecords: records,
+            deletedLedgerEntries: deletedItems,
+          }),
+          keepalive: true,
+        }).catch(() => {})
+      }, 600)
     } catch (e) {
       console.warn("Direct ledger persistence error:", e)
     }
@@ -1314,12 +1606,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     })
   }, [persistLedgersDirectly])
 
-  // Background auto-sync safeguard for ledgers
-  useEffect(() => {
-    if (!state.accounts || state.accounts === SAMPLE_ACCOUNTS) return;
-    
-    persistLedgersDirectly(state.accounts, state.deletedLedgerEntries || [])
-  }, [state.accounts, state.deletedLedgerEntries, persistLedgersDirectly])
+
 
   const updateLedgerEntry = useCallback((accountId: string, companyId: string, entryId: string, entry: Partial<LedgerEntry>) => {
     saveFinancialsForEntry(entry.barnamehNo, entryId, entry)
@@ -1521,8 +1808,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           })
         })
 
+        try {
         window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(records))
         window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(companyNames))
+        } catch (storageErr) {
+          console.warn("[app-context] localStorage quota exceeded, canonical records stored on server:", storageErr)
+        }
 
         fetch("/api/account-ledgers", {
           method: "POST",
@@ -1640,8 +1931,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           })
         })
 
+        try {
         window.localStorage.setItem("skybol:account-ledgers", JSON.stringify(records))
         window.localStorage.setItem("skybol:account-custom-companies", JSON.stringify(companyNames))
+        } catch (storageErr) {
+          console.warn("[app-context] localStorage quota exceeded, canonical records stored on server:", storageErr)
+        }
 
         fetch("/api/account-ledgers", {
           method: "POST",
@@ -1932,7 +2227,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setView = useCallback((view: AppState['view']) => {
-    setState(prev => ({ ...prev, view }))
+    startTransition(() => {
+      setState(prev => ({ ...prev, view }))
+    })
   }, [])
 
   const goBack = useCallback(() => {
@@ -2035,6 +2332,88 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return state.currentCompany?.ledgerSettings || DEFAULT_LEDGER_SETTINGS
   }, [state.currentCompany])
 
+  const addMasterEntity = useCallback((entity: Omit<import('@/lib/types/master-data').MasterEntity, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newEntity: import('@/lib/types/master-data').MasterEntity = {
+      ...entity,
+      id: 'ME-' + crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    setState(prev => {
+      const updated = [newEntity, ...(prev.masterEntities || [])]
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('skybol:master-entities', JSON.stringify(updated))
+        syncMasterEntitiesToLegacy(updated)
+      }
+      return { ...prev, masterEntities: updated }
+    })
+  }, [])
+
+  const updateMasterEntity = useCallback((id: string, updates: Partial<import('@/lib/types/master-data').MasterEntity>) => {
+    setState(prev => {
+      const updated = (prev.masterEntities || []).map(e => e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e)
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('skybol:master-entities', JSON.stringify(updated))
+        syncMasterEntitiesToLegacy(updated)
+      }
+      return { ...prev, masterEntities: updated }
+    })
+  }, [])
+
+  const deleteMasterEntity = useCallback((id: string) => {
+    setState(prev => {
+      const updated = (prev.masterEntities || []).filter(e => e.id !== id)
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('skybol:master-entities', JSON.stringify(updated))
+        syncMasterEntitiesToLegacy(updated)
+      }
+      return { ...prev, masterEntities: updated }
+    })
+  }, [])
+
+  const mergeMasterEntities = useCallback((primaryId: string, secondaryId: string) => {
+    setState(prev => {
+      const entities = prev.masterEntities || []
+      const primary = entities.find(e => e.id === primaryId)
+      const secondary = entities.find(e => e.id === secondaryId)
+      if (!primary || !secondary) return prev
+
+      const merged = mergeEntities(primary, secondary)
+      const updated = entities
+        .filter(e => e.id !== secondaryId)
+        .map(e => e.id === primaryId ? merged : e)
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('skybol:master-entities', JSON.stringify(updated))
+        syncMasterEntitiesToLegacy(updated)
+      }
+      return { ...prev, masterEntities: updated }
+    })
+  }, [])
+
+  const importMasterEntities = useCallback((newItems: Omit<import('@/lib/types/master-data').MasterEntity, 'id' | 'createdAt' | 'updatedAt'>[]) => {
+    let count = 0
+    setState(prev => {
+      const existing = [...(prev.masterEntities || [])]
+      for (const item of newItems) {
+        const newEntity: import('@/lib/types/master-data').MasterEntity = {
+          ...item,
+          id: 'ME-' + crypto.randomUUID(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+        existing.unshift(newEntity)
+        count++
+      }
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('skybol:master-entities', JSON.stringify(existing))
+        syncMasterEntitiesToLegacy(existing)
+      }
+      return { ...prev, masterEntities: existing }
+    })
+    return count
+  }, [])
+
   return (
     <AppContext.Provider
       value={{
@@ -2075,6 +2454,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         getLedgerSettings,
         isSyncing,
         syncCloudData,
+        addMasterEntity,
+        updateMasterEntity,
+        deleteMasterEntity,
+        mergeMasterEntities,
+        importMasterEntities,
       }}
     >
       {children}

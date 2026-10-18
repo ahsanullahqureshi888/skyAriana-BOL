@@ -32,7 +32,7 @@ export function handleError(error: unknown) {
     return {
       status: 500,
       body: {
-        error: error.message,
+        error: process.env.NODE_ENV === 'production' ? 'An unexpected internal error occurred' : error.message,
         code: 'INTERNAL_ERROR',
       },
     }

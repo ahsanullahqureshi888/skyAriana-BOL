@@ -1,4 +1,4 @@
-# SKY ARIANA LIMITED Logistics Platform
+# AQ-COMPANIES- LIMITED Logistics Platform
 
 React frontend with Apple/macOS glass UI, plus a Python FastAPI backend for local database, uploads, media, PDF/Excel workflows, reports, and future OCR/AI automation.
 

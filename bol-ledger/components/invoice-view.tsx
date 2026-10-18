@@ -133,9 +133,9 @@ export function InvoiceView() {
           <div className="bg-gradient-to-r from-primary/20 to-accent/20 p-6 border-b border-border/50">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-4">
-                <Image src="/logo.png" alt="Logo" width={100} height={75} className="object-contain" />
+                <Image src="/logo.png" alt="AQ Companies Logo" width={100} height={75} className="object-contain" />
                 <div>
-                  <h1 className="text-2xl font-bold text-foreground">SKY ARIANA LIMITED</h1>
+                  <h1 className="text-2xl font-bold text-foreground">AQ COMPANIES</h1>
                   <p className="text-sm text-muted-foreground">شرکت حمل ونقل بین المللی سکای آریانا لمیتد</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Safe, Fast & Reliable Transport Services

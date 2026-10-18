@@ -1,5 +1,5 @@
 // Service Worker for Sky Ariana Logistics PWA
-const CACHE_NAME = 'sky-ariana-v3.2.2';
+const CACHE_NAME = 'sky-ariana-v5.1pro';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/logo.png',
