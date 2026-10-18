@@ -5,6 +5,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next'
 import { PWARegister } from '@/components/pwa-register'
 import { ChunkErrorHandler } from '@/components/chunk-error-handler'
 import { ThemeProvider } from '@/components/theme-provider'
+import { GlobalContextMenu } from '@/components/global-context-menu'
 import './globals.css'
 import './liquid-workspace.css'
 
@@ -88,6 +89,7 @@ export default function RootLayout({
           </div>
           <PWARegister />
           <ChunkErrorHandler />
+          <GlobalContextMenu />
           {children}
           {process.env.NODE_ENV === 'production' && <Analytics />}
           {process.env.NODE_ENV === 'production' && <SpeedInsights />}

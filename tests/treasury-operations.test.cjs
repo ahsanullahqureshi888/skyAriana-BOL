@@ -18,6 +18,8 @@ const TRANSFERS_FILE = getDataPath(".local-treasury-transfers.json")
 const EXCHANGES_FILE = getDataPath(".local-treasury-exchanges.json")
 const RECONCILIATIONS_FILE = getDataPath(".local-treasury-reconciliations.json")
 const PERIODS_FILE = getDataPath(".local-accounting-periods.json")
+const LEDGERS_FILE = getDataPath(".local-account-ledgers.json")
+const BOL_LEDGERS_FILE = getDataPath(".local-bol-account-ledgers.json")
 
 const backups = new Map()
 
@@ -49,6 +51,8 @@ describe("Enterprise Treasury & Cash/Bank Management Engine", () => {
     await backupFile(EXCHANGES_FILE)
     await backupFile(RECONCILIATIONS_FILE)
     await backupFile(PERIODS_FILE)
+    await backupFile(LEDGERS_FILE)
+    await backupFile(BOL_LEDGERS_FILE)
 
     treasuryService = loadTypescript("lib/treasury/treasury-service.ts")
     periodService = loadTypescript("lib/accounting/period-closing/period-service.ts")
@@ -77,10 +81,17 @@ describe("Enterprise Treasury & Cash/Bank Management Engine", () => {
       })
     }
     let oct = periods.find((p) => p.code === "2026-10")
-    if (oct) {
-      oct.status = "OPEN"
-    }
     await periodService.savePeriods(periods)
+
+    // Reset clean isolated treasury test state
+    try {
+      await fs.unlink(ACCOUNTS_FILE)
+    } catch (_) {}
+    await fs.writeFile(TRANSACTIONS_FILE, "[]", "utf-8")
+    await fs.writeFile(TRANSFERS_FILE, "[]", "utf-8")
+    await fs.writeFile(EXCHANGES_FILE, "[]", "utf-8")
+    await fs.writeFile(RECONCILIATIONS_FILE, "[]", "utf-8")
+    await treasuryService.ensureDefaultTreasuryAccounts()
   })
 
   after(async () => {
@@ -90,6 +101,8 @@ describe("Enterprise Treasury & Cash/Bank Management Engine", () => {
     await restoreFile(EXCHANGES_FILE)
     await restoreFile(RECONCILIATIONS_FILE)
     await restoreFile(PERIODS_FILE)
+    await restoreFile(LEDGERS_FILE)
+    await restoreFile(BOL_LEDGERS_FILE)
   })
 
   test("1. Treasury Account Initialization & Multi-Currency Segregation", async () => {

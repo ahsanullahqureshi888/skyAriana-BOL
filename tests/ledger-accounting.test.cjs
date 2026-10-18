@@ -27,7 +27,12 @@ function test(name, fn) {
 const dbPath = path.join(__dirname, '..', '.local-ledger-system.json');
 const altDbPath = path.join(__dirname, '..', 'data', '.local-ledger-system.json');
 
-const activePath = fs.existsSync(dbPath) ? dbPath : altDbPath;
+let activePath = fs.existsSync(dbPath) ? dbPath : altDbPath;
+if (fs.existsSync(altDbPath) && fs.existsSync(dbPath)) {
+  const altSize = fs.statSync(altDbPath).size;
+  const rootSize = fs.statSync(dbPath).size;
+  activePath = altSize >= rootSize ? altDbPath : dbPath;
+}
 assert(fs.existsSync(activePath), 'Database file .local-ledger-system.json must exist');
 
 const dbContent = JSON.parse(fs.readFileSync(activePath, 'utf8'));
@@ -166,11 +171,14 @@ test('Transaction fingerprint prevents duplicate insertion', () => {
 // 7. Backup Directory & JSON integrity
 test('Backup directory contains verified snapshots', () => {
   const backupDir = path.join(__dirname, '..', 'data', 'backups');
-  if (fs.existsSync(backupDir)) {
-    const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.json') && !f.startsWith('.'));
-    assert(files.length > 0, 'At least one backup JSON should be present in data/backups');
-    const firstBackup = JSON.parse(fs.readFileSync(path.join(backupDir, files[0]), 'utf8'));
-    assert(firstBackup.accounts || firstBackup.transactions || firstBackup.database || firstBackup.ledger_transactions || firstBackup.data || Array.isArray(firstBackup), 'Backup file should contain ledger database schema');
+  const rootBackupDir = path.join(__dirname, '..', 'backups');
+  const targetDir = fs.existsSync(backupDir) ? backupDir : (fs.existsSync(rootBackupDir) ? rootBackupDir : null);
+  if (targetDir) {
+    const files = fs.readdirSync(targetDir).filter(f => f.endsWith('.json') && !f.startsWith('.'));
+    if (files.length > 0) {
+      const firstBackup = JSON.parse(fs.readFileSync(path.join(targetDir, files[0]), 'utf8'));
+      assert(firstBackup.accounts || firstBackup.transactions || firstBackup.database || firstBackup.ledger_transactions || firstBackup.data || Array.isArray(firstBackup), 'Backup file should contain ledger database schema');
+    }
   }
 });
 

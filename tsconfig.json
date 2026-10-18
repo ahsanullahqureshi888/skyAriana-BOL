@@ -31,6 +31,7 @@
   },
   "include": [
     "next-env.d.ts",
+    "**/*.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
@@ -45,6 +46,10 @@
     "scripts/fleet",
     "release",
     "release-desktop",
-    ".desktop-package"
+    ".desktop-package",
+    "SKY-ARIANA-DOC",
+    "SKY-ARIANA-BANK",
+    "SKY-CMR-BORDER",
+    "acci-laravel"
   ]
 }

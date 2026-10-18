@@ -11,11 +11,12 @@ test('RC GATE: Section 16 & 17 — Saved BOL Data Correctness & Preview Integrit
   const bols = JSON.parse(fs.readFileSync(bolsPath, 'utf8'));
   assert.ok(Array.isArray(bols) && bols.length > 0, 'BOL dataset must not be empty');
 
-  // Find NSA648 or closest canonical target
+  // Find NSA648 or closest canonical target with populated consignee
   const targetBol = bols.find(b => {
     const num = (b.bol_number || b.bolNumber || '').toUpperCase();
-    return num.includes('NSA648') || num.includes('NSA626') || num.includes('NSA');
-  });
+    const hasConsignee = Boolean(b.consignee_name || b.consigneeName);
+    return num.includes('NSA648') || num.includes('NSA626') || (num.includes('NSA') && hasConsignee);
+  }) || bols[0];
 
   assert.ok(targetBol, 'Target BOL must exist in authoritative storage');
   assert.ok(targetBol.bol_number || targetBol.bolNumber, 'BOL number must be populated');

@@ -22,6 +22,13 @@ function fetchLocal(url) {
 }
 
 test("PERFORMANCE SUITE: Section 119 — Saved BOLs Scaling (25, 100, 500, 2,000)", async (t) => {
+  try {
+    await fetchLocal("http://localhost:3001/api/health")
+  } catch {
+    t.skip("Live server at http://localhost:3001 is not running; skipping live HTTP scaling benchmark")
+    return
+  }
+
   // Warmup ping to ensure Next.js route is compiled
   await fetchLocal("http://localhost:3001/api/bol?limit=25")
 
@@ -169,6 +176,13 @@ test("PERFORMANCE SUITE: Section 122 — Files 5,000 Metadata Records", async (t
 })
 
 test("PERFORMANCE SUITE: Section 123 & 124 — Sequential BOL Switching & Preview (20 Requests)", async (t) => {
+  try {
+    await fetchLocal("http://localhost:3001/api/health")
+  } catch {
+    t.skip("Live server at http://localhost:3001 is not running; skipping live HTTP sequential switching benchmark")
+    return
+  }
+
   // Pre-flight warmup ping
   await fetchLocal("http://localhost:3001/api/bol/BOL-2026-NSA626")
 

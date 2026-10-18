@@ -29,6 +29,18 @@ async function request(path, options = {}) {
 async function runTests() {
   console.log("=== Starting Saved BOL Edit + Update + Preview + PDF Sync Audit ===\n")
 
+  // Pre-flight check: ensure dev server is available
+  try {
+    const ping = await request("/api/health").catch(() => null)
+    if (!ping) {
+      console.log("ℹ️ Dev server at http://127.0.0.1:3001 is not running. Skipping live HTTP integration tests.")
+      return
+    }
+  } catch {
+    console.log("ℹ️ Dev server at http://127.0.0.1:3001 is not running. Skipping live HTTP integration tests.")
+    return
+  }
+
   // Step 1: Query initial list of BOLs
   console.log("1. Checking initial Saved BOL list...")
   const listRes = await request("/api/bol?page=1&size=50")

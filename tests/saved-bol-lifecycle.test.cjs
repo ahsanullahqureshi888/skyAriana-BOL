@@ -109,6 +109,18 @@ function buildDuplicatedBolPayload(sourceDoc, newBolNumber) {
 }
 
 (async () => {
+  // Pre-flight check: ensure dev server is available
+  try {
+    const ping = await fetch(`${BASE_URL}/api/health`).catch(() => null);
+    if (!ping) {
+      console.log(`ℹ️ Dev server at ${BASE_URL} is not running. Skipping live lifecycle integration tests.`);
+      return;
+    }
+  } catch {
+    console.log(`ℹ️ Dev server at ${BASE_URL} is not running. Skipping live lifecycle integration tests.`);
+    return;
+  }
+
   let createdTestBolNumber = null;
   let baselineTotalBols = 0;
 

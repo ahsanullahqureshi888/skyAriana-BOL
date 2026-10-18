@@ -9,7 +9,7 @@ declare global {
       getNetworkConfig?: () => Promise<any>
       testServerConnection?: (url: string) => Promise<any>
       switchNetworkMode?: (mode: string, config: any) => Promise<any>
-      [key: string]: any
     }
   }
 }
+

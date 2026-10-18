@@ -7,13 +7,21 @@ console.log('RUNNING AUTOMATED ACCOUNT LEDGER PRINT & PDF REGRESSION SUITE');
 console.log('================================================================');
 
 // 1. Load canonical data for RAHMAT NAZAR LTD using the application's exact resolution logic
-const bolsPath = path.join(__dirname, '..', 'data', '.local-bols.json');
-const ledgersPath = path.join(__dirname, '..', 'data', '.local-account-ledgers.json');
-const bolLedgersPath = path.join(__dirname, '..', 'data', '.local-bol-account-ledgers.json');
+function resolveDataFile(filename) {
+  const dataPath = path.join(__dirname, '..', 'data', filename);
+  if (fs.existsSync(dataPath)) return dataPath;
+  const rootPath = path.join(__dirname, '..', filename);
+  if (fs.existsSync(rootPath)) return rootPath;
+  return dataPath;
+}
 
-assert(fs.existsSync(bolsPath), 'data/.local-bols.json must exist');
-assert(fs.existsSync(ledgersPath), 'data/.local-account-ledgers.json must exist');
-assert(fs.existsSync(bolLedgersPath), 'data/.local-bol-account-ledgers.json must exist');
+const bolsPath = resolveDataFile('.local-bols.json');
+const ledgersPath = resolveDataFile('.local-account-ledgers.json');
+const bolLedgersPath = resolveDataFile('.local-bol-account-ledgers.json');
+
+assert(fs.existsSync(bolsPath), '.local-bols.json must exist');
+assert(fs.existsSync(ledgersPath), '.local-account-ledgers.json must exist');
+assert(fs.existsSync(bolLedgersPath), '.local-bol-account-ledgers.json must exist');
 
 const bols = JSON.parse(fs.readFileSync(bolsPath, 'utf8'));
 const ledgers = JSON.parse(fs.readFileSync(ledgersPath, 'utf8'));
