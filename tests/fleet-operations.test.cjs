@@ -5,7 +5,8 @@
 
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { parseAfghanPlate, convertToLatinDigits, convertToPersianDigits } = require('../lib/utils/afghan-plate.ts')
+const loadTypescript = require('./load-typescript.cjs')
+const { parseAfghanPlate, convertToLatinDigits, convertToPersianDigits } = loadTypescript('lib/utils/afghan-plate.ts')
 
 // ==========================================
 // PURE FLEET ENGINE FOR DETERMINISTIC TESTING

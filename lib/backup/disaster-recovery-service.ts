@@ -341,7 +341,7 @@ export function sanitizePortablePaths(rawPath: string, preferredDataDir = getDat
   if (!rawPath || typeof rawPath !== "string") return ""
   // If path contains an old user profile e.g. C:\Users\OldUser\...
   if (rawPath.match(/^[a-zA-Z]:[/\\]Users[/\\][^/\\]+[/\\]/i)) {
-    const filename = path.basename(rawPath)
+    const filename = path.win32.basename(rawPath)
     return path.join(preferredDataDir, filename)
   }
   return rawPath
