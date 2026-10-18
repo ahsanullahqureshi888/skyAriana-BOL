@@ -93,3 +93,9 @@ coverage/
 *.trace
 bol-software-v-5-3-pro/
 
+# Scratch and evaluation log scraps
+SKY-ARIANA-DOC/({*
+SKY-ARIANA-DOC/*.value*
+SKY-ARIANA-DOC/*.text*
+SKY-ARIANA-DOC/*.href*
+SKY-ARIANA-DOC/*.name*
